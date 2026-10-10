@@ -48,6 +48,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool get _hasCloak => _progress?.items.contains(nemea.reward) ?? false;
 
+  bool _hasReward(String laborId) =>
+      _progress?.items.contains(
+        labors.firstWhere((l) => l.id == laborId).reward,
+      ) ??
+      false;
+  bool get _hasShield => _hasReward('fafnir');
+  bool get _hasSword => _hasReward('orochi');
+
   Future<void> _editCharacter() async {
     final saved = await Navigator.of(context).push<PlayerProfile>(
       MaterialPageRoute(
@@ -93,6 +101,8 @@ class _HomeScreenState extends State<HomeScreen> {
               : 'Kỳ công ${labor.number} hoàn thành',
           onFinished: (outcome) => _recordOutcome(outcome, labor: labor),
           heroCloak: _hasCloak,
+          heroShield: _hasShield,
+          heroSword: _hasSword,
           heroLook: _profile?.look ?? const HeroLook(),
         ),
       ),
@@ -120,6 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 profile: profile,
                 mode: _mode,
                 cloak: _hasCloak,
+                shield: _hasShield,
+                sword: _hasSword,
                 onEdit: _editCharacter,
               ),
               const SizedBox(height: 12),
@@ -222,12 +234,16 @@ class _CharacterCard extends StatelessWidget {
     required this.profile,
     required this.mode,
     required this.cloak,
+    required this.shield,
+    required this.sword,
     required this.onEdit,
   });
 
   final PlayerProfile profile;
   final PushupMode mode;
   final bool cloak;
+  final bool shield;
+  final bool sword;
   final VoidCallback onEdit;
 
   @override
@@ -242,7 +258,12 @@ class _CharacterCard extends StatelessWidget {
             SizedBox(
               width: 96,
               height: 120,
-              child: HeroPreview(look: profile.look, cloak: cloak),
+              child: HeroPreview(
+                look: profile.look,
+                cloak: cloak,
+                shield: shield,
+                sword: sword,
+              ),
             ),
             Expanded(
               child: Padding(

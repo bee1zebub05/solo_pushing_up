@@ -42,6 +42,8 @@ class BattleScreen extends StatefulWidget {
     this.victoryText,
     this.onFinished,
     this.heroCloak = false,
+    this.heroShield = false,
+    this.heroSword = false,
     this.heroLook = const HeroLook(),
   });
 
@@ -54,6 +56,10 @@ class BattleScreen extends StatefulWidget {
 
   /// Người chơi đã có Áo choàng da sư tử (vẽ lên nhân vật).
   final bool heroCloak;
+
+  /// Đã có Khiên vảy rồng / Kiếm Kusanagi (vẽ lên nhân vật).
+  final bool heroShield;
+  final bool heroSword;
 
   /// Ngoại hình nhân vật người chơi đã tạo.
   final HeroLook heroLook;
@@ -93,6 +99,8 @@ class _BattleScreenState extends State<BattleScreen>
     final art? => BattleStageGame(
       boss: art,
       cloak: widget.heroCloak,
+      shield: widget.heroShield,
+      sword: widget.heroSword,
       look: widget.heroLook,
     ),
     null => null,

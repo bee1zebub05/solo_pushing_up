@@ -81,8 +81,15 @@ class BattleStageGame extends FlameGame {
   BattleStageGame({
     required this.boss,
     bool cloak = false,
+    bool shield = false,
+    bool sword = false,
     HeroLook look = const HeroLook(),
-  }) : _hero = _HeroComponent(cloak: cloak, look: look),
+  }) : _hero = _HeroComponent(
+         cloak: cloak,
+         look: look,
+         shield: shield,
+         sword: sword,
+       ),
        super(
          camera: CameraComponent.withFixedResolution(
            width: stageSize.width,
@@ -339,9 +346,16 @@ class _ForegroundComponent extends Component {
 enum _HeroMode { standing, plank, victory }
 
 class _HeroComponent extends Component {
-  _HeroComponent({required this.cloak, required this.look});
+  _HeroComponent({
+    required this.cloak,
+    required this.look,
+    this.shield = false,
+    this.sword = false,
+  });
 
   bool cloak;
+  final bool shield;
+  final bool sword;
   final HeroLook look;
   double? elbowAngle;
   bool onKnees = false;
@@ -414,6 +428,8 @@ class _HeroComponent extends Component {
         : 0,
     joy: _mode == _HeroMode.victory ? 1 : 0,
     frost: _mode == _HeroMode.victory ? 0 : cold,
+    shield: shield,
+    sword: sword,
   );
 }
 

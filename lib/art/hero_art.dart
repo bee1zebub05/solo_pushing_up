@@ -89,6 +89,8 @@ const _headScale = 1.12;
 /// [glow] 0–1: viền sáng khi vừa tung đòn.
 /// [effort] 0–1: gắng sức (xuống càng sâu càng nghiến răng, đổ mồ hôi).
 /// [joy] 0–1: vui (ăn mừng chiến thắng).
+/// [shield]: Khiên vảy rồng sau lưng (phần thưởng Kỳ công 2).
+/// [sword]: Kiếm Kusanagi giắt thắt lưng (phần thưởng Kỳ công 5).
 /// [frost] 0–1: lạnh cóng (Fafnir): ngả xanh, mọc tinh thể băng khi gần 1.
 void paintHero(
   Canvas canvas,
@@ -99,6 +101,8 @@ void paintHero(
   double effort = 0,
   double joy = 0,
   double frost = 0,
+  bool shield = false,
+  bool sword = false,
 }) {
   // Chiều cao: phóng to/thu nhỏ quanh điểm chạm đất (mũi chân), nên tay chân
   // vẫn chạm sàn ở mọi tư thế.
@@ -173,6 +177,7 @@ void paintHero(
   );
 
   if (cloak) withFrame(canvas, hip, up, (f) => _peltBack(canvas, torsoLen, f));
+  if (shield) withFrame(canvas, hip, up, (f) => _shield(canvas, torsoLen, f));
 
   final head = pose[HeroJoint.head];
   final neck = pose[HeroJoint.neck];
@@ -199,6 +204,7 @@ void paintHero(
     up,
     (f) => _torso(canvas, look, torsoLen, f, cloak: cloak),
   );
+  if (sword) withFrame(canvas, hip, up, (f) => _sword(canvas, look, f));
 
   shadedChain(
     canvas,
@@ -477,6 +483,110 @@ void _torso(
       outlineWidth: 1,
     );
   }
+}
+
+/// Khiên vảy rồng đeo sau lưng, vẽ trong hệ cục bộ gốc ở hông.
+void _shield(Canvas canvas, double len, PartFrame f) {
+  final center = Offset(-17, -len * 0.58);
+  const r = 14.0;
+  final disc = Path()..addOval(Rect.fromCircle(center: center, radius: r));
+  shadedPath(
+    canvas,
+    disc,
+    const Color(0xFF4F7391),
+    f,
+    shadow: 3,
+    highlight: 1.4,
+  );
+  // Vảy rồng xếp lớp.
+  canvas.save();
+  canvas.clipPath(disc);
+  final scale = Paint()
+    ..color = const Color(0xFF8FB8D2)
+    ..strokeWidth = 1.1
+    ..style = PaintingStyle.stroke;
+  for (var row = -2; row <= 2; row++) {
+    for (var col = -2; col <= 2; col++) {
+      final c = center + Offset(col * 6.0 + (row.isOdd ? 3 : 0), row * 5.0);
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: 3.4),
+        0,
+        math.pi,
+        false,
+        scale,
+      );
+    }
+  }
+  canvas.restore();
+  // Viền vàng và núm giữa.
+  canvas.drawCircle(
+    center,
+    r - 1,
+    Paint()
+      ..shader = Gradient.linear(
+        center - const Offset(r, r),
+        center + const Offset(r, r),
+        const [Color(0xFFFFF1A8), Color(0xFFE8B83A), Color(0xFFB07A14)],
+        const [0, 0.45, 1],
+      )
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.6,
+  );
+  final boss = Rect.fromCircle(center: center, radius: 3.6);
+  canvas.drawOval(boss.inflate(1), fillPaint(HeroColors.outline));
+  canvas.drawOval(boss, goldPaint(boss));
+  glint(canvas, center + const Offset(-6, -6), 2);
+}
+
+/// Kiếm Kusanagi trong vỏ giắt ở thắt lưng: chuôi chĩa ra trước-lên, vỏ
+/// nằm dọc theo đùi, hơi chếch ra sau. Vẽ trong hệ cục bộ gốc ở hông.
+void _sword(Canvas canvas, HeroLook look, PartFrame f) {
+  final front = (look.female ? 10.5 : 9.0) + look.fat * 10;
+  final guard = Offset(front - 6, -7);
+  final scabbardEnd = guard + const Offset(-12, 34);
+  final hiltEnd = guard + const Offset(7, -9);
+  // Vỏ sơn mài đen, đầu vỏ bịt vàng.
+  shadedChain(
+    canvas,
+    [(guard, scabbardEnd, 2.6, 2.4)],
+    const Color(0xFF26201E),
+    shadow: 1,
+    highlight: 0.6,
+  );
+  final tip = Rect.fromCircle(center: scabbardEnd, radius: 2.6);
+  canvas.drawOval(tip, goldPaint(tip));
+  // Chuôi quấn dây hình thoi.
+  shadedChain(
+    canvas,
+    [(guard, hiltEnd, 2.4, 2.2)],
+    const Color(0xFF6B2E2E),
+    shadow: 0.8,
+    highlight: 0.5,
+  );
+  final wrap = Paint()
+    ..color = const Color(0xFFE8DCC0)
+    ..strokeWidth = 0.9;
+  final d = (hiltEnd - guard) / (hiltEnd - guard).distance;
+  final n = Offset(-d.dy, d.dx);
+  for (var t = 0.2; t < 0.95; t += 0.22) {
+    final p = Offset.lerp(guard, hiltEnd, t)!;
+    canvas.drawLine(p - n * 2 - d, p + n * 2 + d, wrap);
+  }
+  // Đốc kiếm (tsuba) vàng.
+  final tsuba = Rect.fromCenter(center: guard, width: 4, height: 9);
+  canvas.save();
+  canvas.translate(guard.dx, guard.dy);
+  canvas.rotate(math.atan2(d.dy, d.dx));
+  canvas.translate(-guard.dx, -guard.dy);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(tsuba.inflate(0.9), const Radius.circular(2)),
+    fillPaint(HeroColors.outline),
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(tsuba, const Radius.circular(1.6)),
+    goldPaint(tsuba),
+  );
+  canvas.restore();
 }
 
 /// Tấm da sư tử phủ sau lưng, vẽ trong hệ cục bộ gốc ở hông.

@@ -292,6 +292,29 @@ void main() {
     }
   });
 
+  testWidgets('trang bị: áo choàng + khiên vảy rồng + kiếm Kusanagi', (
+    tester,
+  ) async {
+    await render(tester, 'gear', (c) {
+      paintNemeaScene(c);
+      paintHero(
+        c,
+        HeroPose.standing(x: 60),
+        cloak: true,
+        shield: true,
+        sword: true,
+      );
+      paintHero(
+        c,
+        HeroPose.plank(110).translate(const Offset(150, 0)),
+        look: const HeroLook(sex: HeroSex.female, hairStyle: HairStyle.bun),
+        shield: true,
+        sword: true,
+        effort: 0.7,
+      );
+    });
+  });
+
   test('IK chống đẩy giữ đúng độ dài tay', () {
     for (final angle in [180.0, 140.0, 100.0, 60.0]) {
       final p = HeroPose.plank(angle);

@@ -13,12 +13,16 @@ class HeroPreview extends StatefulWidget {
     required this.look,
     this.pushups = false,
     this.cloak = false,
+    this.shield = false,
+    this.sword = false,
     this.background = const Color(0xFF2A2420),
   });
 
   final HeroLook look;
   final bool pushups;
   final bool cloak;
+  final bool shield;
+  final bool sword;
   final Color background;
 
   @override
@@ -45,6 +49,8 @@ class _HeroPreviewState extends State<HeroPreview>
       look: widget.look,
       pushups: widget.pushups,
       cloak: widget.cloak,
+      shield: widget.shield,
+      sword: widget.sword,
       seconds: _seconds,
       background: widget.background,
     ),
@@ -57,6 +63,8 @@ class _HeroPreviewPainter extends CustomPainter {
     required this.look,
     required this.pushups,
     required this.cloak,
+    required this.shield,
+    required this.sword,
     required this.seconds,
     required this.background,
   });
@@ -64,6 +72,8 @@ class _HeroPreviewPainter extends CustomPainter {
   final HeroLook look;
   final bool pushups;
   final bool cloak;
+  final bool shield;
+  final bool sword;
   final double seconds;
   final Color background;
 
@@ -100,6 +110,8 @@ class _HeroPreviewPainter extends CustomPainter {
       pose,
       look: look,
       cloak: cloak,
+      shield: shield,
+      sword: sword,
       effort: pushups ? ((165 - angle) / 80).clamp(0.0, 1.0) : 0,
     );
     canvas.restore();
