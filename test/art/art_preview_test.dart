@@ -9,6 +9,7 @@ import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
+import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 
 /// Vẽ thử các khung hình nhân vật. Mặc định chỉ kiểm tra vẽ không lỗi;
@@ -213,6 +214,46 @@ void main() {
           joy: defeat > 0 ? 1 : 0,
         );
         art.paintForeground(c, frame);
+      });
+    }
+  });
+
+  testWidgets('Orochi: 8 đầu, đã chém 3, đầu mọc lại, gục', (tester) async {
+    for (final (name, left, hp, attack, defeat, regrow) in [
+      ('orochi_8', 8, 1.0, 0.0, 0.0, false),
+      ('orochi_5', 5, 0.4, 1.0, 0.0, false),
+      ('orochi_regrow', 5, 1.0, 0.0, 0.0, true),
+      ('orochi_defeat', 0, 0.0, 0.0, 1.0, false),
+    ]) {
+      final art = OrochiBossArt();
+      final battle = StageBattleState()
+        ..totalHeads = 8
+        ..headsLeft = left
+        ..headHp = regrow ? 0.3 : hp;
+      BossFrame frame(double time) => BossFrame(
+        time: time,
+        attack: attack,
+        hurt: 0,
+        glint: -1,
+        defeat: defeat,
+        battle: battle,
+      );
+      if (regrow) {
+        // Khung trước máu thấp, khung sau hồi đầy = đầu mọc lại.
+        art.paintBoss(ui.Canvas(ui.PictureRecorder()), frame(1.0));
+        battle.headHp = hp;
+      }
+      await render(tester, name, (c) {
+        art.paintBackdrop(c);
+        art.paintAmbient(c, 1);
+        art.paintBoss(c, frame(1.25));
+        paintHero(
+          c,
+          defeat > 0 ? HeroPose.victory() : HeroPose.plank(110),
+          look: const HeroLook(hairStyle: HairStyle.bun),
+          joy: defeat > 0 ? 1 : 0,
+          effort: defeat > 0 ? 0 : 0.7,
+        );
       });
     }
   });

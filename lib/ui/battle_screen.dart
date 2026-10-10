@@ -7,6 +7,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../art/hero_art.dart';
 import '../art/battle_stage.dart';
 import '../art/bosses/nemea_boss.dart';
+import '../art/bosses/orochi_boss.dart';
 import '../art/bosses/thuy_tinh_boss.dart';
 import '../game/battle.dart';
 import '../game/labors.dart';
@@ -97,6 +98,7 @@ class _BattleScreenState extends State<BattleScreen>
   BossArt? _bossArt() {
     if (widget.enemy == nemeanLion) return NemeaBossArt();
     if (widget.enemy == thuyTinh) return ThuyTinhBossArt();
+    if (widget.enemy == orochi) return OrochiBossArt();
     return null;
   }
 
