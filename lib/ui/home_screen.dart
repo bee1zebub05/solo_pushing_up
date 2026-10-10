@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../art/bosses/boss_registry.dart';
 import '../art/hero_art.dart';
 import '../game/battle.dart';
 import '../game/labors.dart';
@@ -9,6 +10,7 @@ import '../game/profile_store.dart';
 import '../game/progress_store.dart';
 import '../rep/pushup_counter.dart';
 import 'battle_screen.dart';
+import 'boss_portrait.dart';
 import 'character_creator_screen.dart';
 import 'counter_screen.dart';
 import 'hero_preview.dart';
@@ -186,10 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListTile(
         enabled: unlocked,
         contentPadding: const EdgeInsets.all(16),
-        leading: Text(
-          unlocked ? labor.emoji : '🔒',
-          style: const TextStyle(fontSize: 40),
-        ),
+        leading: switch (unlocked ? bossArtFor(labor.enemy) : null) {
+          final art? => BossPortrait(art: art),
+          null => Text(
+            unlocked ? labor.emoji : '🔒',
+            style: const TextStyle(fontSize: 40),
+          ),
+        },
         title: Text('Kỳ công ${labor.number} — ${labor.title}'),
         subtitle: Text(
           unlocked

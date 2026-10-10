@@ -6,10 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../art/hero_art.dart';
 import '../art/battle_stage.dart';
-import '../art/bosses/fafnir_boss.dart';
-import '../art/bosses/nemea_boss.dart';
-import '../art/bosses/orochi_boss.dart';
-import '../art/bosses/thuy_tinh_boss.dart';
+import '../art/bosses/boss_registry.dart';
 import '../game/battle.dart';
 import '../game/labors.dart';
 import '../game/progress.dart';
@@ -101,13 +98,7 @@ class _BattleScreenState extends State<BattleScreen>
     null => null,
   };
 
-  BossArt? _bossArt() {
-    if (widget.enemy == nemeanLion) return NemeaBossArt();
-    if (widget.enemy == thuyTinh) return ThuyTinhBossArt();
-    if (widget.enemy == orochi) return OrochiBossArt();
-    if (widget.enemy == fafnir) return FafnirBossArt();
-    return null;
-  }
+  BossArt? _bossArt() => bossArtFor(widget.enemy);
 
   @override
   void initState() {

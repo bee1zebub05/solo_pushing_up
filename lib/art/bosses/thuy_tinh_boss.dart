@@ -26,6 +26,9 @@ class ThuyTinhBossArt extends BossArt {
   final Vector2 target = Vector2(318, 112);
 
   @override
+  Vector2 get portraitFocus => Vector2(320, 72);
+
+  @override
   List<Color> get hitColors => const [
     ThuyTinhColors.foam,
     ThuyTinhColors.glow,

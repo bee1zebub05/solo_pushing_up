@@ -50,6 +50,12 @@ class OrochiBossArt extends BossArt {
   }
 
   @override
+  Vector2 get portraitFocus => Vector2(268, 120);
+
+  @override
+  double get portraitView => 120;
+
+  @override
   List<Color> get hitColors => const [
     OrochiColors.stump,
     Color(0xFFFFE082),

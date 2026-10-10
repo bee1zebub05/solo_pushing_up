@@ -67,6 +67,10 @@ abstract class BossArt {
   /// Lớp phía trước nhân vật (ví dụ nước dâng). Mặc định không có.
   void paintForeground(Canvas canvas, BossFrame f) {}
 
+  /// Tâm và bề rộng khung chân dung (thẻ kỳ công ở trang chủ): mặt boss.
+  Vector2 get portraitFocus => target;
+  double get portraitView => 96;
+
   /// Màu hạt toé ra khi trúng đòn.
   List<Color> get hitColors => const [Color(0xFFFFE082), Color(0xFFFFFFFF)];
 }

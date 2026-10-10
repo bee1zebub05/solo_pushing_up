@@ -26,6 +26,9 @@ class FafnirBossArt extends BossArt {
   final Vector2 target = Vector2(292, 108);
 
   @override
+  Vector2 get portraitFocus => Vector2(284, 102);
+
+  @override
   List<Color> get hitColors => const [
     FafnirColors.frost,
     Color(0xFFFFFFFF),
