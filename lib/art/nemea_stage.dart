@@ -330,8 +330,18 @@ class _HeroComponent extends Component {
   }
 
   @override
-  void render(Canvas canvas) =>
-      paintHero(canvas, _shown, look: look, cloak: cloak, glow: glow);
+  void render(Canvas canvas) => paintHero(
+    canvas,
+    _shown,
+    look: look,
+    cloak: cloak,
+    glow: glow,
+    // Xuống càng sâu càng gắng sức; thắng thì cười tươi.
+    effort: _mode == _HeroMode.plank
+        ? ((165 - _angle) / 80).clamp(0.0, 1.0)
+        : 0,
+    joy: _mode == _HeroMode.victory ? 1 : 0,
+  );
 }
 
 /// Luồng sức mạnh bay từ người chơi tới sư tử.

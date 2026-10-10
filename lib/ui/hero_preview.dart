@@ -91,10 +91,17 @@ class _HeroPreviewPainter extends CustomPainter {
       ),
       Paint()..color = Colors.black26,
     );
+    final angle = 117 + 62 * math.cos(seconds * 2 * math.pi / 1.6);
     final pose = pushups
-        ? HeroPose.plank(117 + 62 * math.cos(seconds * 2 * math.pi / 1.6))
+        ? HeroPose.plank(angle)
         : HeroPose.standing(breath: seconds / 3);
-    paintHero(canvas, pose, look: look, cloak: cloak);
+    paintHero(
+      canvas,
+      pose,
+      look: look,
+      cloak: cloak,
+      effort: pushups ? ((165 - angle) / 80).clamp(0.0, 1.0) : 0,
+    );
     canvas.restore();
   }
 

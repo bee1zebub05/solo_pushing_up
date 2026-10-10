@@ -1,0 +1,51 @@
+import 'dart:ui' as ui;
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:solo_pushing_up/art/hero_art.dart';
+import 'package:solo_pushing_up/art/hero_pose.dart';
+import 'package:solo_pushing_up/art/lion_art.dart';
+import 'package:solo_pushing_up/art/nemea_scene.dart';
+
+/// Ngân sách vẽ sân khấu (rules/dohoa.md): dưới 2 ms mỗi khung trên PC, để
+/// điện thoại yếu còn đủ CPU cho ML Kit đếm rep. Lấy lần nhanh nhất trong 3
+/// lần đo cho đỡ nhiễu khi máy đang bận.
+double measureMsPerFrame(void Function(ui.Canvas canvas, int i) draw) {
+  var best = double.infinity;
+  for (var run = 0; run < 3; run++) {
+    final sw = Stopwatch()..start();
+    const n = 200;
+    for (var i = 0; i < n; i++) {
+      final recorder = ui.PictureRecorder();
+      draw(ui.Canvas(recorder), i);
+      recorder.endRecording();
+    }
+    best = [
+      best,
+      sw.elapsedMicroseconds / n / 1000,
+    ].reduce((a, b) => a < b ? a : b);
+  }
+  return best;
+}
+
+void main() {
+  test('sân khấu Nemea vẽ dưới 2 ms/khung', () {
+    final recorder = ui.PictureRecorder();
+    paintNemeaBackdrop(ui.Canvas(recorder));
+    final backdrop = recorder.endRecording();
+
+    final ms = measureMsPerFrame((c, i) {
+      c.drawPicture(backdrop);
+      paintNemeaAmbient(c, time: i / 30);
+      paintHero(
+        c,
+        HeroPose.plank(80 + i % 90),
+        look: const HeroLook(fat: 0.5),
+        cloak: i.isEven,
+        effort: (i % 10) / 10,
+      );
+      paintLion(c, LionState(time: i / 30, hurt: (i % 7) / 7));
+    });
+
+    expect(ms, lessThan(2.0), reason: '$ms ms/khung');
+  });
+}

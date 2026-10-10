@@ -82,10 +82,18 @@ void shadedPath(
   bool outline = true,
   Path? outlineShape,
 }) {
+  final light = frame.light;
   if (outline) {
+    // Viền dày hơn ở phía khuất sáng: thêm một bản viền lệch về phía bóng.
+    final heavy = -light * (outlineWidth * 0.7);
     if (outlineShape != null) {
       canvas.drawPath(outlineShape, fillPaint(VectorStyle.outline));
+      canvas.drawPath(
+        outlineShape.shift(heavy),
+        fillPaint(VectorStyle.outline),
+      );
     } else {
+      canvas.drawPath(path.shift(heavy), fillPaint(VectorStyle.outline));
       canvas.drawPath(
         path,
         Paint()
@@ -96,7 +104,6 @@ void shadedPath(
       );
     }
   }
-  final light = frame.light;
   canvas.save();
   canvas.clipPath(path);
   if (highlight > 0) {
@@ -176,3 +183,11 @@ Paint goldPaint(Rect bounds) => Paint()
     const [Color(0xFFFFF1A8), Color(0xFFE8B83A), Color(0xFFB07A14)],
     const [0, 0.45, 1],
   );
+
+/// Chấm bóng loáng nhỏ (tóc, kim loại, má) để có cảm giác khối.
+void glint(Canvas canvas, Offset at, double size, {double alpha = 0.75}) {
+  canvas.drawOval(
+    Rect.fromCenter(center: at, width: size * 1.6, height: size),
+    fillPaint(const Color(0xFFFFFFFF).withValues(alpha: alpha)),
+  );
+}

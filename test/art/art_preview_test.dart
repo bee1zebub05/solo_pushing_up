@@ -39,6 +39,7 @@ void scene(
   HeroPose hero, {
   bool cloak = false,
   LionState lion = const LionState(),
+  double effort = 0,
 }) {
   paintNemeaScene(canvas);
   canvas.save();
@@ -46,7 +47,7 @@ void scene(
   canvas.scale(lionScale);
   paintLion(canvas, lion);
   canvas.restore();
-  paintHero(canvas, hero, cloak: cloak);
+  paintHero(canvas, hero, cloak: cloak, effort: effort);
 }
 
 void main() {
@@ -143,6 +144,43 @@ void main() {
       paintHero(c, HeroPose.plank(150), look: looks[4]);
       c.restore();
     });
+  });
+
+  testWidgets('biểu cảm: bình thường, gắng sức, ăn mừng (phóng to)', (
+    tester,
+  ) async {
+    await render(tester, 'expressions', (c) {
+      c.drawRect(
+        const Rect.fromLTWH(0, 0, 400, 260),
+        Paint()..color = const Color(0xFFEDE3CF),
+      );
+      c.scale(2.4);
+      c.translate(-35, -30);
+      final looks = [
+        (const HeroLook(), 0.0, 0.0),
+        (
+          const HeroLook(sex: HeroSex.female, hairStyle: HairStyle.ponytail),
+          1.0,
+          0.0,
+        ),
+        (const HeroLook(fat: 0.6, hairStyle: HairStyle.buzz), 0.0, 1.0),
+      ];
+      for (var i = 0; i < looks.length; i++) {
+        final (look, effort, joy) = looks[i];
+        paintHero(
+          c,
+          HeroPose.standing(x: 75.0 + i * 50),
+          look: look,
+          effort: effort,
+          joy: joy,
+        );
+      }
+    });
+    await render(
+      tester,
+      'plank_effort',
+      (c) => scene(c, HeroPose.plank(75), effort: 1),
+    );
   });
 
   test('IK chống đẩy giữ đúng độ dài tay', () {

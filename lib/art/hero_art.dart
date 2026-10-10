@@ -87,12 +87,16 @@ const _headScale = 1.12;
 /// Vẽ người kế nhiệm của Hercules theo [pose] và ngoại hình [look].
 /// [cloak]: khoác Áo choàng da sư tử (phần thưởng Kỳ công 1).
 /// [glow] 0–1: viền sáng khi vừa tung đòn.
+/// [effort] 0–1: gắng sức (xuống càng sâu càng nghiến răng, đổ mồ hôi).
+/// [joy] 0–1: vui (ăn mừng chiến thắng).
 void paintHero(
   Canvas canvas,
   HeroPose pose, {
   HeroLook look = const HeroLook(),
   bool cloak = false,
   double glow = 0,
+  double effort = 0,
+  double joy = 0,
 }) {
   // Chiều cao: phóng to/thu nhỏ quanh điểm chạm đất (mũi chân), nên tay chân
   // vẫn chạm sàn ở mọi tư thế.
@@ -101,6 +105,21 @@ void paintHero(
   canvas.translate(toe.dx, toe.dy);
   canvas.scale(look.height);
   canvas.translate(-toe.dx, -toe.dy);
+
+  // Bóng tiếp đất: trải từ mũi chân tới tay (chống đẩy) hoặc quanh chân.
+  final ground = math.max(toe.dy, pose[HeroJoint.wrist].dy) + 1.5;
+  final xs = [
+    toe.dx,
+    pose[HeroJoint.ankle].dx,
+    pose[HeroJoint.wrist].dx,
+    pose[HeroJoint.farToe].dx,
+  ];
+  final minX = xs.reduce(math.min) - 8;
+  final maxX = xs.reduce(math.max) + 8;
+  canvas.drawOval(
+    Rect.fromLTRB(minX, ground - 3, maxX, ground + 3),
+    fillPaint(const Color(0x40000000)),
+  );
 
   final shoulder = pose[HeroJoint.shoulder];
   final hip = pose[HeroJoint.hip];
@@ -176,7 +195,7 @@ void paintHero(
   );
   withFrame(canvas, head, headUp, (f) {
     canvas.scale(_headScale);
-    _head(canvas, look, f, cloak: cloak);
+    _head(canvas, look, f, cloak: cloak, effort: effort, joy: joy);
   });
 
   _arm(canvas, look, shoulder, pose[HeroJoint.elbow], pose[HeroJoint.wrist]);
@@ -199,9 +218,9 @@ void _arm(
   shadedChain(
     canvas,
     [
-      (shoulder, elbow, 6.5 * k, 5.5 * k),
-      (elbow, wrist, 5.5 * k, 4.5 * k),
-      (wrist, wrist, 5.5, 5.5),
+      (shoulder, elbow, 6.2 * k, 5.6 * k),
+      (elbow, wrist, 6.4 * k, 5.2 * k),
+      (wrist, wrist, 6.8, 6.8),
     ],
     skin,
     highlight: far ? 0 : 1.4,
@@ -221,6 +240,18 @@ void _arm(
       ..strokeWidth = 2.4,
   );
   canvas.drawPath(band, goldPaint(band.getBounds()));
+  glint(canvas, Offset.lerp(elbow, wrist, 0.76)! + const Offset(-1.5, -2), 1.6);
+  // Khớp ngón tay trên nắm đấm.
+  final knuckle = Paint()
+    ..color = darken(far ? darken(look.skin, 0.18) : look.skin, 0.35)
+    ..strokeWidth = 1
+    ..strokeCap = StrokeCap.round;
+  final dir = (wrist - elbow) / (wrist - elbow).distance;
+  final side = Offset(-dir.dy, dir.dx);
+  for (final t in [-2.4, 0.0, 2.4]) {
+    final p = wrist + dir * 3.5 + side * t;
+    canvas.drawLine(p, p + dir * 2, knuckle);
+  }
 }
 
 void _leg(
@@ -256,7 +287,7 @@ void _leg(
   }
   shadedChain(
     canvas,
-    [(ankle, toe, 4.6, 3.8)],
+    [(ankle, toe, 5.4, 4.6)],
     shade(HeroColors.sandal),
     shadow: 1.6,
     highlight: 0.8,
@@ -478,7 +509,14 @@ void _hairBack(Canvas canvas, HeroLook look, PartFrame f) {
 }
 
 /// Đầu, vẽ trong hệ cục bộ gốc ở tâm đầu, mặt hướng +x.
-void _head(Canvas canvas, HeroLook look, PartFrame f, {required bool cloak}) {
+void _head(
+  Canvas canvas,
+  HeroLook look,
+  PartFrame f, {
+  required bool cloak,
+  double effort = 0,
+  double joy = 0,
+}) {
   const r = 15.0;
   final hair = look.hair;
   final cheeks = look.fat * 2.5;
@@ -538,41 +576,61 @@ void _head(Canvas canvas, HeroLook look, PartFrame f, {required bool cloak}) {
     highlight: 0,
     outlineWidth: 1,
   );
-  // Mắt: lòng trắng, tròng, con ngươi, chấm sáng.
+  // Mắt: lòng trắng, tròng, con ngươi, chấm sáng. Gắng sức thì nheo lại,
+  // vui thì cong thành hình trăng khuyết.
   const eye = Offset(8.5, -1);
-  final white = Path()
-    ..addOval(Rect.fromCenter(center: eye, width: 6, height: 7));
-  canvas.drawPath(
-    white,
-    Paint()
-      ..color = HeroColors.outline
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6,
-  );
-  canvas.drawPath(white, fillPaint(HeroColors.eyeWhite));
-  canvas.drawOval(
-    Rect.fromCenter(
-      center: eye + const Offset(1, 0.4),
-      width: 4.2,
-      height: 5.2,
-    ),
-    fillPaint(HeroColors.iris),
-  );
-  canvas.drawCircle(
-    eye + const Offset(1.3, 0.5),
-    1.5,
-    fillPaint(HeroColors.outline),
-  );
-  canvas.drawCircle(
-    eye + const Offset(0.3, -1),
-    0.9,
-    fillPaint(const Color(0xFFFFFFFF)),
-  );
   final ink = Paint()
     ..color = HeroColors.outline
     ..strokeWidth = 1.3
     ..strokeCap = StrokeCap.round;
-  if (look.female) {
+  if (joy > 0.5) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(eye.dx - 3, eye.dy + 1)
+        ..quadraticBezierTo(eye.dx, eye.dy - 3.5, eye.dx + 3, eye.dy + 1),
+      ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8,
+    );
+    ink
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 1.3;
+  } else {
+    final open = 7 - effort * 3.2;
+    final white = Path()
+      ..addOval(Rect.fromCenter(center: eye, width: 6, height: open));
+    canvas.drawPath(
+      white,
+      Paint()
+        ..color = HeroColors.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+    canvas.drawPath(white, fillPaint(HeroColors.eyeWhite));
+    canvas.save();
+    canvas.clipPath(white);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: eye + const Offset(1, 0.4),
+        width: 4.2,
+        height: 5.2,
+      ),
+      fillPaint(HeroColors.iris),
+    );
+    canvas.drawCircle(
+      eye + const Offset(1.3, 0.5),
+      1.5,
+      fillPaint(HeroColors.outline),
+    );
+    canvas.drawCircle(
+      eye + const Offset(0.3, -1),
+      0.9,
+      fillPaint(const Color(0xFFFFFFFF)),
+    );
+    canvas.restore();
+  }
+  // Hàng mi (ẩn khi nheo mắt gắng sức hoặc cười, kẻo chồng lên lông mày).
+  if (look.female && effort < 0.45 && joy <= 0.5) {
     canvas.drawLine(
       eye + const Offset(2.5, -2.6),
       eye + const Offset(4.6, -4.2),
@@ -584,26 +642,88 @@ void _head(Canvas canvas, HeroLook look, PartFrame f, {required bool cloak}) {
       ink,
     );
   }
-  // Lông mày quyết tâm.
+  // Lông mày: gắng sức thì chau xuống phía mũi.
   canvas.drawLine(
-    eye + const Offset(-4, -6.5),
-    eye + const Offset(4, -5),
+    eye + Offset(-4, -6.5 - effort * 1.5),
+    eye + Offset(4, -5 + effort * 2.2),
     Paint()
       ..color = darken(hair, 0.1)
       ..strokeWidth = look.female ? 1.6 : 2.3
       ..strokeCap = StrokeCap.round,
   );
-  // Miệng cười nhẹ.
-  canvas.drawPath(
-    Path()
-      ..moveTo(9.5, 8.6 + cheeks * 0.4)
-      ..quadraticBezierTo(11.5, 10 + cheeks * 0.4, 13.5, 8 + cheeks * 0.4),
-    Paint()
-      ..color = look.female ? HeroColors.lips : darken(look.skin, 0.45)
-      ..strokeWidth = look.female ? 1.8 : 1.4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round,
-  );
+  final mouthY = 8.6 + cheeks * 0.4;
+  if (joy > 0.5) {
+    // Cười tươi há miệng.
+    final mouth = Path()
+      ..moveTo(8.5, mouthY - 1)
+      ..quadraticBezierTo(11.5, mouthY + 5, 14.5, mouthY - 1.5)
+      ..close();
+    canvas.drawPath(
+      mouth,
+      Paint()
+        ..color = HeroColors.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..strokeJoin = StrokeJoin.round,
+    );
+    canvas.drawPath(mouth, fillPaint(const Color(0xFF7A2626)));
+    canvas.drawRect(
+      Rect.fromLTRB(9.3, mouthY - 1, 13.8, mouthY + 0.4),
+      fillPaint(const Color(0xFFFFFFFF)),
+    );
+  } else if (effort > 0.55) {
+    // Nghiến răng: hàm răng trắng có kẽ.
+    final teeth = RRect.fromLTRBR(
+      8.6,
+      mouthY - 1.6,
+      14.2,
+      mouthY + 1.8,
+      const Radius.circular(1.2),
+    );
+    canvas.drawRRect(
+      teeth,
+      Paint()
+        ..color = HeroColors.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3,
+    );
+    canvas.drawRRect(teeth, fillPaint(const Color(0xFFFFFFFF)));
+    final gap = Paint()
+      ..color = darken(look.skin, 0.4)
+      ..strokeWidth = 0.6;
+    canvas.drawLine(Offset(8.8, mouthY + 0.1), Offset(14, mouthY + 0.1), gap);
+    for (final x in [10.4, 12.2]) {
+      canvas.drawLine(Offset(x, mouthY - 1.4), Offset(x, mouthY + 1.6), gap);
+    }
+  } else {
+    // Miệng cười nhẹ.
+    canvas.drawPath(
+      Path()
+        ..moveTo(9.5, mouthY)
+        ..quadraticBezierTo(11.5, mouthY + 1.4, 13.5, mouthY - 0.6),
+      Paint()
+        ..color = look.female ? HeroColors.lips : darken(look.skin, 0.45)
+        ..strokeWidth = look.female ? 1.8 : 1.4
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+  // Mồ hôi khi gắng sức nhiều.
+  if (effort > 0.6) {
+    final drop = Path()
+      ..moveTo(-1, -12)
+      ..quadraticBezierTo(-4, -7, -1, -6)
+      ..quadraticBezierTo(2, -7, -1, -12)
+      ..close();
+    canvas.drawPath(
+      drop,
+      Paint()
+        ..color = const Color(0xFF2E6FA8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+    canvas.drawPath(drop, fillPaint(const Color(0xFFBFE6FF)));
+  }
   // Tai.
   shadedPath(
     canvas,
@@ -641,6 +761,7 @@ void _head(Canvas canvas, HeroLook look, PartFrame f, {required bool cloak}) {
           outlineWidth: 1,
         );
       }
+      glint(canvas, const Offset(-5, -15), 2.2);
     case HairStyle.buzz:
       break;
     case HairStyle.bun || HairStyle.ponytail || HairStyle.long:
