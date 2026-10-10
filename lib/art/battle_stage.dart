@@ -10,39 +10,97 @@ import 'package:flutter/painting.dart';
 
 import 'hero_art.dart';
 import 'hero_pose.dart';
-import 'lion_art.dart';
 import 'nemea_scene.dart';
 
-/// Vị trí và tỉ lệ Sư tử Nemea trên sân khấu 400×260.
-const lionX = 335.0;
-const lionScale = 0.72;
+/// Trạng thái trận truyền từ logic (lib/game/battle.dart) sang hình mỗi khung,
+/// để cơ chế của boss nhìn thấy được (rules/dohoa.md nguyên tắc 4).
+class StageBattleState {
+  /// Mực nước 0–100 (Thuỷ Tinh).
+  double water = 0;
 
-/// Đầu sư tử (toạ độ sân khấu) — đích của các đòn đánh.
-final _lionHead = Vector2(
-  lionX - 72 * lionScale,
-  stageGroundY - 96 * lionScale,
-);
+  /// Số đầu còn lại / tổng số đầu, máu đầu đang chém 0–1 (Orochi).
+  int headsLeft = 1;
+  int totalHeads = 1;
+  double headHp = 1;
 
-/// Sân khấu Kỳ công 1 chạy bằng Flame: người kế nhiệm hít đất theo góc tay
-/// thật của người chơi, mỗi rep phóng một luồng sức mạnh vào Sư tử Nemea.
-class NemeaStageGame extends FlameGame {
-  NemeaStageGame({bool cloak = false, HeroLook look = const HeroLook()})
-    : _hero = _HeroComponent(cloak: cloak, look: look),
-      super(
-        camera: CameraComponent.withFixedResolution(
-          width: stageSize.width,
-          height: stageSize.height,
-        ),
-      );
+  /// Mức lạnh 0–1: tăng khi nghỉ lâu, chạm 1 là đòn sau bị đóng băng (Fafnir).
+  double cold = 0;
+}
 
+/// Thông số hoạt hình của boss tại một khung.
+class BossFrame {
+  const BossFrame({
+    required this.time,
+    required this.attack,
+    required this.hurt,
+    required this.glint,
+    required this.defeat,
+    required this.battle,
+  });
+
+  final double time;
+
+  /// Động tác đe doạ/tấn công 0–1 (gầm, giơ vũ khí).
+  final double attack;
+  final double hurt;
+
+  /// Vệt sáng khi đòn bị chặn 0–1; âm = không có.
+  final double glint;
+  final double defeat;
+  final StageBattleState battle;
+}
+
+/// Hình của một boss và bối cảnh của nó.
+abstract class BossArt {
+  /// Điểm các đòn đánh bay tới (toạ độ sân khấu 400×260).
+  Vector2 get target;
+
+  /// Phần tĩnh của phông nền (vẽ một lần thành Picture).
+  void paintBackdrop(Canvas canvas);
+
+  /// Phần động của phông nền (mây, mưa, sóng xa…).
+  void paintAmbient(Canvas canvas, double time);
+
+  /// Boss, vẽ theo toạ độ sân khấu.
+  void paintBoss(Canvas canvas, BossFrame f);
+
+  /// Lớp phía trước nhân vật (ví dụ nước dâng). Mặc định không có.
+  void paintForeground(Canvas canvas, BossFrame f) {}
+
+  /// Màu hạt toé ra khi trúng đòn.
+  List<Color> get hitColors => const [Color(0xFFFFE082), Color(0xFFFFFFFF)];
+}
+
+/// Sân khấu chiến đấu chạy bằng Flame: người kế nhiệm hít đất theo góc tay
+/// thật của người chơi, mỗi rep phóng một luồng sức mạnh vào boss.
+class BattleStageGame extends FlameGame {
+  BattleStageGame({
+    required this.boss,
+    bool cloak = false,
+    HeroLook look = const HeroLook(),
+  }) : _hero = _HeroComponent(cloak: cloak, look: look),
+       super(
+         camera: CameraComponent.withFixedResolution(
+           width: stageSize.width,
+           height: stageSize.height,
+         ),
+       );
+
+  final BossArt boss;
   final _HeroComponent _hero;
-  final _lion = _LionComponent();
+  late final _BossComponent _boss = _BossComponent(boss, battle);
+  final battle = StageBattleState();
   final _random = math.Random();
 
   @override
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
-    world.addAll([_SceneComponent(), _lion, _hero]);
+    world.addAll([
+      _SceneComponent(boss),
+      _boss,
+      _hero,
+      _ForegroundComponent(_boss),
+    ]);
   }
 
   /// Cập nhật theo bộ đếm mỗi khung hình. [elbowAngle] null = đang đứng
@@ -50,29 +108,30 @@ class NemeaStageGame extends FlameGame {
   void updatePlayer({double? elbowAngle, bool onKnees = false}) {
     _hero
       ..elbowAngle = elbowAngle
-      ..onKnees = onKnees;
+      ..onKnees = onKnees
+      ..cold = battle.cold;
   }
 
-  /// Rep được tính: luồng sức mạnh bay tới sư tử.
+  /// Rep được tính: luồng sức mạnh bay tới boss.
   void hit({bool critical = false}) {
     _hero.glow = 1;
     _launch(critical: critical, blocked: false);
   }
 
-  /// Rep bị da không xuyên thủng chặn: luồng sức mạnh dội ra.
+  /// Rep bị chặn: luồng sức mạnh dội ra.
   void blocked() => _launch(critical: false, blocked: true);
 
   void victory() {
     _hero.victorious = true;
-    _lion.defeated = true;
+    _boss.defeated = true;
     _burst(
-      _lionHead,
+      boss.target,
       count: 40,
       colors: const [Color(0xFFFFD54F), Color(0xFFFFF59D), Color(0xFFFF8A65)],
     );
   }
 
-  /// Khoác Áo choàng da sư tử ngay trên sân khấu (lần đầu thắng).
+  /// Khoác Áo choàng da sư tử ngay trên sân khấu (lần đầu thắng Nemea).
   void equipCloak() {
     _hero.cloak = true;
     _burst(
@@ -84,16 +143,15 @@ class NemeaStageGame extends FlameGame {
 
   void reset() {
     _hero.victorious = false;
-    _lion.defeated = false;
+    _boss.defeated = false;
   }
 
   void _launch({required bool critical, required bool blocked}) {
-    final from = _hero.chest;
-    final bolt = _Bolt(critical: critical, blocked: blocked)..position = from;
+    final bolt = _Bolt(critical: critical)..position = _hero.chest;
     world.add(bolt);
     bolt.add(
       MoveToEffect(
-        _lionHead +
+        boss.target +
             Vector2(_random.nextDouble() * 8, _random.nextDouble() * 10),
         EffectController(duration: 0.22, curve: Curves.easeIn),
         onComplete: () {
@@ -106,28 +164,28 @@ class NemeaStageGame extends FlameGame {
 
   void _impact({required bool critical, required bool blocked}) {
     if (blocked) {
-      _lion.glint = 0;
+      _boss.glint = 0;
       _burst(
-        _lionHead,
+        boss.target,
         count: 14,
         colors: const [Color(0xFFB0BEC5), Color(0xFFFFF59D)],
         bounceBack: true,
       );
       return;
     }
-    _lion.hurt = 1;
-    _lion.add(
+    _boss.hurt = 1;
+    _boss.add(
       MoveByEffect(
         Vector2(critical ? 10 : 6, 0),
         EffectController(duration: 0.06, reverseDuration: 0.12),
       ),
     );
     _burst(
-      _lionHead,
+      boss.target,
       count: critical ? 36 : 16,
       colors: critical
           ? const [Color(0xFFFF7043), Color(0xFFFFD54F), Color(0xFFFFFFFF)]
-          : const [Color(0xFFFFE082), Color(0xFFFFFFFF)],
+          : boss.hitColors,
     );
     if (critical) {
       camera.viewfinder.add(
@@ -183,12 +241,15 @@ class NemeaStageGame extends FlameGame {
 }
 
 class _SceneComponent extends Component {
+  _SceneComponent(this.boss);
+
+  final BossArt boss;
   double _time = 0;
 
-  /// Phần tĩnh vẽ một lần, mỗi khung chỉ vẽ lại mây và cỏ.
+  /// Phần tĩnh vẽ một lần, mỗi khung chỉ vẽ lại phần động.
   late final Picture _backdrop = () {
     final recorder = PictureRecorder();
-    paintNemeaBackdrop(Canvas(recorder));
+    boss.paintBackdrop(Canvas(recorder));
     return recorder.endRecording();
   }();
 
@@ -198,7 +259,7 @@ class _SceneComponent extends Component {
   @override
   void render(Canvas canvas) {
     canvas.drawPicture(_backdrop);
-    paintNemeaAmbient(canvas, time: _time);
+    boss.paintAmbient(canvas, _time);
   }
 
   @override
@@ -208,25 +269,32 @@ class _SceneComponent extends Component {
   }
 }
 
-class _LionComponent extends PositionComponent {
-  _LionComponent()
-    : super(
-        position: Vector2(lionX, stageGroundY),
-        scale: Vector2.all(lionScale),
-      );
+class _BossComponent extends PositionComponent {
+  _BossComponent(this.art, this.battle);
 
+  final BossArt art;
+  final StageBattleState battle;
   double _time = 0;
   double hurt = 0;
   double glint = -1;
-  double _mouth = 0;
+  double _attack = 0;
   double _defeat = 0;
   bool defeated = false;
 
-  /// Đếm ngược tới lần gầm tiếp theo; [_roarAge] là thời gian đã gầm.
-  double _nextRoar = 1.5;
-  double _roarAge = _roarLength;
-  static const _roarLength = 1.2;
+  /// Đếm ngược tới lần đe doạ tiếp theo; [_attackAge] là thời gian đã diễn.
+  double _nextAttack = 1.5;
+  double _attackAge = _attackLength;
+  static const _attackLength = 1.2;
   final _random = math.Random();
+
+  BossFrame get frame => BossFrame(
+    time: _time,
+    attack: _attack,
+    hurt: hurt,
+    glint: glint,
+    defeat: _defeat,
+    battle: battle,
+  );
 
   @override
   void update(double dt) {
@@ -240,29 +308,28 @@ class _LionComponent extends PositionComponent {
         ? math.min(1, _defeat + dt / 0.9)
         : math.max(0, _defeat - dt / 0.5);
 
-    // Gầm đe doạ định kỳ khi còn chiến đấu.
-    _nextRoar -= dt;
-    _roarAge += dt;
-    if (_nextRoar <= 0 && !defeated) {
-      _nextRoar = 7 + _random.nextDouble() * 5;
-      _roarAge = 0;
+    _nextAttack -= dt;
+    _attackAge += dt;
+    if (_nextAttack <= 0 && !defeated) {
+      _nextAttack = 7 + _random.nextDouble() * 5;
+      _attackAge = 0;
     }
-    _mouth = !defeated && _roarAge < _roarLength
-        ? math.sin(math.pi * _roarAge / _roarLength)
+    _attack = !defeated && _attackAge < _attackLength
+        ? math.sin(math.pi * _attackAge / _attackLength)
         : 0;
   }
 
   @override
-  void render(Canvas canvas) => paintLion(
-    canvas,
-    LionState(
-      time: _time,
-      mouth: _mouth,
-      hurt: hurt,
-      glint: glint,
-      defeat: _defeat,
-    ),
-  );
+  void render(Canvas canvas) => art.paintBoss(canvas, frame);
+}
+
+class _ForegroundComponent extends Component {
+  _ForegroundComponent(this.boss);
+
+  final _BossComponent boss;
+
+  @override
+  void render(Canvas canvas) => boss.art.paintForeground(canvas, boss.frame);
 }
 
 enum _HeroMode { standing, plank, victory }
@@ -276,6 +343,7 @@ class _HeroComponent extends Component {
   bool onKnees = false;
   bool victorious = false;
   double glow = 0;
+  double cold = 0;
 
   double _time = 0;
   double _angle = 175;
@@ -341,15 +409,15 @@ class _HeroComponent extends Component {
         ? ((165 - _angle) / 80).clamp(0.0, 1.0)
         : 0,
     joy: _mode == _HeroMode.victory ? 1 : 0,
+    frost: _mode == _HeroMode.victory ? 0 : cold,
   );
 }
 
-/// Luồng sức mạnh bay từ người chơi tới sư tử.
+/// Luồng sức mạnh bay từ người chơi tới boss.
 class _Bolt extends PositionComponent {
-  _Bolt({required this.critical, required this.blocked});
+  _Bolt({required this.critical});
 
   final bool critical;
-  final bool blocked;
 
   @override
   void render(Canvas canvas) {

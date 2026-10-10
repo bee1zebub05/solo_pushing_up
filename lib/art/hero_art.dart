@@ -89,6 +89,7 @@ const _headScale = 1.12;
 /// [glow] 0–1: viền sáng khi vừa tung đòn.
 /// [effort] 0–1: gắng sức (xuống càng sâu càng nghiến răng, đổ mồ hôi).
 /// [joy] 0–1: vui (ăn mừng chiến thắng).
+/// [frost] 0–1: lạnh cóng (Fafnir): ngả xanh, mọc tinh thể băng khi gần 1.
 void paintHero(
   Canvas canvas,
   HeroPose pose, {
@@ -97,10 +98,22 @@ void paintHero(
   double glow = 0,
   double effort = 0,
   double joy = 0,
+  double frost = 0,
 }) {
   // Chiều cao: phóng to/thu nhỏ quanh điểm chạm đất (mũi chân), nên tay chân
   // vẫn chạm sàn ở mọi tư thế.
   final toe = pose[HeroJoint.toe];
+  if (frost > 0.02) {
+    // Tách lớp để phủ màu lạnh lên cả người (chỉ tốn khi đang lạnh).
+    canvas.saveLayer(
+      null,
+      Paint()
+        ..colorFilter = ColorFilter.mode(
+          const Color(0xFF9FD8FF).withValues(alpha: 0.55 * frost),
+          BlendMode.srcATop,
+        ),
+    );
+  }
   canvas.save();
   canvas.translate(toe.dx, toe.dy);
   canvas.scale(look.height);
@@ -200,6 +213,33 @@ void paintHero(
 
   _arm(canvas, look, shoulder, pose[HeroJoint.elbow], pose[HeroJoint.wrist]);
   canvas.restore();
+  if (frost > 0.02) {
+    canvas.restore();
+    if (frost > 0.5) {
+      // Tinh thể băng mọc ở vai, tay, đầu.
+      final k = (frost - 0.5) * 2;
+      for (final j in [HeroJoint.shoulder, HeroJoint.wrist, HeroJoint.head]) {
+        _iceCrystal(canvas, pose[j], 4 + 5 * k);
+      }
+    }
+  }
+}
+
+void _iceCrystal(Canvas canvas, Offset at, double size) {
+  final paint = Paint()
+    ..color = const Color(0xFFE6F7FF)
+    ..strokeWidth = 1.6
+    ..strokeCap = StrokeCap.round;
+  final edge = Paint()
+    ..color = const Color(0xFF3B8FCF)
+    ..strokeWidth = 3
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i < 3; i++) {
+    final a = math.pi / 3 * i;
+    final d = Offset(math.cos(a), math.sin(a)) * size;
+    canvas.drawLine(at - d, at + d, edge);
+    canvas.drawLine(at - d, at + d, paint);
+  }
 }
 
 /// Tay chân to ra theo độ béo, nữ thon hơn một chút.

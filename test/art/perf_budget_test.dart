@@ -1,6 +1,8 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solo_pushing_up/art/battle_stage.dart';
+import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
@@ -44,6 +46,33 @@ void main() {
         effort: (i % 10) / 10,
       );
       paintLion(c, LionState(time: i / 30, hurt: (i % 7) / 7));
+    });
+
+    expect(ms, lessThan(2.0), reason: '$ms ms/khung');
+  });
+
+  test('sân khấu Thuỷ Tinh (mưa, sóng, nước dâng) vẽ dưới 2 ms/khung', () {
+    final art = ThuyTinhBossArt();
+    final recorder = ui.PictureRecorder();
+    art.paintBackdrop(ui.Canvas(recorder));
+    final backdrop = recorder.endRecording();
+    final battle = StageBattleState();
+
+    final ms = measureMsPerFrame((c, i) {
+      battle.water = (i % 100).toDouble();
+      final frame = BossFrame(
+        time: i / 30,
+        attack: (i % 20) / 20,
+        hurt: (i % 7) / 7,
+        glint: -1,
+        defeat: 0,
+        battle: battle,
+      );
+      c.drawPicture(backdrop);
+      art.paintAmbient(c, i / 30);
+      art.paintBoss(c, frame);
+      paintHero(c, HeroPose.plank(80 + i % 90), effort: (i % 10) / 10);
+      art.paintForeground(c, frame);
     });
 
     expect(ms, lessThan(2.0), reason: '$ms ms/khung');

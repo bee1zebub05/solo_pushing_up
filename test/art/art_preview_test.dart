@@ -7,7 +7,9 @@ import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
-import 'package:solo_pushing_up/art/nemea_stage.dart';
+import 'package:solo_pushing_up/art/battle_stage.dart';
+import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
+import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 
 /// Vẽ thử các khung hình nhân vật. Mặc định chỉ kiểm tra vẽ không lỗi;
 /// đặt biến môi trường ART_PREVIEW=1 để ghi PNG vào build/art_preview/.
@@ -181,6 +183,38 @@ void main() {
       'plank_effort',
       (c) => scene(c, HeroPose.plank(75), effort: 1),
     );
+  });
+
+  testWidgets('Thuỷ Tinh: nước dâng 0%, 50%, 90%; đe doạ; gục', (tester) async {
+    final art = ThuyTinhBossArt();
+    for (final (name, water, attack, defeat, angle) in [
+      ('thuy_tinh_0', 0.0, 0.0, 0.0, 170.0),
+      ('thuy_tinh_50', 50.0, 1.0, 0.0, 100.0),
+      ('thuy_tinh_90', 90.0, 0.0, 0.0, 120.0),
+      ('thuy_tinh_defeat', 20.0, 0.0, 0.7, 170.0),
+    ]) {
+      final battle = StageBattleState()..water = water;
+      final frame = BossFrame(
+        time: 1.3,
+        attack: attack,
+        hurt: 0,
+        glint: -1,
+        defeat: defeat,
+        battle: battle,
+      );
+      await render(tester, name, (c) {
+        art.paintBackdrop(c);
+        art.paintAmbient(c, 0.5);
+        art.paintBoss(c, frame);
+        paintHero(
+          c,
+          defeat > 0 ? HeroPose.victory() : HeroPose.plank(angle),
+          look: const HeroLook(sex: HeroSex.female, hairStyle: HairStyle.long),
+          joy: defeat > 0 ? 1 : 0,
+        );
+        art.paintForeground(c, frame);
+      });
+    }
   });
 
   test('IK chống đẩy giữ đúng độ dài tay', () {

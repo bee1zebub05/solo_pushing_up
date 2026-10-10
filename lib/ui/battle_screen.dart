@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../art/hero_art.dart';
-import '../art/nemea_stage.dart';
+import '../art/battle_stage.dart';
+import '../art/bosses/nemea_boss.dart';
+import '../art/bosses/thuy_tinh_boss.dart';
 import '../game/battle.dart';
 import '../game/labors.dart';
 import '../game/progress.dart';
@@ -81,11 +83,22 @@ class _BattleScreenState extends State<BattleScreen>
   bool _reported = false;
   BattleReward? _reward;
 
-  /// Sân khấu có nhân vật và hoạt hình (hiện mới có Kỳ công 1); các trận
-  /// khác vẫn dùng biểu tượng tạm.
-  late final NemeaStageGame? _stage = widget.enemy == nemeanLion
-      ? NemeaStageGame(cloak: widget.heroCloak, look: widget.heroLook)
-      : null;
+  /// Sân khấu có nhân vật và hoạt hình cho các boss đã vẽ; các trận khác
+  /// vẫn dùng biểu tượng tạm.
+  late final BattleStageGame? _stage = switch (_bossArt()) {
+    final art? => BattleStageGame(
+      boss: art,
+      cloak: widget.heroCloak,
+      look: widget.heroLook,
+    ),
+    null => null,
+  };
+
+  BossArt? _bossArt() {
+    if (widget.enemy == nemeanLion) return NemeaBossArt();
+    if (widget.enemy == thuyTinh) return ThuyTinhBossArt();
+    return null;
+  }
 
   @override
   void initState() {
@@ -117,6 +130,12 @@ class _BattleScreenState extends State<BattleScreen>
 
   void _onFrame(PoseFrame frame, CounterSnapshot snapshot) {
     _nowMs = frame.timestampMs;
+    // Cơ chế boss hiện lên sân khấu: mực nước, đầu còn lại.
+    _stage?.battle
+      ?..water = _battle.water
+      ..headsLeft = _battle.headsLeft
+      ..totalHeads = widget.enemy.heads
+      ..headHp = _battle.headHp / widget.enemy.headMaxHp;
     _stage?.updatePlayer(
       elbowAngle: snapshot.phase == CounterPhase.searching
           ? null
@@ -349,7 +368,7 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   /// Bố cục có sân khấu: trên là trận đấu hoạt hình, dưới là camera.
-  Widget _buildStaged(NemeaStageGame stage, bool finished) {
+  Widget _buildStaged(BattleStageGame stage, bool finished) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
