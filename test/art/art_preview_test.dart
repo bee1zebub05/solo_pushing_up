@@ -1,10 +1,11 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
+import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
@@ -311,6 +312,27 @@ void main() {
         shield: true,
         sword: true,
         effort: 0.7,
+      );
+    });
+  });
+
+  testWidgets('Ngựa chín hồng mao đứng cạnh nhân vật ăn mừng', (tester) async {
+    final art = ThuyTinhBossArt();
+    await render(tester, 'horse_victory', (c) {
+      art.paintBackdrop(c);
+      art.paintAmbient(c, 0.5);
+      c.save();
+      c.translate(210, stageGroundY);
+      c.scale(1.15);
+      paintHorse(c, time: 1);
+      c.restore();
+      paintHero(
+        c,
+        HeroPose.victory(),
+        cloak: true,
+        shield: true,
+        sword: true,
+        joy: 1,
       );
     });
   });

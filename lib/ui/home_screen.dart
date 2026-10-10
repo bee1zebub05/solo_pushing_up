@@ -55,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       false;
   bool get _hasShield => _hasReward('fafnir');
   bool get _hasSword => _hasReward('orochi');
+  bool get _hasHorse => _hasReward('thuy_tinh');
 
   Future<void> _editCharacter() async {
     final saved = await Navigator.of(context).push<PlayerProfile>(
@@ -103,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
           heroCloak: _hasCloak,
           heroShield: _hasShield,
           heroSword: _hasSword,
+          heroHorse: _hasHorse,
           heroLook: _profile?.look ?? const HeroLook(),
         ),
       ),

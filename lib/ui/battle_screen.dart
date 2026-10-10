@@ -44,6 +44,7 @@ class BattleScreen extends StatefulWidget {
     this.heroCloak = false,
     this.heroShield = false,
     this.heroSword = false,
+    this.heroHorse = false,
     this.heroLook = const HeroLook(),
   });
 
@@ -60,6 +61,9 @@ class BattleScreen extends StatefulWidget {
   /// Đã có Khiên vảy rồng / Kiếm Kusanagi (vẽ lên nhân vật).
   final bool heroShield;
   final bool heroSword;
+
+  /// Đã có Ngựa chín hồng mao (xuất hiện khi thắng).
+  final bool heroHorse;
 
   /// Ngoại hình nhân vật người chơi đã tạo.
   final HeroLook heroLook;
@@ -101,6 +105,7 @@ class _BattleScreenState extends State<BattleScreen>
       cloak: widget.heroCloak,
       shield: widget.heroShield,
       sword: widget.heroSword,
+      horse: widget.heroHorse,
       look: widget.heroLook,
     ),
     null => null,
@@ -196,6 +201,7 @@ class _BattleScreenState extends State<BattleScreen>
     );
     if (mounted) setState(() => _reward = reward);
     if (reward?.item == nemea.reward) _stage?.equipCloak();
+    if (reward?.item == labors.last.reward) _stage?.arriveHorse();
   }
 
   void _restart() {

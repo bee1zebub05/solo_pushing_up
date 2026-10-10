@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'dart:ui' show Picture, PictureRecorder;
 
 import 'package:flame/components.dart';
@@ -10,6 +10,7 @@ import 'package:flutter/painting.dart';
 
 import 'hero_art.dart';
 import 'hero_pose.dart';
+import 'horse_art.dart';
 import 'nemea_scene.dart';
 
 /// Trạng thái trận truyền từ logic (lib/game/battle.dart) sang hình mỗi khung,
@@ -83,6 +84,7 @@ class BattleStageGame extends FlameGame {
     bool cloak = false,
     bool shield = false,
     bool sword = false,
+    this.horse = false,
     HeroLook look = const HeroLook(),
   }) : _hero = _HeroComponent(
          cloak: cloak,
@@ -98,6 +100,9 @@ class BattleStageGame extends FlameGame {
        );
 
   final BossArt boss;
+
+  /// Đã có Ngựa chín hồng mao: phi vào đứng cạnh nhân vật khi thắng.
+  bool horse;
   final _HeroComponent _hero;
   late final _BossComponent _boss = _BossComponent(boss, battle);
   final battle = StageBattleState();
@@ -135,11 +140,19 @@ class BattleStageGame extends FlameGame {
   void victory() {
     _hero.victorious = true;
     _boss.defeated = true;
+    if (horse) world.add(_HorseComponent());
     _burst(
       boss.target,
       count: 40,
       colors: const [Color(0xFFFFD54F), Color(0xFFFFF59D), Color(0xFFFF8A65)],
     );
+  }
+
+  /// Lần đầu nhận Ngựa chín hồng mao: cho ngựa phi vào ngay.
+  void arriveHorse() {
+    if (horse) return;
+    horse = true;
+    world.add(_HorseComponent());
   }
 
   /// Khoác Áo choàng da sư tử ngay trên sân khấu (lần đầu thắng Nemea).
@@ -431,6 +444,26 @@ class _HeroComponent extends Component {
     shield: shield,
     sword: sword,
   );
+}
+
+/// Ngựa chín hồng mao phi từ ngoài vào đứng cạnh nhân vật ăn mừng.
+class _HorseComponent extends Component {
+  double _time = 0;
+
+  @override
+  void update(double dt) => _time += dt;
+
+  @override
+  void render(Canvas canvas) {
+    const arrive = 1.4;
+    final t = (_time / arrive).clamp(0.0, 1.0);
+    final x = -70 + (210 - -70) * Curves.easeOut.transform(t);
+    canvas.save();
+    canvas.translate(x, stageGroundY);
+    canvas.scale(1.15);
+    paintHorse(canvas, time: _time, gallop: 1 - t);
+    canvas.restore();
+  }
 }
 
 /// Luồng sức mạnh bay từ người chơi tới boss.
