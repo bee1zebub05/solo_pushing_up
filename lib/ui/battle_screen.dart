@@ -82,6 +82,11 @@ class _BattleScreenState extends State<BattleScreen>
   BattleEvent? _lastEvent;
   int _lastEventKey = 0;
   int _nowMs = 0;
+
+  /// Lúc người chơi bắt đầu hạ người trong rep đang làm (null = đang ở trên).
+  /// Mức lạnh dừng ở mốc này, vì luật tính nghỉ tới lúc bắt đầu hạ người:
+  /// rep chậm không bị coi là nghỉ.
+  int? _descentStartMs;
   bool _reported = false;
   BattleReward? _reward;
 
@@ -134,13 +139,17 @@ class _BattleScreenState extends State<BattleScreen>
 
   void _onFrame(PoseFrame frame, CounterSnapshot snapshot) {
     _nowMs = frame.timestampMs;
+    final inRep =
+        snapshot.phase == CounterPhase.goingDown ||
+        snapshot.phase == CounterPhase.bottom;
+    _descentStartMs = inRep ? (_descentStartMs ?? frame.timestampMs) : null;
     // Cơ chế boss hiện lên sân khấu: mực nước, đầu còn lại.
     _stage?.battle
       ?..water = _battle.water
       ..headsLeft = _battle.headsLeft
       ..totalHeads = widget.enemy.heads
       ..headHp = _battle.headHp / widget.enemy.headMaxHp
-      ..cold = _battle.coldAt(frame.timestampMs);
+      ..cold = _battle.coldAt(_descentStartMs ?? frame.timestampMs);
     _stage?.updatePlayer(
       elbowAngle: snapshot.phase == CounterPhase.searching
           ? null
