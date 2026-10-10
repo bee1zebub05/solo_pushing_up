@@ -1,0 +1,768 @@
+import 'dart:math' as math;
+import 'dart:ui';
+
+import 'hero_pose.dart';
+import 'vector_style.dart';
+
+/// Bảng màu nhân vật người chơi.
+abstract final class HeroColors {
+  static const outline = VectorStyle.outline;
+  static const tunic = Color(0xFFF6F0E2);
+  static const trim = Color(0xFF2F6DB5);
+  static const belt = Color(0xFF7A4A26);
+  static const sandal = Color(0xFF8A5A30);
+  static const headband = Color(0xFFD23C2E);
+  static const gold = Color(0xFFE8B83A);
+  static const pelt = Color(0xFFD9A441);
+  static const mane = Color(0xFF9C5A1E);
+  static const lips = Color(0xFFC0584E);
+  static const blush = Color(0x55FF7F7F);
+  static const eyeWhite = Color(0xFFFFFDF8);
+  static const iris = Color(0xFF5B3A21);
+}
+
+/// Các màu da để chọn (sáng → tối).
+const skinTones = <Color>[
+  Color(0xFFF6D3B8),
+  Color(0xFFEDB892),
+  Color(0xFFE2A77C),
+  Color(0xFFC68A5E),
+  Color(0xFF9C6640),
+  Color(0xFF6B4329),
+];
+
+/// Các màu tóc để chọn.
+const hairColors = <Color>[
+  Color(0xFF1E1410),
+  Color(0xFF3B2416),
+  Color(0xFF7A4A26),
+  Color(0xFFC98E3C),
+  Color(0xFFB0472A),
+  Color(0xFF9A9A9A),
+];
+
+enum HeroSex { male, female }
+
+enum HairStyle {
+  curly('Xoăn ngắn'),
+  buzz('Cắt ngắn'),
+  bun('Búi Hy Lạp'),
+  ponytail('Đuôi ngựa'),
+  long('Tóc dài');
+
+  const HairStyle(this.label);
+
+  final String label;
+}
+
+/// Ngoại hình nhân vật. Chỉ khác hình, chỉ số và cách chơi giống hệt nhau
+/// (rules/cottruyen.md mục 2.2).
+class HeroLook {
+  const HeroLook({
+    this.sex = HeroSex.male,
+    this.skin = const Color(0xFFE2A77C),
+    this.hair = const Color(0xFF3B2416),
+    this.hairStyle = HairStyle.curly,
+    this.fat = 0.15,
+    this.height = 1,
+  });
+
+  final HeroSex sex;
+  final Color skin;
+  final Color hair;
+  final HairStyle hairStyle;
+
+  /// Độ đầy đặn 0 (rất gọn) – 1 (rất béo), suy ra từ tỉ lệ mỡ cơ thể.
+  final double fat;
+
+  /// Tỉ lệ chiều cao so với người 170 cm (≈ 0,85–1,15).
+  final double height;
+
+  bool get female => sex == HeroSex.female;
+}
+
+/// Đầu vẽ to hơn người thật một chút cho dễ thương (phong cách game).
+const _headScale = 1.12;
+
+/// Vẽ người kế nhiệm của Hercules theo [pose] và ngoại hình [look].
+/// [cloak]: khoác Áo choàng da sư tử (phần thưởng Kỳ công 1).
+/// [glow] 0–1: viền sáng khi vừa tung đòn.
+void paintHero(
+  Canvas canvas,
+  HeroPose pose, {
+  HeroLook look = const HeroLook(),
+  bool cloak = false,
+  double glow = 0,
+}) {
+  // Chiều cao: phóng to/thu nhỏ quanh điểm chạm đất (mũi chân), nên tay chân
+  // vẫn chạm sàn ở mọi tư thế.
+  final toe = pose[HeroJoint.toe];
+  canvas.save();
+  canvas.translate(toe.dx, toe.dy);
+  canvas.scale(look.height);
+  canvas.translate(-toe.dx, -toe.dy);
+
+  final shoulder = pose[HeroJoint.shoulder];
+  final hip = pose[HeroJoint.hip];
+  final bodyUp = shoulder - hip;
+  final torsoLen = bodyUp.distance;
+  final up = bodyUp / torsoLen;
+
+  if (glow > 0) {
+    final aura = Paint()
+      ..color = HeroColors.gold.withValues(alpha: 0.5 * glow)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 10 * glow + 2);
+    canvas.drawPath(
+      capsulePath(hip, shoulder, 22, 24)..addPath(
+        capsulePath(shoulder, pose[HeroJoint.wrist], 10, 8),
+        Offset.zero,
+      ),
+      aura,
+    );
+  }
+
+  // Tay chân phía xa: tối hơn, nằm sau thân.
+  _leg(
+    canvas,
+    look,
+    hip,
+    pose[HeroJoint.farKnee],
+    pose[HeroJoint.farAnkle],
+    pose[HeroJoint.farToe],
+    far: true,
+  );
+  _arm(
+    canvas,
+    look,
+    shoulder,
+    pose[HeroJoint.farElbow],
+    pose[HeroJoint.farWrist],
+    far: true,
+  );
+
+  if (cloak) withFrame(canvas, hip, up, (f) => _peltBack(canvas, torsoLen, f));
+
+  final head = pose[HeroJoint.head];
+  final neck = pose[HeroJoint.neck];
+  final headUp = (head - neck) / (head - neck).distance;
+  // Tóc dài/đuôi ngựa nằm sau thân.
+  if (!cloak) {
+    withFrame(canvas, head, headUp, (f) {
+      canvas.scale(_headScale);
+      _hairBack(canvas, look, f);
+    });
+  }
+
+  _leg(
+    canvas,
+    look,
+    hip,
+    pose[HeroJoint.knee],
+    pose[HeroJoint.ankle],
+    pose[HeroJoint.toe],
+  );
+  withFrame(
+    canvas,
+    hip,
+    up,
+    (f) => _torso(canvas, look, torsoLen, f, cloak: cloak),
+  );
+
+  shadedChain(
+    canvas,
+    [(shoulder, neck, 5.5 + look.fat * 2, 5 + look.fat * 2)],
+    look.skin,
+    highlight: 0,
+  );
+  withFrame(canvas, head, headUp, (f) {
+    canvas.scale(_headScale);
+    _head(canvas, look, f, cloak: cloak);
+  });
+
+  _arm(canvas, look, shoulder, pose[HeroJoint.elbow], pose[HeroJoint.wrist]);
+  canvas.restore();
+}
+
+/// Tay chân to ra theo độ béo, nữ thon hơn một chút.
+double _limb(HeroLook look) => (1 + look.fat * 0.8) * (look.female ? 0.92 : 1);
+
+void _arm(
+  Canvas canvas,
+  HeroLook look,
+  Offset shoulder,
+  Offset elbow,
+  Offset wrist, {
+  bool far = false,
+}) {
+  final k = _limb(look);
+  final skin = far ? darken(look.skin, 0.18) : look.skin;
+  shadedChain(
+    canvas,
+    [
+      (shoulder, elbow, 6.5 * k, 5.5 * k),
+      (elbow, wrist, 5.5 * k, 4.5 * k),
+      (wrist, wrist, 5.5, 5.5),
+    ],
+    skin,
+    highlight: far ? 0 : 1.4,
+  );
+  // Vòng tay vàng ánh kim gần cổ tay.
+  final band = capsulePath(
+    Offset.lerp(elbow, wrist, 0.72)!,
+    Offset.lerp(elbow, wrist, 0.84)!,
+    5.2 * k,
+    4.9 * k,
+  );
+  canvas.drawPath(
+    band,
+    Paint()
+      ..color = HeroColors.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4,
+  );
+  canvas.drawPath(band, goldPaint(band.getBounds()));
+}
+
+void _leg(
+  Canvas canvas,
+  HeroLook look,
+  Offset hip,
+  Offset knee,
+  Offset ankle,
+  Offset toe, {
+  bool far = false,
+}) {
+  final k = _limb(look);
+  Color shade(Color c) => far ? darken(c, 0.18) : c;
+  shadedChain(
+    canvas,
+    [
+      (hip, knee, 8 * k * (look.female ? 1.08 : 1), 6.5 * k),
+      (knee, ankle, 6.5 * k, 4.5 * k),
+    ],
+    shade(look.skin),
+    highlight: far ? 0 : 1.4,
+  );
+  // Dây sandal quấn chéo ống chân.
+  final strap = Paint()
+    ..color = shade(darken(HeroColors.sandal, 0.1))
+    ..strokeWidth = 2
+    ..strokeCap = StrokeCap.round;
+  final d = ankle - knee;
+  final n = Offset(-d.dy, d.dx) / d.distance;
+  for (final t in [0.58, 0.72, 0.86]) {
+    final p = Offset.lerp(knee, ankle, t)!;
+    canvas.drawLine(p + n * 5.2 * k, p - n * 5.2 * k + d * 0.07, strap);
+  }
+  shadedChain(
+    canvas,
+    [(ankle, toe, 4.6, 3.8)],
+    shade(HeroColors.sandal),
+    shadow: 1.6,
+    highlight: 0.8,
+  );
+}
+
+/// Thân + áo chiton, vẽ trong hệ cục bộ gốc ở hông (+x là phía ngực).
+void _torso(
+  Canvas canvas,
+  HeroLook look,
+  double len,
+  PartFrame f, {
+  required bool cloak,
+}) {
+  final fat = look.fat;
+  final female = look.female;
+  // Vai nam rộng hơn, hông nữ rộng hơn; bụng nhô ra theo độ béo.
+  final back = 9 + fat * 7;
+  final shoulderBack = female ? 9.0 : 10.5;
+  final chest = (female ? 11.0 : 12.0) + fat * 7;
+  final belly = 9 + fat * 26;
+  final hipFront = (female ? 10.5 : 9.0) + fat * 10;
+  final body = Path()
+    ..moveTo(-back, 2)
+    ..cubicTo(
+      -back - 2,
+      -len * 0.4,
+      -shoulderBack - 3,
+      -len * 0.8,
+      -shoulderBack,
+      -len - 3,
+    )
+    ..quadraticBezierTo(0, -len - 8, 9, -len + 1)
+    // Ngực xuống tới eo, rồi bụng tròn ở nửa dưới thân (béo thì nhô xa).
+    ..cubicTo(chest + 1, -len * 0.85, chest, -len * 0.7, chest, -len * 0.6)
+    ..cubicTo(belly + 3, -len * 0.45, belly + 3, -len * 0.04, hipFront, 2)
+    ..close();
+  shadedPath(canvas, body, HeroColors.tunic, f, shadow: 5, highlight: 2);
+
+  canvas.save();
+  canvas.clipPath(body);
+  // Dây áo chéo qua vai (kiểu chiton) và nếp gấp vải.
+  canvas.drawLine(
+    Offset(-shoulderBack, -len + 2),
+    Offset(chest, -len * 0.45),
+    Paint()
+      ..color = HeroColors.trim
+      ..strokeWidth = 3.4,
+  );
+  final fold = Paint()
+    ..color = shadeOf(HeroColors.tunic)
+    ..strokeWidth = 1.2
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  canvas.drawPath(
+    Path()
+      ..moveTo(-2, -len * 0.35)
+      ..quadraticBezierTo(2, -len * 0.2, 0, -10)
+      ..moveTo(5, -len * 0.3)
+      ..quadraticBezierTo(7, -len * 0.18, 6, -11),
+    fold,
+  );
+  canvas.restore();
+
+  // Váy áo phủ xuống đùi (nữ dài tới gối), viền hoạ tiết Hy Lạp.
+  final hem = female ? 30.0 : 17.0;
+  final flare = female ? 4.0 : 0.0;
+  final skirtFront = hipFront + 2 + fat * 2;
+  final skirt = Path()
+    ..moveTo(-back - 1, -6)
+    ..lineTo(hipFront, -6)
+    ..lineTo(skirtFront + flare, hem)
+    ..lineTo(-back - 3 - flare, hem)
+    ..close();
+  shadedPath(canvas, skirt, HeroColors.tunic, f, shadow: 4, highlight: 1.5);
+  final hemRect = Rect.fromLTRB(
+    -back - 3.5 - flare,
+    hem - 5,
+    skirtFront + flare,
+    hem,
+  );
+  canvas.save();
+  canvas.clipPath(skirt);
+  canvas.drawRect(hemRect, fillPaint(HeroColors.trim));
+  // Hoạ tiết vuông kiểu "meander" đơn giản.
+  final key = fillPaint(lighten(HeroColors.trim, 0.55));
+  for (var x = hemRect.left + 1.5; x < hemRect.right - 1; x += 5) {
+    canvas.drawRect(Rect.fromLTWH(x, hem - 3.8, 2.4, 2.4), key);
+  }
+  // Nếp gấp váy.
+  canvas.drawLine(
+    Offset(-2, -4),
+    Offset(-3 - flare * 0.5, hem - 5),
+    fold..strokeWidth = 1,
+  );
+  canvas.drawLine(Offset(5, -4), Offset(6 + flare * 0.5, hem - 5), fold);
+  canvas.restore();
+
+  // Thắt lưng da, khoá vàng.
+  shadedPath(
+    canvas,
+    Path()..addRRect(
+      RRect.fromLTRBR(
+        -back - 1,
+        -9,
+        hipFront + 1,
+        -4,
+        const Radius.circular(2),
+      ),
+    ),
+    HeroColors.belt,
+    f,
+    shadow: 1.5,
+    highlight: 0.8,
+    outlineWidth: 1.2,
+  );
+  final buckle = Rect.fromCircle(
+    center: Offset(hipFront - 1, -6.5),
+    radius: 2.4,
+  );
+  canvas.drawOval(buckle, goldPaint(buckle));
+
+  if (cloak) {
+    // Hai chân trước của tấm da sư tử buộc thành nút trước ngực.
+    final knot = Offset(chest - 3, -len + 12);
+    shadedPath(
+      canvas,
+      Path()
+        ..moveTo(-6, -len - 2)
+        ..quadraticBezierTo(4, -len + 2, knot.dx, knot.dy)
+        ..lineTo(knot.dx - 3, knot.dy + 3)
+        ..quadraticBezierTo(0, -len + 6, -8, -len + 3)
+        ..close(),
+      HeroColors.pelt,
+      f,
+      shadow: 1.5,
+      highlight: 0.8,
+      outlineWidth: 1.2,
+    );
+    shadedPath(
+      canvas,
+      Path()..addOval(Rect.fromCircle(center: knot, radius: 3.2)),
+      darken(HeroColors.pelt, 0.1),
+      f,
+      shadow: 1.2,
+      highlight: 0.6,
+      outlineWidth: 1,
+    );
+  }
+}
+
+/// Tấm da sư tử phủ sau lưng, vẽ trong hệ cục bộ gốc ở hông.
+void _peltBack(Canvas canvas, double len, PartFrame f) {
+  final pelt = Path()
+    ..moveTo(-6, -len - 6)
+    ..cubicTo(-20, -len * 0.75, -22, -len * 0.3, -17, 8)
+    // Mép dưới răng cưa như lông thú.
+    ..lineTo(-12, 4)
+    ..lineTo(-9, 11)
+    ..lineTo(-5, 4)
+    ..cubicTo(-8, -len * 0.3, -6, -len * 0.7, 4, -len - 2)
+    ..close();
+  shadedPath(canvas, pelt, HeroColors.pelt, f, shadow: 4, highlight: 1.5);
+  // Vệt lông.
+  final fur = Paint()
+    ..color = darken(HeroColors.pelt, 0.2)
+    ..strokeWidth = 1
+    ..strokeCap = StrokeCap.round;
+  for (final y in [0.75, 0.5, 0.25]) {
+    canvas.drawLine(Offset(-15, -len * y), Offset(-11, -len * y + 4), fur);
+  }
+}
+
+/// Phần tóc nằm sau thân (đuôi ngựa, tóc dài), rủ theo trọng lực.
+void _hairBack(Canvas canvas, HeroLook look, PartFrame f) {
+  final down = f.down;
+  final hair = look.hair;
+  switch (look.hairStyle) {
+    case HairStyle.ponytail:
+      const root = Offset(-13, -6);
+      final tip = root + const Offset(-6, 0) + down * 24;
+      final mid = root + const Offset(-8, -2) + down * 10;
+      shadedPath(
+        canvas,
+        Path()
+          ..moveTo(root.dx, root.dy - 4)
+          ..quadraticBezierTo(mid.dx - 4, mid.dy, tip.dx, tip.dy)
+          ..quadraticBezierTo(mid.dx + 4, mid.dy + 2, root.dx + 2, root.dy + 4)
+          ..close(),
+        hair,
+        f,
+        shadow: 2.5,
+        highlight: 1.2,
+      );
+      // Dây buộc tóc.
+      canvas.drawCircle(
+        root + const Offset(-2, 0),
+        2.6,
+        fillPaint(HeroColors.headband),
+      );
+    case HairStyle.long:
+      final tip = const Offset(-6, 4) + down * 30;
+      shadedPath(
+        canvas,
+        Path()
+          ..moveTo(-4, -16)
+          ..quadraticBezierTo(-22, -10, tip.dx - 8, tip.dy)
+          ..lineTo(tip.dx + 6, tip.dy + 2)
+          ..quadraticBezierTo(-4, 6, 2, -6)
+          ..close(),
+        hair,
+        f,
+        shadow: 3,
+        highlight: 1.4,
+      );
+    case HairStyle.curly || HairStyle.buzz || HairStyle.bun:
+      break;
+  }
+}
+
+/// Đầu, vẽ trong hệ cục bộ gốc ở tâm đầu, mặt hướng +x.
+void _head(Canvas canvas, HeroLook look, PartFrame f, {required bool cloak}) {
+  const r = 15.0;
+  final hair = look.hair;
+  final cheeks = look.fat * 2.5;
+
+  // Tóc phía sau đầu (dưới mũ trùm nếu có).
+  if (!cloak && look.hairStyle != HairStyle.buzz) {
+    shadedPath(
+      canvas,
+      Path()
+        ..addOval(Rect.fromCircle(center: const Offset(-3, -2), radius: r + 1)),
+      hair,
+      f,
+      highlight: 0,
+    );
+  }
+  // Mặt; má phúng phính theo độ béo.
+  final face = Path()
+    ..addOval(
+      Rect.fromCenter(
+        center: Offset(1.5, 1 + cheeks * 0.4),
+        width: (r - 1) * 2 + cheeks,
+        height: (r - 1) * 2 + cheeks * 1.2,
+      ),
+    );
+  shadedPath(canvas, face, look.skin, f, shadow: 3.5, highlight: 1.2);
+  if (look.hairStyle == HairStyle.buzz && !cloak) {
+    // Tóc cắt sát: một lớp mỏng trên đỉnh và gáy.
+    canvas.save();
+    canvas.clipPath(face);
+    canvas.drawPath(
+      Path()
+        ..moveTo(-18, 10)
+        ..lineTo(-18, -18)
+        ..lineTo(12, -18)
+        ..quadraticBezierTo(4, -9, -4, -7)
+        ..quadraticBezierTo(-8, 0, -5, 10)
+        ..close(),
+      fillPaint(hair),
+    );
+    canvas.restore();
+  }
+  // Má hồng.
+  canvas.drawOval(
+    Rect.fromCenter(center: Offset(7, 5 + cheeks * 0.5), width: 7, height: 4.5),
+    fillPaint(HeroColors.blush),
+  );
+  // Mũi.
+  shadedPath(
+    canvas,
+    Path()
+      ..moveTo(13.5, -1)
+      ..quadraticBezierTo(19, 3, 14.5, 5)
+      ..close(),
+    look.skin,
+    f,
+    shadow: 1,
+    highlight: 0,
+    outlineWidth: 1,
+  );
+  // Mắt: lòng trắng, tròng, con ngươi, chấm sáng.
+  const eye = Offset(8.5, -1);
+  final white = Path()
+    ..addOval(Rect.fromCenter(center: eye, width: 6, height: 7));
+  canvas.drawPath(
+    white,
+    Paint()
+      ..color = HeroColors.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6,
+  );
+  canvas.drawPath(white, fillPaint(HeroColors.eyeWhite));
+  canvas.drawOval(
+    Rect.fromCenter(
+      center: eye + const Offset(1, 0.4),
+      width: 4.2,
+      height: 5.2,
+    ),
+    fillPaint(HeroColors.iris),
+  );
+  canvas.drawCircle(
+    eye + const Offset(1.3, 0.5),
+    1.5,
+    fillPaint(HeroColors.outline),
+  );
+  canvas.drawCircle(
+    eye + const Offset(0.3, -1),
+    0.9,
+    fillPaint(const Color(0xFFFFFFFF)),
+  );
+  final ink = Paint()
+    ..color = HeroColors.outline
+    ..strokeWidth = 1.3
+    ..strokeCap = StrokeCap.round;
+  if (look.female) {
+    canvas.drawLine(
+      eye + const Offset(2.5, -2.6),
+      eye + const Offset(4.6, -4.2),
+      ink,
+    );
+    canvas.drawLine(
+      eye + const Offset(1, -3.3),
+      eye + const Offset(2.4, -5.4),
+      ink,
+    );
+  }
+  // Lông mày quyết tâm.
+  canvas.drawLine(
+    eye + const Offset(-4, -6.5),
+    eye + const Offset(4, -5),
+    Paint()
+      ..color = darken(hair, 0.1)
+      ..strokeWidth = look.female ? 1.6 : 2.3
+      ..strokeCap = StrokeCap.round,
+  );
+  // Miệng cười nhẹ.
+  canvas.drawPath(
+    Path()
+      ..moveTo(9.5, 8.6 + cheeks * 0.4)
+      ..quadraticBezierTo(11.5, 10 + cheeks * 0.4, 13.5, 8 + cheeks * 0.4),
+    Paint()
+      ..color = look.female ? HeroColors.lips : darken(look.skin, 0.45)
+      ..strokeWidth = look.female ? 1.8 : 1.4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round,
+  );
+  // Tai.
+  shadedPath(
+    canvas,
+    Path()..addOval(
+      Rect.fromCenter(center: const Offset(-3, 2), width: 5.5, height: 7.5),
+    ),
+    look.skin,
+    f,
+    shadow: 1.2,
+    highlight: 0,
+    outlineWidth: 1.2,
+  );
+
+  if (cloak) {
+    _lionHood(canvas, f);
+    return;
+  }
+
+  switch (look.hairStyle) {
+    case HairStyle.curly:
+      for (final c in const [
+        Offset(-13, -2),
+        Offset(-10, -9),
+        Offset(-4, -13),
+        Offset(3, -13.5),
+        Offset(9, -10.5),
+      ]) {
+        shadedPath(
+          canvas,
+          Path()..addOval(Rect.fromCircle(center: c, radius: 5)),
+          hair,
+          f,
+          shadow: 1.8,
+          highlight: 1.2,
+          outlineWidth: 1,
+        );
+      }
+    case HairStyle.buzz:
+      break;
+    case HairStyle.bun || HairStyle.ponytail || HairStyle.long:
+      // Tóc chải mượt ra sau, mái lệch, vệt bóng tóc.
+      shadedPath(
+        canvas,
+        Path()
+          ..moveTo(-15, 2)
+          ..cubicTo(-18, -16, 2, -22, 13, -9)
+          ..quadraticBezierTo(4, -11, -2, -6)
+          ..quadraticBezierTo(-9, -3, -15, 2)
+          ..close(),
+        hair,
+        f,
+        shadow: 2.5,
+        highlight: 1.2,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(-8, -12)
+          ..quadraticBezierTo(-1, -16, 5, -14),
+        Paint()
+          ..color = lighten(hair, 0.4)
+          ..strokeWidth = 1.6
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
+      if (look.hairStyle == HairStyle.bun) {
+        shadedPath(
+          canvas,
+          Path()..addOval(
+            Rect.fromCircle(center: const Offset(-13, -13), radius: 6.5),
+          ),
+          hair,
+          f,
+          shadow: 2,
+          highlight: 1.2,
+        );
+      }
+  }
+  // Băng đô đỏ, đuôi bay phía sau.
+  final band = Paint()
+    ..color = HeroColors.headband
+    ..strokeWidth = 3.4
+    ..strokeCap = StrokeCap.round
+    ..style = PaintingStyle.stroke;
+  canvas.drawArc(
+    Rect.fromCircle(center: const Offset(-1, 0), radius: r),
+    -math.pi * 0.95,
+    math.pi * 0.72,
+    false,
+    band,
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(-14, -5)
+      ..quadraticBezierTo(-21, -6, -25, -1)
+      ..moveTo(-14, -5)
+      ..quadraticBezierTo(-20, -2, -22, 4),
+    band..strokeWidth = 2.6,
+  );
+}
+
+/// Mũ trùm đầu sư tử Nemea (như tượng Hercules cổ đại).
+void _lionHood(Canvas canvas, PartFrame f) {
+  // Bờm viền quanh mũ.
+  final mane = Path();
+  const n = 11;
+  for (var i = 0; i <= n; i++) {
+    final a = math.pi * (0.55 + 1.15 * i / n);
+    final rr = i.isEven ? 21.0 : 17.0;
+    final p = Offset(-2 + math.cos(a) * rr, -1 + math.sin(a) * rr);
+    i == 0 ? mane.moveTo(p.dx, p.dy) : mane.lineTo(p.dx, p.dy);
+  }
+  mane.close();
+  shadedPath(canvas, mane, HeroColors.mane, f, shadow: 3, highlight: 1.2);
+
+  // Phần đầu sư tử úp lên đỉnh đầu, mõm nhô ra trước trán.
+  final hood = Path()
+    ..moveTo(-15, 3)
+    ..cubicTo(-17, -14, -2, -22, 10, -15)
+    ..quadraticBezierTo(18, -12, 19, -7)
+    ..lineTo(14, -5)
+    ..quadraticBezierTo(4, -9, -6, -3)
+    ..quadraticBezierTo(-10, 2, -15, 3)
+    ..close();
+  shadedPath(canvas, hood, HeroColors.pelt, f, shadow: 3, highlight: 1.4);
+  // Tai sư tử.
+  shadedPath(
+    canvas,
+    Path()..addOval(
+      Rect.fromCenter(center: const Offset(-4, -17), width: 7, height: 6),
+    ),
+    HeroColors.pelt,
+    f,
+    shadow: 1.2,
+    highlight: 0.6,
+    outlineWidth: 1.2,
+  );
+  // Mắt sư tử và răng nanh trên trán.
+  canvas.drawLine(
+    const Offset(5, -14),
+    const Offset(10, -13),
+    Paint()
+      ..color = HeroColors.outline
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round,
+  );
+  final fang = fillPaint(const Color(0xFFFFF8E7));
+  for (final x in [12.0, 16.0]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(x - 1.5, -6.5)
+        ..lineTo(x + 1.5, -6)
+        ..lineTo(x, -2.5)
+        ..close(),
+      fang,
+    );
+  }
+  canvas.drawCircle(
+    const Offset(18.5, -8.5),
+    1.6,
+    fillPaint(HeroColors.outline),
+  );
+}
