@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
+import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
 import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
@@ -102,6 +103,32 @@ void main() {
       art.paintAmbient(c, i / 30);
       art.paintBoss(c, frame);
       paintHero(c, HeroPose.plank(80 + i % 90), effort: (i % 10) / 10);
+    });
+
+    expect(ms, lessThan(2.0), reason: '$ms ms/khung');
+  });
+
+  test('sân khấu Fafnir (cực quang, tuyết, nhân vật lạnh cóng) dưới 2 ms', () {
+    final art = FafnirBossArt();
+    final recorder = ui.PictureRecorder();
+    art.paintBackdrop(ui.Canvas(recorder));
+    final backdrop = recorder.endRecording();
+    final battle = StageBattleState();
+
+    final ms = measureMsPerFrame((c, i) {
+      battle.cold = (i % 30) / 30;
+      final frame = BossFrame(
+        time: i / 30,
+        attack: (i % 20) / 20,
+        hurt: (i % 7) / 7,
+        glint: -1,
+        defeat: 0,
+        battle: battle,
+      );
+      c.drawPicture(backdrop);
+      art.paintAmbient(c, i / 30);
+      art.paintBoss(c, frame);
+      paintHero(c, HeroPose.plank(80 + i % 90), frost: battle.cold);
     });
 
     expect(ms, lessThan(2.0), reason: '$ms ms/khung');

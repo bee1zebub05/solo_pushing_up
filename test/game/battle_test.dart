@@ -129,6 +129,15 @@ void main() {
       expect(hits.last.damage, 5);
     });
 
+    test('mức lạnh tăng dần khi nghỉ, chạm 1 lúc sắp bị đóng băng', () {
+      final battle = Battle(enemy: fafnir)..apply([rep(0)]);
+
+      expect(battle.coldAt(500), 0);
+      expect(battle.coldAt(2000), closeTo(0.5, 0.01));
+      expect(battle.coldAt(3000), 1);
+      expect(Battle(enemy: dummy).coldAt(5000), 0);
+    });
+
     test('kẻ thù khác không có giá lạnh', () {
       final battle = Battle(enemy: dummy);
       final hits = battle.apply([rep(0), rep(5000)]).cast<Hit>().toList();

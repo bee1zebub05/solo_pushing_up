@@ -253,6 +253,23 @@ class Battle {
   double get hpFraction => _hp / enemy.maxHp;
   DefeatReason? get defeatReason => _defeatReason;
 
+  /// Mức lạnh 0–1 tại [nowMs] ([BattleArmor.freezingCold]): bắt đầu tăng
+  /// sau 1/3 thời gian cho phép nghỉ, chạm 1 đúng lúc đòn sau sẽ bị đóng
+  /// băng. Để sân khấu báo trước bằng hình (nhân vật đóng băng dần).
+  double coldAt(int nowMs) {
+    final last = _lastHitMs;
+    if (enemy.armor != BattleArmor.freezingCold ||
+        last == null ||
+        _status != BattleStatus.fighting) {
+      return 0;
+    }
+    final start = rules.freezeAfterMs / 3;
+    return ((nowMs - last - start) / (rules.freezeAfterMs - start)).clamp(
+      0.0,
+      1.0,
+    );
+  }
+
   bool get _flood => enemy.armor == BattleArmor.risingFlood;
 
   /// Mực nước 0–100 (chỉ có ở trận [BattleArmor.risingFlood]).

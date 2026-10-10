@@ -6,6 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../art/hero_art.dart';
 import '../art/battle_stage.dart';
+import '../art/bosses/fafnir_boss.dart';
 import '../art/bosses/nemea_boss.dart';
 import '../art/bosses/orochi_boss.dart';
 import '../art/bosses/thuy_tinh_boss.dart';
@@ -99,6 +100,7 @@ class _BattleScreenState extends State<BattleScreen>
     if (widget.enemy == nemeanLion) return NemeaBossArt();
     if (widget.enemy == thuyTinh) return ThuyTinhBossArt();
     if (widget.enemy == orochi) return OrochiBossArt();
+    if (widget.enemy == fafnir) return FafnirBossArt();
     return null;
   }
 
@@ -137,7 +139,8 @@ class _BattleScreenState extends State<BattleScreen>
       ?..water = _battle.water
       ..headsLeft = _battle.headsLeft
       ..totalHeads = widget.enemy.heads
-      ..headHp = _battle.headHp / widget.enemy.headMaxHp;
+      ..headHp = _battle.headHp / widget.enemy.headMaxHp
+      ..cold = _battle.coldAt(frame.timestampMs);
     _stage?.updatePlayer(
       elbowAngle: snapshot.phase == CounterPhase.searching
           ? null

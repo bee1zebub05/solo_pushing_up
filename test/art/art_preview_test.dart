@@ -8,6 +8,7 @@ import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
+import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
 import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
@@ -253,6 +254,39 @@ void main() {
           look: const HeroLook(hairStyle: HairStyle.bun),
           joy: defeat > 0 ? 1 : 0,
           effort: defeat > 0 ? 0 : 0.7,
+        );
+      });
+    }
+  });
+
+  testWidgets('Fafnir: bình thường, phun băng + nhân vật lạnh cóng, gục', (
+    tester,
+  ) async {
+    final art = FafnirBossArt();
+    for (final (name, attack, cold, defeat) in [
+      ('fafnir_idle', 0.0, 0.0, 0.0),
+      ('fafnir_breath_cold', 1.0, 0.9, 0.0),
+      ('fafnir_defeat', 0.0, 0.0, 1.0),
+    ]) {
+      final battle = StageBattleState()..cold = cold;
+      final frame = BossFrame(
+        time: 2,
+        attack: attack,
+        hurt: 0,
+        glint: -1,
+        defeat: defeat,
+        battle: battle,
+      );
+      await render(tester, name, (c) {
+        art.paintBackdrop(c);
+        art.paintAmbient(c, 2);
+        art.paintBoss(c, frame);
+        paintHero(
+          c,
+          defeat > 0 ? HeroPose.victory() : HeroPose.plank(165),
+          look: const HeroLook(fat: 0.4, hairStyle: HairStyle.buzz),
+          frost: cold,
+          joy: defeat > 0 ? 1 : 0,
         );
       });
     }
