@@ -172,6 +172,15 @@ void paintLion(Canvas canvas, LionState s) {
   );
 
   _tail(canvas, t, fall, drop, strike);
+  // Chân sau gần vẽ trước thân: đùi liền vào khối mông (khối cơ đùi đã
+  // có trong ảnh thân), chỉ phần cẳng – khoeo – bàn lộ ra dưới bụng.
+  _leg(
+    canvas,
+    hip: Offset(78, -82 + drop),
+    paw: Offset(72 + 8 * fall, 0),
+    color: LionColors.body,
+    front: false,
+  );
 
   // Thân chụp sẵn thành ảnh, chỉ dịch lên xuống (lấy đà, thở, gục).
   canvas.save();
@@ -182,13 +191,6 @@ void paintLion(Canvas canvas, LionState s) {
 
   // Chân gần: chân trước vung vuốt khi vồ.
   final swipe = strike * (1 - fall);
-  _leg(
-    canvas,
-    hip: Offset(78, -82 + drop),
-    paw: Offset(72 + 8 * fall, 0),
-    color: LionColors.body,
-    front: false,
-  );
   final pawGround = Offset(-62 + 10 * windup - 36 * fall, 0);
   const pawSwipe = Offset(-128, -44);
   final paw = Offset.lerp(pawGround, pawSwipe, swipe)!;
@@ -426,6 +428,8 @@ void _leg(
     ],
     color,
     shadow: 4,
+    // Chân sau mèo lớn: cẳng và khoeo dày hơn chân trước.
+    scale: front ? 1 : 1.25,
     facing: const Offset(-1, 0),
     // Chân phía xa (màu tối hơn) khuất sau thân: không vẽ bó cơ cho nhẹ.
     definition: color == LionColors.body ? 0.65 : 0,
