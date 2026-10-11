@@ -506,23 +506,70 @@ void _harpyWing(Canvas canvas, Offset root, double flap, Color color) {
   canvas.save();
   canvas.translate(root.dx, root.dy);
   canvas.rotate(-0.7 * flap + 0.2);
-  final wing = Path()
+  // Xương cánh (cánh thay tay): từ vai tới khớp có móng.
+  const wrist = Offset(30, -28);
+  // Lông sơ cấp dài, mép rách tả tơi, xếp từ ngoài vào trong.
+  for (var i = 0; i < 6; i++) {
+    final base = Offset.lerp(const Offset(6, -8), wrist, 0.35 + i * 0.12)!;
+    final ang = 0.35 + i * 0.16;
+    final len = 22.0 - i * 1.5;
+    final tip = base + Offset(math.cos(ang) * len, math.sin(ang) * len);
+    final d = tip - base;
+    final n = Offset(-d.dy, d.dx) / d.distance;
+    final feather = Path()
+      ..moveTo(base.dx + n.dx * 3, base.dy + n.dy * 3)
+      ..lineTo(tip.dx + n.dx * 1.2, tip.dy + n.dy * 1.2)
+      // Mép rách: răng cưa ở ngọn.
+      ..lineTo(
+        tip.dx - n.dx * 0.2 + d.dx * 0.03,
+        tip.dy - n.dy * 0.2 + d.dy * 0.03,
+      )
+      ..lineTo(
+        tip.dx - n.dx * 1.6 - d.dx * 0.12,
+        tip.dy - n.dy * 1.6 - d.dy * 0.12,
+      )
+      ..lineTo(base.dx - n.dx * 3, base.dy - n.dy * 3)
+      ..close();
+    _shaded(canvas, feather, darken(color, 0.12 + i * 0.02), shadow: 1.4);
+    canvas.drawLine(
+      base,
+      Offset.lerp(base, tip, 0.85)!,
+      _stroke(darken(color, 0.4), 0.6),
+    );
+  }
+  // Lông thứ cấp + lông bao phủ phần gốc cánh.
+  final coverts = Path()
     ..moveTo(0, 0)
-    ..quadraticBezierTo(14, -26, 34, -30)
-    ..lineTo(30, -22)
-    ..lineTo(34, -16)
-    ..lineTo(26, -12)
-    ..lineTo(28, -4)
-    ..lineTo(18, -2)
-    ..lineTo(16, 6)
+    ..quadraticBezierTo(14, -26, wrist.dx + 2, wrist.dy)
+    ..quadraticBezierTo(26, -18, 22, -10)
+    ..lineTo(18, -6)
+    ..lineTo(16, -1)
+    ..lineTo(10, 1)
+    ..lineTo(8, 6)
     ..close();
-  _shaded(canvas, wing, color, shadow: 3);
-  // Móng ở khớp cánh (cánh thay tay).
+  _shaded(canvas, coverts, color, shadow: 3);
+  // Hàng vảy lông nhỏ trên lông bao.
+  for (var i = 0; i < 5; i++) {
+    final p = Offset.lerp(const Offset(6, -6), const Offset(24, -22), i / 4)!;
+    canvas.drawArc(
+      Rect.fromCircle(center: p, radius: 3),
+      0.2,
+      2.6,
+      false,
+      _stroke(darken(color, 0.35), 0.8),
+    );
+  }
+  // Móng ở khớp cánh.
   canvas.drawPath(
     Path()
-      ..moveTo(32, -30)
-      ..quadraticBezierTo(38, -32, 38, -26),
-    _stroke(const Color(0xFFE8D9B0), 1.4),
+      ..moveTo(wrist.dx + 2, wrist.dy)
+      ..quadraticBezierTo(
+        wrist.dx + 8,
+        wrist.dy - 2,
+        wrist.dx + 8,
+        wrist.dy + 4,
+      ),
+    _stroke(const Color(0xFFE8D9B0), 1.6),
   );
   canvas.restore();
 }
@@ -760,12 +807,12 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
   // Hàm dưới.
   canvas.save();
   canvas.rotate(-0.6 * open);
-  final jaw = _poly(const [
-    Offset(4, 1),
-    Offset(-14, 2),
-    Offset(-12, 5),
-    Offset(4, 5),
-  ]);
+  final jaw = Path()
+    ..moveTo(4, 1)
+    ..quadraticBezierTo(-6, 2.5, -14, 2)
+    ..quadraticBezierTo(-13, 5.5, -8, 5.5)
+    ..lineTo(4, 5)
+    ..close();
   _shaded(canvas, jaw, const Color(0xFFD8C978), shadow: 1);
   canvas.restore();
   if (open > 0.2) {
@@ -790,37 +837,74 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
       _stroke(const Color(0xFFD0384A), 1),
     );
   }
-  // Đầu dẹt hình tam giác, gờ mày gai.
+  // Sọ rắn: tam giác bo, má bạnh sau, mõm thuôn.
   final head = Path()
-    ..moveTo(6, -6)
-    ..quadraticBezierTo(-4, -10, -16, -2)
-    ..lineTo(-14, 2)
-    ..lineTo(6, 3)
+    ..moveTo(7, -4)
+    ..cubicTo(6, -10, -4, -10, -10, -6)
+    ..quadraticBezierTo(-16, -3, -16.5, 0)
+    ..quadraticBezierTo(-15, 2.5, -12, 2.2)
+    ..lineTo(4, 3)
+    ..quadraticBezierTo(9, 1, 7, -4)
     ..close();
   _shaded(canvas, head, scale, shadow: 2);
-  canvas.drawPath(
-    _poly(const [Offset(-2, -7), Offset(4, -14), Offset(4, -6)]),
-    _fill(const Color(0xFF2E5A36)),
+  canvas.save();
+  canvas.clipPath(head);
+  // Vảy đầu xếp lớp + môi sáng.
+  for (var i = 0; i < 4; i++) {
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(2 - i * 3.5, -5 + i * 0.6), radius: 2.2),
+      0.2,
+      2.6,
+      false,
+      _stroke(darken(scale, 0.3), 0.6),
+    );
+  }
+  canvas.drawRect(
+    const Rect.fromLTRB(-17, 0.6, 5, 3),
+    _fill(const Color(0xFFBFC27A)),
+  );
+  canvas.restore();
+  // Gờ mày gai nhọn (hai gai), lỗ mũi.
+  _shaded(
+    canvas,
+    _poly(const [Offset(-9, -7), Offset(-1, -13), Offset(-2, -7.5)]),
+    const Color(0xFF2E5A36),
+    shadow: 1,
+  );
+  _shaded(
+    canvas,
+    _poly(const [Offset(-2, -8), Offset(5, -12), Offset(4, -6)]),
+    const Color(0xFF2E5A36),
+    shadow: 1,
+  );
+  canvas.drawOval(
+    const Rect.fromLTWH(-15.5, -2.2, 1.6, 1),
+    _fill(const Color(0xFF1A2A1C)),
   );
   // Nanh rỉ nọc độc.
   canvas.drawPath(
     _poly([
-      const Offset(-12, 1),
-      const Offset(-10, 1),
-      Offset(-11, 5 + 2 * open),
+      const Offset(-12, 1.5),
+      const Offset(-10, 1.5),
+      Offset(-11, 5.5 + 2 * open),
     ]),
     _fill(const Color(0xFFFFF6DE)),
   );
   final drip = (time * 0.8) % 1;
   canvas.drawCircle(
-    Offset(-11, 7 + 2 * open + 6 * drip),
+    Offset(-11, 7.5 + 2 * open + 6 * drip),
     1.1,
     _fill(Color.fromRGBO(170, 255, 90, 1 - drip)),
   );
-  _glowEye(canvas, const Offset(-6, -4), 1.2, const Color(0xFFFFD21F));
+  _glowEye(canvas, const Offset(-6, -4.5), 1.2, const Color(0xFFFFD21F));
+  // Con ngươi dọc.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(-6, -4.5), width: 0.6, height: 2),
+    _fill(_outline),
+  );
   canvas.drawLine(
-    const Offset(-9, -6),
-    const Offset(-2, -6.5),
+    const Offset(-9.5, -6.5),
+    const Offset(-2, -7.5),
     _stroke(_outline, 1.4),
   );
   canvas.restore();

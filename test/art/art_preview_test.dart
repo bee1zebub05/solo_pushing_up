@@ -178,6 +178,20 @@ void main() {
         c.restore();
       }
     });
+    await render(tester, 'monsters_zoom', (c) {
+      paintNemeaScene(c, time: 2);
+      for (final (x, s, draw) in <(double, double, void Function())>[
+        (70, 2.0, () => paintHarpy(c, time: 1, attack: 0.6)),
+        (210, 1.5, () => paintErymanthianBoar(c, time: 1)),
+        (340, 1.4, () => paintYoungHydra(c, time: 1, attack: 0.5)),
+      ]) {
+        c.save();
+        c.translate(x, stageGroundY + 20);
+        c.scale(s);
+        draw();
+        c.restore();
+      }
+    });
     await render(tester, 'stone_soldier', (c) {
       paintNemeaScene(c, time: 2, dust: 0.6);
       for (final (x, attack) in [(120.0, 0.0), (280.0, 1.0)]) {
