@@ -422,58 +422,92 @@ void _leg(
   _paw(canvas, paw, color, clawsOut: clawsOut);
 }
 
+/// Bàn chân mèo lớn nhìn ngang: đệm gót sau, ba ngón tròn nổi so le (ngón
+/// trước thấp nhất), khe giữa các ngón, vuốt cong thò ra từ đầu ngón.
 void _paw(Canvas canvas, Offset paw, Color color, {required bool clawsOut}) {
-  // Bàn chân vẽ thẳng (không cắt vùng) cho nhẹ: viền, nền, mảng bóng dưới.
-  final r = Rect.fromCenter(
-    center: paw + const Offset(-4, -5),
-    width: 26,
-    height: 12,
-  );
-  canvas.drawRRect(
-    RRect.fromRectAndRadius(r.inflate(2), const Radius.circular(8)),
-    _fill(LionColors.outline),
-  );
-  canvas.drawRRect(
-    RRect.fromRectAndRadius(r, const Radius.circular(6)),
-    _fill(shadeOf(color)),
-  );
-  canvas.drawRRect(
-    RRect.fromRectAndRadius(
-      Rect.fromLTRB(r.left, r.top, r.right - 2, r.bottom - 3),
-      const Radius.circular(5),
-    ),
-    _fill(color),
-  );
-  // Ngón chân.
-  final toe = Paint()
-    ..color = LionColors.outline
-    ..strokeWidth = 1.2
-    ..strokeCap = StrokeCap.round;
-  for (final dx in [-12.0, -6.0, 0.0]) {
-    canvas.drawLine(paw + Offset(dx, -7), paw + Offset(dx, -2), toe);
-  }
-  // Móng: thò dài và cong khi vồ, chỉ nhú ra khi đứng.
+  canvas.save();
+  canvas.translate(paw.dx, paw.dy);
+  _pawImages
+      .putIfAbsent(
+        (color, clawsOut),
+        () => RasterLayer(
+          (c) => _paintPaw(c, color, clawsOut: clawsOut),
+          bounds: const Rect.fromLTRB(-30, -17, 14, 6),
+          resolution: 1.5,
+        ),
+      )
+      .paint(canvas);
+  canvas.restore();
+}
+
+/// Mỗi màu chân × thò/thu móng chụp sẵn một ảnh.
+final _pawImages = <(Color, bool), RasterLayer>{};
+
+void _paintPaw(Canvas canvas, Color color, {required bool clawsOut}) {
+  // Móng: thò dài và cong khi vồ, chỉ nhú ra khi đứng (vẽ trước để ngón
+  // che gốc móng).
   final claw = _fill(LionColors.fang);
   final clawLine = Paint()
     ..color = LionColors.outline
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.8;
-  final reach = clawsOut ? 8.0 : 3.0;
-  for (final dx in [-15.0, -9.0, -3.0]) {
-    final base = paw + Offset(dx, -2);
+  final reach = clawsOut ? 8.0 : 2.5;
+  for (final (x, y) in [(-17.0, -3.0), (-11.5, -5.0), (-5.5, -6.5)]) {
     final path = Path()
-      ..moveTo(base.dx, base.dy - 2)
-      ..quadraticBezierTo(
-        base.dx - reach * 0.7,
-        base.dy - 1,
-        base.dx - reach,
-        base.dy + reach * 0.5,
-      )
-      ..quadraticBezierTo(base.dx - reach * 0.3, base.dy, base.dx + 2, base.dy)
+      ..moveTo(x + 2, y - 2)
+      ..quadraticBezierTo(x - reach * 0.8, y - 1.5, x - reach, y + reach * 0.6)
+      ..quadraticBezierTo(x - reach * 0.3, y + 0.5, x + 2, y + 1)
       ..close();
     canvas.drawPath(path, claw);
     canvas.drawPath(path, clawLine);
   }
+  final shape = smoothPath(
+    const [
+      Offset(8, -13),
+      Offset(11, -6),
+      Offset(8, -0.5),
+      Offset(-4, 0.6),
+      Offset(-15, 0),
+      Offset(-19, -3),
+      Offset(-16.5, -7.5),
+      Offset(-12.5, -6.8),
+      Offset(-10, -10),
+      Offset(-6.2, -9.2),
+      Offset(-3, -11.5),
+      Offset(3, -13),
+    ],
+    closed: true,
+    tension: 0.15,
+  );
+  _shaded(canvas, shape, color, shadow: 3, width: 1.8);
+  // Khe giữa các ngón: nét thon từ mép trên xuống, mờ dần.
+  final gap = Paint()..color = darken(color, 0.42);
+  for (final (top, bottom) in [
+    (const Offset(-12.6, -6.6), const Offset(-12, -2.2)),
+    (const Offset(-6.3, -9), const Offset(-5.8, -3.6)),
+  ]) {
+    canvas.drawPath(taperedStroke([top, bottom], 1.5, peak: 0.2), gap);
+  }
+  // Sáng trên lưng từng ngón, nếp gót.
+  final lit = Paint()..color = lighten(color, 0.35).withValues(alpha: 0.8);
+  for (final c in const [
+    Offset(-15.5, -6),
+    Offset(-9.5, -8.6),
+    Offset(-3, -10.4),
+  ]) {
+    canvas.drawPath(
+      taperedStroke([
+        c + const Offset(-1.6, 0.6),
+        c,
+        c + const Offset(1.8, 0.2),
+      ], 1.1),
+      lit,
+    );
+  }
+  canvas.drawPath(
+    taperedStroke(const [Offset(7.5, -9), Offset(6, -5), Offset(6.5, -2)], 1.2),
+    gap,
+  );
 }
 
 /// Ba vệt cào sáng theo sau móng vuốt.
@@ -521,70 +555,52 @@ void _tail(
   final base = Offset(94, -92 + drop);
   final ctrl = Offset(132 + lash * 0.5, -70 + drop + 20 * fall);
   final tip = Offset(122 + sway * 0.4 + lash, -132 + sway - lash + 70 * fall);
-  final path = Path()
-    ..moveTo(base.dx, base.dy)
-    ..quadraticBezierTo(ctrl.dx, ctrl.dy, tip.dx, tip.dy);
-  canvas.drawPath(
-    path,
-    Paint()
-      ..color = LionColors.outline
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 11
-      ..strokeCap = StrokeCap.round,
+  // Đuôi thon dần từ gốc tới ngọn (cơ đuôi dày ở gốc), tô khối.
+  Offset q(double u) =>
+      base * ((1 - u) * (1 - u)) + ctrl * (2 * u * (1 - u)) + tip * (u * u);
+  final tail = taperedStroke(
+    [for (var k = 0; k <= 4; k++) q(k / 4)],
+    8.5,
+    peak: 0,
+    startWidth: 1,
+    endWidth: 0.55,
+    samples: 12,
   );
-  canvas.drawPath(
-    path,
-    Paint()
-      ..color = LionColors.body
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round,
-  );
-  // Chùm lông cuối đuôi: ngọn lửa đen đỏ.
-  final tuft = Path();
-  for (var i = 0; i < 5; i++) {
-    final a = -math.pi / 2 + (i - 2) * 0.45 + sway * 0.02;
-    _addTuft(tuft, tip, a, 3, 13, 5, const Offset(1, 0));
-  }
-  _shaded(canvas, tuft, LionColors.mane, shadow: 2);
+  _shaded(canvas, tail, LionColors.body, shadow: 2.5, width: 1.8);
+  // Chùm lông cuối đuôi: búi lọn sẫm rủ theo hướng đuôi.
+  final dir = tip - q(0.9);
+  final angle = math.atan2(dir.dy, dir.dx);
+  canvas.save();
+  canvas.translate(tip.dx, tip.dy);
+  canvas.rotate(angle + sway * 0.02);
+  _tuftImage.paint(canvas);
+  canvas.restore();
 }
 
-/// Một chùm lông hình ngọn lửa mọc từ tâm [c] theo hướng [angle].
-void _addTuft(
-  Path path,
-  Offset c,
-  double angle,
-  double r0,
-  double len,
-  double width,
-  Offset sweep,
-) {
-  final dir = Offset(math.cos(angle), math.sin(angle));
-  final n = Offset(-dir.dy, dir.dx);
-  final base = c + dir * r0;
-  final tip = base + dir * len + sweep * (len * 0.35);
-  final mid = Offset.lerp(base, tip, 0.5)! + sweep * (len * 0.12);
-  path
-    ..moveTo(base.dx + n.dx * width, base.dy + n.dy * width)
-    ..quadraticBezierTo(
-      mid.dx + n.dx * width * 0.7,
-      mid.dy + n.dy * width * 0.7,
-      tip.dx,
-      tip.dy,
-    )
-    ..quadraticBezierTo(
-      mid.dx - n.dx * width * 0.5,
-      mid.dy - n.dy * width * 0.5,
-      base.dx - n.dx * width,
-      base.dy - n.dy * width,
-    )
-    ..close();
-}
+/// Búi lông đuôi (hướng +x), chụp sẵn; mỗi khung chỉ xoay theo đuôi.
+final _tuftImage = RasterLayer(
+  (canvas) => _lockLayer(
+    canvas,
+    Offset.zero,
+    math.Random(3),
+    1,
+    22,
+    7,
+    LionColors.mane,
+    8,
+    -0.7,
+    0.7,
+    outline: 1.4,
+  ),
+  bounds: const Rect.fromLTRB(-8, -24, 36, 30),
+  resolution: 1.5,
+);
 
-/// Bờm ba lớp như ngọn lửa, dài xuống ngực; ngọn sẫm, gốc cam.
-/// Bờm ba lớp như ngọn lửa, dài xuống ngực; ngọn sẫm, gốc cam. Hình bờm
-/// nặng (nhiều chùm, cắt vùng đổ bóng) nên vẽ sẵn một lần thành Picture;
-/// mỗi khung chỉ xoay và phồng nhẹ cho bờm rung.
+/// Bờm sư tử thật: hàng trăm lọn lông dày, thon, chảy ra sau gáy rồi rủ
+/// xuống ngực theo trọng lực (không toả đều như mặt trời). Ba lớp: lớp
+/// sau dài và sẫm (gần đen ở ngọn), lớp giữa nâu đỏ, viền quanh mặt ngắn
+/// và sáng. Mỗi lọn có khe tối bên dưới và sợi sáng chạy dọc phía trên.
+/// Hình rất nặng nên chụp sẵn thành ảnh; mỗi khung chỉ xoay, phồng nhẹ.
 void _mane(Canvas canvas, Offset head, double t, double fall) {
   final c = head + const Offset(14, 4);
   final live = 1 - fall;
@@ -593,43 +609,163 @@ void _mane(Canvas canvas, Offset head, double t, double fall) {
   canvas.rotate(math.sin(t * 2.6) * 0.035 * live);
   final puff = 1 + math.sin(t * 2.2) * 0.02 * live;
   canvas.scale(puff, puff);
-  canvas.drawPicture(_manePicture);
+  _maneImage.paint(canvas);
   canvas.restore();
 }
 
-final Picture _manePicture = () {
-  final recorder = PictureRecorder();
-  final canvas = Canvas(recorder);
-  const sweep = Offset(1.3, 0.45);
-  for (final (r0, len, width, color, count, spread) in [
-    (26.0, 28.0, 13.0, LionColors.mane, 14, 0.0),
-    (22.0, 21.0, 11.0, LionColors.maneMid, 12, 0.2),
-    (18.0, 14.0, 8.0, LionColors.maneLight, 10, 0.4),
+final _maneImage = RasterLayer(
+  _paintMane,
+  bounds: const Rect.fromLTRB(-62, -78, 92, 92),
+  resolution: 1.6,
+);
+
+/// Đường giữa một lọn bờm: mọc ra theo hướng [a] từ chân bờm, uốn dần ra
+/// sau (+x) và rủ xuống (+y), lượn chữ S nhẹ.
+List<Offset> _lockLine(double a, double r0, double len, double wave) {
+  var p = Offset(math.cos(a), math.sin(a)) * r0;
+  var dir = Offset(math.cos(a), math.sin(a));
+  final pts = [p];
+  const steps = 5;
+  for (var k = 1; k <= steps; k++) {
+    final u = k / steps;
+    // Càng xa gốc càng bị kéo ra sau và rủ xuống.
+    dir = dir + Offset(0.22, 0.12 + 0.2 * u);
+    dir = dir / dir.distance;
+    final n = Offset(-dir.dy, dir.dx);
+    p = p + dir * (len / steps);
+    pts.add(p + n * (math.sin(u * math.pi * 1.6) * wave));
+  }
+  return pts;
+}
+
+void _paintMane(Canvas canvas) {
+  final rnd = math.Random(11);
+  for (final (r0, len, width, color, count, from, to) in [
+    (22.0, 40.0, 13.0, LionColors.mane, 19, -2.45, 2.3),
+    (19.0, 31.0, 11.0, LionColors.maneMid, 17, -2.35, 2.15),
+    (15.0, 19.0, 8.5, LionColors.maneLight, 15, -2.25, 1.95),
   ]) {
-    final path = Path();
-    for (var i = 0; i < count; i++) {
-      // Từ trên trán vòng qua sau gáy xuống ngực (chừa phía mõm).
-      final a = -2.35 + (4.5 * i / (count - 1)) + spread;
-      // Chùm dài ngắn so le cho tự nhiên; phần ngực dài hơn (bờm rủ).
-      final jitter = (i * 7 % 5 - 2) * 1.2;
-      final chest = a > 0.8 ? 1.35 : 1.0;
-      _addTuft(path, Offset.zero, a, r0, (len + jitter) * chest, width, sweep);
-    }
-    _shaded(canvas, path, color, shadow: 3, width: 1.8);
-    // Sợi lông chạy dọc mỗi chùm (chất liệu, không tô phẳng).
-    furStrokes(
+    _lockLayer(
       canvas,
-      path,
-      darken(color, 0.35),
-      dir: const Offset(1, 0.3),
-      count: 70,
-      length: 10,
-      width: 0.9,
-      seed: count,
+      Offset.zero,
+      rnd,
+      r0,
+      len,
+      width,
+      color,
+      count,
+      from,
+      to,
     );
   }
-  return recorder.endRecording();
-}();
+}
+
+/// Một lớp lọn lông mọc quanh [center] trong cung góc [from]→[to]: khối
+/// chung tô đổ bóng, rồi khe tối / sợi lông / sợi sáng trên từng lọn.
+void _lockLayer(
+  Canvas canvas,
+  Offset center,
+  math.Random rnd,
+  double r0,
+  double len,
+  double width,
+  Color color,
+  int count,
+  double from,
+  double to, {
+  double outline = 1.6,
+}) {
+  final locks = <(List<Offset>, double)>[];
+  final mass = Path();
+  for (var i = 0; i < count; i++) {
+    final a = from + (to - from) * (i + rnd.nextDouble() * 0.4) / count;
+    // Đỉnh đầu ngắn, gáy dài, ngực dài nhất (bờm rủ).
+    final region = a < -1.2
+        ? 0.75
+        : a > 1.0
+        ? 1.3
+        : 1.0 + 0.15 * math.sin(a);
+    final l = len * region * (0.82 + rnd.nextDouble() * 0.36);
+    final w = width * (0.85 + rnd.nextDouble() * 0.3);
+    final line = [
+      for (final p in _lockLine(a, r0, l, (rnd.nextDouble() - 0.5) * 5))
+        p + center,
+    ];
+    locks.add((line, w));
+    mass.addPath(
+      taperedStroke(line, w, peak: 0.3, startWidth: 0.7, samples: 14),
+      Offset.zero,
+    );
+  }
+  _shaded(canvas, mass, color, shadow: 3, width: outline);
+  canvas.save();
+  canvas.clipPath(mass);
+  final crease = Paint()..color = darken(color, 0.5).withValues(alpha: 0.85);
+  final strand = Paint()..color = darken(color, 0.28).withValues(alpha: 0.7);
+  final sheen = Paint()..color = lighten(color, 0.38).withValues(alpha: 0.75);
+  for (final (line, w) in locks) {
+    List<Offset> shifted(double k) => [
+      for (var j = 0; j < line.length; j++)
+        () {
+          final d =
+              line[math.min(line.length - 1, j + 1)] - line[math.max(0, j - 1)];
+          final n = Offset(-d.dy, d.dx) / d.distance;
+          return line[j] + n * (k * (1 - j / line.length * 0.6));
+        }(),
+    ];
+    // Khe tối dưới lọn (tách lọn này với lọn kế), sợi lông giữa lọn,
+    // sợi sáng trên mép đón nắng.
+    canvas.drawPath(
+      taperedStroke(shifted(w * 0.42), w * 0.32, samples: 10),
+      crease,
+    );
+    canvas.drawPath(
+      taperedStroke(shifted(w * 0.05), w * 0.12, samples: 10),
+      strand,
+    );
+    canvas.drawPath(
+      taperedStroke(shifted(-w * 0.25).sublist(0, 5), w * 0.16, samples: 8),
+      sheen,
+    );
+  }
+  canvas.restore();
+}
+
+/// Lông má (ruff) ôm sau mặt, sáng màu, chảy ra sau nối vào bờm: che mép
+/// tròn sau gáy để đầu liền với bờm. Tĩnh so với đầu → vẽ sẵn.
+final _ruffImage = RasterLayer(
+  (canvas) {
+    final rnd = math.Random(5);
+    _lockLayer(
+      canvas,
+      const Offset(4, -1),
+      rnd,
+      12,
+      21,
+      5.8,
+      LionColors.maneLight,
+      15,
+      -1.95,
+      1.75,
+      outline: 1,
+    );
+    _lockLayer(
+      canvas,
+      const Offset(0, 1),
+      rnd,
+      10,
+      14,
+      4.6,
+      Color.lerp(LionColors.maneLight, LionColors.body, 0.55)!,
+      12,
+      -1.6,
+      1.6,
+      outline: 0.8,
+    );
+  },
+  bounds: const Rect.fromLTRB(-24, -46, 52, 44),
+  resolution: 1.8,
+);
 
 void _head(
   Canvas canvas,
@@ -641,23 +777,6 @@ void _head(
 ) {
   canvas.save();
   canvas.translate(c.dx, c.dy);
-
-  // Tai nhỏ, tròn, cụp ra sau khi gầm.
-  canvas.save();
-  canvas.translate(10, -22);
-  canvas.rotate(0.5 * roar);
-  _shaded(
-    canvas,
-    Path()
-      ..addOval(Rect.fromCenter(center: Offset.zero, width: 14, height: 12)),
-    LionColors.body,
-    shadow: 2,
-  );
-  canvas.drawOval(
-    Rect.fromCenter(center: const Offset(-1, 1), width: 7, height: 6),
-    _fill(LionColors.nose),
-  );
-  canvas.restore();
 
   // Hàm dưới xoay mở quanh khớp má.
   const pivot = Offset(-10, 12);
@@ -776,19 +895,6 @@ void _head(
         ..strokeWidth = 0.9,
     );
   }
-  // Lông má lởm chởm ở mép sau mặt, nối vào bờm.
-  final cheekFur = Path()..moveTo(8, -18);
-  for (var i = 0; i < 6; i++) {
-    final y = -14.0 + i * 6;
-    cheekFur
-      ..lineTo(14 - (i.isEven ? 0 : 3), y - 2)
-      ..lineTo(8 - (i.isEven ? 4 : 1), y + 1);
-  }
-  cheekFur
-    ..lineTo(22, 20)
-    ..lineTo(24, -20)
-    ..close();
-  canvas.drawPath(cheekFur, _fill(LionColors.bodyShade));
   // Nếp nhăn sống mũi khi gầm (mặt dữ).
   final wrinkle = Paint()
     ..color = LionColors.bodyShade
@@ -813,6 +919,23 @@ void _head(
   for (var i = 0; i < 3; i++) {
     canvas.drawLine(Offset(-14 + i * 4.0, -22), Offset(-24 + i * 4.0, 0), scar);
   }
+  canvas.restore();
+  _ruffImage.paint(canvas);
+  // Tai nhỏ, tròn, cụp ra sau khi gầm.
+  canvas.save();
+  canvas.translate(10, -22);
+  canvas.rotate(0.5 * roar);
+  _shaded(
+    canvas,
+    Path()
+      ..addOval(Rect.fromCenter(center: Offset.zero, width: 14, height: 12)),
+    LionColors.body,
+    shadow: 2,
+  );
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(-1, 1), width: 7, height: 6),
+    _fill(LionColors.nose),
+  );
   canvas.restore();
 
   // Mũi da sẫm có chấm bóng.

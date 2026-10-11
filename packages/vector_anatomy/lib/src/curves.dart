@@ -81,7 +81,7 @@ Path taperedStroke(
     final nrm = Offset(-d.dy, d.dx) / d.distance;
     // Bề rộng: dốc lên tới peak rồi xuống, dạng sin cho mượt.
     final double f;
-    if (t <= peak) {
+    if (t <= peak && peak > 0) {
       f = startWidth + (1 - startWidth) * math.sin(t / peak * math.pi / 2);
     } else {
       f =

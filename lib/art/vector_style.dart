@@ -245,10 +245,7 @@ void paintStageGrade(
   // Chỉ dùng kiểu trộn thường (srcOver): kiểu trộn multiply / soft light /
   // screen trên toàn màn hình rất đắt với GPU điện thoại (~12 ms/khung đo trên
   // máy thật). Ánh sáng chủ đạo phủ nhẹ để thống nhất tông.
-  canvas.drawRect(
-    stage,
-    Paint()..color = light.withValues(alpha: 0.1),
-  );
+  canvas.drawRect(stage, Paint()..color = light.withValues(alpha: 0.1));
   // Tách tông kiểu fantasy: trên ánh vàng nắng, dưới chàm lạnh (Gurney:
   // nhiệt độ tương phản giữa sáng và bóng).
   canvas.drawRect(
@@ -511,10 +508,17 @@ abstract final class StageQuality {
 /// cong vector mỗi khung (đo trên máy thật: phông nền vector ~20 ms/khung).
 /// [bounds]: vùng (toạ độ sân khấu) được chụp — chừa lề cho parallax.
 class RasterLayer {
-  RasterLayer(this.draw, {this.bounds = const Rect.fromLTRB(-20, -20, 420, 280)});
+  RasterLayer(
+    this.draw, {
+    this.bounds = const Rect.fromLTRB(-20, -20, 420, 280),
+    this.resolution = 1,
+  });
 
   final void Function(Canvas canvas) draw;
   final Rect bounds;
+
+  /// Bội số độ phân giải so với sân khấu (vật bị phóng to khi vẽ thì > 1).
+  final double resolution;
   Image? _image;
   double _scale = 0;
   static final _paint = Paint()..filterQuality = FilterQuality.low;
@@ -538,7 +542,8 @@ class RasterLayer {
   }
 
   Image _render() {
-    final k = _scale = StageQuality.rasterScale;
+    _scale = StageQuality.rasterScale;
+    final k = _scale * resolution;
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder)
       ..scale(k)
