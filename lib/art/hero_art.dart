@@ -1084,8 +1084,31 @@ void _head(
           highlight: 1.2,
           outlineWidth: 1,
         );
+        // Lọn xoắn bên trong mỗi búp tóc (không phải vòng tròn trơn).
+        canvas.drawArc(
+          Rect.fromCircle(center: c + const Offset(0.4, 0.4), radius: 2.6),
+          -0.6,
+          3.8,
+          false,
+          Paint()
+            ..color = darken(hair, 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8
+            ..strokeCap = StrokeCap.round,
+        );
+        canvas.drawArc(
+          Rect.fromCircle(center: c + const Offset(-0.6, -0.6), radius: 3.6),
+          3.6,
+          1.4,
+          false,
+          Paint()
+            ..color = lighten(hair, 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.7
+            ..strokeCap = StrokeCap.round,
+        );
       }
-      glint(canvas, const Offset(-5, -15), 2.2);
+      glint(canvas, const Offset(-5, -15), 1.6, alpha: 0.5);
     case HairStyle.buzz:
       break;
     case HairStyle.bun || HairStyle.ponytail || HairStyle.long:
