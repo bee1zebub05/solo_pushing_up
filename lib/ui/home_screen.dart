@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../art/bosses/boss_registry.dart';
+import '../art/bosses/dummy_art.dart';
 import '../art/bosses/nemea_boss.dart' show lionScale, lionX;
 import '../art/hero_art.dart';
 import '../art/hero_pose.dart';
@@ -238,13 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
             GreekPanel(
               padding: EdgeInsets.zero,
               onTap: () => _openBattle(enemy: trainingDummy, emoji: '🎯'),
-              child: const ListTile(
+              child: ListTile(
                 contentPadding: EdgeInsets.all(16),
-                leading: Icon(
-                  Icons.timer_outlined,
-                  size: 40,
-                  color: GreekUi.gold,
-                ),
+                leading: BossPortrait(art: TrainingDummyArt()),
                 title: Text('Thử thách 30 giây'),
                 subtitle: Text('Hạ bù nhìn 300 HP trước khi hết giờ'),
                 trailing: Icon(Icons.chevron_right),

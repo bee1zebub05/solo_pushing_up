@@ -30,7 +30,11 @@ class Pill extends StatelessWidget {
           width: 1,
         ),
         boxShadow: const [
-          BoxShadow(color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: Padding(
