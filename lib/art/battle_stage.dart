@@ -141,6 +141,16 @@ class BattleStageGame extends FlameGame {
   /// khung khi đòn trúng để cú đánh "nặng" (game feel, Vlambeer).
   double _hitstop = 0;
 
+  /// Độ bão hoà toàn sân khấu (màu rực kiểu fantasy).
+  static const saturation = 1.25;
+
+  @override
+  void render(Canvas canvas) {
+    canvas.saveLayer(null, Paint()..colorFilter = saturationFilter(saturation));
+    super.render(canvas);
+    canvas.restore();
+  }
+
   @override
   void update(double dt) {
     if (_hitstop > 0) {

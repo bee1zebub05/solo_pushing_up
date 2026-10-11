@@ -26,9 +26,9 @@ void paintNemeaScene(Canvas canvas, {double time = 0, double dust = 0}) {
 // Bảng màu chung của cảnh.
 const _marble = Color(0xFFF3ECDC);
 const _rock = Color(0xFFB59A72);
-const _olive = Color(0xFF768652);
-const _oliveLit = Color(0xFFA3B07A);
-const _oliveDark = Color(0xFF4F5E38);
+const _olive = Color(0xFF6E8A48);
+const _oliveLit = Color(0xFFA6BD6A);
+const _oliveDark = Color(0xFF3E5236);
 const _bark = Color(0xFF6E5B4A);
 
 /// Các lớp chiều sâu của phông nền (2,5D): lớp xa dịch nhiều hơn khi
@@ -181,10 +181,10 @@ void _sky(Canvas canvas) {
         Offset.zero,
         const Offset(0, stageGroundY),
         const [
-          Color(0xFF4F8CC9),
-          Color(0xFF8CBBE0),
-          Color(0xFFF5DDB0),
-          Color(0xFFF7C98F),
+          Color(0xFF2E6FC4),
+          Color(0xFF6FB0E6),
+          Color(0xFFFBD99A),
+          Color(0xFFF9B26B),
         ],
         const [0, 0.38, 0.72, 1],
       ),
@@ -232,8 +232,8 @@ void _farMountains(Canvas canvas) {
       Offset(300, 116),
       Offset(410, 98),
     ],
-    const Color(0xFFA9B6CF),
-    const Color(0xFF94A0BD),
+    const Color(0xFF9AA9D6),
+    const Color(0xFF7D86BE),
     floor: 175,
   );
   _ridge(
@@ -248,8 +248,8 @@ void _farMountains(Canvas canvas) {
       Offset(270, 132),
       Offset(410, 150),
     ],
-    const Color(0xFF9CAE9E),
-    const Color(0xFF879A8B),
+    const Color(0xFF86A79A),
+    const Color(0xFF6A8784),
     floor: 185,
   );
 }
@@ -301,8 +301,8 @@ void _midHills(Canvas canvas) {
     hill,
     Paint()
       ..shader = Gradient.linear(const Offset(0, 150), const Offset(0, 210), [
-        const Color(0xFFB5BA7C),
-        const Color(0xFF8E9A5E),
+        const Color(0xFFB9C46E),
+        const Color(0xFF7F9A4C),
       ]),
   );
   // Sườn khuất bên phải đồi.
@@ -693,7 +693,7 @@ void _nearHill(Canvas canvas) {
     ..cubicTo(240, 208, 260, 210, 270, stageGroundY)
     ..lineTo(-10, stageGroundY)
     ..close();
-  canvas.drawPath(hill, Paint()..color = const Color(0xFF8C9A58));
+  canvas.drawPath(hill, Paint()..color = const Color(0xFF86A04A));
   canvas.drawPath(
     Path()
       ..moveTo(-10, 206)
@@ -701,7 +701,7 @@ void _nearHill(Canvas canvas) {
       ..lineTo(210, 209)
       ..cubicTo(140, 205, 60, 199, -10, 209)
       ..close(),
-    Paint()..color = const Color(0xFFAAB673),
+    Paint()..color = const Color(0xFFA9C062),
   );
   // Bụi cây thấp trên đồi gần.
   for (final (x, s) in [(118.0, 1.0), (176.0, 0.8), (230.0, 1.1)]) {
@@ -757,7 +757,7 @@ void _ground(Canvas canvas) {
     ..lineTo(w, stageGroundY - 6)
     ..lineTo(0, stageGroundY - 6)
     ..close();
-  canvas.drawPath(edge, Paint()..color = const Color(0xFF7C8B4A));
+  canvas.drawPath(edge, Paint()..color = const Color(0xFF6F8E3C));
   // Lối mòn sáng hơn từ người chơi tới hang.
   canvas.drawPath(
     Path()

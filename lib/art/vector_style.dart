@@ -16,7 +16,7 @@ abstract final class VectorStyle {
 
   /// Ánh phản xạ (rim light) ở mép khuất sáng: ánh trời lạnh hắt lại, giúp
   /// khối tách khỏi nền và bớt "phẳng".
-  static const rimTint = Color(0xFF9FC4E8);
+  static const rimTint = Color(0xFF8FB8F0);
 }
 
 Color darken(Color c, [double amount = 0.22]) =>
@@ -25,15 +25,20 @@ Color darken(Color c, [double amount = 0.22]) =>
 Color lighten(Color c, [double amount = 0.3]) =>
     Color.lerp(c, const Color(0xFFFFFFFF), amount)!;
 
-/// Màu bóng: tối hơn và ngả ấm/tím một chút cho có hồn (thay vì chỉ xám).
+/// Màu bóng: tối hơn và ngả tím chàm lạnh (bảng màu fantasy: nắng vàng
+/// ấm, bóng tím lạnh — nhiệt độ tương phản, Gurney).
 Color shadeOf(Color c) =>
-    Color.lerp(darken(c, 0.2), const Color(0xFF5A2E4A), 0.12)!;
+    Color.lerp(darken(c, 0.22), const Color(0xFF3A2C6E), 0.2)!;
 
-/// Bóng lõi (core shadow): dải tối nhất ngay trước vùng ánh phản xạ.
+/// Bóng lõi (core shadow): dải tối nhất ngay trước vùng ánh phản xạ — chàm
+/// tím đậm (bảng màu fantasy: nắng vàng ấm, bóng tím lạnh).
 Color coreShadeOf(Color c) =>
-    Color.lerp(darken(c, 0.38), const Color(0xFF3A1E3A), 0.18)!;
+    Color.lerp(darken(c, 0.4), const Color(0xFF241A4E), 0.26)!;
 
-/// Ánh phản xạ ở mép khuất: màu bóng pha ánh trời.
+/// Vùng sáng: ngả vàng nắng thay vì trắng, giữ màu bão hoà.
+Color sunlitOf(Color c) =>
+    Color.lerp(lighten(c, 0.2), const Color(0xFFFFE9A8), 0.18)!;
+
 Color rimOf(Color c) => Color.lerp(shadeOf(c), VectorStyle.rimTint, 0.38)!;
 
 Paint fillPaint(Color c) => Paint()
@@ -119,7 +124,7 @@ void shadedPath(
   canvas.save();
   canvas.clipPath(path);
   if (highlight > 0) {
-    canvas.drawPaint(fillPaint(lighten(base, 0.25)));
+    canvas.drawPaint(fillPaint(sunlitOf(base)));
     canvas.clipPath(path.shift(light * -highlight));
   }
   if (shadow > 0) {
@@ -239,6 +244,30 @@ void paintStageGrade(
       ..color = light.withValues(alpha: 0.24)
       ..blendMode = BlendMode.multiply,
   );
+  // Tách tông kiểu fantasy: trên ánh vàng nắng (screen), dưới chàm lạnh
+  // (multiply) — vùng sáng ấm, vùng tối lạnh (Gurney: nhiệt độ tương phản).
+  canvas.drawRect(
+    stage,
+    Paint()
+      ..blendMode = BlendMode.softLight
+      ..shader = Gradient.linear(
+        stage.topCenter,
+        stage.bottomCenter,
+        const [Color(0x66FFD27A), Color(0x00808080), Color(0x553A3A8A)],
+        const [0, 0.5, 1],
+      ),
+  );
+  // Ánh nắng loá nhẹ từ góc trên trái (nguồn sáng của cảnh).
+  canvas.drawRect(
+    stage,
+    Paint()
+      ..blendMode = BlendMode.screen
+      ..shader = Gradient.radial(
+        stage.topLeft + Offset(stage.width * 0.38, stage.height * 0.1),
+        stage.longestSide * 0.55,
+        const [Color(0x40FFE6A8), Color(0x00000000)],
+      ),
+  );
   canvas.drawRect(
     stage,
     Paint()
@@ -248,11 +277,23 @@ void paintStageGrade(
         [
           const Color(0x00000000),
           const Color(0x00000000),
-          Color.fromRGBO(20, 10, 18, vignette),
+          Color.fromRGBO(24, 12, 40, vignette),
         ],
         const [0, 0.62, 1],
       ),
   );
+}
+
+/// Ma trận tăng độ bão hoà [s] (1 = giữ nguyên) — bọc cả sân khấu để màu
+/// rực kiểu fantasy mà không phải đổi từng màu một.
+ColorFilter saturationFilter(double s) {
+  const r = 0.2126, g = 0.7152, b = 0.0722;
+  return ColorFilter.matrix([
+    r * (1 - s) + s, g * (1 - s), b * (1 - s), 0, 0, //
+    r * (1 - s), g * (1 - s) + s, b * (1 - s), 0, 0,
+    r * (1 - s), g * (1 - s), b * (1 - s) + s, 0, 0,
+    0, 0, 0, 1, 0,
+  ]);
 }
 
 /// Viên thuốc thon dần từ [a] (bán kính [ra]) tới [b] (bán kính [rb]),
@@ -292,6 +333,94 @@ Path chainPath(
     path.addPath(capsulePath(a, b, ra + grow, rb + grow), Offset.zero);
   }
   return path;
+}
+
+/// Một điểm trên profile cơ của một đoạn chi: ở tỉ lệ [t] (0 = gốc, 1 =
+/// ngọn), nửa bề rộng phía trước [front] và phía sau [back]. Phía trước là
+/// bên phải hướng đi từ gốc tới ngọn (ví dụ bắp tay khi tay buông xuôi,
+/// nhân vật quay phải).
+typedef MuscleStop = (double t, double front, double back);
+
+/// Đường bao một đoạn chi theo profile cơ (Loomis: chi không phải ống trụ —
+/// cơ phồng lệch trước/sau, khớp thắt lại). Hai đầu bo tròn để nối liền với
+/// đoạn kế. [grow] phình đều (làm viền), [scale] nhân bề rộng (béo/gầy).
+Path musclePath(
+  Offset a,
+  Offset b,
+  List<MuscleStop> profile, {
+  double grow = 0,
+  double scale = 1,
+}) {
+  var d = b - a;
+  if (d.distance < 0.01) d = const Offset(0, 0.01);
+  final dir = d / d.distance;
+  // Phía trước = bên phải của hướng đi (toạ độ màn hình, y hướng xuống).
+  final front = Offset(-dir.dy, dir.dx);
+  Offset at(MuscleStop s, double side) {
+    final w = (side > 0 ? s.$2 : s.$3) * scale + grow;
+    return a + d * s.$1 + front * (side * w);
+  }
+
+  final fronts = [for (final s in profile) at(s, 1)];
+  final backs = [for (final s in profile.reversed) at(s, -1)];
+  final path = Path()..moveTo(fronts.first.dx, fronts.first.dy);
+  void smooth(List<Offset> pts) {
+    for (var i = 1; i < pts.length - 1; i++) {
+      final mid = Offset.lerp(pts[i], pts[i + 1], 0.5)!;
+      path.quadraticBezierTo(pts[i].dx, pts[i].dy, mid.dx, mid.dy);
+    }
+    path.lineTo(pts.last.dx, pts.last.dy);
+  }
+
+  smooth(fronts);
+  // Bo đầu bằng cubic (≈ nửa hình tròn) đi vòng ra ngoài đầu đoạn, không
+  // dùng arcToPoint: chiều cung dễ ngược, tạo lỗ khi các đoạn chồng nhau.
+  void cap(Offset from, Offset to, Offset outward) {
+    final r = (to - from).distance / 2;
+    path.cubicTo(
+      from.dx + outward.dx * r * 1.33,
+      from.dy + outward.dy * r * 1.33,
+      to.dx + outward.dx * r * 1.33,
+      to.dy + outward.dy * r * 1.33,
+      to.dx,
+      to.dy,
+    );
+  }
+
+  cap(fronts.last, backs.first, dir);
+  smooth(backs);
+  cap(backs.last, fronts.first, -dir);
+  return path..close();
+}
+
+/// Chi nhiều đoạn có khối cơ: tô liền một mảng (đổ bóng 6 vùng), viền là bản
+/// phình to nên chỗ nối khớp không lộ.
+void shadedLimb(
+  Canvas canvas,
+  List<(Offset, Offset, List<MuscleStop>)> segments,
+  Color base, {
+  double scale = 1,
+  double shadow = 3,
+  double highlight = 1.4,
+}) {
+  final body = Path();
+  final outline = Path();
+  for (final (a, b, profile) in segments) {
+    body.addPath(musclePath(a, b, profile, scale: scale), Offset.zero);
+    outline.addPath(
+      musclePath(a, b, profile, scale: scale, grow: VectorStyle.outlineWidth),
+      Offset.zero,
+    );
+  }
+  shadedPath(
+    canvas,
+    body,
+    base,
+    PartFrame.world,
+    shadow: shadow,
+    highlight: highlight,
+    outlineShape: outline,
+  );
 }
 
 /// Chuỗi đoạn liền (tay, chân): viền là bản phình to nên không lộ chỗ nối.

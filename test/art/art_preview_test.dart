@@ -240,6 +240,7 @@ void main() {
     for (final (name, hp, phase) in [
       ('nemea_stage_start', 1.0, 0.55),
       ('nemea_stage_half', 0.45, -1.0),
+      ('nemea_stage_clear', 0.02, 0.3),
     ]) {
       final art = NemeaBossArt();
       final battle = StageBattleState()..bossHp = hp;
@@ -257,12 +258,18 @@ void main() {
         attackPhase: phase,
       );
       await render(tester, name, (c) {
+        // Như trong game: cả sân khấu qua lớp tăng bão hoà.
+        c.saveLayer(
+          null,
+          Paint()..colorFilter = saturationFilter(BattleStageGame.saturation),
+        );
         art.paintStageBackdrop(c);
         art.paintScene(c, 4, battle);
         art.paintBoss(c, frame);
         paintHero(c, HeroPose.plank(110), effort: 0.6);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+        c.restore();
       });
     }
   });

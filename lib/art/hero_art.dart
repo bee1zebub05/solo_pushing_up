@@ -291,6 +291,44 @@ void _iceCrystal(Canvas canvas, Offset at, double size) {
 }
 
 /// Tay chân to ra theo độ béo, nữ thon hơn một chút.
+// Profile cơ tay chân (t, nửa rộng trước, nửa rộng sau) — xem musclePath.
+// "Trước" ở đây là phía bên phải hướng gốc→ngọn của đoạn chi.
+const _upperArm = <MuscleStop>[
+  (0.0, 7.0, 7.0), // cơ vai
+  (0.18, 7.2, 6.8),
+  (0.4, 6.0, 6.9), // bắp tay sau dày
+  (0.62, 5.6, 6.6), // bắp tay trước phồng
+  (0.88, 4.8, 5.0),
+  (1.0, 4.6, 4.8), // khuỷu thắt
+];
+const _forearm = <MuscleStop>[
+  (0.0, 4.8, 4.6),
+  (0.22, 6.1, 5.3), // cơ cánh tay quay
+  (0.5, 5.0, 4.7),
+  (0.85, 3.9, 3.8),
+  (1.0, 3.8, 3.8), // cổ tay
+];
+const _fist = <MuscleStop>[(0.0, 5.6, 5.6), (1.0, 6.2, 5.8)];
+const _thigh = <MuscleStop>[
+  (0.0, 8.4, 8.4),
+  (0.32, 8.0, 9.4), // cơ tứ đầu
+  (0.7, 6.6, 7.4),
+  (1.0, 5.8, 6.2), // gối
+];
+const _thighFemale = <MuscleStop>[
+  (0.0, 9.2, 9.2),
+  (0.32, 8.6, 9.6),
+  (0.7, 6.8, 7.6),
+  (1.0, 5.8, 6.2),
+];
+const _shin = <MuscleStop>[
+  (0.0, 5.8, 6.0),
+  (0.28, 7.2, 5.0), // bắp chân
+  (0.6, 5.6, 4.4),
+  (0.9, 3.8, 3.8),
+  (1.0, 3.9, 3.9), // cổ chân
+];
+
 double _limb(HeroLook look) => (1 + look.fat * 0.8) * (look.female ? 0.92 : 1);
 
 void _arm(
@@ -303,14 +341,20 @@ void _arm(
 }) {
   final k = _limb(look);
   final skin = far ? darken(look.skin, 0.18) : look.skin;
-  shadedChain(
+  // Giải phẫu (Loomis): cơ vai trùm đầu cánh tay, bắp tay sau dày phía sau,
+  // bắp tay trước phồng giữa, khuỷu thắt; cẳng tay to ngay dưới khuỷu (cơ
+  // cánh tay quay) rồi thon dần tới cổ tay. Nắm đấm là khối riêng.
+  final fistDir = wrist - elbow;
+  final fist = wrist + fistDir / math.max(fistDir.distance, 0.01) * 3;
+  shadedLimb(
     canvas,
     [
-      (shoulder, elbow, 6.2 * k, 5.6 * k),
-      (elbow, wrist, 6.4 * k, 5.2 * k),
-      (wrist, wrist, 6.8, 6.8),
+      (shoulder, elbow, _upperArm),
+      (elbow, wrist, _forearm),
+      (wrist, fist, _fist),
     ],
     skin,
+    scale: k,
     highlight: far ? 0 : 1.4,
   );
   if (!far) {
@@ -389,13 +433,13 @@ void _leg(
 }) {
   final k = _limb(look);
   Color shade(Color c) => far ? darken(c, 0.18) : c;
-  shadedChain(
+  // Đùi: cơ tứ đầu phồng phía trước ở 1/3 trên, thắt ở gối; cẳng chân: bắp
+  // chân phồng phía sau ở 1/3 trên, ống chân phía trước thẳng, cổ chân thắt.
+  shadedLimb(
     canvas,
-    [
-      (hip, knee, 8 * k * (look.female ? 1.08 : 1), 6.5 * k),
-      (knee, ankle, 6.5 * k, 4.5 * k),
-    ],
+    [(hip, knee, look.female ? _thighFemale : _thigh), (knee, ankle, _shin)],
     shade(look.skin),
+    scale: k,
     highlight: far ? 0 : 1.4,
   );
   if (!far) {
