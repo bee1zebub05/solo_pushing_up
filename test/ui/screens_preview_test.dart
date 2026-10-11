@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solo_pushing_up/game/labors.dart';
 import 'package:solo_pushing_up/game/progress.dart';
+import 'package:solo_pushing_up/ui/character_creator_screen.dart';
 import 'package:solo_pushing_up/ui/home_screen.dart';
 import 'package:solo_pushing_up/ui/stage_select_screen.dart';
 
@@ -15,7 +16,8 @@ import 'package:solo_pushing_up/ui/stage_select_screen.dart';
 /// (Roboto của Flutter SDK) để soát bố cục và chữ. Chỉ ghi PNG khi
 /// ART_PREVIEW=1; mặc định chỉ kiểm tra dựng không lỗi.
 Future<void> _loadFonts() async {
-  final flutterRoot = Platform.environment['FLUTTER_ROOT'] ??
+  final flutterRoot =
+      Platform.environment['FLUTTER_ROOT'] ??
       File(Platform.resolvedExecutable).parent.parent.parent.parent.parent.path;
   final dir = Directory('$flutterRoot/bin/cache/artifacts/material_fonts');
   if (!dir.existsSync()) return;
@@ -27,7 +29,9 @@ Future<void> _loadFonts() async {
     for (final f in files) {
       final file = File('${dir.path}/$f');
       if (file.existsSync()) {
-        loader.addFont(Future.value(ByteData.sublistView(file.readAsBytesSync())));
+        loader.addFont(
+          Future.value(ByteData.sublistView(file.readAsBytesSync())),
+        );
       }
     }
     await loader.load();
@@ -93,8 +97,16 @@ void main() {
   testWidgets('màn chính (iPhone dọc)', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final key = await pumpScreen(tester, const HomeScreen());
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
     await tester.pump(const Duration(milliseconds: 500));
     await _shot(tester, key, 'home');
+  });
+
+  testWidgets('màn tạo nhân vật (iPhone dọc)', (tester) async {
+    final key = await pumpScreen(tester, const CharacterCreatorScreen());
+    await tester.pump(const Duration(milliseconds: 800));
+    await _shot(tester, key, 'creator');
   });
 }
