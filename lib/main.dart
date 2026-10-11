@@ -28,6 +28,16 @@ class SoloPushingUpApp extends StatelessWidget {
           seedColor: Colors.amber,
           brightness: Brightness.dark,
         ),
+        // App nền tối: chữ thanh trạng thái (giờ, pin) luôn sáng, kể cả khi
+        // iPhone đang ở chế độ sáng.
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+        ),
+      ),
+      // Màn không có AppBar (trận, đếm rep, mở đầu) cũng dùng chữ sáng.
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: child!,
       ),
       home: const HomeScreen(),
     );

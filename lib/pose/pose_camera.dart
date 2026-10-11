@@ -73,6 +73,12 @@ class PoseCamera {
 
   bool get isFrontCamera => _camera?.lensDirection == CameraLensDirection.front;
 
+  /// Khung xương có cần lật gương để khớp preview camera trước không.
+  /// Android: luồng ảnh không lật nhưng preview lật → cần lật. iOS:
+  /// camera_avfoundation đã lật sẵn luồng ảnh camera trước
+  /// (`isVideoMirrored`), toạ độ ML Kit đã khớp preview → không lật nữa.
+  bool get overlayNeedsMirror => isFrontCamera && !Platform.isIOS;
+
   Future<void> start(CameraDescription camera) =>
       _enqueue(() => _start(camera));
 
@@ -185,7 +191,11 @@ class PoseCamera {
     final sensorOrientation = camera.sensorOrientation;
     final InputImageRotation? rotation;
     if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
+      // camera_avfoundation (≥ 0.10) đã xoay luồng ảnh theo hướng cầm máy
+      // (dọc hay ngang), nên ảnh tới đây luôn đứng thẳng. `sensorOrientation`
+      // trên iOS luôn là 90 (giá trị cố định của plugin), dùng nó sẽ xoay thừa
+      // 90° và đảo khung ảnh. Cần soát trên iPhone thật cả dọc lẫn ngang.
+      rotation = InputImageRotation.rotation0deg;
     } else {
       final deviceDegrees =
           _deviceOrientationDegrees[controller.value.deviceOrientation];

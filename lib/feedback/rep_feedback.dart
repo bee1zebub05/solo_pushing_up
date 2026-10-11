@@ -33,6 +33,7 @@ class RepFeedback {
   bool get voiceAvailable => _voiceReady;
 
   Future<void> init() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) await _configureIosAudio();
     try {
       if (await _tts.isLanguageAvailable('vi-VN') == true) {
         await _tts.setLanguage('vi-VN');
@@ -55,6 +56,28 @@ class RepFeedback {
         // Thiếu âm thanh không được làm hỏng việc đếm.
         debugPrint('Không tải được âm ${cue.name}: $error');
       }
+    }
+  }
+
+  /// iPhone: mặc định âm của app chiếm phiên âm thanh và **tắt nhạc** người
+  /// dùng đang nghe khi tập. Đặt chế độ trộn (mixWithOthers) cho cả tiếng
+  /// bíp lẫn giọng đọc để nhạc vẫn chạy, vẫn kêu khi gạt công tắc im lặng.
+  Future<void> _configureIosAudio() async {
+    try {
+      await AudioPlayer.global.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: const {AVAudioSessionOptions.mixWithOthers},
+          ),
+        ),
+      );
+      await _tts.setSharedInstance(true);
+      await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
+        IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+      ], IosTextToSpeechAudioMode.voicePrompt);
+    } on Object catch (error) {
+      debugPrint('Không đặt được phiên âm thanh iOS: $error');
     }
   }
 
@@ -91,7 +114,13 @@ class RepFeedback {
             RejectReason.bodyNotStraight => 'Giữ thân thẳng',
           });
           if (!spoken) _play(_Cue.reject);
-          _vibrate(HapticFeedback.vibrate);
+          // iPhone: `vibrate` là rung hệ thống dài ~0,4 s, quá nặng cho một
+          // lời nhắc; dùng nhịp rung mạnh ngắn như các thông báo khác.
+          _vibrate(
+            defaultTargetPlatform == TargetPlatform.iOS
+                ? HapticFeedback.heavyImpact
+                : HapticFeedback.vibrate,
+          );
       }
     }
   }
