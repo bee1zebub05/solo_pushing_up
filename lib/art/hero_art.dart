@@ -171,6 +171,30 @@ void paintHero(
       ),
       aura,
     );
+    // Vệt năng lượng bốc lên từ lưng (tụ lực sau mỗi rep), cao dần rồi tắt.
+    final rise = 1 - glow;
+    for (var i = 0; i < 3; i++) {
+      final base = Offset.lerp(hip, shoulder, 0.2 + i * 0.3)!;
+      final from = base + Offset(0, -14 - 10 * rise);
+      final to = base + Offset(i * 2.0 - 2, -30 - 26 * rise);
+      canvas.drawLine(
+        from,
+        to,
+        Paint()
+          ..color = Color.fromRGBO(255, 190, 60, 0.6 * glow)
+          ..strokeWidth = 6
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+      );
+      canvas.drawLine(
+        from,
+        to,
+        Paint()
+          ..color = Color.fromRGBO(255, 248, 210, glow)
+          ..strokeWidth = 1.8
+          ..strokeCap = StrokeCap.round,
+      );
+    }
   }
 
   // Tay chân phía xa: tối hơn, nằm sau thân.

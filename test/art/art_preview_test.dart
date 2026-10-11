@@ -338,6 +338,10 @@ void main() {
       c.translate(-40, -110);
       paintHero(c, HeroPose.plank(110), effort: 0.6);
     });
+    await render(tester, 'hero_glow', (c) {
+      paintNemeaScene(c, time: 1);
+      paintHero(c, HeroPose.plank(160), glow: 0.5, effort: 0.2);
+    });
   });
 
   testWidgets('Nemea: thung lũng được giải phóng (vòng sáng từ đền)', (
