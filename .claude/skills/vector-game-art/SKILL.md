@@ -155,3 +155,13 @@ Thư viện `packages/vector_anatomy` (xem README của nó):
 
 Không vẽ cơ bằng nét đè lên một ống trụ — độ sâu đến từ khối chồng khối.
 Tay chân phía xa (khuất, tối) đặt `definition: 0` để tiết kiệm hiệu năng.
+
+## 9. Ngân sách hiệu năng cho nhân vật nhiều chi tiết
+
+- Đo từng phần trước khi tối ưu (Stopwatch tạm trong hàm vẽ) — đừng đoán.
+- Bộ phận ít đổi (đầu, mặt, tóc) → `Picture` cache theo khoá (ngoại hình,
+  góc làm tròn 5°, biểu cảm làm tròn) — xem `_cachedHead` trong `hero_art.dart`.
+- Chi phía xa (bị thân che, màu tối): ống thuôn rẻ, không bó cơ/phụ kiện.
+- Nét ngắn (quai, rãnh): ít điểm mẫu (`samples: 6`).
+- Windows Defender quét làm số đo đội lên gấp đôi; so sánh tương đối với
+  commit trước trên cùng máy, cùng lúc.

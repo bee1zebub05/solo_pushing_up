@@ -256,10 +256,7 @@ void paintHero(
     look.skin,
     highlight: 0,
   );
-  withFrame(canvas, head, headUp, (f) {
-    canvas.scale(_headScale);
-    _head(canvas, look, f, cloak: cloak, effort: effort, joy: joy);
-  });
+  _cachedHead(canvas, head, headUp, look, cloak, effort, joy);
 
   _arm(
     canvas,
@@ -866,6 +863,54 @@ void _hairBack(Canvas canvas, HeroLook look, PartFrame f) {
 }
 
 /// Đầu, vẽ trong hệ cục bộ gốc ở tâm đầu, mặt hướng +x.
+/// Đầu vẽ sẵn thành Picture theo (ngoại hình, mũ, góc nghiêng làm tròn 5°,
+/// mức gắng sức làm tròn 1/4, cười): mỗi khung chỉ vẽ lại hình đã có thay
+/// vì dựng lại hàng chục Path tóc, mặt, mắt. Góc làm tròn nên hướng sáng
+/// lệch tối đa 2,5° — không nhận ra.
+final _headCache = <String, Picture>{};
+
+void _cachedHead(
+  Canvas canvas,
+  Offset head,
+  Offset up,
+  HeroLook look,
+  bool cloak,
+  double effort,
+  double joy,
+) {
+  const step = math.pi / 36;
+  final angle = (math.atan2(up.dx, -up.dy) / step).round() * step;
+  final e = (effort.clamp(0.0, 1.0) * 4).round() / 4;
+  final j = joy > 0.5 ? 1.0 : 0.0;
+  final key = [
+    look.sex.index,
+    look.skin.toARGB32(),
+    look.hair.toARGB32(),
+    look.hairStyle.index,
+    look.fat.toStringAsFixed(2),
+    cloak,
+    (angle / step).round(),
+    e,
+    j,
+  ].join('|');
+  var picture = _headCache[key];
+  if (picture == null) {
+    if (_headCache.length > 160) {
+      _headCache.remove(_headCache.keys.first)?.dispose();
+    }
+    final recorder = PictureRecorder();
+    final c = Canvas(recorder)
+      ..rotate(angle)
+      ..scale(_headScale);
+    _head(c, look, PartFrame(angle), cloak: cloak, effort: e, joy: j);
+    picture = _headCache[key] = recorder.endRecording();
+  }
+  canvas.save();
+  canvas.translate(head.dx, head.dy);
+  canvas.drawPicture(picture);
+  canvas.restore();
+}
+
 void _head(
   Canvas canvas,
   HeroLook look,
