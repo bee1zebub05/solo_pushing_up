@@ -14,6 +14,7 @@ import 'package:solo_pushing_up/art/vector_style.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
+import 'package:solo_pushing_up/art/bosses/nemea_monster_art.dart';
 import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 import 'package:solo_pushing_up/ui/nemea_intro_screen.dart';
@@ -359,6 +360,37 @@ void main() {
       art.paintScene(c, t + 0.0, battle);
       paintHero(c, HeroPose.victory(), cloak: true, joy: 1);
     });
+  });
+
+  testWidgets('9 màn quái Kỳ công 1 (1.1 → 1.9)', (tester) async {
+    for (final (i, kind) in NemeaMonster.values.indexed) {
+      final art = NemeaMonsterArt(kind);
+      final battle = StageBattleState()
+        ..bossHp = 0.7
+        ..totalHeads = 3
+        ..headsLeft = 3
+        ..charge = kind == NemeaMonster.boar ? 0.7 : 0
+        ..goldStolen = 0;
+      final frame = BossFrame(
+        time: 2.5,
+        attack: 0.3,
+        hurt: 0,
+        glint: -1,
+        defeat: 0,
+        battle: battle,
+      );
+      for (var t = 0.0; t < 2.5; t += 1 / 30) {
+        art.paintScene(ui.Canvas(ui.PictureRecorder()), t, battle);
+      }
+      await render(tester, 'stage_1_${i + 1}', (c) {
+        art.paintStageBackdrop(c);
+        art.paintScene(c, 2.5, battle);
+        art.paintBoss(c, frame);
+        paintHero(c, HeroPose.plank(120), effort: 0.5);
+        art.paintForeground(c, frame);
+        paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+      });
+    }
   });
 
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {

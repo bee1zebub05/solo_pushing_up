@@ -26,11 +26,15 @@ class BattleOutcome {
     required this.won,
     required this.reps,
     required this.bestCombo,
+    this.goldStolen = 0,
   });
 
   final bool won;
   final int reps;
   final int bestCombo;
+
+  /// Túi vàng bị Harpy cướp trong trận.
+  final int goldStolen;
 }
 
 class BattleScreen extends StatefulWidget {
@@ -154,7 +158,9 @@ class _BattleScreenState extends State<BattleScreen>
       ..totalHeads = widget.enemy.heads
       ..headHp = _battle.headHp / widget.enemy.headMaxHp
       ..cold = _battle.coldAt(_descentStartMs ?? frame.timestampMs)
-      ..bossHp = _battle.hpFraction;
+      ..bossHp = _battle.hpFraction
+      ..charge = _battle.chargeAt(frame.timestampMs)
+      ..goldStolen = _battle.goldStolen;
     _stage?.updatePlayer(
       elbowAngle: snapshot.phase == CounterPhase.searching
           ? null
@@ -168,6 +174,10 @@ class _BattleScreenState extends State<BattleScreen>
     if (events.isEmpty) return;
     // Sự kiện đổi cục diện (chém đứt / mọc đầu) quan trọng hơn con số damage.
     _lastEvent =
+        events.whereType<ChargeWarning>().firstOrNull ??
+        events.whereType<ChargeLanded>().firstOrNull ??
+        events.whereType<Revived>().firstOrNull ??
+        events.whereType<GoldStolen>().firstOrNull ??
         events.whereType<HeadSevered>().firstOrNull ??
         events.whereType<HeadRegrown>().firstOrNull ??
         events.whereType<WaveStarted>().firstOrNull ??
@@ -183,6 +193,8 @@ class _BattleScreenState extends State<BattleScreen>
             stage.blocked();
           case Victory():
             stage.victory();
+          case Revived():
+            stage.battle.revives++;
           default:
         }
       }
@@ -198,7 +210,12 @@ class _BattleScreenState extends State<BattleScreen>
 
   Future<void> _report({required bool won}) async {
     final reward = await widget.onFinished?.call(
-      BattleOutcome(won: won, reps: _battle.reps, bestCombo: _battle.bestCombo),
+      BattleOutcome(
+        won: won,
+        reps: _battle.reps,
+        bestCombo: _battle.bestCombo,
+        goldStolen: _battle.goldStolen,
+      ),
     );
     if (mounted) setState(() => _reward = reward);
     if (reward?.item == nemea.reward) _stage?.equipCloak();

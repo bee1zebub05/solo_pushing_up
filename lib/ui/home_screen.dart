@@ -15,6 +15,7 @@ import 'character_creator_screen.dart';
 import 'counter_screen.dart';
 import 'hero_preview.dart';
 import 'nemea_intro_screen.dart';
+import 'stage_select_screen.dart';
 
 /// Màn hình chính tạm: tiến trình, chọn chế độ, các kỳ công, luyện tập,
 /// và màn hình đếm (debug).
@@ -72,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<BattleReward?> _recordOutcome(
     BattleOutcome outcome, {
     Labor? labor,
+    Stage? stage,
   }) async {
     final progress = _progress;
     if (progress == null) return null;
@@ -81,17 +83,21 @@ class _HomeScreenState extends State<HomeScreen> {
       won: outcome.won,
       mode: _mode,
       labor: labor,
+      stage: stage,
+      goldStolen: outcome.goldStolen,
     );
     await ProgressStore.save(progress);
     if (mounted) setState(() {});
     return reward;
   }
 
-  void _openBattle({
+  Future<void> _openBattle({
     required EnemySpec enemy,
     required String emoji,
     Labor? labor,
-  }) {
+    Stage? stage,
+  }) async {
+    final boss = labor != null && stage?.id == labor.allStages.last.id;
     final battle = MaterialPageRoute<void>(
       builder: (_) => BattleScreen(
         enemy: enemy,
@@ -99,8 +105,11 @@ class _HomeScreenState extends State<HomeScreen> {
         emoji: emoji,
         victoryText: labor == null
             ? null
-            : 'Kỳ công ${labor.number} hoàn thành',
-        onFinished: (outcome) => _recordOutcome(outcome, labor: labor),
+            : boss || stage == null
+            ? 'Kỳ công ${labor.number} hoàn thành'
+            : 'Màn ${stage.code} hoàn thành',
+        onFinished: (outcome) =>
+            _recordOutcome(outcome, labor: labor, stage: stage),
         heroCloak: _hasCloak,
         heroShield: _hasShield,
         heroSword: _hasSword,
@@ -108,19 +117,58 @@ class _HomeScreenState extends State<HomeScreen> {
         heroLook: _profile?.look ?? const HeroLook(),
       ),
     );
-    // Lần đầu vào Kỳ công 1: Hercules xuất hiện dặn dò trước trận.
+    // Lần đầu vào Kỳ công 1 (màn 1.1): Hercules xuất hiện dặn dò trước trận.
+    final progress = _progress;
     final firstNemea =
         labor?.id == nemea.id &&
-        !(_progress?.completedLabors.contains(nemea.id) ?? false);
+        stage?.id == nemea.allStages.first.id &&
+        progress != null &&
+        !progress.isStageDone(nemea.allStages.first) &&
+        !progress.completedLabors.contains(nemea.id);
     if (!firstNemea) {
-      Navigator.of(context).push(battle);
+      await Navigator.of(context).push(battle);
       return;
     }
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => NemeaIntroScreen(
           look: _profile?.look ?? const HeroLook(),
           onDone: () => Navigator.of(context).pushReplacement(battle),
+        ),
+      ),
+    );
+  }
+
+  /// Kỳ công có nhiều màn: mở danh sách màn; chỉ một màn thì vào trận luôn.
+  void _openLabor(Labor labor) {
+    final progress = _progress;
+    if (progress == null) return;
+    final stages = labor.allStages;
+    if (stages.length == 1) {
+      _openBattle(
+        enemy: labor.enemy,
+        emoji: labor.emoji,
+        labor: labor,
+        stage: stages.single,
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => StatefulBuilder(
+          builder: (context, setInner) => StageSelectScreen(
+            labor: labor,
+            progress: progress,
+            onPlay: (stage) async {
+              await _openBattle(
+                enemy: stage.enemy,
+                emoji: stage.emoji,
+                labor: labor,
+                stage: stage,
+              );
+              setInner(() {});
+            },
+          ),
         ),
       ),
     );
@@ -234,13 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
         trailing: done
             ? const Icon(Icons.check_circle, color: Colors.lightGreen)
             : const Icon(Icons.chevron_right),
-        onTap: unlocked
-            ? () => _openBattle(
-                enemy: labor.enemy,
-                emoji: labor.emoji,
-                labor: labor,
-              )
-            : null,
+        onTap: unlocked ? () => _openLabor(labor) : null,
       ),
     );
   }

@@ -30,6 +30,15 @@ class StageBattleState {
 
   /// Máu boss còn lại 0–1 (bụi Trì Trệ ở Nemea tan dần theo).
   double bossHp = 1;
+
+  /// Lợn rừng lấy đà 0–1 (1 = húc ngay).
+  double charge = 0;
+
+  /// Số lần kẻ thù đã đứng dậy (Spartoi).
+  int revives = 0;
+
+  /// Số túi vàng Harpy đã cướp.
+  int goldStolen = 0;
 }
 
 /// Thông số hoạt hình của boss tại một khung.
