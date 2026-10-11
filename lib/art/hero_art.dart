@@ -890,6 +890,34 @@ void _sword(Canvas canvas, HeroLook look, PartFrame f) {
     shadow: 1,
     highlight: 0.6,
   );
+  // Ánh bóng sơn mài chạy dọc vỏ, đai đồng (kurikata) và dây sageo đỏ.
+  final sd = (scabbardEnd - guard) / (scabbardEnd - guard).distance;
+  final sn = Offset(-sd.dy, sd.dx);
+  canvas.drawPath(
+    taperedStroke(
+      [guard + sd * 4 - sn * 0.9, scabbardEnd - sd * 4 - sn * 0.9],
+      0.8,
+      peak: 0.5,
+    ),
+    fillPaint(const Color(0xAAFFFFFF)),
+  );
+  final kuri = guard + sd * 8;
+  canvas.drawLine(
+    kuri - sn * 2.8,
+    kuri + sn * 2.8,
+    Paint()
+      ..color = HeroColors.gold
+      ..strokeWidth = 1.6,
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [kuri + sn * 2.4, kuri + sn * 3.6 + sd * 5, kuri + sn * 2 + sd * 10],
+      1.1,
+      peak: 0.2,
+      startWidth: 1,
+    ),
+    fillPaint(const Color(0xFFB8322A)),
+  );
   final tip = Rect.fromCircle(center: scabbardEnd, radius: 2.6);
   canvas.drawOval(tip, goldPaint(tip));
   // Chuôi quấn dây hình thoi.
@@ -905,10 +933,16 @@ void _sword(Canvas canvas, HeroLook look, PartFrame f) {
     ..strokeWidth = 0.9;
   final d = (hiltEnd - guard) / (hiltEnd - guard).distance;
   final n = Offset(-d.dy, d.dx);
-  for (var t = 0.2; t < 0.95; t += 0.22) {
+  // Dây quấn chéo hai chiều tạo các ô thoi lộ da cá đuối trắng.
+  for (var t = 0.18; t < 0.95; t += 0.2) {
     final p = Offset.lerp(guard, hiltEnd, t)!;
     canvas.drawLine(p - n * 2 - d, p + n * 2 + d, wrap);
+    canvas.drawLine(p + n * 2 - d, p - n * 2 + d, wrap);
   }
+  // Núm chuôi (kashira) đồng.
+  final kashira = Rect.fromCircle(center: hiltEnd, radius: 1.8);
+  canvas.drawOval(kashira.inflate(0.6), fillPaint(HeroColors.outline));
+  canvas.drawOval(kashira, goldPaint(kashira));
   // Đốc kiếm (tsuba) vàng.
   final tsuba = Rect.fromCenter(center: guard, width: 4, height: 9);
   canvas.save();
