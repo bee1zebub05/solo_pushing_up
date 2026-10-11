@@ -25,7 +25,7 @@ void paintNemeaIntro(
   HeroLook look = const HeroLook(),
   bool talking = false,
 }) {
-  paintNemeaScene(canvas, time: time, dust: 0.85);
+  paintNemeaSceneCached(canvas, time: time, dust: 0.85);
   canvas.save();
   canvas.translate(110, stageGroundY);
   canvas.scale(0.82);
@@ -129,14 +129,31 @@ class _NemeaIntroScreenState extends State<NemeaIntroScreen>
                 ),
               ),
               Expanded(
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: stageSize.width / stageSize.height,
-                    child: CustomPaint(
-                      painter: _IntroPainter(
-                        seconds: _seconds,
-                        look: widget.look,
-                        talking: talking,
+                // Màn dọc (iPhone): trời kéo lên trên, đất kéo xuống dưới
+                // cảnh, cùng màu đã phủ bụi — không để dải đen trống.
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: const [
+                        Color(0xFF2A3350),
+                        Color(0xFF606C8C),
+                        Color(0xFF72645C),
+                        Color(0xFF2E2620),
+                      ],
+                      stops: const [0, 0.5, 0.5, 1],
+                    ),
+                  ),
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: stageSize.width / stageSize.height,
+                      child: CustomPaint(
+                        painter: _IntroPainter(
+                          seconds: _seconds,
+                          look: widget.look,
+                          talking: talking,
+                        ),
                       ),
                     ),
                   ),

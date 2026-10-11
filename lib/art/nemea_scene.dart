@@ -23,6 +23,42 @@ void paintNemeaScene(Canvas canvas, {double time = 0, double dust = 0}) {
   paintNemeaAmbient(canvas, time: time, dust: dust);
 }
 
+/// Như [paintNemeaScene] nhưng phần tĩnh (phông + lớp bụi) chụp sẵn thành
+/// ảnh theo mức bụi (làm tròn 5 %): dùng cho màn không phải sân khấu trận
+/// (cảnh mở đầu) — vẽ vector cả phông hai lần mỗi khung rất nặng cho GPU.
+void paintNemeaSceneCached(Canvas canvas, {double time = 0, double dust = 0}) {
+  final key = (dust.clamp(0.0, 1.0) * 20).round();
+  _sceneCache
+      .putIfAbsent(
+        key,
+        () => RasterLayer((c) {
+          paintNemeaBackdrop(c);
+          if (key > 0) {
+            paintNemeaBackdropDust(c, key / 20);
+          }
+        }, bounds: Offset.zero & stageSize),
+      )
+      .paint(canvas);
+  paintNemeaAmbient(canvas, time: time, dust: dust);
+}
+
+final _sceneCache = <int, RasterLayer>{};
+
+/// Phủ bụi lên phông đã vẽ: ảnh lọc mất màu + sương / mạng nhện.
+void paintNemeaBackdropDust(Canvas canvas, double dust) {
+  canvas.saveLayer(
+    Offset.zero & stageSize,
+    Paint()..color = Color.fromRGBO(0, 0, 0, dust.clamp(0.0, 1.0)),
+  );
+  paintNemeaDusty(canvas);
+  canvas.restore();
+}
+
+/// Màu trời mép trên và màu đất mép dưới của phông Nemea — để màn hình dọc
+/// kéo dài cảnh lên/xuống liền mạch (không viền đen).
+const nemeaSkyTop = Color(0xFF2E6FC4);
+const nemeaGroundBottom = Color(0xFF8E6538);
+
 // Bảng màu chung của cảnh.
 const _marble = Color(0xFFF3ECDC);
 const _rock = Color(0xFFB59A72);
