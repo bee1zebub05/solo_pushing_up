@@ -503,6 +503,11 @@ void _torso(
   final chest = (female ? 11.0 : 12.0) + fat * 7;
   final belly = 9 + fat * 26;
   final hipFront = (female ? 10.5 : 9.0) + fat * 10;
+  // Vải rủ theo trọng lực: khi mặt trước thân hướng xuống đất (chống đẩy),
+  // phần áo giữa ngực và thắt lưng võng xuống — không ôm thân như tấm bìa.
+  final g = f.down;
+  final sagK = g.dx.clamp(0.0, 1.0);
+  final sag = g * ((5 + fat * 3) * sagK);
   final body = Path()
     ..moveTo(-back, 2)
     ..cubicTo(
@@ -516,7 +521,14 @@ void _torso(
     ..quadraticBezierTo(0, -len - 8, 9, -len + 1)
     // Ngực xuống tới eo, rồi bụng tròn ở nửa dưới thân (béo thì nhô xa).
     ..cubicTo(chest + 1, -len * 0.85, chest, -len * 0.7, chest, -len * 0.6)
-    ..cubicTo(belly + 3, -len * 0.45, belly + 3, -len * 0.04, hipFront, 2)
+    ..cubicTo(
+      belly + 3 + sag.dx,
+      -len * 0.45 + sag.dy,
+      belly + 3 + sag.dx * 0.8,
+      -len * 0.04 + sag.dy * 0.5,
+      hipFront,
+      2,
+    )
     ..close();
   shadedPath(canvas, body, HeroColors.tunic, f, shadow: 5, highlight: 2);
 
@@ -559,6 +571,33 @@ void _torso(
     fold..strokeWidth = 0.8,
   );
   fold.strokeWidth = 1.2;
+  if (sagK > 0.25) {
+    // Nếp rủ: từ chỗ vải tì lên ngực/bụng chảy theo hướng trọng lực vào bụng
+    // võng; mỗi nếp một rãnh tối và một sống sáng song song.
+    final crease = Paint()
+      ..color = shadeOf(HeroColors.tunic).withValues(alpha: 0.75 * sagK);
+    final ridge = Paint()
+      ..color = lighten(HeroColors.tunic, 0.5).withValues(alpha: 0.7 * sagK);
+    for (final (t, w) in const [(0.52, 1.0), (0.36, 0.8), (0.2, 0.9)]) {
+      final top = Offset(chest - 3, -len * t);
+      final drop = sag.distance + 3;
+      final end = top + g * drop + Offset(0, len * 0.04);
+      final mid = Offset.lerp(top, end, 0.5)! + Offset(0, len * 0.015);
+      canvas.drawPath(
+        taperedStroke([top, mid, end], 1.5 * w, peak: 0.6, samples: 6),
+        crease,
+      );
+      canvas.drawPath(
+        taperedStroke(
+          [top + const Offset(0, -1.6), mid + const Offset(0, -1.6), end],
+          1 * w,
+          peak: 0.6,
+          samples: 6,
+        ),
+        ridge,
+      );
+    }
+  }
   // Bóng đổ của dây vai lên vải.
   canvas.drawLine(
     Offset(-shoulderBack + 1.5, -len + 5),
@@ -1213,46 +1252,66 @@ void _head(
 
   switch (look.hairStyle) {
     case HairStyle.curly:
-      for (final c in const [
-        Offset(-13, -2),
-        Offset(-10, -9),
-        Offset(-4, -13),
-        Offset(3, -13.5),
-        Offset(9, -10.5),
+      // Một khối tóc liền (hợp các búp, mép ngoài gồ lượn) thay cho các
+      // vòng tròn rời; bên trong là các hàng lọn xoăn nét thon so le.
+      var mass = Path();
+      for (final (c, rr) in const [
+        (Offset(-13, -2), 5.2),
+        (Offset(-11.5, -8.5), 5.6),
+        (Offset(-6.5, -12.5), 5.6),
+        (Offset(0, -14), 5.4),
+        (Offset(6, -12.5), 5.0),
+        (Offset(10, -9.5), 4.2),
+        (Offset(-6, -6), 6.5),
+        (Offset(1, -8), 6.0),
       ]) {
-        shadedPath(
-          canvas,
-          Path()..addOval(Rect.fromCircle(center: c, radius: 5)),
-          hair,
-          f,
-          shadow: 1.8,
-          highlight: 1.2,
-          outlineWidth: 1,
-        );
-        // Lọn xoắn bên trong mỗi búp tóc (không phải vòng tròn trơn).
-        canvas.drawArc(
-          Rect.fromCircle(center: c + const Offset(0.4, 0.4), radius: 2.6),
-          -0.6,
-          3.8,
-          false,
-          Paint()
-            ..color = darken(hair, 0.35)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.8
-            ..strokeCap = StrokeCap.round,
-        );
-        canvas.drawArc(
-          Rect.fromCircle(center: c + const Offset(-0.6, -0.6), radius: 3.6),
-          3.6,
-          1.4,
-          false,
-          Paint()
-            ..color = lighten(hair, 0.35)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.7
-            ..strokeCap = StrokeCap.round,
+        mass = Path.combine(
+          PathOperation.union,
+          mass,
+          Path()..addOval(Rect.fromCircle(center: c, radius: rr)),
         );
       }
+      shadedPath(
+        canvas,
+        mass,
+        hair,
+        f,
+        shadow: 2.2,
+        highlight: 1.2,
+        outlineWidth: 1.1,
+      );
+      canvas.save();
+      canvas.clipPath(mass);
+      final curlDark = Paint()..color = darken(hair, 0.45);
+      final curlLit = Paint()
+        ..color = lighten(hair, 0.32).withValues(alpha: 0.85);
+      final rnd = math.Random(look.hairStyle.index * 7 + 3);
+      for (var row = 0; row < 4; row++) {
+        for (var col = 0; col < 6; col++) {
+          final p = Offset(
+            -15 + col * 4.6 + (row.isOdd ? 2.3 : 0) + rnd.nextDouble() * 0.8,
+            -16 + row * 4.4 + rnd.nextDouble() * 0.8,
+          );
+          final a0 = 0.5 + rnd.nextDouble() * 0.7;
+          List<Offset> arc(double from, double sweep, double rr) => [
+            for (var k = 0; k <= 4; k++)
+              p +
+                  Offset(
+                    math.cos(from + sweep * k / 4) * rr,
+                    math.sin(from + sweep * k / 4) * rr,
+                  ),
+          ];
+          canvas.drawPath(
+            taperedStroke(arc(a0, 3.8, 2.3), 1.1, samples: 8),
+            curlDark,
+          );
+          canvas.drawPath(
+            taperedStroke(arc(a0 + 3.5, 1.7, 1.9), 0.75, samples: 6),
+            curlLit,
+          );
+        }
+      }
+      canvas.restore();
       glint(canvas, const Offset(-5, -15), 1.6, alpha: 0.5);
     case HairStyle.buzz:
       break;
