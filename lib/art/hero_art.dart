@@ -1050,44 +1050,60 @@ void _peltBack(Canvas canvas, double len, PartFrame f, double time) {
 void _hairBack(Canvas canvas, HeroLook look, PartFrame f) {
   final down = f.down;
   final hair = look.hair;
+  // Rủ theo trọng lực: trục lọn hướng xuống đất trong hệ cục bộ của đầu.
+  final angle = math.atan2(down.dy, down.dx);
+  void locks(
+    Offset center,
+    double length,
+    double width,
+    int count,
+    double spread,
+  ) {
+    final set = buildLocks(
+      center: center,
+      rnd: math.Random(look.hairStyle.index * 13 + 5),
+      r0: 0,
+      length: length,
+      width: width,
+      count: count,
+      from: angle - spread,
+      to: angle + spread,
+      drift: Offset(-0.08, 0.02) + down * 0.08,
+      wave: 2.5,
+    );
+    shadedPath(
+      canvas,
+      set.mass,
+      hair,
+      f,
+      shadow: 2.5,
+      highlight: 1.2,
+      outlineWidth: 1.2,
+    );
+    canvas.save();
+    canvas.clipPath(set.mass);
+    canvas.drawPath(
+      set.creases,
+      fillPaint(darken(hair, 0.42).withValues(alpha: 0.85)),
+    );
+    canvas.drawPath(
+      set.sheens,
+      fillPaint(lighten(hair, 0.38).withValues(alpha: 0.8)),
+    );
+    canvas.restore();
+  }
+
   switch (look.hairStyle) {
     case HairStyle.ponytail:
-      const root = Offset(-13, -6);
-      final tip = root + const Offset(-6, 0) + down * 24;
-      final mid = root + const Offset(-8, -2) + down * 10;
-      shadedPath(
-        canvas,
-        Path()
-          ..moveTo(root.dx, root.dy - 4)
-          ..quadraticBezierTo(mid.dx - 4, mid.dy, tip.dx, tip.dy)
-          ..quadraticBezierTo(mid.dx + 4, mid.dy + 2, root.dx + 2, root.dy + 4)
-          ..close(),
-        hair,
-        f,
-        shadow: 2.5,
-        highlight: 1.2,
-      );
+      const root = Offset(-14, -6);
+      // Đuôi ngựa: chùm lọn gom ở dây buộc, xoè nhẹ rồi thon ở ngọn.
+      locks(root, 24, 5.2, 5, 0.22);
       // Dây buộc tóc.
-      canvas.drawCircle(
-        root + const Offset(-2, 0),
-        2.6,
-        fillPaint(HeroColors.headband),
-      );
+      canvas.drawCircle(root, 2.8, fillPaint(HeroColors.outline));
+      canvas.drawCircle(root, 2.2, fillPaint(HeroColors.headband));
     case HairStyle.long:
-      final tip = const Offset(-6, 4) + down * 30;
-      shadedPath(
-        canvas,
-        Path()
-          ..moveTo(-4, -16)
-          ..quadraticBezierTo(-22, -10, tip.dx - 8, tip.dy)
-          ..lineTo(tip.dx + 6, tip.dy + 2)
-          ..quadraticBezierTo(-4, 6, 2, -6)
-          ..close(),
-        hair,
-        f,
-        shadow: 3,
-        highlight: 1.4,
-      );
+      // Tóc dài: lọn rủ từ sau đầu xuống quá vai.
+      locks(const Offset(-6, -4), 32, 7, 7, 0.32);
     case HairStyle.curly || HairStyle.buzz || HairStyle.bun:
       break;
   }
@@ -1569,41 +1585,85 @@ void _head(
     case HairStyle.buzz:
       break;
     case HairStyle.bun || HairStyle.ponytail || HairStyle.long:
-      // Tóc chải mượt ra sau, mái lệch, vệt bóng tóc.
-      shadedPath(
-        canvas,
-        Path()
-          ..moveTo(-15, 2)
-          ..cubicTo(-18, -16, 2, -22, 13, -9)
-          ..quadraticBezierTo(4, -11, -2, -6)
-          ..quadraticBezierTo(-9, -3, -15, 2)
-          ..close(),
-        hair,
-        f,
-        shadow: 2.5,
-        highlight: 1.2,
-      );
-      canvas.drawPath(
-        Path()
-          ..moveTo(-8, -12)
-          ..quadraticBezierTo(-1, -16, 5, -14),
-        Paint()
-          ..color = lighten(hair, 0.4)
-          ..strokeWidth = 1.6
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round,
-      );
-      if (look.hairStyle == HairStyle.bun) {
-        shadedPath(
-          canvas,
-          Path()..addOval(
-            Rect.fromCircle(center: const Offset(-13, -13), radius: 6.5),
-          ),
-          hair,
-          f,
-          shadow: 2,
-          highlight: 1.2,
+      // Tóc chải mượt ra sau, mái lệch: khối tóc + các sợi chảy từ đường
+      // ngôi ra sau gáy (rãnh tối + sợi sáng), vệt bóng tóc rộng.
+      final sleek = Path()
+        ..moveTo(-15, 2)
+        ..cubicTo(-18, -16, 2, -22, 13, -9)
+        ..quadraticBezierTo(4, -11, -2, -6)
+        ..quadraticBezierTo(-9, -3, -15, 2)
+        ..close();
+      shadedPath(canvas, sleek, hair, f, shadow: 2.5, highlight: 1.2);
+      canvas.save();
+      canvas.clipPath(sleek);
+      final strandDark = Paint()..color = darken(hair, 0.4);
+      final strandLit = Paint()
+        ..color = lighten(hair, 0.32).withValues(alpha: 0.8);
+      for (var i = 0; i < 6; i++) {
+        final k = i / 5;
+        // Từ trán (phải) chải vòng ra sau gáy (trái–dưới).
+        final pts = [
+          Offset(11 - k * 4, -10 - k * 4),
+          Offset(2 - k * 2, -15 + k * 3),
+          Offset(-8 - k, -12 + k * 6),
+          Offset(-14 + k, -2 + k * 4),
+        ];
+        canvas.drawPath(
+          taperedStroke(pts, 1.1, peak: 0.4, samples: 10),
+          strandDark,
         );
+        if (i.isEven) {
+          canvas.drawPath(
+            taperedStroke(
+              [for (final p in pts.take(3)) p + const Offset(0.5, -1)],
+              0.8,
+              peak: 0.4,
+              samples: 8,
+            ),
+            strandLit,
+          );
+        }
+      }
+      canvas.drawPath(
+        taperedStroke(
+          const [Offset(-9, -13), Offset(-1, -16.5), Offset(6, -14)],
+          2.4,
+          peak: 0.45,
+        ),
+        Paint()..color = lighten(hair, 0.45).withValues(alpha: 0.8),
+      );
+      canvas.restore();
+      if (look.hairStyle == HairStyle.bun) {
+        const bc = Offset(-13, -13);
+        final bun = Path()..addOval(Rect.fromCircle(center: bc, radius: 6.5));
+        shadedPath(canvas, bun, hair, f, shadow: 2, highlight: 1.2);
+        // Búi Hy Lạp: tóc quấn vòng xoắn ốc quanh búi.
+        canvas.save();
+        canvas.clipPath(bun);
+        for (var i = 0; i < 3; i++) {
+          final r0 = 2.0 + i * 1.6;
+          canvas.drawArc(
+            Rect.fromCircle(center: bc + Offset(0.4 * i, -0.3 * i), radius: r0),
+            0.6 + i,
+            4.2,
+            false,
+            Paint()
+              ..color = darken(hair, 0.4)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.9,
+          );
+        }
+        canvas.drawArc(
+          Rect.fromCircle(center: bc, radius: 4.6),
+          3.6,
+          1.3,
+          false,
+          Paint()
+            ..color = lighten(hair, 0.4)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1,
+        );
+        canvas.restore();
       }
   }
   // Băng đô đỏ: viền + vệt sáng, nút thắt sau gáy, hai đuôi băng thon.
