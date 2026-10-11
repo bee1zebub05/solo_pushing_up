@@ -1666,15 +1666,24 @@ void _hydraStump(
       canvas.restore();
     }
   }
-  // Vết cụt: mặt cắt đỏ thẫm, rỉ máu xanh.
+  // Vết cụt: mặt cắt nghiêng theo cổ — vành da vảy, thịt đỏ, đốt sống
+  // trắng; rỉ máu xanh độc (máu Hydra có độc).
+  canvas.save();
+  canvas.translate(tip.dx, tip.dy);
+  canvas.rotate(math.atan2(dir.dy, dir.dx) + math.pi / 2);
+  const cut = Rect.fromLTRB(-8.5, -4.5, 8.5, 4.5);
+  canvas.drawOval(cut.inflate(1.2), _fill(_outline));
+  canvas.drawOval(cut, _fill(const Color(0xFF2E5A36)));
+  canvas.drawOval(cut.deflate(1.6), _fill(const Color(0xFF8E2A2A)));
   canvas.drawOval(
-    Rect.fromCenter(center: tip, width: 18, height: 10),
-    _fill(_outline),
+    Rect.fromCenter(center: const Offset(-1.5, -1), width: 9, height: 3),
+    _fill(const Color(0xFFB04848)),
   );
   canvas.drawOval(
-    Rect.fromCenter(center: tip, width: 15, height: 7),
-    _fill(const Color(0xFF8E2A2A)),
+    Rect.fromCenter(center: const Offset(0.5, 0.3), width: 4.4, height: 2.6),
+    _fill(const Color(0xFFF2E6D0)),
   );
+  canvas.restore();
   final drip = (time * 1.2) % 1;
   canvas.drawCircle(
     tip + Offset(2, 4 + 8 * drip),
