@@ -100,7 +100,10 @@ void paintHercules(
   // Hiện dần: mờ + trồi lên từ ánh sáng.
   canvas.save();
   canvas.translate(0, 30 * (1 - a));
-  canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, a));
+  canvas.saveLayer(
+    const Rect.fromLTRB(-120, -320, 140, 20),
+    Paint()..color = Color.fromRGBO(0, 0, 0, a),
+  );
 
   // Chuỳ gỗ ô liu dại (truyền thuyết: Hercules tự nhổ cây ô liu ở Nemea)
   // chống đất, tay xa tì lên đầu chuỳ. Chụp sẵn.

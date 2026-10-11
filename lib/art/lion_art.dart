@@ -145,7 +145,7 @@ void paintLion(Canvas canvas, LionState s) {
       : null;
   if (tint != null) {
     canvas.saveLayer(
-      null,
+      const Rect.fromLTRB(-200, -220, 160, 30),
       Paint()..colorFilter = ColorFilter.mode(tint, BlendMode.srcATop),
     );
   }
