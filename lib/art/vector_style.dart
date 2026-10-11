@@ -359,10 +359,12 @@ void shadedLimb(
   final body = Path();
   final outline = Path();
   final grooves = <Path>[];
+  final bellies = <Path>[];
   for (final (a, b, profile) in segments) {
     final shape = buildLimb(a, b, profile, facing: facing, scale: scale);
     body.addPath(shape.outline, Offset.zero);
     grooves.addAll(shape.grooves);
+    bellies.addAll(shape.bellies);
     outline.addPath(
       buildLimb(
         a,
@@ -384,12 +386,39 @@ void shadedLimb(
     highlight: highlight,
     outlineShape: outline,
   );
-  if (definition <= 0 || grooves.isEmpty) return;
-  final ink = fillPaint(
-    darken(base, 0.36).withValues(alpha: (0.7 * definition).clamp(0.0, 1.0)),
-  );
+  if (definition <= 0) return;
   canvas.save();
   canvas.clipPath(body);
+  // Từng bó cơ là một khối: bóng che (occlusion) đổ lên khối dưới ở mép phía
+  // khuất sáng, rồi chính khối đó tự đổ bóng (vùng sáng, bóng lõi, ánh phản
+  // xạ) — cơ nông vẽ sau nên che cơ sâu, tạo độ sâu thớ cơ.
+  final light = VectorStyle.lightWorld;
+  // Da phủ lên cơ: khối cơ chỉ hơi đổi tông, mềm dần theo [definition]
+  // (người thường ~0,5, người tập luyện / anh hùng ~1).
+  final d = definition.clamp(0.0, 1.5);
+  final occlusion = fillPaint(
+    coreShadeOf(base).withValues(alpha: (0.22 * d).clamp(0.0, 1.0)),
+  );
+  final lit = fillPaint(
+    sunlitOf(base).withValues(alpha: (0.5 * d).clamp(0.0, 1.0)),
+  );
+  final shade = fillPaint(
+    shadeOf(base).withValues(alpha: (0.5 * d).clamp(0.0, 1.0)),
+  );
+  for (final belly in bellies) {
+    // Bóng che ở mép phía khuất (khối này nằm trên khối dưới).
+    canvas.drawPath(belly.shift(-light * 1.4), occlusion);
+    // Tự đổ bóng: phủ màu gốc rồi nửa khuất tối, nửa đón sáng sáng nhẹ.
+    canvas.save();
+    canvas.clipPath(belly);
+    canvas.drawPath(belly, fillPaint(base));
+    canvas.drawPath(belly.shift(-light * 2.4), shade);
+    canvas.drawPath(belly.shift(light * 2.4), lit);
+    canvas.restore();
+  }
+  final ink = fillPaint(
+    darken(base, 0.36).withValues(alpha: (0.6 * definition).clamp(0.0, 1.0)),
+  );
   for (final g in grooves) {
     canvas.drawPath(g, ink);
   }

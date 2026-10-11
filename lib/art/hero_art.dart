@@ -318,6 +318,7 @@ void _arm(
     skin,
     scale: k,
     highlight: far ? 0 : 1.4,
+    definition: far ? 0 : 0.55,
   );
   // Vòng tay vàng ánh kim gần cổ tay.
   final band = capsulePath(
@@ -370,6 +371,7 @@ void _leg(
     shade(look.skin),
     scale: k,
     highlight: far ? 0 : 1.4,
+    definition: far ? 0 : 0.55,
   );
   if (!far) {
     // Xương bánh chè (rãnh cơ tay chân do vector_anatomy vẽ).

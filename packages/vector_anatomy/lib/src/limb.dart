@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'curves.dart';
@@ -58,18 +59,45 @@ class Groove {
   final double peak;
 }
 
+/// Một bó cơ: khối hình thoi bám từ điểm gốc [origin] tới điểm bám
+/// [insertion] trên đoạn chi (toạ độ (t, s) như [Groove]: s là tỉ lệ bề rộng
+/// tại t, −1 mép sau → +1 mép trước), dày nhất ở [peak] với nửa bề rộng
+/// [width] (tỉ lệ của nửa bề rộng chi tại đó).
+///
+/// Mỗi bó là một khối riêng để tô đổ bóng riêng — độ sâu của cơ đến từ các
+/// khối tự có mặt sáng / bóng lõi và chồng lên nhau, không phải từ nét vẽ.
+/// Thứ tự trong danh sách = thứ tự vẽ (cơ sâu trước, cơ nông sau).
+class MuscleBelly {
+  const MuscleBelly(
+    this.origin,
+    this.insertion, {
+    this.width = 0.5,
+    this.peak = 0.5,
+    this.name = '',
+  });
+
+  final (double t, double s) origin;
+  final (double t, double s) insertion;
+  final double width;
+  final double peak;
+  final String name;
+}
+
 /// Profile giải phẫu một đoạn chi: đường bao mặt trước và mặt sau **độc
-/// lập** (đỉnh phồng ở độ cao khác nhau, một mặt gần thẳng), cùng các rãnh.
+/// lập** (đỉnh phồng ở độ cao khác nhau, một mặt gần thẳng), các rãnh và các
+/// bó cơ.
 class MuscleProfile {
   const MuscleProfile({
     required this.anterior,
     required this.posterior,
     this.grooves = const [],
+    this.bellies = const [],
   });
 
   final List<ContourStop> anterior;
   final List<ContourStop> posterior;
   final List<Groove> grooves;
+  final List<MuscleBelly> bellies;
 
   /// Nửa bề rộng một mặt tại [t] (nội suy tuyến tính giữa các điểm).
   static double widthAt(List<ContourStop> side, double t) {
@@ -90,17 +118,66 @@ class MuscleProfile {
     anterior: [for (final (t, w) in anterior) (t, w * k * anteriorExtra)],
     posterior: [for (final (t, w) in posterior) (t, w * k)],
     grooves: grooves,
+    bellies: bellies,
   );
+
+  /// Nửa bề rộng chi trung bình hai mặt tại [t].
+  double halfWidthAt(double t) =>
+      (widthAt(anterior, t) + widthAt(posterior, t)) / 2;
+
+  /// Vị trí ngang tuyệt đối của (t, s) tỉ lệ.
+  double sideOffset(double t, double s) =>
+      s >= 0 ? s * widthAt(anterior, t) : s * widthAt(posterior, t);
 }
 
 /// Hình học một đoạn chi đã dựng: đường bao (để tô) và các rãnh (Path kín
 /// dạng nét thon, để tô màu sẫm của chính mảng — sel-line).
 class LimbShape {
-  const LimbShape(this.frame, this.outline, this.grooves);
+  const LimbShape(
+    this.frame,
+    this.outline,
+    this.grooves, [
+    this.bellies = const [],
+  ]);
 
   final LimbFrame frame;
   final Path outline;
   final List<Path> grooves;
+
+  /// Đường bao từng bó cơ (theo thứ tự vẽ), để tô đổ bóng riêng từng khối.
+  final List<Path> bellies;
+}
+
+/// Đường bao một bó cơ trên khung [f].
+Path bellyPath(
+  LimbFrame f,
+  MuscleProfile profile,
+  MuscleBelly m, {
+  double scale = 1,
+  int samples = 6,
+}) {
+  final (t0, s0) = m.origin;
+  final (t1, s1) = m.insertion;
+  final a = f.at(t0, profile.sideOffset(t0, s0) * scale);
+  final b = f.at(t1, profile.sideOffset(t1, s1) * scale);
+  var d = b - a;
+  if (d.distance < 1e-3) d = const Offset(0, 1e-3);
+  final n = Offset(-d.dy, d.dx) / d.distance;
+  final left = <Offset>[], right = <Offset>[];
+  for (var i = 0; i <= samples; i++) {
+    final u = i / samples;
+    final t = t0 + (t1 - t0) * u;
+    final half = profile.halfWidthAt(t) * scale * m.width;
+    // Thân bó cơ: phình theo sin lệch về [peak], hai đầu thành gân nhọn.
+    final k = u <= m.peak
+        ? math.sin(u / m.peak * math.pi / 2)
+        : math.cos((u - m.peak) / (1 - m.peak) * math.pi / 2);
+    final w = half * math.pow(k, 0.75);
+    final c = a + d * u;
+    left.add(c + n * w);
+    right.add(c - n * w);
+  }
+  return smoothPath([...left, ...right.reversed.skip(1)], closed: true);
 }
 
 /// Dựng đường bao + rãnh cho đoạn chi [a]→[b] theo [profile].
@@ -158,7 +235,13 @@ LimbShape buildLimb(
       );
     }
   }
-  return LimbShape(f, path, grooves);
+  final bellies = grow == 0
+      ? [
+          for (final m in profile.bellies)
+            bellyPath(f, profile, m, scale: scale),
+        ]
+      : const <Path>[];
+  return LimbShape(f, path, grooves, bellies);
 }
 
 /// Bo đầu chi (≈ nửa hình tròn) đi vòng ra ngoài theo [outward].

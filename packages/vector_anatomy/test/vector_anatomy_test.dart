@@ -107,4 +107,19 @@ void main() {
     expect(body.contains(const Offset(0, 30)), isTrue);
     expect(body.contains(const Offset(-1, 29)), isTrue);
   });
+
+  test('bó cơ: nằm trong chi, theo thứ tự khai báo', () {
+    final shape = buildLimb(
+      Offset.zero,
+      const Offset(0, 30),
+      HumanAnatomy.upperArm,
+    );
+    expect(shape.bellies, hasLength(HumanAnatomy.upperArm.bellies.length));
+    final limb = shape.outline.getBounds().inflate(2);
+    for (final b in shape.bellies) {
+      final r = b.getBounds();
+      expect(r.width, greaterThan(2));
+      expect(limb.contains(r.center), isTrue);
+    }
+  });
 }

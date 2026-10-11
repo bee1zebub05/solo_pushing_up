@@ -140,3 +140,18 @@ giữa nhân vật và boss.
 - **Mood theo trạng thái:** sẵn sàng (ánh sáng dịu, bụi đứng), giao chiến (tương
   phản cao), sắp bị đánh (đỏ + rung), thắng (ấm, sáng, hạt vàng), thua (nhạt màu).
 - **Kiểm hình bóng:** quái/boss phải nhận ra khi tô đen hết ở cỡ 48 px.
+
+## 8. Dựng người như hoạ sĩ: xương → cơ → da → quần áo
+
+Thư viện `packages/vector_anatomy` (xem README của nó):
+1. **Xương**: khớp từ `HeroPose` (vai, khuỷu, cổ tay, hông, gối, cổ chân).
+2. **Cơ**: mỗi đoạn chi có `MuscleProfile` — đường bao mặt trước/sau độc lập
+   (đỉnh phồng lệch độ cao, một mặt gần thẳng) và **các bó cơ `MuscleBelly`**
+   bám gốc → điểm bám, khai báo cơ sâu trước, cơ nông sau.
+3. **Da**: `shadedLimb` tô thân chi đổ bóng 6 vùng, rồi tô **từng bó cơ thành
+   khối riêng** (bóng che ở mép khuất + nửa sáng / nửa tối), mềm theo
+   `definition` (người thường ~0,5, anh hùng ~0,8–1); rãnh cơ là nét thon.
+4. **Quần áo** vẽ sau cùng.
+
+Không vẽ cơ bằng nét đè lên một ống trụ — độ sâu đến từ khối chồng khối.
+Tay chân phía xa (khuất, tối) đặt `definition: 0` để tiết kiệm hiệu năng.

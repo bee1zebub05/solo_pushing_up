@@ -394,6 +394,8 @@ void _leg(
     color,
     shadow: 4,
     facing: const Offset(-1, 0),
+    // Chân phía xa (màu tối hơn) khuất sau thân: không vẽ bó cơ cho nhẹ.
+    definition: color == LionColors.body ? 0.9 : 0,
   );
   // Đường cơ bắp chân (sel-line), gân cổ chân.
   final line = Paint()
