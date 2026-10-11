@@ -221,25 +221,86 @@ class ThuyTinhBossArt extends BossArt {
     if (tint != null) canvas.restore();
   }
 
+  static const _left = Offset(-1, 0);
+
+  // Phần tĩnh chụp sẵn: tóc, thân, râu (mỗi khung chỉ xoay nhẹ / dời).
+  static final _hairImage = RasterLayer(
+    _paintHair,
+    bounds: const Rect.fromLTRB(300, 10, 430, 140),
+    resolution: 1.3,
+  );
+  static final _torsoImage = RasterLayer(
+    _paintTorso,
+    bounds: const Rect.fromLTRB(262, 70, 384, 196),
+    resolution: 1.3,
+  );
+  static final _beardImage = RasterLayer(
+    _paintBeard,
+    bounds: const Rect.fromLTRB(276, 58, 350, 156),
+    resolution: 1.5,
+  );
+
   void _hairBack(Canvas canvas, BossFrame f) {
-    // Tóc nước bay về phía sau (phải), các lọn uốn theo thời gian.
-    for (var i = 0; i < 4; i++) {
-      final sway = math.sin(f.time * 2 + i) * 6;
-      final y = 50.0 + i * 12;
-      final path = Path()
-        ..moveTo(330, y)
-        ..cubicTo(355, y - 10 + sway, 375, y + 12, 395 + i * 3, y + 4 + sway)
-        ..cubicTo(378, y + 20, 358, y + 8 - sway * 0.5, 332, y + 14)
-        ..close();
+    // Tóc nước bay ra sau: cả khối lọn xoay nhẹ theo nhịp sóng.
+    const pivot = Offset(330, 58);
+    canvas.save();
+    canvas.translate(pivot.dx, pivot.dy);
+    canvas.rotate(math.sin(f.time * 2) * 0.04);
+    canvas.translate(-pivot.dx, -pivot.dy);
+    _hairImage.paint(canvas);
+    canvas.restore();
+  }
+
+  /// Tóc như dòng nước: hai lớp lọn dài chảy ra sau (phải) và rủ xuống,
+  /// lớp sau sẫm (nước sâu), lớp trước sáng (bọt), ngọn tan thành giọt.
+  static void _paintHair(Canvas canvas) {
+    final rnd = math.Random(17);
+    for (final (r0, len, width, color, count) in [
+      (8.0, 66.0, 13.0, ThuyTinhColors.water, 9),
+      (6.0, 52.0, 10.0, ThuyTinhColors.hair, 8),
+    ]) {
+      final locks = buildLocks(
+        center: const Offset(330, 58),
+        rnd: rnd,
+        r0: r0,
+        length: len,
+        width: width,
+        count: count,
+        from: -0.9,
+        to: 0.9,
+        drift: const Offset(0.35, 0.16),
+        wave: 9,
+      );
       shadedPath(
         canvas,
-        path,
-        i.isEven ? ThuyTinhColors.hair : lighten(ThuyTinhColors.water, 0.2),
+        locks.mass,
+        color,
         PartFrame.world,
-        shadow: 2,
-        highlight: 1,
-        outlineWidth: 1.4,
+        shadow: 2.5,
+        highlight: 1.2,
+        outlineWidth: 1.3,
       );
+      canvas.save();
+      canvas.clipPath(locks.mass);
+      canvas.drawPath(
+        locks.creases,
+        fillPaint(darken(color, 0.4).withValues(alpha: 0.7)),
+      );
+      canvas.drawPath(
+        locks.sheens,
+        fillPaint(lighten(color, 0.45).withValues(alpha: 0.85)),
+      );
+      canvas.restore();
+      // Ngọn tóc tan thành giọt nước.
+      for (final (line, w) in locks.lines) {
+        final tip = line.last;
+        canvas.drawCircle(tip + const Offset(5, 2), w * 0.16, fillPaint(color));
+        canvas.drawCircle(
+          tip + const Offset(10, 5),
+          w * 0.1,
+          fillPaint(color.withValues(alpha: 0.8)),
+        );
+      }
     }
   }
 
@@ -291,124 +352,228 @@ class ThuyTinhBossArt extends BossArt {
     );
     // Ánh nước toả ra khi đe doạ.
     if (f.attack > 0.05) {
+      final r = 18 + 14 * f.attack;
       canvas.drawCircle(
         top,
-        14 + 10 * f.attack,
+        r,
         Paint()
-          ..color = ThuyTinhColors.glow.withValues(alpha: 0.45 * f.attack)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+          ..shader = Gradient.radial(top, r, [
+            ThuyTinhColors.glow.withValues(alpha: 0.55 * f.attack),
+            ThuyTinhColors.glow.withValues(alpha: 0),
+          ]),
       );
     }
-    // Tay phải nắm cán.
-    shadedChain(canvas, [
-      (const Offset(358, 104), Offset(372, 84 + lift * 0.6), 8, 7),
-      (Offset(372, 84 + lift * 0.6), Offset(377, 66 + lift), 7, 8),
-    ], ThuyTinhColors.skin);
+    // Tay phải nắm cán: cánh tay + cẳng tay có bó cơ, bàn tay nắm.
+    final elbow = Offset(372, 84 + lift * 0.6);
+    final wrist = Offset(376, 68 + lift);
+    shadedLimb(
+      canvas,
+      [
+        (const Offset(356, 106), elbow, HumanAnatomy.upperArm),
+        (elbow, wrist, HumanAnatomy.forearm),
+      ],
+      ThuyTinhColors.skin,
+      shadow: 3,
+      scale: 1.35,
+      facing: _left,
+      definition: 0.8,
+    );
+    shadedHand(
+      canvas,
+      buildHand(
+        wrist,
+        wrist - elbow,
+        pose: HandPose.grip,
+        facing: _left,
+        scale: 1.25,
+      ),
+      ThuyTinhColors.skin,
+    );
   }
 
-  void _torso(Canvas canvas, BossFrame f) {
-    final body = Path()
-      ..moveTo(296, 182)
-      ..cubicTo(292, 150, 284, 118, 290, 98)
-      ..quadraticBezierTo(318, 86, 360, 96)
-      ..cubicTo(368, 120, 360, 150, 352, 182)
-      ..close();
-    shadedPath(
+  void _torso(Canvas canvas, BossFrame f) => _torsoImage.paint(canvas);
+
+  /// Thân thần nước dựng từ bó cơ (TorsoAnatomy, như tượng Hercules): ngực,
+  /// bụng, cơ chéo; bóng đổ dưới ngực; chuỗi ngọc trai vắt chéo; giáp vai
+  /// san hô nhiều nhánh.
+  static void _paintTorso(Canvas canvas) {
+    const skin = ThuyTinhColors.skin;
+    canvas.save();
+    canvas.clipRect(const Rect.fromLTRB(250, 80, 390, 186));
+    shadedLimb(
       canvas,
-      body,
-      ThuyTinhColors.skin,
-      PartFrame.world,
-      shadow: 6,
-      highlight: 2,
+      [(const Offset(325, 92), const Offset(323, 182), TorsoAnatomy.front)],
+      skin,
+      scale: 1.95,
+      facing: _left,
+      shadow: 4,
+      definition: 1.3,
     );
-    final line = Paint()
-      ..color = darken(ThuyTinhColors.skin, 0.3)
-      ..strokeWidth = 1.3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    // Cơ ngực và bụng.
+    canvas.restore();
     canvas.drawPath(
       Path()
-        ..moveTo(300, 118)
-        ..quadraticBezierTo(314, 128, 326, 118)
-        ..moveTo(326, 118)
-        ..quadraticBezierTo(340, 128, 352, 116)
-        ..moveTo(326, 132)
-        ..lineTo(326, 170)
-        ..moveTo(314, 145)
-        ..lineTo(338, 145)
-        ..moveTo(315, 158)
-        ..lineTo(337, 158),
-      line,
+        ..moveTo(296, 122)
+        ..quadraticBezierTo(311, 134, 325, 128)
+        ..quadraticBezierTo(339, 134, 354, 121)
+        ..lineTo(354, 126)
+        ..quadraticBezierTo(339, 139, 325, 133)
+        ..quadraticBezierTo(311, 139, 296, 127)
+        ..close(),
+      fillPaint(coreShadeOf(skin).withValues(alpha: 0.35)),
     );
     // Chuỗi ngọc trai vắt chéo ngực.
-    for (var i = 0; i < 8; i++) {
-      final t = i / 7;
-      final p = Offset(296 + 56 * t, 100 + 26 * t + math.sin(t * math.pi) * 4);
+    for (var i = 0; i < 9; i++) {
+      final t = i / 8;
+      final p = Offset(296 + 58 * t, 100 + 28 * t + math.sin(t * math.pi) * 5);
+      canvas.drawCircle(
+        p + const Offset(0.6, 1.2),
+        3,
+        fillPaint(coreShadeOf(skin).withValues(alpha: 0.4)),
+      );
       canvas.drawCircle(p, 3.2, fillPaint(VectorStyle.outline));
       canvas.drawCircle(p, 2.4, fillPaint(const Color(0xFFFFFAF0)));
       glint(canvas, p + const Offset(-0.8, -0.8), 1, alpha: 0.9);
     }
-    // Giáp vai san hô.
-    final coral = Path();
-    for (var i = 0; i <= 8; i++) {
-      final a = math.pi * (1.0 + i / 8);
-      final r = i.isEven ? 18.0 : 11.0;
-      final p = Offset(352 + math.cos(a) * r, 100 + math.sin(a) * r * 0.8);
-      i == 0 ? coral.moveTo(p.dx, p.dy) : coral.lineTo(p.dx, p.dy);
+    // Giáp vai san hô trên vai xa: các nhánh thon mọc hướng lên, phân
+    // nhánh, đầu nhánh tròn; lỗ san hô lấm tấm.
+    const root = Offset(360, 92);
+    final branches = Path()
+      ..addOval(Rect.fromCenter(center: root, width: 20, height: 12));
+    for (var i = 0; i < 5; i++) {
+      final a = -2.5 + i * 0.42;
+      final dir = Offset(math.cos(a), math.sin(a));
+      final from = root + dir * 4;
+      final len = 12.0 + (i % 2) * 5;
+      final tip = from + dir * len + const Offset(1.5, 0);
+      final mid = Offset.lerp(from, tip, 0.55)!;
+      branches
+        ..addPath(
+          taperedStroke(
+            [from, mid, tip],
+            4,
+            peak: 0.2,
+            startWidth: 1,
+            endWidth: 0.6,
+          ),
+          Offset.zero,
+        )
+        ..addOval(Rect.fromCircle(center: tip, radius: 2.1));
+      // Nhánh con.
+      final side = Offset(-dir.dy, dir.dx) * (i.isEven ? 1 : -1);
+      final twig = mid + dir * 3 + side * 6;
+      branches
+        ..addPath(
+          taperedStroke(
+            [mid, twig],
+            2.6,
+            peak: 0.2,
+            startWidth: 1,
+            endWidth: 0.6,
+          ),
+          Offset.zero,
+        )
+        ..addOval(Rect.fromCircle(center: twig, radius: 1.6));
     }
-    coral.close();
     shadedPath(
       canvas,
-      coral,
+      branches,
       ThuyTinhColors.coral,
       PartFrame.world,
       shadow: 2.5,
       highlight: 1.2,
+      outlineWidth: 1.2,
     );
+    final pores = fillPaint(darken(ThuyTinhColors.coral, 0.35));
+    final rnd = math.Random(3);
+    for (var i = 0; i < 10; i++) {
+      canvas.drawCircle(
+        root + Offset(rnd.nextDouble() * 16 - 8, rnd.nextDouble() * 8 - 4),
+        0.8,
+        pores,
+      );
+    }
+  }
+
+  /// Râu như thác nước: lọn dài chảy thẳng xuống ngực, ngọn tan thành giọt.
+  static void _paintBeard(Canvas canvas) {
+    final rnd = math.Random(23);
+    for (final (r0, len, width, color, count) in [
+      (4.0, 58.0, 10.0, ThuyTinhColors.water, 7),
+      (3.0, 46.0, 8.0, ThuyTinhColors.hair, 7),
+    ]) {
+      final locks = buildLocks(
+        center: const Offset(316, 72),
+        rnd: rnd,
+        r0: r0,
+        length: len,
+        width: width,
+        count: count,
+        from: 1.15,
+        to: 2.35,
+        drift: const Offset(-0.02, 0.32),
+        wave: 6,
+      );
+      shadedPath(
+        canvas,
+        locks.mass,
+        color,
+        PartFrame.world,
+        shadow: 2.5,
+        highlight: 1.2,
+        outlineWidth: 1.2,
+      );
+      canvas.save();
+      canvas.clipPath(locks.mass);
+      canvas.drawPath(
+        locks.creases,
+        fillPaint(darken(color, 0.4).withValues(alpha: 0.7)),
+      );
+      canvas.drawPath(
+        locks.sheens,
+        fillPaint(lighten(color, 0.45).withValues(alpha: 0.85)),
+      );
+      canvas.restore();
+      for (final (line, w) in locks.lines) {
+        canvas.drawCircle(
+          line.last + const Offset(0, 5),
+          w * 0.15,
+          fillPaint(color),
+        );
+      }
+    }
   }
 
   void _head(Canvas canvas, BossFrame f) {
     const c = Offset(318, 68);
-    // Râu nước dài chảy xuống ngực.
-    final sway = math.sin(f.time * 1.8) * 4;
-    final beard = Path()
-      ..moveTo(300, 74)
-      ..cubicTo(296, 98, 304 + sway, 120, 316 + sway, 134)
-      ..cubicTo(322, 122, 326, 104, 336, 78)
-      ..close();
-    shadedPath(
-      canvas,
-      beard,
-      ThuyTinhColors.hair,
-      PartFrame.world,
-      shadow: 3,
-      highlight: 1.4,
-    );
-    for (var i = 0; i < 3; i++) {
-      canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(306 + i * 7.0 + sway * 0.5, 100 + i * 8.0),
-          radius: 5,
-        ),
-        0.3,
-        2.4,
-        false,
-        Paint()
-          ..color = darken(ThuyTinhColors.hair, 0.25)
-          ..strokeWidth = 1.2
-          ..style = PaintingStyle.stroke,
-      );
-    }
+    // Râu nước chảy xuống ngực, đung đưa quanh cằm.
+    const chin = Offset(316, 76);
+    canvas.save();
+    canvas.translate(chin.dx, chin.dy);
+    canvas.rotate(math.sin(f.time * 1.8) * 0.05);
+    canvas.translate(-chin.dx, -chin.dy);
+    _beardImage.paint(canvas);
+    canvas.restore();
     // Mặt (quay sang trái về phía người chơi).
-    final face = Path()
-      ..moveTo(332, 50)
-      ..cubicTo(320, 44, 302, 48, 297, 60)
-      ..lineTo(290, 66)
-      ..lineTo(297, 70)
-      ..cubicTo(298, 80, 310, 86, 326, 82)
-      ..cubicTo(336, 76, 338, 58, 332, 50)
-      ..close();
+    // Mặt nghiêng quay trái: trán, gờ mày dô, sống mũi thẳng kiểu tượng,
+    // gò má, hàm vuông.
+    final face = smoothPath(
+      const [
+        Offset(334, 50),
+        Offset(322, 45),
+        Offset(306, 47),
+        Offset(299, 54),
+        Offset(296, 58),
+        Offset(289, 66),
+        Offset(296, 69),
+        Offset(297, 74),
+        Offset(302, 80),
+        Offset(316, 84),
+        Offset(330, 78),
+        Offset(337, 64),
+      ],
+      closed: true,
+      tension: 0.08,
+    );
     shadedPath(
       canvas,
       face,
@@ -419,24 +584,52 @@ class ThuyTinhBossArt extends BossArt {
     );
     // Mắt phát sáng, mày giận.
     final eye = c + const Offset(-8, -6);
+    // Gò má và hốc mắt (mặt phẳng Loomis), quầng mắt phát sáng gradient.
+    canvas.save();
+    canvas.clipPath(face);
+    canvas.drawPath(
+      taperedStroke(const [
+        Offset(306, 72),
+        Offset(314, 76),
+        Offset(324, 72),
+      ], 3),
+      fillPaint(coreShadeOf(ThuyTinhColors.skin).withValues(alpha: 0.35)),
+    );
+    canvas.drawCircle(
+      eye + const Offset(1, -1),
+      7,
+      Paint()
+        ..shader = Gradient.radial(eye + const Offset(1, -1), 7, [
+          coreShadeOf(ThuyTinhColors.skin).withValues(alpha: 0.6),
+          coreShadeOf(ThuyTinhColors.skin).withValues(alpha: 0),
+        ]),
+    );
+    canvas.restore();
     canvas.drawCircle(
       eye,
-      6,
+      9,
       Paint()
-        ..color = ThuyTinhColors.glow.withValues(alpha: 0.55)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        ..shader = Gradient.radial(eye, 9, [
+          ThuyTinhColors.glow.withValues(alpha: 0.6),
+          ThuyTinhColors.glow.withValues(alpha: 0),
+        ]),
     );
     canvas.drawOval(
       Rect.fromCenter(center: eye, width: 7, height: 4.5),
       fillPaint(const Color(0xFFE8FFFF)),
     );
-    canvas.drawLine(
-      eye + const Offset(-6, -5),
-      eye + const Offset(6, -2),
-      Paint()
-        ..color = VectorStyle.outline
-        ..strokeWidth = 2.6
-        ..strokeCap = StrokeCap.round,
+    canvas.drawPath(
+      taperedStroke(
+        [
+          eye + const Offset(-7, -3.5),
+          eye + const Offset(-1, -6),
+          eye + const Offset(7, -4),
+        ],
+        3,
+        peak: 0.2,
+        startWidth: 0.8,
+      ),
+      fillPaint(VectorStyle.outline),
     );
     // Miệng: há ra khi đe doạ.
     final open = 2 + 6 * f.attack;
@@ -475,21 +668,45 @@ class ThuyTinhBossArt extends BossArt {
   }
 
   void _frontArm(Canvas canvas, BossFrame f) {
-    // Tay trái chỉ về phía người chơi, lòng bàn tay toả nước khi đe doạ.
+    // Tay trái chỉ về phía người chơi, bàn tay xoè; lòng bàn tay toả nước
+    // khi đe doạ.
     final reach = 6 * f.attack;
-    final hand = Offset(262 - reach, 132 - reach);
-    shadedChain(canvas, [
-      (const Offset(294, 104), const Offset(276, 124), 8.5, 7.5),
-      (const Offset(276, 124), hand, 7.5, 7),
-      (hand, hand, 8, 8),
-    ], ThuyTinhColors.skin);
+    final wrist = Offset(264 - reach, 130 - reach);
+    const elbow = Offset(278, 122);
+    shadedLimb(
+      canvas,
+      [
+        (const Offset(296, 104), elbow, HumanAnatomy.upperArm),
+        (elbow, wrist, HumanAnatomy.forearm),
+      ],
+      ThuyTinhColors.skin,
+      shadow: 3,
+      scale: 1.4,
+      facing: _left,
+      definition: 0.9,
+    );
+    shadedHand(
+      canvas,
+      buildHand(
+        wrist,
+        wrist - elbow,
+        pose: HandPose.open,
+        facing: _left,
+        scale: 1.3,
+      ),
+      ThuyTinhColors.skin,
+    );
     if (f.attack > 0.05) {
+      final c = wrist + const Offset(-12, 0);
+      final r = 14 * f.attack + 4;
       canvas.drawCircle(
-        hand + const Offset(-8, 0),
-        10 * f.attack + 3,
+        c,
+        r,
         Paint()
-          ..color = ThuyTinhColors.glow.withValues(alpha: 0.6 * f.attack)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..shader = Gradient.radial(c, r, [
+            ThuyTinhColors.glow.withValues(alpha: 0.7 * f.attack),
+            ThuyTinhColors.glow.withValues(alpha: 0),
+          ]),
       );
     }
   }
@@ -524,29 +741,90 @@ class ThuyTinhBossArt extends BossArt {
           const [ThuyTinhColors.water, ThuyTinhColors.waterDeep],
         ),
     );
-    // Bọt trắng dọc ngọn sóng.
-    final foam = fillPaint(ThuyTinhColors.foam);
-    for (var i = 0; i < 9; i++) {
-      final x = 262 + i * 15.0;
-      final y = i < 3
-          ? 196 - i * 10.0 - surge
-          : 176 + math.sin(t * 2 + i) * 2.5 + (i == 3 ? -4 - surge : 0);
-      canvas.drawCircle(Offset(x, y), 4 + (i % 3), foam);
+    canvas.save();
+    canvas.clipPath(wave);
+    // Lòng sóng cuộn tối; nước mỏng gần ngọn sáng (ánh sáng xuyên qua).
+    canvas.drawCircle(
+      Offset(300, 190 - surge),
+      26,
+      Paint()
+        ..shader = Gradient.radial(Offset(300, 190 - surge), 26, [
+          ThuyTinhColors.waterDeep.withValues(alpha: 0.85),
+          ThuyTinhColors.waterDeep.withValues(alpha: 0),
+        ]),
+    );
+    Offset crest(double x) => x < 300
+        ? Offset(x, 214 - (x - 252) / 48 * 44 - surge)
+        : Offset(x, 176 + math.sin(t * 2 + x * 0.08) * 2.5);
+    final crestLine = [for (var x = 256.0; x <= 410; x += 14) crest(x)];
+    canvas.drawPath(
+      taperedStroke(
+        offsetLine(crestLine, -7),
+        12,
+        peak: 0.5,
+        startWidth: 0.5,
+        endWidth: 0.5,
+      ),
+      fillPaint(lighten(ThuyTinhColors.water, 0.3).withValues(alpha: 0.55)),
+    );
+    // Lưới bọt trên mặt sóng: các vệt trắng mảnh lượn theo dòng chảy.
+    final lace = fillPaint(ThuyTinhColors.foam.withValues(alpha: 0.35));
+    for (var i = 0; i < 5; i++) {
+      final y = 192.0 + i * 9;
+      final pts = [
+        for (var k = 0; k < 6; k++)
+          Offset(
+            272 + i * 6 + k * 24.0,
+            y + math.sin(t * 1.4 + k * 1.3 + i) * 2.5,
+          ),
+      ];
+      canvas.drawPath(taperedStroke(pts, 1.6, peak: 0.5, samples: 12), lace);
     }
-    // Vân nước bên trong sóng.
-    final streak = Paint()
-      ..color = lighten(ThuyTinhColors.water, 0.35).withValues(alpha: 0.6)
-      ..strokeWidth = 1.6
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 3; i++) {
-      final y = 200.0 + i * 12;
-      canvas.drawPath(
-        Path()
-          ..moveTo(280 + i * 10.0, y)
-          ..quadraticBezierTo(320, y - 6 + math.sin(t + i) * 2, 360, y),
-        streak,
+    canvas.restore();
+    // Mép bọt liền dọc ngọn sóng + lọn bọt vươn về phía người chơi.
+    final foam = fillPaint(ThuyTinhColors.foam);
+    canvas.drawPath(
+      taperedStroke(
+        crestLine,
+        6,
+        peak: 0.3,
+        startWidth: 0.6,
+        endWidth: 0.4,
+        samples: 24,
+      ),
+      foam,
+    );
+    for (var i = 0; i < crestLine.length; i++) {
+      final base = crestLine[i];
+      final curl = lockLine(
+        -2.3 + math.sin(t * 2 + i) * 0.2,
+        0,
+        7 + (i % 3) * 2.5,
+        drift: const Offset(-0.4, 0.3),
       );
+      canvas.drawPath(
+        taperedStroke(
+          [for (final p in curl) p + base],
+          3.2,
+          peak: 0.2,
+          startWidth: 1,
+        ),
+        foam,
+      );
+    }
+    // Bụi nước bắn lên khi sóng dâng.
+    if (surge > 1) {
+      final rnd = math.Random(9);
+      for (var i = 0; i < 10; i++) {
+        final p =
+            crest(258 + rnd.nextDouble() * 50) +
+            Offset(rnd.nextDouble() * -16, -6 - rnd.nextDouble() * surge * 1.6);
+        canvas.drawCircle(
+          p,
+          0.8 + rnd.nextDouble() * 1.2,
+          fillPaint(ThuyTinhColors.foam.withValues(alpha: 0.8)),
+        );
+      }
     }
   }
 
