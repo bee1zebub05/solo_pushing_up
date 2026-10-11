@@ -23,9 +23,12 @@ thiếu nhi. Đọc `rules/dohoa.md` (nguyên tắc dự án) trước khi vẽ.
    PNG nằm ở `build/art_preview/`. **Mở PNG bằng Read để tự nhìn.**
 4. **Tự chấm theo bảng ở mục 3.** Mỗi mục "chưa đạt" → sửa → xuất lại.
    Ít nhất 2 vòng cho hình mới.
-5. **Hiệu năng:** `flutter test test/art/perf_budget_test.dart` (< 2 ms/khung
-   cả sân khấu). Phần tĩnh hoặc nặng → vẽ sẵn thành `Picture` (xem bờm sư tử
-   trong `lion_art.dart`, khung chim trong `greek_monsters.dart`).
+5. **Hiệu năng** (rules/dohoa.md mục 6): ngân sách chính là đo trên máy
+   thật bằng `lib/dev/perf_bench_main.dart` — GPU tô ≤ 16 ms/khung, ghi lệnh
+   ≤ 5 ms. `flutter test test/art/perf_budget_test.dart` (< 3 ms ghi lệnh
+   trên PC) chỉ là lưới chặn hồi quy. Phần tĩnh → `RasterLayer` (ảnh chụp
+   sẵn, xem bờm/thân sư tử trong `lion_art.dart`); phần lặp đổi theo khung →
+   `Picture` (khung chim trong `greek_monsters.dart`).
 6. `flutter analyze`, `flutter test`, commit riêng từng hạng mục.
 
 ## Lý thuyết mỹ thuật làm nền (giáo trình kinh điển)
