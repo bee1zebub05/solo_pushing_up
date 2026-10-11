@@ -10,6 +10,7 @@ import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
+import 'package:solo_pushing_up/art/vector_style.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
@@ -204,6 +205,7 @@ void main() {
         art.paintScene(c, 4, battle);
         art.paintBoss(c, frame);
         paintHero(c, HeroPose.plank(110), effort: 0.6);
+        paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
     }
   });

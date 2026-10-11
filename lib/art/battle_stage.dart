@@ -12,6 +12,7 @@ import 'hero_art.dart';
 import 'hero_pose.dart';
 import 'horse_art.dart';
 import 'nemea_scene.dart';
+import 'vector_style.dart';
 
 /// Trạng thái trận truyền từ logic (lib/game/battle.dart) sang hình mỗi khung,
 /// để cơ chế của boss nhìn thấy được (rules/dohoa.md nguyên tắc 4).
@@ -83,6 +84,9 @@ abstract class BossArt {
   /// Tâm và bề rộng khung chân dung (thẻ kỳ công ở trang chủ): mặt boss.
   Vector2 get portraitFocus => target;
   double get portraitView => 96;
+
+  /// Ánh sáng chủ đạo của cảnh, phủ lên toàn sân khấu để thống nhất tông.
+  Color get gradeLight => const Color(0xFFFFE3C0);
 
   /// Màu hạt toé ra khi trúng đòn.
   List<Color> get hitColors => const [Color(0xFFFFE082), Color(0xFFFFFFFF)];
@@ -381,7 +385,14 @@ class _ForegroundComponent extends Component {
   final _BossComponent boss;
 
   @override
-  void render(Canvas canvas) => boss.art.paintForeground(canvas, boss.frame);
+  void render(Canvas canvas) {
+    boss.art.paintForeground(canvas, boss.frame);
+    paintStageGrade(
+      canvas,
+      Offset.zero & stageSize,
+      light: boss.art.gradeLight,
+    );
+  }
 }
 
 enum _HeroMode { standing, plank, victory }

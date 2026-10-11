@@ -682,16 +682,44 @@ void _head(
       highlight: 0,
     );
   }
-  // Mặt; má phúng phính theo độ béo.
+  // Mặt dựng theo Loomis (quả cầu + khối hàm): trán, gờ mày, sống mũi,
+  // cằm, góc hàm; má bạnh theo độ béo.
+  final c = cheeks;
   final face = Path()
-    ..addOval(
-      Rect.fromCenter(
-        center: Offset(1.5, 1 + cheeks * 0.4),
-        width: (r - 1) * 2 + cheeks,
-        height: (r - 1) * 2 + cheeks * 1.2,
-      ),
-    );
+    ..moveTo(-13, -10)
+    ..quadraticBezierTo(-6, -16, 6, -14.5)
+    ..quadraticBezierTo(12, -12, 13, -6)
+    ..lineTo(13.4, -2)
+    ..quadraticBezierTo(13.6, 4, 14, 7)
+    ..quadraticBezierTo(13.4, 11, 12.6, 13)
+    ..quadraticBezierTo(11, 16.5 + c * 0.4, 6, 16.5 + c * 0.6)
+    ..quadraticBezierTo(-1 - c, 15 + c, -4 - c * 0.6, 11 + c * 0.4)
+    ..quadraticBezierTo(-10, 7, -12, 2)
+    ..quadraticBezierTo(-15, -4, -13, -10)
+    ..close();
   shadedPath(canvas, face, look.skin, f, shadow: 3.5, highlight: 1.2);
+  // Các mặt phẳng: mặt bên má/hàm tối hơn mặt trước, hốc mắt trũng.
+  canvas.save();
+  canvas.clipPath(face);
+  canvas.drawPath(
+    Path()
+      ..moveTo(3, -4)
+      ..quadraticBezierTo(7, 3, 5, 12)
+      ..lineTo(-5, 12 + c)
+      ..lineTo(-6, -2)
+      ..close(),
+    fillPaint(coreShadeOf(look.skin).withValues(alpha: 0.22)),
+  );
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(9, -2.5), width: 9, height: 6),
+    fillPaint(coreShadeOf(look.skin).withValues(alpha: 0.28)),
+  );
+  // Gò má sáng.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(9, 3.5), width: 6, height: 3),
+    fillPaint(lighten(look.skin, 0.12).withValues(alpha: 0.7)),
+  );
+  canvas.restore();
   if (look.hairStyle == HairStyle.buzz && !cloak) {
     // Tóc cắt sát: một lớp mỏng trên đỉnh và gáy.
     canvas.save();
@@ -710,8 +738,8 @@ void _head(
   }
   // Má hồng.
   canvas.drawOval(
-    Rect.fromCenter(center: Offset(7, 5 + cheeks * 0.5), width: 7, height: 4.5),
-    fillPaint(HeroColors.blush),
+    Rect.fromCenter(center: Offset(7, 5 + cheeks * 0.5), width: 6, height: 3.5),
+    fillPaint(HeroColors.blush.withValues(alpha: 0.35)),
   );
   // Mũi.
   shadedPath(
@@ -746,38 +774,63 @@ void _head(
       ..style = PaintingStyle.fill
       ..strokeWidth = 1.3;
   } else {
-    final open = 7 - effort * 3.2;
+    // Mắt hạnh nhân nhỏ (không tròn to kiểu trẻ con), mí trên đậm.
+    final open = 4.6 - effort * 2.4;
     final white = Path()
-      ..addOval(Rect.fromCenter(center: eye, width: 6, height: open));
-    canvas.drawPath(
-      white,
-      Paint()
-        ..color = HeroColors.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6,
-    );
+      ..moveTo(eye.dx - 3, eye.dy + 0.4)
+      ..quadraticBezierTo(eye.dx, eye.dy - open * 0.75, eye.dx + 3.2, eye.dy)
+      ..quadraticBezierTo(
+        eye.dx,
+        eye.dy + open * 0.45,
+        eye.dx - 3,
+        eye.dy + 0.4,
+      )
+      ..close();
     canvas.drawPath(white, fillPaint(HeroColors.eyeWhite));
     canvas.save();
     canvas.clipPath(white);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: eye + const Offset(1, 0.4),
-        width: 4.2,
-        height: 5.2,
-      ),
-      fillPaint(HeroColors.iris),
-    );
+    canvas.drawCircle(eye + const Offset(1, 0), 2, fillPaint(HeroColors.iris));
     canvas.drawCircle(
-      eye + const Offset(1.3, 0.5),
-      1.5,
+      eye + const Offset(1.2, 0),
+      1,
       fillPaint(HeroColors.outline),
     );
     canvas.drawCircle(
-      eye + const Offset(0.3, -1),
-      0.9,
+      eye + const Offset(0.5, -0.8),
+      0.55,
       fillPaint(const Color(0xFFFFFFFF)),
     );
+    // Bóng mí trên đổ xuống lòng trắng.
+    canvas.drawRect(
+      Rect.fromLTWH(eye.dx - 4, eye.dy - 4, 8, 1.6 + open * 0.25),
+      fillPaint(const Color(0x33402820)),
+    );
     canvas.restore();
+    // Mí trên đậm, mí dưới mảnh.
+    canvas.drawPath(
+      Path()
+        ..moveTo(eye.dx - 3.4, eye.dy + 0.6)
+        ..quadraticBezierTo(eye.dx, eye.dy - open * 0.8, eye.dx + 3.6, eye.dy),
+      Paint()
+        ..color = HeroColors.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.7
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(eye.dx - 2, eye.dy + 1.2)
+        ..quadraticBezierTo(
+          eye.dx + 0.5,
+          eye.dy + open * 0.5,
+          eye.dx + 2.8,
+          eye.dy + 0.6,
+        ),
+      Paint()
+        ..color = darken(look.skin, 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7,
+    );
   }
   // Hàng mi (ẩn khi nheo mắt gắng sức hoặc cười, kẻo chồng lên lông mày).
   if (look.female && effort < 0.45 && joy <= 0.5) {
@@ -874,17 +927,31 @@ void _head(
     );
     canvas.drawPath(drop, fillPaint(const Color(0xFFBFE6FF)));
   }
-  // Tai.
+  // Tai: vành tai thuôn (trên rộng, dái tai nhỏ) và nếp trong.
   shadedPath(
     canvas,
-    Path()..addOval(
-      Rect.fromCenter(center: const Offset(-3, 2), width: 5.5, height: 7.5),
-    ),
+    Path()
+      ..moveTo(-1, -2.5)
+      ..quadraticBezierTo(-6, -3.5, -5.5, 1.5)
+      ..quadraticBezierTo(-5, 5.5, -1.5, 5.5)
+      ..quadraticBezierTo(-0.5, 2, -1, -2.5)
+      ..close(),
     look.skin,
     f,
     shadow: 1.2,
     highlight: 0,
-    outlineWidth: 1.2,
+    outlineWidth: 1,
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(-2, -1)
+      ..quadraticBezierTo(-4.5, -1, -4, 1.8)
+      ..quadraticBezierTo(-3.5, 3.4, -2.2, 3.2),
+    Paint()
+      ..color = darken(look.skin, 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round,
   );
 
   if (cloak) {

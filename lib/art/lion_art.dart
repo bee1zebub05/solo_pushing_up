@@ -296,6 +296,32 @@ void _hideDetail(
       ..close(),
     _fill(const Color(0x40FFF8D8)),
   );
+  // Nét lông ngắn theo hướng mọc (từ đầu về đuôi, xuôi xuống bụng).
+  final fur = Path();
+  final rnd = math.Random(9);
+  for (var i = 0; i < 34; i++) {
+    final p = Offset(
+      -60 + rnd.nextDouble() * 150,
+      -112 + y + rnd.nextDouble() * 58,
+    );
+    final len = 4 + rnd.nextDouble() * 4;
+    fur
+      ..moveTo(p.dx, p.dy)
+      ..quadraticBezierTo(
+        p.dx + len * 0.6,
+        p.dy + 1,
+        p.dx + len,
+        p.dy + len * 0.5,
+      );
+  }
+  canvas.drawPath(
+    fur,
+    Paint()
+      ..color = LionColors.bodyShade.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round,
+  );
   // Sẹo cũ trên hông: dấu những kẻ đã thử và thất bại.
   final scar = Paint()
     ..color = LionColors.scar
@@ -529,6 +555,17 @@ final Picture _manePicture = () {
       _addTuft(path, Offset.zero, a, r0, (len + jitter) * chest, width, sweep);
     }
     _shaded(canvas, path, color, shadow: 3, width: 1.8);
+    // Sợi lông chạy dọc mỗi chùm (chất liệu, không tô phẳng).
+    furStrokes(
+      canvas,
+      path,
+      darken(color, 0.35),
+      dir: const Offset(1, 0.3),
+      count: 70,
+      length: 10,
+      width: 0.9,
+      seed: count,
+    );
   }
   return recorder.endRecording();
 }();

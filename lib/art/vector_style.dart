@@ -13,6 +13,10 @@ abstract final class VectorStyle {
 
   /// Hướng tới nguồn sáng (toạ độ màn hình): trên, lệch trái.
   static const lightWorld = Offset(-0.55, -0.83);
+
+  /// Ánh phản xạ (rim light) ở mép khuất sáng: ánh trời lạnh hắt lại, giúp
+  /// khối tách khỏi nền và bớt "phẳng".
+  static const rimTint = Color(0xFF9FC4E8);
 }
 
 Color darken(Color c, [double amount = 0.22]) =>
@@ -24,6 +28,13 @@ Color lighten(Color c, [double amount = 0.3]) =>
 /// Màu bóng: tối hơn và ngả ấm/tím một chút cho có hồn (thay vì chỉ xám).
 Color shadeOf(Color c) =>
     Color.lerp(darken(c, 0.2), const Color(0xFF5A2E4A), 0.12)!;
+
+/// Bóng lõi (core shadow): dải tối nhất ngay trước vùng ánh phản xạ.
+Color coreShadeOf(Color c) =>
+    Color.lerp(darken(c, 0.38), const Color(0xFF3A1E3A), 0.18)!;
+
+/// Ánh phản xạ ở mép khuất: màu bóng pha ánh trời.
+Color rimOf(Color c) => Color.lerp(shadeOf(c), VectorStyle.rimTint, 0.38)!;
 
 Paint fillPaint(Color c) => Paint()
   ..color = c
@@ -81,6 +92,7 @@ void shadedPath(
   double outlineWidth = VectorStyle.outlineWidth,
   bool outline = true,
   Path? outlineShape,
+  bool rimLight = true,
 }) {
   final light = frame.light;
   if (outline) {
@@ -111,12 +123,136 @@ void shadedPath(
     canvas.clipPath(path.shift(light * -highlight));
   }
   if (shadow > 0) {
-    canvas.drawPaint(fillPaint(shadeOf(base)));
-    canvas.drawPath(path.shift(light * shadow), fillPaint(base));
+    // Từ mép khuất vào trong: ánh phản xạ → bóng lõi → bóng → màu gốc.
+    final rim = shadow * 0.28;
+    final core = shadow * 0.55;
+    if (rimLight) {
+      canvas.drawPaint(fillPaint(rimOf(base)));
+      canvas.drawPath(path.shift(light * rim), fillPaint(coreShadeOf(base)));
+      canvas.drawPath(path.shift(light * core), fillPaint(shadeOf(base)));
+    } else {
+      canvas.drawPaint(fillPaint(shadeOf(base)));
+    }
+    canvas.drawPath(path.shift(light * shadow), _basePaint(path, base));
   } else {
     canvas.drawPaint(fillPaint(base));
   }
   canvas.restore();
+}
+
+/// Màu gốc chuyển nhẹ từ sáng (trên) xuống sẫm (dưới) cho có khối.
+Paint _basePaint(Path path, Color base) {
+  final b = path.getBounds();
+  if (b.height < 6) return fillPaint(base);
+  return Paint()
+    ..isAntiAlias = true
+    ..shader = Gradient.linear(b.topCenter, b.bottomCenter, [
+      lighten(base, 0.06),
+      darken(base, 0.07),
+    ]);
+}
+
+/// Nét lông/sợi trong vùng [path]: [count] nét cong ngắn theo hướng [dir],
+/// đậm ở gốc. Dùng cho lông thú, bờm, cỏ khô.
+void furStrokes(
+  Canvas canvas,
+  Path path,
+  Color color, {
+  Offset dir = const Offset(0.4, 1),
+  int count = 24,
+  double length = 7,
+  double width = 1.1,
+  int seed = 1,
+}) {
+  final b = path.getBounds();
+  final rnd = math.Random(seed);
+  final d = dir / dir.distance;
+  final n = Offset(-d.dy, d.dx);
+  final stroke = Paint()
+    ..color = color
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = width
+    ..strokeCap = StrokeCap.round;
+  final strokes = Path();
+  for (var i = 0; i < count; i++) {
+    final p = Offset(
+      b.left + rnd.nextDouble() * b.width,
+      b.top + rnd.nextDouble() * b.height,
+    );
+    final len = length * (0.6 + rnd.nextDouble() * 0.6);
+    final bend = (rnd.nextDouble() - 0.5) * len * 0.5;
+    final end = p + d * len;
+    final mid = Offset.lerp(p, end, 0.5)! + n * bend;
+    strokes
+      ..moveTo(p.dx, p.dy)
+      ..quadraticBezierTo(mid.dx, mid.dy, end.dx, end.dy);
+  }
+  canvas.save();
+  canvas.clipPath(path);
+  canvas.drawPath(strokes, stroke);
+  canvas.restore();
+}
+
+/// Gạch bóng song song (kiểu khắc gỗ/tranh truyện) trong vùng [path].
+void hatch(
+  Canvas canvas,
+  Path path,
+  Color color, {
+  double spacing = 3,
+  double angle = 0.9,
+  double width = 0.7,
+}) {
+  final b = path.getBounds();
+  final d = Offset(math.cos(angle), math.sin(angle));
+  final n = Offset(-d.dy, d.dx);
+  final reach = b.longestSide;
+  final lines = Path();
+  for (var k = -reach; k <= reach; k += spacing) {
+    final c = b.center + n * k;
+    lines
+      ..moveTo(c.dx - d.dx * reach, c.dy - d.dy * reach)
+      ..lineTo(c.dx + d.dx * reach, c.dy + d.dy * reach);
+  }
+  canvas.save();
+  canvas.clipPath(path);
+  canvas.drawPath(
+    lines,
+    Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width,
+  );
+  canvas.restore();
+}
+
+/// Chỉnh màu toàn cảnh, vẽ sau cùng: phủ ánh sáng cảnh [light] (nhân màu
+/// nhẹ để thống nhất tông) và vignette tối bốn góc kéo mắt vào giữa.
+void paintStageGrade(
+  Canvas canvas,
+  Rect stage, {
+  Color light = const Color(0xFFFFE3C0),
+  double vignette = 0.42,
+}) {
+  canvas.drawRect(
+    stage,
+    Paint()
+      ..color = light.withValues(alpha: 0.18)
+      ..blendMode = BlendMode.multiply,
+  );
+  canvas.drawRect(
+    stage,
+    Paint()
+      ..shader = Gradient.radial(
+        stage.center,
+        stage.longestSide * 0.62,
+        [
+          const Color(0x00000000),
+          const Color(0x00000000),
+          Color.fromRGBO(20, 10, 18, vignette),
+        ],
+        const [0, 0.62, 1],
+      ),
+  );
 }
 
 /// Viên thuốc thon dần từ [a] (bán kính [ra]) tới [b] (bán kính [rb]),
