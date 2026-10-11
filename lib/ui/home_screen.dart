@@ -456,7 +456,7 @@ class _HomeBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final title = theme.textTheme.displaySmall?.copyWith(
+    final title = theme.textTheme.headlineMedium?.copyWith(
       color: GreekUi.ink,
       fontWeight: FontWeight.w800,
       letterSpacing: 1.5,
@@ -464,57 +464,61 @@ class _HomeBanner extends StatelessWidget {
         Shadow(color: Color(0xCC000000), blurRadius: 6, offset: Offset(0, 2)),
       ],
     );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: GreekUi.gold, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: AspectRatio(
-          aspectRatio: stageSize.width / stageSize.height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CustomPaint(
-                painter: _BannerPainter(
-                  look: look,
-                  cloak: cloak,
-                  dust: valleyFreed ? 0 : 0.85,
-                ),
-              ),
-              // Tựa nằm trên dải đất phía dưới (không che nhân vật): nền tối
-              // mờ dần từ đáy lên để chữ đọc được.
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.center,
-                    colors: [Color(0xE61C1612), Color(0x001C1612)],
+    // Tựa là một phần của tranh: không phóng theo cỡ chữ hệ thống (chữ to
+    // sẽ che nhân vật và sư tử); cỡ chữ theo bề rộng tranh.
+    return MediaQuery.withNoTextScaling(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: GreekUi.gold, width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: AspectRatio(
+            aspectRatio: stageSize.width / stageSize.height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CustomPaint(
+                  painter: _BannerPainter(
+                    look: look,
+                    cloak: cloak,
+                    dust: valleyFreed ? 0 : 0.85,
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('12 Kỳ Công', style: title),
-                    Text(
-                      'Người kế nhiệm của Hercules',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: GreekUi.gold,
-                        letterSpacing: 1.2,
-                        shadows: const [
-                          Shadow(color: Color(0xCC000000), blurRadius: 4),
-                        ],
-                      ),
+                // Tựa nằm trên dải đất phía dưới (không che nhân vật): nền tối
+                // mờ dần từ đáy lên để chữ đọc được.
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.center,
+                      colors: [Color(0xE61C1612), Color(0x001C1612)],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('12 Kỳ Công', style: title),
+                      Text(
+                        'Người kế nhiệm của Hercules',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: GreekUi.gold,
+                          letterSpacing: 1.2,
+                          shadows: const [
+                            Shadow(color: Color(0xCC000000), blurRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
