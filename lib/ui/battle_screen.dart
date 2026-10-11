@@ -560,6 +560,24 @@ class _BattleScreenState extends State<BattleScreen>
       text: '🌊 Đợt sóng mới: ${wave.action.icon} ${wave.action.label}',
       color: Colors.blue.shade800,
     ),
+    Revived(:final hp) => Pill(
+      text: '💀 Spartoi đứng dậy! +$hp HP — đánh dứt điểm',
+      color: Colors.brown.shade700,
+    ),
+    ChargeWarning() => Pill(
+      text: '🐗 Lợn rừng sắp húc! GIỮ TAY THẲNG để né',
+      color: Colors.red.shade800,
+    ),
+    ChargeLanded(:final dodged, :final healed) => Pill(
+      text: dodged
+          ? '🐗 Né được cú húc!'
+          : '🐗 Bị húc! Lợn rừng hồi +$healed HP',
+      color: dodged ? Colors.green.shade700 : Colors.red.shade800,
+    ),
+    GoldStolen(:final total) => Pill(
+      text: '🪙 Harpy cướp vàng! (mất $total túi) — đừng nghỉ lâu',
+      color: Colors.amber.shade900,
+    ),
     Victory() || Defeat() => const SizedBox.shrink(),
   };
 

@@ -11,6 +11,7 @@ class Labor {
     required this.enemy,
     required this.mechanic,
     required this.reward,
+    this.stages = const [],
   });
 
   final int number;
@@ -27,6 +28,48 @@ class Labor {
 
   /// Vật phẩm nhận được khi thắng lần đầu.
   final String reward;
+
+  /// Các màn trong kỳ công (1.1 … 1.10), màn cuối là boss. Rỗng = chỉ có
+  /// trận boss.
+  final List<Stage> stages;
+
+  /// Danh sách màn thực tế: nếu không khai báo thì là một màn boss.
+  List<Stage> get allStages => stages.isNotEmpty
+      ? stages
+      : [
+          Stage(
+            id: id,
+            code: '$number',
+            title: title,
+            enemy: enemy,
+            tip: mechanic,
+            emoji: emoji,
+          ),
+        ];
+}
+
+/// Một màn trong kỳ công: một trận với một kẻ thù.
+class Stage {
+  const Stage({
+    required this.id,
+    required this.code,
+    required this.title,
+    required this.enemy,
+    required this.tip,
+    required this.emoji,
+  });
+
+  /// Khoá lưu tiến trình, ví dụ 'nemea_1_3'.
+  final String id;
+
+  /// Số màn hiển thị, ví dụ '1.3'.
+  final String code;
+  final String title;
+  final EnemySpec enemy;
+
+  /// Điều màn này dạy người chơi.
+  final String tip;
+  final String emoji;
 }
 
 /// Kỳ công 1 — Hy Lạp, thung lũng Nemea (tutorial).
@@ -35,6 +78,127 @@ const nemeanLion = EnemySpec(
   maxHp: 150,
   armor: BattleArmor.impenetrableHide,
 );
+
+// Quái thường Kỳ công 1 (rules/cottruyen.md mục 3b.1). Số liệu tạm.
+const stymphalianFlock = EnemySpec(name: 'Đàn chim Stymphalia', maxHp: 60);
+const stymphalianSwarm = EnemySpec(name: 'Bầy chim Stymphalia', maxHp: 90);
+const spartoi = EnemySpec(
+  name: 'Spartoi',
+  maxHp: 80,
+  armor: BattleArmor.reviveOnce,
+);
+const stoneSoldier = EnemySpec(
+  name: 'Lính đá',
+  maxHp: 90,
+  armor: BattleArmor.impenetrableHide,
+);
+const erymanthianBoar = EnemySpec(
+  name: 'Lợn rừng Erymanthus',
+  maxHp: 120,
+  armor: BattleArmor.chargingBoar,
+);
+const harpy = EnemySpec(name: 'Harpy', maxHp: 90, armor: BattleArmor.goldThief);
+const spartoiPack = EnemySpec(
+  name: 'Chim và Spartoi',
+  maxHp: 110,
+  armor: BattleArmor.reviveOnce,
+);
+const youngHydra = EnemySpec(
+  name: 'Hydra non',
+  maxHp: 120,
+  heads: 3,
+  armor: BattleArmor.regrowingHeads,
+);
+const stoneGuard = EnemySpec(
+  name: 'Lính đá canh hang',
+  maxHp: 120,
+  armor: BattleArmor.impenetrableHide,
+);
+
+/// 10 màn của Kỳ công 1: quái thường dạy dần từng kỹ năng, 1.5 tinh anh,
+/// 1.8 mini-boss, 1.10 boss Sư tử Nemea.
+const nemeaStages = <Stage>[
+  Stage(
+    id: 'nemea_1_1',
+    code: '1.1',
+    title: 'Đàn chim Stymphalia',
+    enemy: stymphalianFlock,
+    tip: 'Làm quen: mỗi lần hít đất là một đòn đánh',
+    emoji: '🐦',
+  ),
+  Stage(
+    id: 'nemea_1_2',
+    code: '1.2',
+    title: 'Bầy chim kéo đến',
+    enemy: stymphalianSwarm,
+    tip: 'Giữ nhịp đều để combo tăng dần',
+    emoji: '🐦',
+  ),
+  Stage(
+    id: 'nemea_1_3',
+    code: '1.3',
+    title: 'Spartoi',
+    enemy: spartoi,
+    tip: 'Ngã một lần sẽ đứng dậy: đánh dứt điểm',
+    emoji: '💀',
+  ),
+  Stage(
+    id: 'nemea_1_4',
+    code: '1.4',
+    title: 'Lính đá',
+    enemy: stoneSoldier,
+    tip: 'Chỉ rep đúng form mới làm vỡ đá',
+    emoji: '🗿',
+  ),
+  Stage(
+    id: 'nemea_1_5',
+    code: '1.5',
+    title: 'Lợn rừng Erymanthus (tinh anh)',
+    enemy: erymanthianBoar,
+    tip: 'Thấy mũi tên đỏ thì giữ tay thẳng để né cú húc',
+    emoji: '🐗',
+  ),
+  Stage(
+    id: 'nemea_1_6',
+    code: '1.6',
+    title: 'Harpy',
+    enemy: harpy,
+    tip: 'Nghỉ quá 4 giây là bị cướp vàng',
+    emoji: '🦅',
+  ),
+  Stage(
+    id: 'nemea_1_7',
+    code: '1.7',
+    title: 'Chim và Spartoi',
+    enemy: spartoiPack,
+    tip: 'Ôn lại: nhịp đều, đánh dứt điểm',
+    emoji: '⚔️',
+  ),
+  Stage(
+    id: 'nemea_1_8',
+    code: '1.8',
+    title: 'Hydra non (mini-boss)',
+    enemy: youngHydra,
+    tip: 'Đứt combo thì đầu đang chém mọc lại',
+    emoji: '🐍',
+  ),
+  Stage(
+    id: 'nemea_1_9',
+    code: '1.9',
+    title: 'Lính đá canh hang',
+    enemy: stoneGuard,
+    tip: 'Màn cuối trước hang sư tử: giữ form chuẩn',
+    emoji: '🗿',
+  ),
+  Stage(
+    id: 'nemea',
+    code: '1.10',
+    title: 'Sư tử Nemea',
+    enemy: nemeanLion,
+    tip: 'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương',
+    emoji: '🦁',
+  ),
+];
 
 /// Kỳ công 2 — Bắc Âu, rừng băng.
 const fafnir = EnemySpec(
@@ -70,6 +234,7 @@ const labors = <Labor>[
     enemy: nemeanLion,
     mechanic: 'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương',
     reward: 'Áo choàng da sư tử',
+    stages: nemeaStages,
   ),
   Labor(
     number: 2,

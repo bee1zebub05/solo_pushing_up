@@ -46,6 +46,18 @@ enum BattleArmor {
   /// xuống; nước ngập tới đỉnh thì thua. Trận chia thành các đợt sóng, mỗi đợt
   /// đòi một kiểu hành động, đánh đúng kiểu thì mạnh hơn (Kỳ công 12).
   risingFlood,
+
+  /// Spartoi — mọc lại từ răng rồng: lần đầu bị hạ thì đứng dậy với nửa
+  /// máu (dạy đánh dứt điểm — Kỳ công 1).
+  reviveOnce,
+
+  /// Lợn rừng Erymanthus — lao húc: định kỳ báo trước rồi húc; giữ tay
+  /// thẳng (plank) lúc bị húc thì né được, không thì nó hồi máu và mất combo.
+  chargingBoar,
+
+  /// Harpy — cướp vàng: nghỉ quá lâu giữa hai rep thì bị cướp vàng (trừ XP
+  /// thưởng cuối trận).
+  goldThief,
 }
 
 /// Kiểu hành động mà một đợt sóng đòi hỏi (rules/cottruyen.md mục 1b).
@@ -95,6 +107,12 @@ class DamageRules {
     this.matchedMultiplier = 1.5,
     this.holdStrikeEveryMs = 2000,
     this.holdStrikeDamage = 12,
+    this.reviveFraction = 0.5,
+    this.chargeEveryMs = 9000,
+    this.chargeWarnMs = 2500,
+    this.chargeDodgeHoldMs = 800,
+    this.chargeHealFraction = 0.1,
+    this.stealAfterMs = 4000,
   });
 
   final int baseDamage;
@@ -134,6 +152,20 @@ class DamageRules {
   /// Đợt sóng ⏸: giữ tư thế cao mỗi bấy lâu là một đòn.
   final int holdStrikeEveryMs;
   final int holdStrikeDamage;
+
+  /// [BattleArmor.reviveOnce]: hồi lại bấy nhiêu phần máu khi đứng dậy.
+  final double reviveFraction;
+
+  /// [BattleArmor.chargingBoar]: chu kỳ húc, thời gian báo trước, cần giữ
+  /// tay thẳng bấy lâu lúc bị húc để né, và lượng máu hồi nếu húc trúng.
+  final int chargeEveryMs;
+  final int chargeWarnMs;
+  final int chargeDodgeHoldMs;
+  final double chargeHealFraction;
+
+  /// [BattleArmor.goldThief]: nghỉ quá bấy lâu thì bị cướp một túi vàng
+  /// (và cứ thêm bấy lâu nữa lại mất thêm).
+  final int stealAfterMs;
 }
 
 /// Điều xảy ra trong trận, để màn hình hiện hiệu ứng / âm thanh.
@@ -209,6 +241,39 @@ final class WaveStarted extends BattleEvent {
   final Wave wave;
 }
 
+/// Kẻ thù bị hạ lần đầu nhưng đứng dậy ([BattleArmor.reviveOnce]).
+final class Revived extends BattleEvent {
+  const Revived(super.timestampMs, {required this.hp});
+
+  final int hp;
+}
+
+/// Lợn rừng chuẩn bị húc: còn [inMs] nữa thì húc ([BattleArmor.chargingBoar]).
+final class ChargeWarning extends BattleEvent {
+  const ChargeWarning(super.timestampMs, {required this.inMs});
+
+  final int inMs;
+}
+
+/// Cú húc tới: né được (đang giữ tay thẳng) hay bị húc trúng.
+final class ChargeLanded extends BattleEvent {
+  const ChargeLanded(
+    super.timestampMs, {
+    required this.dodged,
+    this.healed = 0,
+  });
+
+  final bool dodged;
+  final int healed;
+}
+
+/// Harpy cướp vàng vì nghỉ quá lâu ([BattleArmor.goldThief]).
+final class GoldStolen extends BattleEvent {
+  const GoldStolen(super.timestampMs, {required this.total});
+
+  final int total;
+}
+
 enum DefeatReason { timeUp, flooded }
 
 final class Defeat extends BattleEvent {
@@ -244,6 +309,11 @@ class Battle {
   int _waveIndex = -1;
   int _holdStrikes = 0;
   DefeatReason? _defeatReason;
+  bool _revived = false;
+  int? _chargeAtMs;
+  bool _chargeWarned = false;
+  int _goldStolen = 0;
+  int? _lastStealMs;
 
   int get hp => _hp;
   BattleStatus get status => _status;
@@ -252,6 +322,23 @@ class Battle {
   int get reps => _reps;
   double get hpFraction => _hp / enemy.maxHp;
   DefeatReason? get defeatReason => _defeatReason;
+
+  /// Số túi vàng Harpy đã cướp trong trận.
+  int get goldStolen => _goldStolen;
+
+  /// Tiến độ báo trước cú húc 0–1 tại [nowMs] (1 = húc ngay), 0 nếu chưa
+  /// tới lúc báo. Để sân khấu vẽ lợn rừng lấy đà.
+  double chargeAt(int nowMs) {
+    final at = _chargeAtMs;
+    if (enemy.armor != BattleArmor.chargingBoar ||
+        at == null ||
+        _status != BattleStatus.fighting) {
+      return 0;
+    }
+    final left = at - nowMs;
+    if (left > rules.chargeWarnMs) return 0;
+    return (1 - left / rules.chargeWarnMs).clamp(0.0, 1.0);
+  }
 
   /// Mức lạnh 0–1 tại [nowMs] ([BattleArmor.freezingCold]): bắt đầu tăng
   /// sau 1/3 thời gian cho phép nghỉ, chạm 1 đúng lúc đòn sau sẽ bị đóng
@@ -298,6 +385,9 @@ class Battle {
     _status = BattleStatus.fighting;
     _startMs = t;
     _waterMs = t;
+    if (enemy.armor == BattleArmor.chargingBoar) {
+      _chargeAtMs = t + rules.chargeEveryMs;
+    }
   }
 
   /// Trừ máu; thắng nếu hết máu.
@@ -311,6 +401,12 @@ class Battle {
     out.add(hit(amount));
     if (enemy.heads > 1 && _hp > 0 && headsLeft < headsBefore) {
       out.add(HeadSevered(t, headsLeft: headsLeft));
+    }
+    if (_hp == 0 && enemy.armor == BattleArmor.reviveOnce && !_revived) {
+      _revived = true;
+      _hp = (enemy.maxHp * rules.reviveFraction).round();
+      out.add(Revived(t, hp: _hp));
+      return out;
     }
     if (_hp == 0) {
       _status = BattleStatus.won;
@@ -354,6 +450,10 @@ class Battle {
     }
     if (_status != BattleStatus.fighting) return const [];
     if (remainingMs(nowMs) == 0) return _lose(nowMs, DefeatReason.timeUp);
+    if (enemy.armor == BattleArmor.chargingBoar) {
+      return _chargeTick(nowMs, plankHoldMs);
+    }
+    if (enemy.armor == BattleArmor.goldThief) return _thiefTick(nowMs);
     if (!_flood) return const [];
 
     final out = <BattleEvent>[];
@@ -397,6 +497,40 @@ class Battle {
     _waterMs = nowMs;
     if (_water >= 100) out.addAll(_lose(nowMs, DefeatReason.flooded));
     return out;
+  }
+
+  List<BattleEvent> _chargeTick(int nowMs, int plankHoldMs) {
+    final at = _chargeAtMs;
+    if (at == null) return const [];
+    final out = <BattleEvent>[];
+    if (!_chargeWarned && at - nowMs <= rules.chargeWarnMs) {
+      _chargeWarned = true;
+      out.add(ChargeWarning(nowMs, inMs: at - nowMs));
+    }
+    if (nowMs >= at) {
+      final dodged = plankHoldMs >= rules.chargeDodgeHoldMs;
+      var healed = 0;
+      if (!dodged) {
+        healed = math.min(
+          enemy.maxHp - _hp,
+          (enemy.maxHp * rules.chargeHealFraction).round(),
+        );
+        _hp += healed;
+        _combo = 0;
+      }
+      out.add(ChargeLanded(nowMs, dodged: dodged, healed: healed));
+      _chargeAtMs = nowMs + rules.chargeEveryMs;
+      _chargeWarned = false;
+    }
+    return out;
+  }
+
+  List<BattleEvent> _thiefTick(int nowMs) {
+    final since = _lastStealMs ?? _lastHitMs ?? _startMs ?? nowMs;
+    if (nowMs - since < rules.stealAfterMs) return const [];
+    _goldStolen++;
+    _lastStealMs = nowMs;
+    return [GoldStolen(nowMs, total: _goldStolen)];
   }
 
   void _drain(double amount) => _water = math.max(0, _water - amount);
@@ -459,6 +593,7 @@ class Battle {
             : 1;
         final out = <BattleEvent>[if (_combo == 1) ..._regrow(t)];
         _lastHitMs = t;
+        _lastStealMs = null;
         _reps++;
         _bestCombo = math.max(_bestCombo, _combo);
 
