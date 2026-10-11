@@ -154,6 +154,23 @@ void paintStymphalianBird(
 
     _wing(canvas, const Offset(0, -4), flap);
     canvas.restore();
+
+    // Bắn lông đồng như mũi tên (thần thoại): ba lông dao lao chéo xuống
+    // trước, có vệt sáng phía sau.
+    if (attack > 0.2) {
+      final k = (attack - 0.2) / 0.8;
+      for (var i = 0; i < 3; i++) {
+        final start = Offset(-6.0 - i * 3, 2.0 + i * 3);
+        final dir = Offset(-0.85, 0.45 + i * 0.12);
+        final tip = start + dir * (14 + 26 * k);
+        canvas.drawLine(
+          tip - dir * 26,
+          tip - dir * 9,
+          _stroke(Color.fromRGBO(255, 210, 140, 0.45 * k), 1.4),
+        );
+        _blade(canvas, tip - dir * 9, tip, 1.6);
+      }
+    }
   });
 }
 
