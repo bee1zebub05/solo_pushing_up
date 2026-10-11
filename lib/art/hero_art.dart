@@ -550,12 +550,18 @@ void _leg(
       shade(look.skin),
       highlight: 0,
     );
-    shadedChain(
+    // Bàn chân + dép thật (nhân vật đã cache theo tư thế nên không tốn
+    // mỗi khung), tối hơn vì khuất.
+    paintGreekSandal(
       canvas,
-      [(ankle, toe, 4.6, 3.8)],
-      shade(CostumeColors.sole),
-      shadow: 1,
-      highlight: 0,
+      knee: knee,
+      ankle: ankle,
+      toe: toe,
+      facingRight: true,
+      skin: shade(look.skin),
+      scale: k,
+      lace: 0.3,
+      far: true,
     );
     return;
   }
