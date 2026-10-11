@@ -5,7 +5,8 @@ import 'vector_style.dart';
 
 /// Hercules: linh hồn huyền thoại dẫn đường cho người kế nhiệm (cảnh mở đầu
 /// Kỳ công 1). Hình tượng cổ điển: râu xoăn, vòng nguyệt quế, chuỳ gỗ ô liu
-/// chống đất; khoác áo choàng đỏ viền hoa văn Hy Lạp, hào quang vàng.
+/// chống đất có vắt da sư tử Nemea (theo tượng Farnese Hercules), thân cơ
+/// bắp đồ sộ, hào quang vàng.
 ///
 /// Quay mặt sang trái, gốc toạ độ ở mặt đất giữa hai chân, cao khoảng 240.
 /// [appear] 0–1: hiện ra từ ánh sáng. [talk] > 0: đang nói (miệng mấp máy,
@@ -19,7 +20,6 @@ void paintHercules(
   const skin = Color(0xFFC98B5A);
   const skinFar = Color(0xFFA9714A);
   const cloth = Color(0xFFF2EBDD);
-  const robe = Color(0xFF9E2B25);
   const gold = Color(0xFFE8B83A);
   final a = appear.clamp(0.0, 1.0);
   final breath = math.sin(time * 1.6);
@@ -140,28 +140,55 @@ void paintHercules(
     );
     canvas.drawCircle(to, 2, Paint()..color = const Color(0xFFC9A577));
   }
-  // Tay xa: từ vai xuống đầu chuỳ.
-  shadedChain(canvas, [
-    (const Offset(26, -184), const Offset(42, -152), 12, 10),
-    (const Offset(42, -152), const Offset(45, -132), 10, 9),
-  ], skinFar);
+  // Da sư tử Nemea vắt lên đầu chuỳ (như tượng Farnese Hercules).
+  _peltOnClub(canvas, time);
 
-  // Chân: bắp chân to, dép quai đan.
-  for (final (hip, knee, foot, c) in [
+  // Tay xa: từ vai xuống đầu chuỳ, tì lên da sư tử.
+  shadedLimb(
+    canvas,
+    [
+      (const Offset(26, -186), const Offset(40, -154), _hUpperArm),
+      (const Offset(40, -154), const Offset(46, -134), _hForearm),
+    ],
+    skinFar,
+    shadow: 4,
+  );
+
+  // Chân theo tư thế dồn trọng lượng (contrapposto): chân gần thẳng chịu
+  // lực, chân xa chùng gối.
+  for (final (hip, knee, ankle, c) in [
     (
-      const Offset(12, -108),
-      const Offset(20, -56),
-      const Offset(22, -8),
+      const Offset(14, -112),
+      const Offset(26, -62),
+      const Offset(24, -12),
       skinFar,
     ),
     (
-      const Offset(-10, -108),
-      const Offset(-20, -56),
-      const Offset(-24, -8),
+      const Offset(-10, -112),
+      const Offset(-16, -60),
+      const Offset(-20, -12),
       skin,
     ),
   ]) {
-    shadedChain(canvas, [(hip, knee, 15, 11), (knee, foot, 12, 8)], c);
+    shadedLimb(
+      canvas,
+      [(hip, knee, _hThigh), (knee, ankle, _hShin)],
+      c,
+      shadow: 5,
+    );
+    // Xương bánh chè (sel-line).
+    canvas.drawArc(
+      Rect.fromCircle(center: knee + const Offset(-3, 0), radius: 5),
+      2.2,
+      2.0,
+      false,
+      Paint()
+        ..color = darken(c, 0.3).withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round,
+    );
+    final foot = ankle + const Offset(-4, 4);
     final sandal = Path()
       ..addRRect(
         RRect.fromRectAndRadius(
@@ -193,12 +220,12 @@ void paintHercules(
     }
   }
 
-  // Váy chiton trắng xếp ly, viền vàng.
+  // Khố chiton ngắn trắng, viền vàng (để lộ đùi và cơ bụng).
   final skirt = Path()
-    ..moveTo(-30, -126)
-    ..lineTo(30, -126)
-    ..lineTo(36, -78)
-    ..quadraticBezierTo(0, -70, -38, -78)
+    ..moveTo(-26, -128)
+    ..lineTo(26, -128)
+    ..lineTo(32, -96)
+    ..quadraticBezierTo(0, -88, -32, -96)
     ..close();
   shadedPath(canvas, skirt, cloth, PartFrame.world, shadow: 5);
   final pleat = Paint()
@@ -206,156 +233,79 @@ void paintHercules(
     ..strokeWidth = 1.2;
   for (var i = 0; i < 6; i++) {
     canvas.drawLine(
-      Offset(-22 + i * 9.0, -120),
-      Offset(-26 + i * 11.0, -78),
+      Offset(-20 + i * 8.0, -124),
+      Offset(-24 + i * 10.0, -96),
       pleat,
     );
   }
   canvas.drawLine(
-    const Offset(-37, -79),
-    const Offset(35, -79),
+    const Offset(-30, -128),
+    const Offset(30, -128),
+    Paint()
+      ..color = const Color(0xFF6B4A2C)
+      ..strokeWidth = 4,
+  );
+  canvas.drawLine(
+    const Offset(-31, -97),
+    const Offset(31, -97),
     Paint()
       ..color = gold
-      ..strokeWidth = 3,
+      ..strokeWidth = 2.4,
   );
 
-  // Thân trên cơ bắp, phập phồng theo nhịp thở.
-  final torso = Path()
-    ..moveTo(-24, -124)
-    ..cubicTo(-30, -150, -44, -168, -38, -190 - breath)
-    ..quadraticBezierTo(0, -200 - breath, 36, -190 - breath)
-    ..cubicTo(40, -168, 28, -150, 24, -124)
-    ..close();
-  shadedPath(canvas, torso, skin, PartFrame.world, shadow: 6);
-  final muscle = Paint()
-    ..color = const Color(0xFF9A6440)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.6
-    ..strokeCap = StrokeCap.round;
-  // Ngực, bụng sáu múi.
-  canvas.drawArc(
-    Rect.fromLTWH(-34, -188 - breath, 30, 22),
-    0.3,
-    2.4,
-    false,
-    muscle,
-  );
-  for (var r = 0; r < 3; r++) {
-    for (final x in [-12.0, -2.0]) {
-      canvas.drawArc(
-        Rect.fromLTWH(x, -160 + r * 11.0, 9, 9),
-        0.4,
-        2.2,
-        false,
-        muscle,
-      );
-    }
-  }
-
-  // Áo choàng đỏ vắt chéo vai, viền hoa văn chìa khoá Hy Lạp.
-  final drape = Path()
-    ..moveTo(-40, -194)
-    ..quadraticBezierTo(-8, -200, 30, -192)
-    ..lineTo(44, -150)
-    ..quadraticBezierTo(40, -120, 34, -100)
-    ..lineTo(22, -104)
-    ..quadraticBezierTo(18, -140, -32, -176)
-    ..close();
-  shadedPath(canvas, drape, robe, PartFrame.world, shadow: 5);
-  // Gạch bóng kiểu khắc gỗ ở nửa khuất của áo (phải-dưới).
-  canvas.save();
-  canvas.clipRect(const Rect.fromLTRB(8, -200, 50, -96));
-  hatch(
-    canvas,
-    drape,
-    darken(robe, 0.35),
-    spacing: 2.4,
-    angle: 1.1,
-    width: 0.8,
-  );
-  canvas.restore();
-  // Nếp áo căng từ trâm vai xuống hông.
-  for (var i = 0; i < 3; i++) {
-    canvas.drawPath(
-      Path()
-        ..moveTo(-26 + i * 6.0, -186)
-        ..quadraticBezierTo(4 + i * 6.0, -160, 24 + i * 4.0, -120),
-      Paint()
-        ..color = darken(robe, 0.25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-  final meander = Paint()
-    ..color = gold
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.4;
-  final border = Path()..moveTo(-30, -178);
-  for (var i = 0; i < 7; i++) {
-    final p = Offset.lerp(
-      const Offset(-30, -178),
-      const Offset(22, -108),
-      i / 7,
-    )!;
-    border
-      ..lineTo(p.dx, p.dy)
-      ..lineTo(p.dx + 4, p.dy - 2)
-      ..lineTo(p.dx + 5, p.dy + 3)
-      ..lineTo(p.dx + 2, p.dy + 4);
-  }
-  canvas.drawPath(border, meander);
-  // Trâm cài vàng trên vai.
-  canvas.drawCircle(
-    const Offset(-30, -188),
-    5,
-    goldPaint(const Rect.fromLTWH(-35, -193, 10, 10)),
-  );
-  canvas.drawCircle(
-    const Offset(-30, -188),
-    5,
-    Paint()
-      ..color = VectorStyle.outline
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2,
-  );
+  _heroicTorso(canvas, skin, breath);
 
   // Cổ và đầu.
   shadedChain(canvas, [
-    (const Offset(-2, -192), const Offset(-4, -206), 11, 10),
+    (const Offset(-2, -194), const Offset(-4, -208), 13, 11),
   ], skin);
+  // Cơ ức đòn chũm chạy chéo từ sau tai xuống hõm cổ.
+  canvas.drawLine(
+    const Offset(2, -210),
+    const Offset(-8, -196),
+    Paint()
+      ..color = darken(skin, 0.28).withValues(alpha: 0.6)
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round,
+  );
   _herculesHead(canvas, const Offset(-6, -222), time, talk);
 
   // Tay gần: giơ về phía người chơi, lòng bàn tay mở khi nói.
   final elbow = Offset(-60, -160 - 6 * talk);
   final hand = Offset(-84 - 4 * gesture, -180 - 14 * talk + 4 * gesture);
-  shadedChain(canvas, [
-    (const Offset(-34, -184), elbow, 14, 11),
-    (elbow, hand, 11, 9),
-  ], skin);
-  // Cơ vai và bắp tay (sel-line màu da sẫm).
+  shadedLimb(
+    canvas,
+    [(const Offset(-34, -186), elbow, _hUpperArm), (elbow, hand, _hForearm)],
+    skin,
+    shadow: 4,
+  );
+  // Khối cơ vai tròn trùm đầu cánh tay (sel-line) + rãnh bắp tay.
   final muscleLine = Paint()
-    ..color = const Color(0xFF9A6440)
+    ..color = darken(skin, 0.3).withValues(alpha: 0.7)
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.2
+    ..strokeWidth = 1.3
     ..strokeCap = StrokeCap.round;
   canvas.drawArc(
-    Rect.fromCircle(center: const Offset(-36, -182), radius: 11),
-    1.2,
-    2.2,
+    Rect.fromCircle(center: const Offset(-36, -184), radius: 13),
+    1.0,
+    2.4,
     false,
     muscleLine,
   );
-  final upper = elbow - const Offset(-34, -184);
+  final upper = elbow - const Offset(-34, -186);
   final un = Offset(-upper.dy, upper.dx) / upper.distance;
+  final mid = Offset.lerp(const Offset(-34, -186), elbow, 0.55)!;
   canvas.drawPath(
     Path()
-      ..moveTo(-38 + un.dx * 5, -178 + un.dy * 5)
+      ..moveTo(
+        mid.dx + un.dx * 2 - upper.dx * 0.2,
+        mid.dy + un.dy * 2 - upper.dy * 0.2,
+      )
       ..quadraticBezierTo(
-        (-34 + elbow.dx) / 2 + un.dx * 9,
-        (-184 + elbow.dy) / 2 + un.dy * 9,
-        elbow.dx + un.dx * 4,
-        elbow.dy + un.dy * 4,
+        mid.dx + un.dx * 6,
+        mid.dy + un.dy * 6,
+        mid.dx + un.dx * 2 + upper.dx * 0.25,
+        mid.dy + un.dy * 2 + upper.dy * 0.25,
       ),
     muscleLine,
   );
@@ -384,6 +334,255 @@ void paintHercules(
 
   canvas.restore();
   canvas.restore();
+}
+
+// Profile cơ tay chân cỡ anh hùng (t, nửa rộng trước, nửa rộng sau) — xem
+// musclePath. Tượng Farnese: cơ phóng đại, khớp vẫn thắt gọn.
+const _hUpperArm = <MuscleStop>[
+  (0.0, 14.0, 14.0), // cơ vai
+  (0.2, 14.5, 13.5),
+  (0.45, 11.5, 13.5), // bắp tay sau
+  (0.65, 12.5, 11.5), // bắp tay trước
+  (0.9, 9.0, 9.5),
+  (1.0, 8.5, 9.0), // khuỷu
+];
+const _hForearm = <MuscleStop>[
+  (0.0, 9.0, 8.5),
+  (0.22, 11.5, 10.0), // cơ cánh tay quay
+  (0.5, 9.5, 8.5),
+  (0.85, 7.0, 7.0),
+  (1.0, 7.0, 7.0), // cổ tay
+];
+const _hThigh = <MuscleStop>[
+  (0.0, 15.0, 15.0),
+  (0.3, 16.5, 14.5), // cơ tứ đầu
+  (0.7, 12.5, 11.5),
+  (1.0, 10.0, 10.5), // gối
+];
+const _hShin = <MuscleStop>[
+  (0.0, 10.0, 10.5),
+  (0.28, 9.0, 12.5), // bắp chân
+  (0.62, 8.0, 10.0),
+  (0.9, 6.5, 6.5),
+  (1.0, 6.8, 6.8), // cổ chân
+];
+
+/// Thân trên kiểu tượng Farnese: hình chữ V, cơ thang nối cổ, ngực vuông,
+/// bụng 8 múi, răng cưa sườn, cơ chéo, đường chữ V ở hông.
+void _heroicTorso(Canvas canvas, Color skin, double breath) {
+  final b = breath;
+  final torso = Path()
+    ..moveTo(-30, -170)
+    ..cubicTo(-34, -150, -26, -136, -22, -124)
+    ..lineTo(22, -124)
+    ..cubicTo(26, -136, 34, -150, 30, -170)
+    ..cubicTo(36, -186, 30, -197 - b, 14, -200 - b)
+    ..quadraticBezierTo(-4, -207 - b, -18, -200 - b)
+    ..cubicTo(-34, -197 - b, -38, -186, -30, -170)
+    ..close();
+  shadedPath(canvas, torso, skin, PartFrame.world, shadow: 6);
+
+  final sel = Paint()
+    ..color = darken(skin, 0.32).withValues(alpha: 0.65)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round;
+  final under = Paint()..color = coreShadeOf(skin).withValues(alpha: 0.3);
+  final lit = Paint()..color = sunlitOf(skin).withValues(alpha: 0.45);
+
+  // Một khối cơ: sáng phía trên-trái, bóng lõi mép dưới-phải, sel-line viền
+  // (Loomis: mỗi khối cơ là một khối tròn có mặt khuất).
+  void block(Path p, {bool soft = false}) {
+    canvas.save();
+    canvas.clipPath(p);
+    canvas.drawPath(p.shift(const Offset(-1.5, -2)), lit);
+    canvas.drawPath(p.shift(const Offset(2.5, 3)), under);
+    canvas.restore();
+    // Khối nhỏ (múi bụng): nét mảnh, nhạt để liền mạch, không thành "viên kẹo".
+    canvas.drawPath(
+      p,
+      soft
+          ? (Paint()
+              ..color = darken(skin, 0.3).withValues(alpha: 0.35)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.9)
+          : sel,
+    );
+  }
+
+  canvas.save();
+  canvas.clipPath(torso);
+  // Bóng dưới cơ ngực đổ lên bụng.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-30, -168 - b)
+      ..quadraticBezierTo(-14, -158 - b, 2, -166 - b)
+      ..quadraticBezierTo(16, -158 - b, 28, -168 - b)
+      ..lineTo(28, -162 - b)
+      ..quadraticBezierTo(16, -152 - b, 2, -160 - b)
+      ..quadraticBezierTo(-14, -152 - b, -30, -162 - b)
+      ..close(),
+    Paint()..color = coreShadeOf(skin).withValues(alpha: 0.35),
+  );
+  // Cơ ngực: hai khối vuông bo, chẻ đôi ở xương ức.
+  for (final (l, r) in [(-31.0, -1.0), (2.0, 29.0)]) {
+    block(
+      Path()
+        ..moveTo(l, -192 - b)
+        ..quadraticBezierTo((l + r) / 2, -196 - b, r, -190 - b)
+        ..quadraticBezierTo(r + 1, -176 - b, r - 3, -168 - b)
+        ..quadraticBezierTo((l + r) / 2, -162 - b, l + 2, -168 - b)
+        ..quadraticBezierTo(l - 2, -180 - b, l, -192 - b)
+        ..close(),
+    );
+  }
+  // Bụng: 4 hàng × 2 múi, hẹp dần xuống dưới, đường trắng giữa.
+  for (var row = 0; row < 4; row++) {
+    final y = -160.0 + row * 9;
+    final w = 9.0 - row * 0.8;
+    for (final side in [-1.0, 1.0]) {
+      final x = side < 0 ? -w - 1.2 : 1.2;
+      block(
+        Path()..addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, y, w, 7.6),
+            const Radius.circular(3.4),
+          ),
+        ),
+      );
+    }
+  }
+  // Răng cưa sườn phía gần.
+  for (var i = 0; i < 3; i++) {
+    final y = -164.0 + i * 6;
+    block(
+      Path()
+        ..moveTo(-27, y)
+        ..quadraticBezierTo(-22, y - 2, -18, y + 1)
+        ..quadraticBezierTo(-22, y + 4, -27, y + 3)
+        ..close(),
+    );
+  }
+  // Cơ chéo bụng hai bên.
+  for (final s in [-1.0, 1.0]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(s * 20, -148)
+        ..quadraticBezierTo(s * 22, -136, s * 13, -126),
+      sel,
+    );
+  }
+  // Đường chữ V ở hông dẫn xuống khố.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-19, -136)
+      ..quadraticBezierTo(-12, -128, -6, -124)
+      ..moveTo(19, -136)
+      ..quadraticBezierTo(12, -128, 6, -124),
+    sel..strokeWidth = 1.6,
+  );
+  // Xương đòn hai bên hõm cổ.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-26, -196 - b)
+      ..quadraticBezierTo(-14, -194 - b, -5, -197 - b)
+      ..moveTo(5, -197 - b)
+      ..quadraticBezierTo(14, -194 - b, 24, -196 - b),
+    sel..strokeWidth = 1.2,
+  );
+  canvas.restore();
+}
+
+/// Da sư tử Nemea vắt trên đầu chuỳ: đầu sư tử ở trên, tấm da rủ xuống,
+/// chân trước có móng đung đưa nhẹ.
+void _peltOnClub(Canvas canvas, double time) {
+  const hide = Color(0xFFC99140);
+  const mane = Color(0xFF8E3714);
+  final sway = math.sin(time * 1.4) * 1.5;
+  final skin = Path()
+    ..moveTo(36, -138)
+    ..quadraticBezierTo(48, -146, 62, -138)
+    ..quadraticBezierTo(72, -110, 68 + sway, -78)
+    ..lineTo(72 + sway, -62)
+    ..lineTo(64 + sway, -64)
+    ..lineTo(60, -76)
+    ..quadraticBezierTo(52, -70, 44, -78)
+    ..lineTo(40 - sway, -64)
+    ..lineTo(32 - sway, -66)
+    ..lineTo(36, -82)
+    ..quadraticBezierTo(30, -110, 36, -138)
+    ..close();
+  shadedPath(canvas, skin, hide, PartFrame.world, shadow: 4);
+  furStrokes(
+    canvas,
+    skin,
+    darken(hide, 0.32),
+    dir: const Offset(0.05, 1),
+    count: 40,
+    length: 7,
+    width: 0.9,
+    seed: 21,
+  );
+  final claw = Paint()
+    ..color = const Color(0xFFFFF4DC)
+    ..strokeWidth = 1.3
+    ..strokeCap = StrokeCap.round;
+  for (final p in [Offset(68 + sway, -62), Offset(36 - sway, -65)]) {
+    for (final dx in [-2.4, 0.0, 2.4]) {
+      canvas.drawLine(p + Offset(dx, 0), p + Offset(dx - 0.8, 3.6), claw);
+    }
+  }
+  // Bờm quanh đầu sư tử trên đỉnh chuỳ.
+  const c = Offset(49, -146);
+  final tufts = Path();
+  for (var i = 0; i < 10; i++) {
+    final a = math.pi * (0.9 + 1.2 * i / 9);
+    final dir = Offset(math.cos(a), math.sin(a));
+    final n = Offset(-dir.dy, dir.dx);
+    final base = c + dir * 9;
+    final tip = base + dir * (10 + (i.isEven ? 3 : 0));
+    tufts
+      ..moveTo(base.dx + n.dx * 4, base.dy + n.dy * 4)
+      ..quadraticBezierTo(tip.dx + n.dx, tip.dy + n.dy, tip.dx, tip.dy)
+      ..quadraticBezierTo(
+        base.dx - n.dx,
+        base.dy - n.dy,
+        base.dx - n.dx * 4,
+        base.dy - n.dy * 4,
+      )
+      ..close();
+  }
+  tufts.addOval(Rect.fromCircle(center: c, radius: 10));
+  shadedPath(canvas, tufts, mane, PartFrame.world, shadow: 2.5);
+  // Đầu sư tử nghiêng, mắt nhắm, nanh.
+  final head = Path()
+    ..moveTo(40, -150)
+    ..quadraticBezierTo(48, -158, 58, -152)
+    ..quadraticBezierTo(62, -144, 58, -138)
+    ..lineTo(44, -138)
+    ..quadraticBezierTo(38, -142, 40, -150)
+    ..close();
+  shadedPath(canvas, head, hide, PartFrame.world, shadow: 2);
+  canvas.drawPath(
+    Path()
+      ..moveTo(44, -148)
+      ..quadraticBezierTo(47, -146.5, 50, -147.5),
+    Paint()
+      ..color = VectorStyle.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round,
+  );
+  for (final x in [47.0, 52.0]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(x - 1.2, -138.5)
+        ..lineTo(x + 1.2, -138.5)
+        ..lineTo(x, -134)
+        ..close(),
+      Paint()..color = const Color(0xFFFFF6DE),
+    );
+  }
 }
 
 void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
