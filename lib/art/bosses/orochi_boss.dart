@@ -82,44 +82,102 @@ class OrochiBossArt extends BossArt {
           const [0, 0.55, 1],
         ),
     );
-    // Mặt trời lặn.
+    // Mặt trời lặn có quầng; mây dải ngang kiểu khắc gỗ, mép dưới hắt nắng.
+    const sun = Offset(230, 150);
     canvas.drawCircle(
-      const Offset(230, 150),
-      34,
-      fillPaint(const Color(0xFFFFD08A).withValues(alpha: 0.9)),
+      sun,
+      90,
+      Paint()
+        ..shader = Gradient.radial(sun, 90, const [
+          Color(0x66FFD08A),
+          Color(0x00FFD08A),
+        ]),
     );
-    // Núi xa nhiều lớp.
+    canvas.drawCircle(
+      sun,
+      34,
+      fillPaint(const Color(0xFFFFD08A).withValues(alpha: 0.95)),
+    );
+    for (final (x, y, len, thick) in const [
+      (40.0, 58.0, 150.0, 7.0),
+      (210.0, 44.0, 170.0, 6.0),
+      (120.0, 92.0, 190.0, 8.0),
+      (280.0, 110.0, 130.0, 5.0),
+      (20.0, 124.0, 110.0, 5.0),
+    ]) {
+      final band = taperedStroke(
+        [Offset(x, y), Offset(x + len * 0.4, y - 2), Offset(x + len, y + 1)],
+        thick,
+        peak: 0.4,
+        startWidth: 0.2,
+        endWidth: 0.1,
+      );
+      canvas.drawPath(band, fillPaint(const Color(0xFF5A2E50)));
+      canvas.drawPath(
+        taperedStroke(
+          [
+            Offset(x + len * 0.1, y + thick * 0.35),
+            Offset(x + len * 0.5, y + thick * 0.3),
+            Offset(x + len * 0.9, y + thick * 0.4),
+          ],
+          thick * 0.3,
+          peak: 0.5,
+        ),
+        fillPaint(const Color(0xCCFFB070)),
+      );
+    }
+    // Núi xa nhiều lớp, sương thung lũng giữa các lớp, cây li ti trên sống.
+    final ridgeTrees = math.Random(6);
     for (final (base, color, phase) in [
       (150.0, const Color(0xFF6A3A55), 0.0),
       (172.0, const Color(0xFF4A2A44), 1.7),
     ]) {
-      final path = Path()..moveTo(0, h);
+      final ridge = <Offset>[];
       for (var x = 0.0; x <= w; x += 10) {
-        path.lineTo(
-          x,
-          base - 22 * (0.5 + 0.5 * math.sin(x / 55 + phase)).abs(),
+        ridge.add(
+          Offset(x, base - 22 * (0.5 + 0.5 * math.sin(x / 55 + phase)).abs()),
         );
+      }
+      final path = Path()..moveTo(0, h);
+      for (final p in ridge) {
+        path.lineTo(p.dx, p.dy);
       }
       path
         ..lineTo(w, h)
         ..close();
       canvas.drawPath(path, fillPaint(color));
-    }
-    // Rặng tuyết tùng.
-    final cedar = fillPaint(const Color(0xFF2B1E33));
-    for (var i = 0; i < 14; i++) {
-      final x = i * 31.0 + (i.isEven ? 4 : 0);
-      final top = 150.0 - (i % 4) * 9;
-      canvas.drawPath(
-        Path()
-          ..moveTo(x, top)
-          ..lineTo(x - 10, 196)
-          ..lineTo(x + 10, 196)
-          ..close(),
-        cedar,
+      for (final p in ridge) {
+        for (var k = 0; k < 2; k++) {
+          final t = p + Offset(ridgeTrees.nextDouble() * 10, 1);
+          final th = 3 + ridgeTrees.nextDouble() * 3;
+          canvas.drawPath(
+            Path()
+              ..moveTo(t.dx, t.dy - th)
+              ..lineTo(t.dx - th * 0.35, t.dy + 1)
+              ..lineTo(t.dx + th * 0.35, t.dy + 1)
+              ..close(),
+            fillPaint(color),
+          );
+        }
+      }
+      canvas.drawRect(
+        Rect.fromLTRB(0, base - 6, w, base + 14),
+        Paint()
+          ..shader = Gradient.linear(
+            Offset(0, base - 6),
+            Offset(0, base + 14),
+            const [Color(0x00F2A0A0), Color(0x55F2B090), Color(0x00F2A0A0)],
+            const [0, 0.5, 1],
+          ),
       );
     }
-    // Sông Hi chảy ngang.
+    // Rừng tuyết tùng (sugi) ngược sáng, mép trái hắt nắng hoàng hôn.
+    for (var i = 0; i < 14; i++) {
+      final x = i * 31.0 + (i.isEven ? 4 : 0);
+      if (x > 240) continue; // phía boss bị thân Orochi che
+      _sugi(canvas, Offset(x, 196), 46.0 + (i % 4) * 9);
+    }
+    // Sông Hi: nước phản chiếu trời, vệt mặt trời lấp lánh.
     canvas.drawRect(
       const Rect.fromLTRB(0, 192, 400, 208),
       Paint()
@@ -129,7 +187,30 @@ class OrochiBossArt extends BossArt {
           const [Color(0xFFF0B27A), Color(0xFF7A4A6A)],
         ),
     );
-    // Bờ đất người chơi đứng.
+    final glitter = math.Random(4);
+    for (var i = 0; i < 18; i++) {
+      final y = 194 + glitter.nextDouble() * 12;
+      final half = 3 + (12 - (y - 194)) * 0.8 + glitter.nextDouble() * 4;
+      final x = sun.dx + (glitter.nextDouble() - 0.5) * 40;
+      canvas.drawLine(
+        Offset(x - half, y),
+        Offset(x + half, y),
+        Paint()
+          ..color = const Color(0xCCFFE2A8)
+          ..strokeWidth = 0.9,
+      );
+    }
+    for (var i = 0; i < 7; i++) {
+      final y = 196.0 + i * 1.8;
+      canvas.drawLine(
+        Offset(10 + i * 37.0, y),
+        Offset(30 + i * 37.0, y),
+        Paint()
+          ..color = const Color(0x55FFFFFF)
+          ..strokeWidth = 0.6,
+      );
+    }
+    // Bờ đất người chơi đứng: đá cuội, cỏ.
     canvas.drawRect(
       Rect.fromLTRB(0, stageGroundY - 4, w, h),
       Paint()
@@ -139,20 +220,153 @@ class OrochiBossArt extends BossArt {
           const [Color(0xFF5A4636), Color(0xFF3A2C24)],
         ),
     );
-    // Cổng torii đỏ phía sau người chơi.
-    final torii = fillPaint(OrochiColors.torii);
-    final ink = fillPaint(VectorStyle.outline);
-    for (final x in [24.0, 78.0]) {
-      canvas.drawRect(Rect.fromLTWH(x - 1.5, 112, 9, 106), ink);
-      canvas.drawRect(Rect.fromLTWH(x, 114, 6, 104), torii);
+    final pebbles = math.Random(12);
+    for (var i = 0; i < 30; i++) {
+      final c = Offset(
+        pebbles.nextDouble() * w,
+        stageGroundY + 4 + pebbles.nextDouble() * (h - stageGroundY - 6),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c,
+          width: 3 + pebbles.nextDouble() * 4,
+          height: 1.6 + pebbles.nextDouble() * 1.4,
+        ),
+        fillPaint(const Color(0xFF6E5A48)),
+      );
     }
-    canvas.drawRect(const Rect.fromLTWH(12, 104, 82, 9), ink);
+    _torii(canvas);
+  }
+  }
+
+  /// Cây tuyết tùng Nhật (sugi): thân thẳng, tán nhọn nhiều tầng răng cưa;
+  /// ngược sáng nên tối, mép trái hắt nắng cam.
+  static void _sugi(Canvas canvas, Offset base, double h) {
+    const dark = Color(0xFF2B1E33);
     canvas.drawRect(
-      const Rect.fromLTWH(13, 105, 80, 7),
-      fillPaint(const Color(0xFF2B1E33)),
+      Rect.fromLTWH(base.dx - 1.4, base.dy - h * 0.3, 2.8, h * 0.3),
+      fillPaint(const Color(0xFF241826)),
     );
-    canvas.drawRect(const Rect.fromLTWH(16, 122, 74, 7), ink);
-    canvas.drawRect(const Rect.fromLTWH(17, 123, 72, 5), torii);
+    final crown = Path()..moveTo(base.dx, base.dy - h);
+    for (var t = 0; t <= 6; t++) {
+      final y = base.dy - h + h * 0.8 * t / 6;
+      final w = h * 0.06 + h * 0.2 * t / 6;
+      crown
+        ..lineTo(base.dx + w, y + h * 0.05)
+        ..lineTo(base.dx + w * 0.6, y + h * 0.07);
+    }
+    for (var t = 6; t >= 0; t--) {
+      final y = base.dy - h + h * 0.8 * t / 6;
+      final w = h * 0.06 + h * 0.2 * t / 6;
+      crown
+        ..lineTo(base.dx - w * 0.6, y + h * 0.07)
+        ..lineTo(base.dx - w, y + h * 0.05);
+    }
+    crown.close();
+    canvas.drawPath(crown, fillPaint(dark));
+    canvas.save();
+    canvas.clipPath(crown);
+    canvas.drawRect(
+      Rect.fromLTWH(base.dx - h * 0.3, base.dy - h, h * 0.22, h),
+      Paint()
+        ..shader = Gradient.linear(
+          Offset(base.dx - h * 0.3, 0),
+          Offset(base.dx - h * 0.08, 0),
+          const [Color(0x88FF9A5A), Color(0x00FF9A5A)],
+        ),
+    );
+    canvas.restore();
+  }
+
+  /// Cổng torii đúng cấu trúc: xà trên (kasagi) cong vểnh hai đầu đen,
+  /// xà phụ (shimaki), xà ngang (nuki) xuyên qua cột, trụ giữa (gakuzuka),
+  /// cột đỏ có chân đen (nemaki); vân gỗ và bóng một phía.
+  static void _torii(Canvas canvas) {
+    const red = OrochiColors.torii;
+    for (final x in [24.0, 78.0]) {
+      final post = Path()
+        ..moveTo(x - 0.5, 116)
+        ..lineTo(x + 6.5, 116)
+        ..lineTo(x + 7.5, 218)
+        ..lineTo(x - 1.5, 218)
+        ..close();
+      shadedPath(
+        canvas,
+        post,
+        red,
+        PartFrame.world,
+        shadow: 2,
+        highlight: 0.8,
+        outlineWidth: 1.4,
+      );
+      shadedPath(
+        canvas,
+        Path()..addRect(Rect.fromLTWH(x - 2.5, 208, 11, 10)),
+        const Color(0xFF241A1E),
+        PartFrame.world,
+        shadow: 1,
+        highlight: 0.4,
+        outlineWidth: 1.2,
+      );
+    }
+    // Nuki xuyên ngang hai cột.
+    shadedPath(
+      canvas,
+      Path()..addRect(const Rect.fromLTWH(14, 128, 78, 6)),
+      red,
+      PartFrame.world,
+      shadow: 1.5,
+      highlight: 0.6,
+      outlineWidth: 1.3,
+    );
+    // Gakuzuka (trụ giữa) + bảng tên.
+    shadedPath(
+      canvas,
+      Path()..addRect(const Rect.fromLTWH(49, 114, 6, 14)),
+      red,
+      PartFrame.world,
+      shadow: 1,
+      highlight: 0.5,
+      outlineWidth: 1.1,
+    );
+    shadedPath(
+      canvas,
+      Path()..addRect(const Rect.fromLTWH(46, 116, 12, 9)),
+      const Color(0xFF2B1E33),
+      PartFrame.world,
+      shadow: 0.6,
+      highlight: 0.3,
+      outlineWidth: 1,
+    );
+    // Shimaki (đỏ) và kasagi (đen) cong vểnh hai đầu.
+    shadedPath(
+      canvas,
+      Path()
+        ..moveTo(13, 108)
+        ..quadraticBezierTo(53, 111, 93, 108)
+        ..lineTo(93, 114)
+        ..quadraticBezierTo(53, 117, 13, 114)
+        ..close(),
+      red,
+      PartFrame.world,
+      shadow: 1.5,
+      highlight: 0.6,
+      outlineWidth: 1.3,
+    );
+    shadedPath(
+      canvas,
+      Path()
+        ..moveTo(4, 99)
+        ..quadraticBezierTo(53, 108, 102, 99)
+        ..lineTo(101, 104)
+        ..quadraticBezierTo(53, 112, 5, 104)
+        ..close(),
+      const Color(0xFF241A1E),
+      PartFrame.world,
+      shadow: 1.5,
+      highlight: 0.8,
+      outlineWidth: 1.3,
+    );
   }
 
   @override
