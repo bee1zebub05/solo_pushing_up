@@ -20,9 +20,11 @@ import 'package:vector_anatomy/vector_anatomy.dart';
   final stepY = size;
   var row = 0;
   for (var y = area.top; y <= area.bottom; y += stepY, row++) {
-    for (var x = area.left + (row.isOdd ? stepX / 2 : 0);
-        x <= area.right;
-        x += stepX) {
+    for (
+      var x = area.left + (row.isOdd ? stepX / 2 : 0);
+      x <= area.right;
+      x += stepX
+    ) {
       final j = rnd == null ? 0.0 : (rnd.nextDouble() - 0.5) * size * 0.15;
       final top = Offset(x + j, y);
       final tip = top + dir * size - side * (size * 0.12);
@@ -39,8 +41,10 @@ import 'package:vector_anatomy/vector_anatomy.dart';
         Offset.zero,
       );
       lit.addPath(
-        taperedStroke([top + dir * (size * 0.12), tip - dir * (size * 0.24)],
-            size * 0.14),
+        taperedStroke([
+          top + dir * (size * 0.12),
+          tip - dir * (size * 0.24),
+        ], size * 0.14),
         Offset.zero,
       );
     }

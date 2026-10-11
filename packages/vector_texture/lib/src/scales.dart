@@ -43,8 +43,9 @@ double taperProfile(
 
 /// Dựng thân có vảy dọc [pts] (đường giữa), rộng tối đa [width].
 ///
-/// Bụng là phía pháp tuyến hướng xuống (+y màn hình). [rows] hàng vảy mỗi
-/// bên đường giữa; [samples] số mẫu dọc thân (mỗi mẫu so le một hàng).
+/// Bụng là phía pháp tuyến hướng xuống (+y màn hình); thân uốn chữ S (cổ
+/// rồng) đặt [bellySide] = +1/-1 để cố định bụng ở một phía pháp tuyến dọc
+/// cả thân. [rows] hàng vảy mỗi bên đường giữa; [samples] số mẫu dọc thân.
 ScaleBody buildScaleBody(
   List<Offset> pts,
   double width, {
@@ -54,6 +55,7 @@ ScaleBody buildScaleBody(
   bool belly = true,
   int samples = 60,
   int rows = 2,
+  double? bellySide,
 }) {
   final body = taperedStroke(
     pts,
@@ -74,6 +76,13 @@ ScaleBody buildScaleBody(
     return len == 0 ? const Offset(0, 1) : Offset(-d.dy, d.dx) / len;
   }
 
+  // Phía bụng: cố định theo [bellySide] nếu có, không thì phía hướng xuống.
+  Offset downAt(int i) {
+    final n = normalAt(i);
+    if (bellySide != null) return n * bellySide.sign;
+    return n.dy >= 0 ? n : -n;
+  }
+
   final scaleDark = Path();
   final scaleLit = Path();
   for (var i = 1; i < line.length - 1; i++) {
@@ -81,7 +90,7 @@ ScaleBody buildScaleBody(
     final d = line[i + 1] - line[i - 1];
     final dir = d / d.distance;
     final n = normalAt(i);
-    final down = n.dy >= 0 ? n : -n;
+    final down = downAt(i);
     final h = half(t);
     for (var row = -rows; row <= rows; row++) {
       if (i.isOdd == row.isEven) continue;
@@ -104,8 +113,7 @@ ScaleBody buildScaleBody(
   final spineLine = [
     for (var i = 0; i < line.length; i++)
       () {
-        final n = normalAt(i);
-        final up = n.dy <= 0 ? n : -n;
+        final up = -downAt(i);
         return line[i] + up * (half(i / (line.length - 1)) * 0.62);
       }(),
   ];
@@ -122,8 +130,7 @@ ScaleBody buildScaleBody(
     final under = <Offset>[];
     final halves = <double>[];
     for (var i = 0; i < line.length; i++) {
-      final n = normalAt(i);
-      final down = n.dy >= 0 ? n : -n;
+      final down = downAt(i);
       final h = half(i / (line.length - 1));
       under.add(line[i] + down * (h * 0.72));
       halves.add(h);
