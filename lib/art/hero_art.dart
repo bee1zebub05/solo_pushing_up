@@ -296,9 +296,10 @@ void paintHero(
         look.skin,
         highlight: 0,
       );
-      _cachedHead(canvas, head, headUp, look, cloak, effort, joy);
-
-      _arm(
+      // Tay giơ cao (ăn mừng) nằm sau đầu theo chiều sâu: vẽ trước đầu để
+      // không che khuôn mặt; các tư thế khác tay gần vẽ sau cùng.
+      final raised = pose[HeroJoint.wrist].dy < shoulder.dy - 10;
+      void nearArm() => _arm(
         canvas,
         look,
         shoulder,
@@ -306,6 +307,9 @@ void paintHero(
         pose[HeroJoint.wrist],
         onGround: ground - pose[HeroJoint.wrist].dy < 14,
       );
+      if (raised) nearArm();
+      _cachedHead(canvas, head, headUp, look, cloak, effort, joy);
+      if (!raised) nearArm();
     },
   );
   canvas.restore();
