@@ -127,7 +127,7 @@ class NemeaMonsterArt extends NemeaBossArt {
         );
       case NemeaMonster.pack:
         _at(canvas, _x + 10, 1.3, () => _spartoi(canvas, f));
-        _birds(canvas, f, 2, offset: const Offset(-40, -10));
+        _birds(canvas, f, 2, offset: const Offset(-70, -38));
       case NemeaMonster.hydra:
         _at(
           canvas,
