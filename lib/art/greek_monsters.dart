@@ -1259,6 +1259,25 @@ void paintStoneSoldier(
       marbleDark,
       shadow: 1,
     );
+    // Báo trước cú đâm: mũi giáo loé sao tím (màu Trì Trệ) lúc lấy đà.
+    if (attack > 0.02 && attack < 0.6) {
+      final k = math.sin(attack / 0.6 * math.pi);
+      final r = 7 * k;
+      final p = tip + dir * 9;
+      canvas.drawPath(
+        Path()
+          ..moveTo(p.dx, p.dy - r)
+          ..lineTo(p.dx + r * 0.2, p.dy - r * 0.2)
+          ..lineTo(p.dx + r, p.dy)
+          ..lineTo(p.dx + r * 0.2, p.dy + r * 0.2)
+          ..lineTo(p.dx, p.dy + r)
+          ..lineTo(p.dx - r * 0.2, p.dy + r * 0.2)
+          ..lineTo(p.dx - r, p.dy)
+          ..lineTo(p.dx - r * 0.2, p.dy - r * 0.2)
+          ..close(),
+        _fill(Color.fromRGBO(230, 216, 255, k)),
+      );
+    }
 
     // Khe nứt rỉ ánh Trì Trệ, nhấp nháy chậm.
     final pulse = 0.55 + 0.45 * math.sin(time * 2.2);

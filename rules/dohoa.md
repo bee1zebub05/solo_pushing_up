@@ -74,5 +74,5 @@ Nguồn đọc thêm (tóm tắt thứ cấp, nên đọc sách gốc khi có th
   ứng chỉ xuất hiện khi chạy game (đòn bay, huy hiệu, da sư tử bay).
 - **Bảng dấu hiệu báo trước đòn (chương 1)**, mỗi kẻ thù một màu/hình cố định:
   sư tử = cào đất tung bụi + rung + mắt loé cam; lợn rừng = mũi tên đỏ chớp trên
-  đất (né bằng squat); Harpy = vòng sóng rít tím; Hydra = vũng độc xanh sủi bọt;
+  đất (né bằng squat); Harpy = vòng sóng rít tím; Hydra = vũng độc xanh sủi bọt; lính đá = mũi giáo loé sao tím;
   rep sai form = khiên lục giác vàng + "BỊ CHẶN!".
