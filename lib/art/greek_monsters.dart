@@ -1686,53 +1686,16 @@ void paintStoneSoldier(
         definition: near ? 0.55 : 0,
       );
     }
-    // Thân giáp cơ bắp (giáp đúc kiểu cuirass).
-    final body = Path()
-      ..moveTo(-14, -42)
-      ..lineTo(-16, -72)
-      ..quadraticBezierTo(0, -80, 16, -72)
-      ..lineTo(14, -42)
-      ..quadraticBezierTo(0, -38, -14, -42)
-      ..close();
-    _shaded(canvas, body, marble, shadow: 4);
-    canvas.save();
-    canvas.clipPath(body);
-    // Cơ ngực, bụng đúc trên giáp.
-    final carve = _stroke(marbleDark, 1);
-    canvas.drawArc(
-      const Rect.fromLTWH(-12, -72, 12, 9),
-      0.3,
-      2.4,
-      false,
-      carve,
-    );
-    canvas.drawArc(const Rect.fromLTWH(0, -72, 12, 9), 0.3, 2.4, false, carve);
-    for (var r = 0; r < 2; r++) {
-      canvas.drawLine(
-        Offset(-6, -58 + r * 7.0),
-        Offset(6, -58 + r * 7.0),
-        carve,
-      );
-    }
-    // Vân đá (gạch bóng mảnh) ở nửa khuất.
-    canvas.clipRect(const Rect.fromLTRB(2, -80, 20, -38));
-    hatch(
-      canvas,
-      body,
-      const Color(0x44706858),
-      spacing: 2.2,
-      angle: 1.2,
-      width: 0.6,
-    );
-    canvas.restore();
-
+    // Khiên ở tay phía xa: nằm sau thân.
     // Khiên đá tròn có vết nứt.
-    final shieldC = Offset(10 + sway * 0.4, -54);
+    final shieldC = Offset(17 + sway * 0.4, -56);
     final shield = Path()
       ..addOval(Rect.fromCircle(center: shieldC, radius: 15));
     _shaded(canvas, shield, marbleDark, shadow: 4);
     canvas.drawCircle(shieldC, 10, _stroke(const Color(0xFF8E8676), 1.2));
 
+    // Thân giáp cơ bắp tạc đá (chụp sẵn): vai rộng, eo thắt, váy giáp.
+    _stoneTorso.paint(canvas);
     // Đầu đội mũ Corinth bằng đá, mào đá.
     final head = Offset(-1 + sway * 0.3 - 3 * lunge, -86);
     canvas.save();
@@ -1818,6 +1781,171 @@ void paintStoneSoldier(
     );
   }
 }
+
+/// Giáp ngực đúc kiểu "cuirass cơ bắp" tạc đá cẩm thạch: khối ngực, sáu
+/// múi bụng, cơ chéo nổi khối (mỗi khối sáng trên–trái, bóng dưới–phải),
+/// viền giáp cổ và nách, hai hàng váy giáp (pteruges) tạc rời, vân đá,
+/// vết nứt rỉ ánh tím Trì Trệ, rêu bám nách. Tĩnh → chụp sẵn.
+final _stoneTorso = RasterLayer(
+  (canvas) {
+    const marble = Color(0xFFD9D3C7);
+    const marbleDark = Color(0xFFB4AC9E);
+    // Váy giáp: hai hàng dải tạc, hàng sau tối hơn.
+    for (final (y, len, c) in const [
+      (-44.0, 13.0, Color(0xFFA49C8E)),
+      (-42.0, 10.0, marbleDark),
+    ]) {
+      for (var i = 0; i < 6; i++) {
+        final x = -13.5 + i * 4.8;
+        final strip = Path()
+          ..addRRect(
+            RRect.fromLTRBR(x, y, x + 4.2, y + len, const Radius.circular(1.2)),
+          );
+        shadedPath(
+          canvas,
+          strip,
+          c,
+          PartFrame.world,
+          shadow: 1.2,
+          highlight: 0.5,
+          outlineWidth: 1,
+        );
+        canvas.drawLine(
+          Offset(x + 0.6, y + len - 2.4),
+          Offset(x + 3.6, y + len - 2.4),
+          _stroke(darken(c, 0.25), 0.6),
+        );
+      }
+    }
+    final body = Path()
+      ..moveTo(-13, -42)
+      ..cubicTo(-15, -52, -18, -62, -18, -70)
+      ..quadraticBezierTo(-12, -78, 0, -78)
+      ..quadraticBezierTo(12, -78, 18, -70)
+      ..cubicTo(18, -62, 15, -52, 13, -42)
+      ..quadraticBezierTo(0, -38, -13, -42)
+      ..close();
+    shadedPath(
+      canvas,
+      body,
+      marble,
+      PartFrame.world,
+      shadow: 4,
+      highlight: 1.6,
+    );
+    canvas.save();
+    canvas.clipPath(body);
+    // Khối cơ đúc nổi: sáng phía trên–trái, bóng lõi dưới–phải.
+    void relief(Path p) {
+      canvas.drawPath(
+        p.shift(const Offset(0.9, 1.1)),
+        fillPaint(darken(marble, 0.22).withValues(alpha: 0.9)),
+      );
+      canvas.drawPath(p, fillPaint(marble));
+      canvas.drawPath(
+        p.shift(const Offset(-0.5, -0.6)),
+        fillPaint(lighten(marble, 0.5).withValues(alpha: 0.5)),
+      );
+      canvas.drawPath(p, fillPaint(marble.withValues(alpha: 0.6)));
+    }
+
+    for (final side in [-1.0, 1.0]) {
+      relief(
+        Path()
+          ..moveTo(0, -70)
+          ..quadraticBezierTo(side * 8, -73, side * 14, -68)
+          ..quadraticBezierTo(side * 13, -61, side * 6, -60)
+          ..quadraticBezierTo(side * 1.5, -60, 0, -63)
+          ..close(),
+      );
+    }
+    for (var r = 0; r < 3; r++) {
+      for (final side in [-1.0, 1.0]) {
+        final y = -57.5 + r * 5;
+        relief(
+          Path()..addRRect(
+            RRect.fromLTRBR(
+              side < 0 ? -5.6 : 0.6,
+              y,
+              side < 0 ? -0.6 : 5.6,
+              y + 4.2,
+              const Radius.circular(1.8),
+            ),
+          ),
+        );
+      }
+    }
+    for (final side in [-1.0, 1.0]) {
+      relief(
+        Path()
+          ..moveTo(side * 7, -58)
+          ..quadraticBezierTo(side * 12, -52, side * 11, -44)
+          ..quadraticBezierTo(side * 8, -46, side * 6.5, -52)
+          ..close(),
+      );
+    }
+    // Rãnh giữa (linea alba) và mép giáp cổ/nách.
+    canvas.drawLine(
+      const Offset(0, -63),
+      const Offset(0, -42),
+      _stroke(darken(marble, 0.3), 0.8),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(-6, -77)
+        ..quadraticBezierTo(0, -74, 6, -77),
+      _stroke(darken(marble, 0.35), 1.2),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(-17, -68)
+        ..quadraticBezierTo(-14, -64, -15, -59)
+        ..moveTo(17, -68)
+        ..quadraticBezierTo(14, -64, 15, -59),
+      _stroke(darken(marble, 0.3), 1),
+    );
+    // Vân đá chạy chéo.
+    for (final (a, b) in const [
+      (Offset(-16, -66), Offset(-4, -48)),
+      (Offset(4, -76), Offset(16, -58)),
+    ]) {
+      canvas.drawPath(
+        taperedStroke([
+          a,
+          Offset.lerp(a, b, 0.5)! + const Offset(2, 0),
+          b,
+        ], 0.8),
+        fillPaint(const Color(0x55807868)),
+      );
+    }
+    // Vết nứt rỉ ánh tím Trì Trệ.
+    final crack = [
+      const Offset(9, -74),
+      const Offset(6, -66),
+      const Offset(9, -60),
+      const Offset(5, -52),
+    ];
+    canvas.drawPath(
+      taperedStroke(crack, 3.2, peak: 0.3),
+      fillPaint(const Color(0x669C7CC9)),
+    );
+    canvas.drawPath(
+      taperedStroke(crack, 1.2, peak: 0.3),
+      fillPaint(const Color(0xFF2A2230)),
+    );
+    // Rêu bám nách và eo.
+    for (final (c, r) in const [
+      (Offset(-16, -60), 2.4),
+      (Offset(-12, -44), 2.0),
+      (Offset(15, -47), 1.6),
+    ]) {
+      canvas.drawCircle(c, r, fillPaint(const Color(0xAA6E8A48)));
+    }
+    canvas.restore();
+  },
+  bounds: const Rect.fromLTRB(-22, -82, 22, -28),
+  resolution: 2.4,
+);
 
 /// Túi vàng quắp dưới móng Harpy, đồng xu rơi lả tả.
 void _goldPouch(Canvas canvas, double time) {
