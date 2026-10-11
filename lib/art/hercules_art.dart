@@ -156,6 +156,18 @@ void paintHercules(
     facing: _left,
     definition: 0.8,
   );
+  // Bàn tay xa nắm đầu chuỳ (bọc qua da sư tử).
+  shadedHand(
+    canvas,
+    buildHand(
+      const Offset(46, -134),
+      const Offset(46, -134) - const Offset(40, -154),
+      pose: HandPose.grip,
+      facing: _left,
+      scale: 1.9,
+    ),
+    skinFar,
+  );
 
   // Chân theo tư thế dồn trọng lượng (contrapposto): chân gần thẳng chịu
   // lực, chân xa chùng gối.
@@ -330,20 +342,18 @@ void paintHercules(
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round,
   );
-  final palm = Path()
-    ..addOval(
-      Rect.fromCenter(
-        center: hand + const Offset(-6, -2),
-        width: 16,
-        height: 13,
-      ),
-    );
-  shadedPath(canvas, palm, skin, PartFrame.world, shadow: 2);
-  // Ngón cái.
-  shadedChain(canvas, [
-    (hand + const Offset(-4, -6), hand + const Offset(-10, -14), 3, 2.5),
-  ], skin);
-
+  // Bàn tay xoè khi nói (lòng tay hướng về người chơi), chỉ khi im lặng.
+  shadedHand(
+    canvas,
+    buildHand(
+      hand,
+      hand - elbow,
+      pose: talk > 0.3 ? HandPose.open : HandPose.point,
+      facing: _left,
+      scale: 1.9,
+    ),
+    skin,
+  );
   canvas.restore();
   canvas.restore();
 }

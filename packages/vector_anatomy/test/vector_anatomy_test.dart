@@ -122,4 +122,22 @@ void main() {
       expect(limb.contains(r.center), isTrue);
     }
   });
+
+  test('bàn tay: đủ 4 ngón + ngón cái, nắm tay gọn hơn xoè tay', () {
+    for (final pose in HandPose.values) {
+      final h = buildHand(Offset.zero, const Offset(0, 1), pose: pose);
+      expect(h.fingers, hasLength(4));
+      expect(h.palm.getBounds().height, greaterThan(7));
+    }
+    double extent(HandPose p) {
+      final h = buildHand(Offset.zero, const Offset(0, 1), pose: p);
+      var r = h.palm.getBounds();
+      for (final f in h.fingers) {
+        r = r.expandToInclude(f.getBounds());
+      }
+      return r.bottom;
+    }
+
+    expect(extent(HandPose.fist), lessThan(extent(HandPose.open)));
+  });
 }
