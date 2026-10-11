@@ -134,10 +134,25 @@ void paintHero(
   ];
   final minX = xs.reduce(math.min) - 8;
   final maxX = xs.reduce(math.max) + 8;
+  // Bóng đổ mềm lệch về phía xa nắng (nắng trên-trái → bóng ngả phải),
+  // màu tím lạnh thay vì đen (Gurney: bóng ngả nhiệt độ ngược ánh sáng).
   canvas.drawOval(
-    Rect.fromLTRB(minX, ground - 3, maxX, ground + 3),
-    fillPaint(const Color(0x40000000)),
+    Rect.fromLTRB(minX + 4, ground - 3.5, maxX + 10, ground + 3.5),
+    fillPaint(const Color(0x30402A50)),
   );
+  canvas.drawOval(
+    Rect.fromLTRB(minX, ground - 2.5, maxX, ground + 2.5),
+    fillPaint(const Color(0x40301C30)),
+  );
+  // Bóng tiếp xúc (occlusion) đậm ngay chỗ chạm đất: tay, mũi chân.
+  for (final j in [HeroJoint.wrist, HeroJoint.toe, HeroJoint.farToe]) {
+    final p = pose[j];
+    if ((p.dy - ground).abs() > 6) continue;
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(p.dx, ground), width: 12, height: 3),
+      fillPaint(const Color(0x66201018)),
+    );
+  }
 
   final shoulder = pose[HeroJoint.shoulder];
   final hip = pose[HeroJoint.hip];
