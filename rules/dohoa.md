@@ -59,3 +59,16 @@ Nguồn đọc thêm (tóm tắt thứ cấp, nên đọc sách gốc khi có th
 - [Still life and portrait: ánh sáng, bóng lõi, ánh phản xạ](https://www.studiomatrx.org/students/visual-arts/still-life-and-portrait)
 - [Portrait fundamentals (Clip Studio Tips)](https://tips.clip-studio.com/es-es/articles/3912?org=1)
 - Không tìm được skill vẽ vector cho agent phù hợp trên mạng (chỉ có skill pixel art SVG trên claudskills.com và bộ Claude Code Game Studios thiên về thiết kế game), nên tự viết skill riêng.
+
+### Kỹ thuật thêm trong buổi sáng 11/10
+
+- **2,5D bằng parallax**: tách phông nền thành lớp (trời, xa, giữa, gần), mỗi lớp
+  một `Picture`; camera trôi chậm, lớp xa lệch nhiều hơn lớp nhân vật đứng; lớp
+  **tiền cảnh** (cỏ, đá tối ngược sáng ở góc) vẽ đè lên nhân vật và trôi ngược
+  chiều. Bản phủ bụi cũng tách theo lớp cho khớp (`NemeaLayer`).
+- **Khoảnh khắc trúng đòn** (impact frame): vòng chấn động + lõi loé vài khung
+  + tia nhọn toả; kết hợp loé trắng boss và rung khung khi chí mạng.
+- **Soát cận cảnh**: ngoài ảnh toàn cảnh, luôn xuất ảnh phóng to (mặt boss, mặt
+  nhân vật, quái) — lỗi "trẻ con" chỉ lộ ra khi nhìn gần.
+- **Test sân khấu Flame thật** (`test/art/stage_game_test.dart`): bắt lỗi hiệu
+  ứng chỉ xuất hiện khi chạy game (đòn bay, huy hiệu, da sư tử bay).
