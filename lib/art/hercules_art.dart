@@ -376,6 +376,49 @@ void _heroicTorso(Canvas canvas, Color skin, double breath) {
   );
 }
 
+/// Lọn tóc / râu xoăn: các nét thon hình chữ C xếp so le trong vùng [mass]
+/// quanh [center], sáng ở mép trên lọn (bắt nắng), tối ở lòng lọn.
+void _curlRows(
+  Canvas canvas,
+  Path mass,
+  Offset center,
+  double radius,
+  Color hair,
+) {
+  final dark = Paint()..color = darken(hair, 0.45);
+  final lit = Paint()..color = lighten(hair, 0.32).withValues(alpha: 0.8);
+  canvas.save();
+  canvas.clipPath(mass);
+  final rnd = math.Random(7);
+  for (var row = -2; row <= 2; row++) {
+    for (var col = -2; col <= 2; col++) {
+      final p =
+          center +
+          Offset(
+            col * radius * 0.42 + (row.isOdd ? radius * 0.21 : 0),
+            row * radius * 0.38,
+          ) +
+          Offset(rnd.nextDouble() * 1.4, rnd.nextDouble() * 1.4);
+      const r = 3.2;
+      final a0 = 0.6 + rnd.nextDouble() * 0.6;
+      List<Offset> arc(double from, double sweep, double rr) => [
+        for (var k = 0; k <= 4; k++)
+          p +
+              Offset(
+                math.cos(from + sweep * k / 4) * rr,
+                math.sin(from + sweep * k / 4) * rr,
+              ),
+      ];
+      canvas.drawPath(taperedStroke(arc(a0, 3.6, r), 1.3, samples: 8), dark);
+      canvas.drawPath(
+        taperedStroke(arc(a0 + 3.4, 1.6, r * 0.9), 0.9, samples: 6),
+        lit,
+      );
+    }
+  }
+  canvas.restore();
+}
+
 /// Da sư tử Nemea vắt trên đầu chuỳ: đầu sư tử ở trên, tấm da rủ xuống,
 /// chân trước có móng đung đưa nhẹ.
 void _peltOnClub(Canvas canvas, double time) {
@@ -472,18 +515,27 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
   const skin = Color(0xFFC98B5A);
   const hair = Color(0xFF4A3020);
   const grey = Color(0xFF9C9086);
-  // Tóc xoăn phía sau đầu: chùm tròn.
-  final curls = Path();
-  for (final (dx, dy, r) in [
-    (10.0, -16.0, 9.0),
-    (18.0, -6.0, 9.0),
-    (16.0, 6.0, 8.0),
-    (0.0, -20.0, 9.0),
-    (-12.0, -18.0, 8.0),
-  ]) {
-    curls.addOval(Rect.fromCircle(center: c + Offset(dx, dy), radius: r));
-  }
-  shadedPath(canvas, curls, hair, PartFrame.world, shadow: 3);
+  // Tóc: một khối liền ôm sọ (không phải chùm tròn rời), mép dưới gáy và
+  // mép trán gợn theo lọn; bên trong là lọn xoăn nét thon xếp hàng.
+  final hairMass = smoothPath(
+    [
+      c + const Offset(-14, -10),
+      c + const Offset(-12, -20),
+      c + const Offset(-2, -27),
+      c + const Offset(12, -25),
+      c + const Offset(22, -15),
+      c + const Offset(24, -2),
+      c + const Offset(20, 9),
+      c + const Offset(12, 10),
+      c + const Offset(10, -4),
+      c + const Offset(0, -13),
+      c + const Offset(-8, -13),
+    ],
+    closed: true,
+    tension: 0.1,
+  );
+  shadedPath(canvas, hairMass, hair, PartFrame.world, shadow: 3.5);
+  _curlRows(canvas, hairMass, c + const Offset(5, -8), 14, hair);
   // Mặt nghiêng: trán, sống mũi thẳng kiểu tượng Hy Lạp.
   final face = Path()
     ..moveTo(c.dx + 10, c.dy - 14)
@@ -494,51 +546,40 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
     ..quadraticBezierTo(c.dx + 4, c.dy + 22, c.dx + 14, c.dy + 8)
     ..close();
   shadedPath(canvas, face, skin, PartFrame.world, shadow: 4);
-  // Râu xoăn dày điểm bạc.
-  final beard = Path();
-  for (final (dx, dy, r) in [
-    (-12.0, 12.0, 6.0),
-    (-6.0, 18.0, 7.0),
-    (2.0, 20.0, 7.0),
-    (10.0, 14.0, 6.0),
-    (-2.0, 26.0, 6.0),
-    (8.0, 24.0, 5.0),
-  ]) {
-    beard.addOval(Rect.fromCircle(center: c + Offset(dx, dy), radius: r));
-  }
-  shadedPath(canvas, beard, hair, PartFrame.world, shadow: 2.5);
-  // Lọn xoăn trong râu.
-  final curl = Paint()
-    ..color = const Color(0xFF2E1C12)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 0.9
-    ..strokeCap = StrokeCap.round;
-  for (final (dx, dy) in [
-    (-12.0, 12.0),
-    (-4.0, 16.0),
-    (4.0, 19.0),
-    (10.0, 13.0),
-    (0.0, 25.0),
-    (8.0, 23.0),
-  ]) {
-    canvas.drawArc(
-      Rect.fromCircle(center: c + Offset(dx, dy), radius: 2.4),
-      0.3,
-      4.2,
-      false,
-      curl,
-    );
-  }
-  for (final (dx, dy) in [(-6.0, 18.0), (6.0, 22.0), (-2.0, 26.0)]) {
-    canvas.drawArc(
-      Rect.fromCircle(center: c + Offset(dx, dy), radius: 3),
-      3.4,
-      2.4,
-      false,
-      Paint()
-        ..color = grey
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
+  // Râu: khối liền từ tóc mai, ôm hàm, nhọn ở cằm (râu tượng cổ), điểm
+  // bạc ở cằm; lọn xoăn nét thon xếp hàng theo dòng chảy xuống.
+  final beard = smoothPath(
+    [
+      c + const Offset(12, 6),
+      c + const Offset(14, 14),
+      c + const Offset(10, 24),
+      c + const Offset(1, 32),
+      c + const Offset(-6, 30),
+      c + const Offset(-12, 22),
+      c + const Offset(-15, 13),
+      c + const Offset(-10, 9),
+      c + const Offset(-2, 13),
+      c + const Offset(6, 6),
+    ],
+    closed: true,
+    tension: 0.1,
+  );
+  shadedPath(canvas, beard, hair, PartFrame.world, shadow: 3);
+  _curlRows(canvas, beard, c + const Offset(0, 20), 12, hair);
+  // Sợi bạc ở cằm.
+  final greyStroke = Paint()..color = grey.withValues(alpha: 0.85);
+  for (final (x, y) in [(-4.0, 24.0), (2.0, 27.0), (6.0, 20.0)]) {
+    canvas.drawPath(
+      taperedStroke(
+        [
+          c + Offset(x, y),
+          c + Offset(x + 1.5, y + 2.4),
+          c + Offset(x + 0.6, y + 4.4),
+        ],
+        1.3,
+        samples: 6,
+      ),
+      greyStroke,
     );
   }
   // Miệng: mấp máy khi nói.
