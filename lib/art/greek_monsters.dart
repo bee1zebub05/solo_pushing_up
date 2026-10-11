@@ -33,7 +33,7 @@ void _withHurt(Canvas canvas, double hurt, void Function() draw) {
   canvas.translate(6 * hurt, 0);
   if (hurt > 0) {
     canvas.saveLayer(
-      null,
+      const Rect.fromLTRB(-140, -180, 140, 40),
       Paint()
         ..colorFilter = ColorFilter.mode(
           Color.fromRGBO(255, 255, 255, 0.7 * hurt),
@@ -1753,7 +1753,10 @@ void paintBirdSprite(
   if (fall > 0) canvas.rotate(fall * 7);
   canvas.scale(facingRight ? -size : size, size);
   if (fall > 0) {
-    canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, 1 - fall));
+    canvas.saveLayer(
+      const Rect.fromLTRB(-60, -60, 60, 60),
+      Paint()..color = Color.fromRGBO(0, 0, 0, 1 - fall),
+    );
     canvas.drawPicture(frame);
     canvas.restore();
   } else {

@@ -86,7 +86,7 @@ class NemeaMonsterArt extends NemeaBossArt {
     if (fall > 0) {
       canvas.translate(0, 16 * fall);
       canvas.saveLayer(
-        null,
+        const Rect.fromLTRB(150, -60, 440, 280),
         Paint()..color = Color.fromRGBO(0, 0, 0, 1 - fall * 0.85),
       );
     }

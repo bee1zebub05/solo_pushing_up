@@ -374,7 +374,7 @@ class ThuyTinhBossArt extends BossArt {
         : null;
     if (tint != null) {
       canvas.saveLayer(
-        null,
+        const Rect.fromLTRB(150, -60, 440, 280),
         Paint()..colorFilter = ColorFilter.mode(tint, BlendMode.srcATop),
       );
     }

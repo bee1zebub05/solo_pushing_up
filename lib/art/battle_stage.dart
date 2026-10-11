@@ -751,7 +751,7 @@ class _BlockedBadge extends PositionComponent {
     canvas.rotate(-0.12);
     canvas.scale(0.4 + 0.6 * pop);
     canvas.saveLayer(
-      null,
+      const Rect.fromLTRB(-60, -60, 60, 60),
       Paint()..color = Color.fromRGBO(0, 0, 0, alpha.clamp(0.0, 1.0)),
     );
     // Khiên thép.
@@ -1028,7 +1028,7 @@ class _RewardBanner extends Component {
     const h = 24.0;
     final c = Offset(stageSize.width / 2, 34);
     canvas.saveLayer(
-      null,
+      Rect.fromCenter(center: c, width: w + 80, height: h + 40),
       Paint()..color = Color.fromRGBO(0, 0, 0, fade.clamp(0.0, 1.0)),
     );
     // Hai đuôi băng gấp.
