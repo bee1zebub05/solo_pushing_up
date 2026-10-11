@@ -510,6 +510,7 @@ class FafnirBossArt extends BossArt {
         Paint()..colorFilter = ColorFilter.mode(tint, BlendMode.srcATop),
       );
     }
+    _groundShadow(canvas, const Offset(334, stageGroundY + 6), 180, 20);
     _gold(canvas, f);
     canvas.save();
     // Gục: đầu và cổ hạ xuống đống vàng.
@@ -1322,4 +1323,23 @@ class FafnirBossArt extends BossArt {
       canvas.drawCircle(p, 1.4, fillPaint(const Color(0xEEFFFFFF)));
     }
   }
+}
+
+/// Bóng tiếp đất mềm (gradient tròn dẹt, lạnh) dưới boss.
+void _groundShadow(Canvas canvas, Offset c, double w, double h) {
+  canvas.save();
+  canvas.translate(c.dx, c.dy);
+  canvas.scale(1, h / w);
+  canvas.drawCircle(
+    Offset.zero,
+    w / 2,
+    Paint()
+      ..shader = Gradient.radial(
+        Offset.zero,
+        w / 2,
+        const [Color(0x88201A2A), Color(0x55201A2A), Color(0x00201A2A)],
+        const [0, 0.6, 1],
+      ),
+  );
+  canvas.restore();
 }
