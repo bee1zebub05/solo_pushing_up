@@ -25,7 +25,11 @@ Tham khảo chính là dòng Kingdom Rush (Ironhide): phong cách cartoon nhiề
    - Orochi: thấy rõ đầu bị chém và đầu mọc lại.
    - Fafnir: băng phủ lên khi người chơi nghỉ lâu.
 5. **Mỗi kiểu nguy hiểm một màu và hình cố định** trong suốt trận, để người chơi không phải học lại.
-6. **Ngân sách hiệu năng**: cả sân khấu dưới 2 ms/khung (đo bằng test trên PC). Không dùng `Path.combine` mỗi khung; phần tĩnh vẽ sẵn thành Picture.
+6. **Ngân sách hiệu năng (đổi 11/10/2026 tối, đo trên máy thật)**:
+   - **Chính:** trên máy tầm trung (mốc tối thiểu: OPPO CPH2159 / Snapdragon 720G; iPhone: iPhone 11 / A13 trở lên), bản profile, trận đầy đủ: GPU tô (raster) **≤ 16 ms/khung trung bình, p90 ≤ 20 ms**; ghi lệnh vẽ (build) **≤ 5 ms**. Đo bằng `lib/dev/perf_bench_main.dart` (`flutter build apk --profile -t lib/dev/perf_bench_main.dart`, đọc log `BENCH`; iOS: `flutter run --profile -t lib/dev/perf_bench_main.dart`).
+   - **Lưới chặn hồi quy trên PC:** `test/art/perf_budget_test.dart`, ghi lệnh vẽ < 3 ms/khung — chỉ bắt chậm đi rõ rệt, không thay cho đo máy thật.
+   - Lý do đổi: đo trên máy thật cho thấy nút cổ chai là GPU tô hình (38,6 ms/khung khi lớp tĩnh còn là vector), trong khi test PC chỉ đo bước ghi lệnh.
+   - Cách giữ ngân sách: phần tĩnh → `RasterLayer` (chụp thành ảnh một lần); tránh `saveLayer` toàn màn hình và chế độ trộn `multiply/softLight/screen` mỗi khung; không `Path.combine` mỗi khung.
 
 ## 3. Nguồn
 
