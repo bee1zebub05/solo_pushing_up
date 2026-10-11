@@ -1094,6 +1094,9 @@ void _harpyWing(Canvas canvas, Offset root, double flap, Color color) {
 // Lợn rừng Erymanthus (tinh anh): bờm gai dựng, nanh cong khổng lồ.
 
 /// [charge] 0–1: cúi đầu lao húc (người chơi phải ngồi xuống để né).
+/// Lớp lông lợn rừng (cố định theo khung thân) ghi sẵn một lần.
+final _boarCoat = PictureCache<int>(maxEntries: 1);
+
 void paintErymanthianBoar(
   Canvas canvas, {
   double time = 0,
@@ -1193,19 +1196,51 @@ void paintErymanthianBoar(
       ..cubicTo(10, -18, -24, -14, -44, -28 + dip)
       ..close();
     _shaded(canvas, body, hide, shadow: 6);
-    // Lông cứng phủ khắp thân, xuôi từ gáy về mông.
-    furStrokes(
-      canvas,
-      body,
-      const Color(0xFF2E211B),
-      dir: const Offset(1, 0.5),
-      count: 70,
-      length: 6,
-      width: 1,
-      seed: 5,
-    );
     canvas.save();
     canvas.clipPath(body);
+    // Lông cứng dày phủ khắp thân, xuôi từ gáy về mông và rủ xuống bụng:
+    // nét thon tối + nét sáng ngắn so le (ghi sẵn một Path, vẽ 2 lần).
+    _boarCoat.draw(canvas, 0, (c) {
+      final dark = Path(), lit = Path();
+      final rnd = math.Random(5);
+      for (var row = 0; row < 9; row++) {
+        for (var col = 0; col < 16; col++) {
+          final x =
+              -46 + col * 6.4 + (row.isOdd ? 3.2 : 0) + rnd.nextDouble() * 2;
+          final y = -74 + row * 6.6 + rnd.nextDouble() * 2;
+          // Hướng lông: ra sau, càng xuống bụng càng rủ.
+          final dir = Offset(1, 0.25 + row * 0.08);
+          final u = dir / dir.distance;
+          final len = 5.5 + rnd.nextDouble() * 2.5;
+          final p = Offset(x, y);
+          dark.addPath(
+            taperedStroke(
+              [p, p + u * len * 0.5 + Offset(0, 0.6), p + u * len],
+              1.5,
+              peak: 0.25,
+              startWidth: 0.8,
+              samples: 5,
+            ),
+            Offset.zero,
+          );
+          if (rnd.nextDouble() < 0.5) {
+            lit.addPath(
+              taperedStroke(
+                [
+                  p + const Offset(1, -1.4),
+                  p + u * len * 0.6 + const Offset(1, -1.4),
+                ],
+                0.8,
+                samples: 4,
+              ),
+              Offset.zero,
+            );
+          }
+        }
+      }
+      c.drawPath(dark, _fill(const Color(0xCC2E211B)));
+      c.drawPath(lit, _fill(const Color(0x667D5E4A)));
+    });
     // Khối vai đón sáng, bóng lõi sau vai và trước đùi sau.
     canvas.drawOval(
       Rect.fromCenter(
