@@ -1061,15 +1061,80 @@ class ThuyTinhBossArt extends BossArt {
         ..strokeWidth = 2.2
         ..style = PaintingStyle.stroke,
     );
-    // Vệt sáng trôi trên mặt nước.
+    // Vân sáng khúc xạ dưới nước (caustics): mạng lưới đường lượn sáng mờ
+    // trôi chậm, dày ở gần mặt nước, nhạt dần xuống sâu.
+    canvas.save();
+    canvas.clipPath(path);
+    for (var row = 0; row < 5; row++) {
+      final y0 = surface + 10 + row * 14;
+      if (y0 > h) break;
+      final a = 0.22 * (1 - row / 5);
+      final pts = [
+        for (var x = -10.0; x <= w + 10; x += 16)
+          Offset(x, y0 + math.sin(x * 0.07 + t * 1.6 + row * 1.9) * 4),
+      ];
+      canvas.drawPath(
+        taperedStroke(
+          pts,
+          1.6,
+          peak: 0.5,
+          startWidth: 0.4,
+          endWidth: 0.4,
+          samples: 30,
+        ),
+        fillPaint(Color.fromRGBO(220, 250, 255, a)),
+      );
+    }
+    // Cột sáng xiên xuyên qua nước.
+    for (var i = 0; i < 3; i++) {
+      final x = 60.0 + i * 120 + math.sin(t * 0.4 + i) * 10;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, surface)
+          ..lineTo(x + 18, surface)
+          ..lineTo(x - 12, h)
+          ..lineTo(x - 30, h)
+          ..close(),
+        Paint()
+          ..shader = Gradient.linear(Offset(0, surface), Offset(0, h), const [
+            Color(0x33E9FBFF),
+            Color(0x00E9FBFF),
+          ]),
+      );
+    }
+    // Bọt khí li ti nổi lên.
+    for (var i = 0; i < 14; i++) {
+      final phase = (t * 0.35 + i / 14) % 1;
+      final x = (i * 29.0) % w + math.sin(t * 2 + i) * 3;
+      final y = h - phase * (h - surface);
+      canvas.drawCircle(
+        Offset(x, y),
+        0.8 + (i % 3) * 0.5,
+        Paint()
+          ..color = Color.fromRGBO(233, 251, 255, 0.6 * (1 - phase * 0.5))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
+    canvas.restore();
+    // Gợn sóng nhỏ và vệt sáng trôi trên mặt nước.
     final shine = Paint()
-      ..color = const Color(0x66FFFFFF)
+      ..color = const Color(0x88FFFFFF)
       ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 6; i++) {
-      final x = (i * 70 + t * 18) % (w + 40) - 20;
-      final y = surface + 8 + (i % 3) * 7;
-      if (y < h) canvas.drawLine(Offset(x, y), Offset(x + 14, y), shine);
+    for (var i = 0; i < 10; i++) {
+      final x = (i * 43 + t * 18) % (w + 40) - 20;
+      final y = surface + 3 + (i % 3) * 4;
+      if (y < h) {
+        canvas.drawPath(
+          taperedStroke(
+            [Offset(x, y), Offset(x + 7, y - 1.2), Offset(x + 14, y)],
+            1.4,
+            peak: 0.5,
+          ),
+          shine,
+        );
+      }
     }
   }
 }
