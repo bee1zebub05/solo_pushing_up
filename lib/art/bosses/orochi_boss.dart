@@ -418,6 +418,7 @@ class OrochiBossArt extends BossArt {
     canvas.save();
     canvas.translate(0, f.defeat * 40);
 
+    _groundShadow(canvas, const Offset(334, stageGroundY + 4), 190, 22);
     // Cổ và đầu phía xa vẽ trước (đầu số lớn ở xa hơn).
     for (var i = _heads - 1; i >= 0; i--) {
       final head = _headAt(i, f.time) + Offset(0, f.defeat * 30 * (i % 3));
@@ -956,4 +957,23 @@ class OrochiBossArt extends BossArt {
       }
     }
   }
+}
+
+/// Bóng tiếp đất mềm (gradient tròn dẹt, lạnh) dưới boss.
+void _groundShadow(Canvas canvas, Offset c, double w, double h) {
+  canvas.save();
+  canvas.translate(c.dx, c.dy);
+  canvas.scale(1, h / w);
+  canvas.drawCircle(
+    Offset.zero,
+    w / 2,
+    Paint()
+      ..shader = Gradient.radial(
+        Offset.zero,
+        w / 2,
+        const [Color(0x88201A2A), Color(0x55201A2A), Color(0x00201A2A)],
+        const [0, 0.6, 1],
+      ),
+  );
+  canvas.restore();
 }
