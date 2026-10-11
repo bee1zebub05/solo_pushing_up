@@ -883,6 +883,29 @@ void _paintPelt(Canvas canvas, double time) {
     ..quadraticBezierTo(-20, 8, -16, -4)
     ..close();
   shadedPath(canvas, skin, hide, PartFrame.world, shadow: 3);
+  // Da gợn sóng khi bay: nếp tối + sống sáng chạy dọc, lắc theo nhịp.
+  canvas.save();
+  canvas.clipPath(skin);
+  for (final (x, len) in const [(-8.0, 30.0), (2.0, 26.0), (12.0, 30.0)]) {
+    final pts = [
+      Offset(x, -4),
+      Offset(x + wave * 1.5, 8),
+      Offset(x - wave, len - 4),
+    ];
+    canvas.drawPath(
+      taperedStroke(pts, 2.4, peak: 0.6),
+      fillPaint(darken(hide, 0.35).withValues(alpha: 0.75)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        [for (final p in pts) p + const Offset(-2.2, 0)],
+        1.4,
+        peak: 0.6,
+      ),
+      fillPaint(lighten(hide, 0.3).withValues(alpha: 0.7)),
+    );
+  }
+  canvas.restore();
   furStrokes(
     canvas,
     skin,
@@ -903,27 +926,38 @@ void _paintPelt(Canvas canvas, double time) {
       canvas.drawLine(p + Offset(dx, 0), p + Offset(dx - 0.8, 3), claw);
     }
   }
-  // Bờm ngọn lửa quanh cổ.
-  final tufts = Path();
-  for (var i = 0; i < 9; i++) {
-    final a = math.pi * (0.85 + 1.0 * i / 8);
-    final dir = Offset(math.cos(a), math.sin(a));
-    final n = Offset(-dir.dy, dir.dx);
-    final base = const Offset(-6, -8) + dir * 8;
-    final tip = base + dir * (9 + (i.isEven ? 3 : 0)) + const Offset(2, -1);
-    tufts
-      ..moveTo(base.dx + n.dx * 3.5, base.dy + n.dy * 3.5)
-      ..quadraticBezierTo(tip.dx + n.dx, tip.dy + n.dy, tip.dx, tip.dy)
-      ..quadraticBezierTo(
-        base.dx - n.dx,
-        base.dy - n.dy,
-        base.dx - n.dx * 3.5,
-        base.dy - n.dy * 3.5,
-      )
-      ..close();
-  }
-  tufts.addOval(Rect.fromCircle(center: const Offset(-6, -8), radius: 9));
-  shadedPath(canvas, tufts, mane, PartFrame.world, shadow: 2.5);
+  // Bờm lọn lông quanh cổ (cùng kiểu bờm sư tử), bay ngược chiều bay.
+  final locks = buildLocks(
+    center: const Offset(-6, -8),
+    rnd: math.Random(31),
+    r0: 6,
+    length: 13,
+    width: 5.6,
+    count: 13,
+    from: math.pi * 0.8,
+    to: math.pi * 1.95,
+    drift: Offset(-0.35, 0.18 + wave * 0.04),
+    wave: 2.5,
+  );
+  shadedPath(
+    canvas,
+    locks.mass,
+    mane,
+    PartFrame.world,
+    shadow: 2.5,
+    outlineWidth: 1.3,
+  );
+  canvas.save();
+  canvas.clipPath(locks.mass);
+  canvas.drawPath(
+    locks.creases,
+    fillPaint(darken(mane, 0.45).withValues(alpha: 0.8)),
+  );
+  canvas.drawPath(
+    locks.sheens,
+    fillPaint(lighten(mane, 0.38).withValues(alpha: 0.75)),
+  );
+  canvas.restore();
   // Đầu nghiêng: mõm dài, mắt nhắm, nanh trên.
   final head = Path()
     ..moveTo(-12, -12)
