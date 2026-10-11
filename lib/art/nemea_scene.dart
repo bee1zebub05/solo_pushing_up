@@ -126,12 +126,38 @@ void paintNemeaDusty(Canvas canvas) {
 /// Bộ lọc màu "phủ bụi Trì Trệ": còn 18 % bão hoà, ngả xám tím. Vẽ lại
 /// ảnh lớp sạch qua bộ lọc này với độ đục = lượng bụi (không cần giữ ảnh
 /// bụi riêng — tiết kiệm một nửa bộ nhớ ảnh phông).
-const nemeaDustFilter = ColorFilter.matrix([
+const _dustMatrix = <double>[
   0.2126 * 0.82 + 0.18, 0.7152 * 0.82, 0.0722 * 0.82, 0, -8, //
   0.2126 * 0.82, 0.7152 * 0.82 + 0.18, 0.0722 * 0.82, 0, -10,
   0.2126 * 0.82, 0.7152 * 0.82, 0.0722 * 0.82 + 0.18, 0, -2,
   0, 0, 0, 1, 0,
-]);
+];
+const _identityMatrix = <double>[
+  1, 0, 0, 0, 0, //
+  0, 1, 0, 0, 0,
+  0, 0, 1, 0, 0,
+  0, 0, 0, 1, 0,
+];
+
+const nemeaDustFilter = ColorFilter.matrix(_dustMatrix);
+
+/// Bộ lọc "phủ bụi" ở mức [dust] 0–1: nội suy tuyến tính giữa ma trận đơn
+/// vị và ma trận bụi. Vẽ ảnh sạch qua bộ lọc này MỘT lần cho kết quả như vẽ
+/// ảnh sạch rồi đè ảnh bụi với độ đục [dust] (phép lọc màu là tuyến tính),
+/// nhưng GPU chỉ tô mỗi tầng một lần (đo trên máy: bớt ~1,5 ms/khung).
+/// Làm tròn 2 % để dùng lại bộ lọc.
+ColorFilter nemeaDustFilterAt(double dust) {
+  final k = ((dust.clamp(0.0, 1.0) * 50).round()) / 50;
+  return _dustFilters.putIfAbsent(
+    k,
+    () => ColorFilter.matrix([
+      for (var i = 0; i < 20; i++)
+        _identityMatrix[i] + (_dustMatrix[i] - _identityMatrix[i]) * k,
+    ]),
+  );
+}
+
+final _dustFilters = <double, ColorFilter>{};
 
 /// Một lớp phông nền phủ bụi (để chồng đúng lên lớp tương ứng khi parallax).
 /// Dùng cho ảnh xem trước; trong trận vẽ ảnh sạch qua [nemeaDustFilter] rồi
