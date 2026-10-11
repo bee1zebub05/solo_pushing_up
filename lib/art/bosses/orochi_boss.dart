@@ -537,6 +537,24 @@ class OrochiBossArt extends BossArt {
       );
     }
     final open = f.attack * 0.5;
+    if (open < 0.02) {
+      // Ngậm miệng: 8 đầu giống hệt nhau → vẽ ảnh chụp sẵn.
+      _headIdle.paint(canvas);
+      canvas.restore();
+      return;
+    }
+    _paintHead(canvas, open);
+    canvas.restore();
+  }
+
+  static final _headIdle = RasterLayer(
+    (c) => _paintHead(c, 0),
+    bounds: const Rect.fromLTRB(-34, -26, 30, 14),
+    resolution: 2,
+  );
+
+  /// Đầu rồng-rắn tại gốc toạ độ, hàm mở [open] (radian).
+  static void _paintHead(Canvas canvas, double open) {
     // Hàm dưới.
     canvas.save();
     canvas.rotate(-open);
@@ -686,7 +704,6 @@ class OrochiBossArt extends BossArt {
       highlight: 0.6,
       outlineWidth: 1,
     );
-    canvas.restore();
   }
 
   void _hpRing(Canvas canvas, Offset head, double hp) {
