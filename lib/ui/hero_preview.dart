@@ -121,6 +121,7 @@ class _HeroPreviewPainter extends CustomPainter {
       shield: shield,
       sword: sword,
       effort: pushups ? ((165 - angle) / 80).clamp(0.0, 1.0) : 0,
+      time: seconds,
     );
     canvas.restore();
   }

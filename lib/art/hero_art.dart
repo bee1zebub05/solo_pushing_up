@@ -103,6 +103,7 @@ void paintHero(
   double frost = 0,
   bool shield = false,
   bool sword = false,
+  double time = 0,
 }) {
   // Chiều cao: phóng to/thu nhỏ quanh điểm chạm đất (mũi chân), nên tay chân
   // vẫn chạm sàn ở mọi tư thế.
@@ -176,7 +177,9 @@ void paintHero(
     far: true,
   );
 
-  if (cloak) withFrame(canvas, hip, up, (f) => _peltBack(canvas, torsoLen, f));
+  if (cloak) {
+    withFrame(canvas, hip, up, (f) => _peltBack(canvas, torsoLen, f, time));
+  }
   if (shield) withFrame(canvas, hip, up, (f) => _shield(canvas, torsoLen, f));
 
   final head = pose[HeroJoint.head];
@@ -682,13 +685,16 @@ void _sword(Canvas canvas, HeroLook look, PartFrame f) {
 }
 
 /// Tấm da sư tử phủ sau lưng, vẽ trong hệ cục bộ gốc ở hông.
-void _peltBack(Canvas canvas, double len, PartFrame f) {
+void _peltBack(Canvas canvas, double len, PartFrame f, double time) {
+  // Vạt dưới phấp phới theo gió (chuyển động theo sau).
+  final w1 = math.sin(time * 3.1) * 2.5;
+  final w2 = math.sin(time * 3.1 + 1.3) * 2;
   final pelt = Path()
     ..moveTo(-6, -len - 6)
-    ..cubicTo(-20, -len * 0.75, -22, -len * 0.3, -17, 8)
+    ..cubicTo(-20, -len * 0.75, -22 + w1 * 0.4, -len * 0.3, -17 + w1, 8)
     // Mép dưới răng cưa như lông thú.
-    ..lineTo(-12, 4)
-    ..lineTo(-9, 11)
+    ..lineTo(-12 + w2 * 0.5, 4)
+    ..lineTo(-9 + w2, 11)
     ..lineTo(-5, 4)
     ..cubicTo(-8, -len * 0.3, -6, -len * 0.7, 4, -len - 2)
     ..close();

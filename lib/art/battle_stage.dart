@@ -487,6 +487,7 @@ class _HeroComponent extends Component {
     frost: _mode == _HeroMode.victory ? 0 : cold,
     shield: shield,
     sword: sword,
+    time: _time,
   );
 }
 
