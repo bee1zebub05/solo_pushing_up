@@ -428,6 +428,33 @@ void shadedLimb(
   canvas.restore();
 }
 
+/// Tô một bàn tay ([HandShape] của `vector_anatomy`): lòng bàn tay, các
+/// ngón (út → trỏ), ngón cái, mỗi phần đổ bóng riêng có viền; nếp đốt ngón
+/// là nét mảnh màu da sẫm.
+void shadedHand(Canvas canvas, HandShape hand, Color skin) {
+  void part(Path p, double shadow) => shadedPath(
+    canvas,
+    p,
+    skin,
+    PartFrame.world,
+    shadow: shadow,
+    highlight: 0.8,
+    outlineWidth: 1.1,
+  );
+  part(hand.palm, 2.2);
+  for (final f in hand.fingers) {
+    part(f, 1.3);
+  }
+  part(hand.thumb, 1.4);
+  final crease = Paint()
+    ..color = darken(skin, 0.35).withValues(alpha: 0.75)
+    ..strokeWidth = 0.7
+    ..strokeCap = StrokeCap.round;
+  for (final (a, b) in hand.creases) {
+    canvas.drawLine(a, b, crease);
+  }
+}
+
 /// Chuỗi đoạn liền (tay, chân): viền là bản phình to nên không lộ chỗ nối.
 void shadedChain(
   Canvas canvas,

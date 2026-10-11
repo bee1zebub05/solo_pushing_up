@@ -281,6 +281,31 @@ void main() {
       'intro_talk',
       (c) => paintNemeaIntro(c, time: 3, talking: true),
     );
+    await render(tester, 'hands_sheet', (c) {
+      c.drawRect(
+        const Rect.fromLTWH(0, 0, 400, 260),
+        Paint()..color = const Color(0xFFEDE3CF),
+      );
+      for (final (i, pose) in HandPose.values.indexed) {
+        for (final (j, dir) in [
+          (0, const Offset(0, 1)),
+          (1, const Offset(-0.7, -1)),
+        ]) {
+          final wrist = Offset(60.0 + i * 95, 50.0 + j * 120);
+          shadedHand(
+            c,
+            buildHand(
+              wrist,
+              dir,
+              pose: pose,
+              facing: const Offset(-1, 0),
+              scale: 3.4,
+            ),
+            const Color(0xFFC98B5A),
+          );
+        }
+      }
+    });
     await render(tester, 'hercules_full', (c) {
       paintNemeaScene(c, time: 1);
       c.translate(200, 252);

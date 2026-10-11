@@ -12,5 +12,6 @@
 library;
 
 export 'src/curves.dart';
+export 'src/hand.dart';
 export 'src/limb.dart';
 export 'src/presets.dart';
