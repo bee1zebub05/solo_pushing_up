@@ -168,6 +168,16 @@ void main() {
         );
       });
     }
+    await render(tester, 'bird_zoom', (c) {
+      paintNemeaScene(c, time: 2);
+      for (final (x, t, attack) in [(110.0, 0.0, 0.0), (290.0, 0.17, 1.0)]) {
+        c.save();
+        c.translate(x, 120);
+        c.scale(4);
+        paintStymphalianBird(c, time: t, attack: attack);
+        c.restore();
+      }
+    });
     await render(tester, 'stone_soldier', (c) {
       paintNemeaScene(c, time: 2, dust: 0.6);
       for (final (x, attack) in [(120.0, 0.0), (280.0, 1.0)]) {

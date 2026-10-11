@@ -83,20 +83,20 @@ void paintStymphalianBird(
     // Cánh xa (tối).
     _wing(canvas, const Offset(4, -2), flap, far: true);
 
-    // Đuôi lông đồng xoè.
-    final tail = Path();
-    for (var i = 0; i < 4; i++) {
-      final a = 0.1 + i * 0.16;
-      tail.addPath(
-        _poly([
-          const Offset(12, -2),
-          Offset(12 + math.cos(a) * 22, -2 + math.sin(a) * 22 - 4),
-          Offset(12 + math.cos(a + 0.12) * 18, -2 + math.sin(a + 0.12) * 18),
-        ]),
-        Offset.zero,
+    // Đuôi: bốn lông đồng dài xoè như lưỡi dao.
+    for (var i = 3; i >= 0; i--) {
+      final a = 0.05 + i * 0.17;
+      _blade(
+        canvas,
+        const Offset(12, -2),
+        Offset(
+          12 + math.cos(a) * (24 - i * 2),
+          -2 + math.sin(a) * (24 - i * 2) - 3,
+        ),
+        2,
+        far: i.isOdd,
       );
     }
-    _shaded(canvas, tail, _bronzeDark, shadow: 1.5);
 
     // Thân.
     final body = Path()
@@ -161,31 +161,53 @@ void _wing(Canvas canvas, Offset root, double flap, {bool far = false}) {
   canvas.save();
   canvas.translate(root.dx, root.dy);
   canvas.rotate(-0.6 * flap - (far ? 0.25 : 0));
-  // Cánh là dãy lông đồng hình lưỡi dao.
-  final blades = Path();
-  for (var i = 0; i < 6; i++) {
+  // Cánh là dãy lông đồng hình lưỡi dao, mỗi lưỡi ánh kim riêng.
+  for (var i = 5; i >= 0; i--) {
     final a = -math.pi / 2 - 0.5 + i * 0.22;
     final len = 22.0 - i * 1.6;
     final tip = Offset(math.cos(a) * len + 6, math.sin(a) * len);
-    blades.addPath(
-      _poly([Offset(i * 2.0 - 3, 0), tip, Offset(i * 2.0 + 1, -2)]),
-      Offset.zero,
-    );
-  }
-  final color = far ? _bronzeDark : _bronze;
-  _shaded(canvas, blades, color, shadow: 2);
-  // Mép lưỡi sáng loáng.
-  if (!far) {
-    canvas.drawLine(
-      const Offset(-2, -1),
-      Offset(
-        math.cos(-math.pi / 2 - 0.5) * 20 + 6,
-        math.sin(-math.pi / 2 - 0.5) * 20,
-      ),
-      _stroke(_bronzeLight, 1),
-    );
+    _blade(canvas, Offset(i * 2.0 - 1, -1), tip, 2.2, far: far);
   }
   canvas.restore();
+}
+
+/// Một lông đồng sắc như lưỡi dao: gốc rộng [width], thuôn nhọn tới [tip],
+/// ánh kim chuyển từ sáng (gốc, mép đón nắng) tới sẫm (ngọn).
+void _blade(
+  Canvas canvas,
+  Offset base,
+  Offset tip,
+  double width, {
+  bool far = false,
+}) {
+  final d = tip - base;
+  final n = Offset(-d.dy, d.dx) / d.distance;
+  final blade = Path()
+    ..moveTo(base.dx + n.dx * width, base.dy + n.dy * width)
+    ..quadraticBezierTo(
+      base.dx + d.dx * 0.6 + n.dx * width * 0.9,
+      base.dy + d.dy * 0.6 + n.dy * width * 0.9,
+      tip.dx,
+      tip.dy,
+    )
+    ..lineTo(base.dx - n.dx * width, base.dy - n.dy * width)
+    ..close();
+  canvas.drawPath(blade, _stroke(_outline, 1.6));
+  final colors = far
+      ? const [_bronze, _bronzeDark, Color(0xFF3E2410)]
+      : const [_bronzeLight, _bronze, _bronzeDark];
+  canvas.drawPath(
+    blade,
+    Paint()..shader = Gradient.linear(base, tip, colors, const [0, 0.45, 1]),
+  );
+  // Sống lông sáng loáng.
+  if (!far) {
+    canvas.drawLine(
+      base,
+      Offset.lerp(base, tip, 0.8)!,
+      _stroke(const Color(0xCCFFF0C8), 0.6),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
