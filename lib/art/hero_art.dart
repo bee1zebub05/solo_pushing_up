@@ -291,44 +291,6 @@ void _iceCrystal(Canvas canvas, Offset at, double size) {
 }
 
 /// Tay chân to ra theo độ béo, nữ thon hơn một chút.
-// Profile cơ tay chân (t, nửa rộng trước, nửa rộng sau) — xem musclePath.
-// "Trước" ở đây là phía bên phải hướng gốc→ngọn của đoạn chi.
-const _upperArm = <MuscleStop>[
-  (0.0, 7.0, 7.0), // cơ vai
-  (0.18, 7.2, 6.8),
-  (0.4, 6.0, 6.9), // bắp tay sau dày
-  (0.62, 5.6, 6.6), // bắp tay trước phồng
-  (0.88, 4.8, 5.0),
-  (1.0, 4.6, 4.8), // khuỷu thắt
-];
-const _forearm = <MuscleStop>[
-  (0.0, 4.8, 4.6),
-  (0.22, 6.1, 5.3), // cơ cánh tay quay
-  (0.5, 5.0, 4.7),
-  (0.85, 3.9, 3.8),
-  (1.0, 3.8, 3.8), // cổ tay
-];
-const _fist = <MuscleStop>[(0.0, 5.6, 5.6), (1.0, 6.2, 5.8)];
-const _thigh = <MuscleStop>[
-  (0.0, 8.4, 8.4),
-  (0.32, 8.0, 9.4), // cơ tứ đầu
-  (0.7, 6.6, 7.4),
-  (1.0, 5.8, 6.2), // gối
-];
-const _thighFemale = <MuscleStop>[
-  (0.0, 9.2, 9.2),
-  (0.32, 8.6, 9.6),
-  (0.7, 6.8, 7.6),
-  (1.0, 5.8, 6.2),
-];
-const _shin = <MuscleStop>[
-  (0.0, 5.8, 6.0),
-  (0.28, 7.2, 5.0), // bắp chân
-  (0.6, 5.6, 4.4),
-  (0.9, 3.8, 3.8),
-  (1.0, 3.9, 3.9), // cổ chân
-];
-
 double _limb(HeroLook look) => (1 + look.fat * 0.8) * (look.female ? 0.92 : 1);
 
 void _arm(
@@ -349,19 +311,14 @@ void _arm(
   shadedLimb(
     canvas,
     [
-      (shoulder, elbow, _upperArm),
-      (elbow, wrist, _forearm),
-      (wrist, fist, _fist),
+      (shoulder, elbow, HumanAnatomy.upperArm),
+      (elbow, wrist, HumanAnatomy.forearm),
+      (wrist, fist, HumanAnatomy.fist),
     ],
     skin,
     scale: k,
     highlight: far ? 0 : 1.4,
   );
-  if (!far) {
-    // Đường cơ (sel-line màu da sẫm): bắp tay, cơ cẳng tay.
-    _muscle(canvas, shoulder, elbow, 0.2, 0.85, 3.2 * k, 1.6, look.skin);
-    _muscle(canvas, elbow, wrist, 0.08, 0.5, -3 * k, 1.4, look.skin);
-  }
   // Vòng tay vàng ánh kim gần cổ tay.
   final band = capsulePath(
     Offset.lerp(elbow, wrist, 0.72)!,
@@ -391,37 +348,6 @@ void _arm(
   }
 }
 
-/// Đường viền khối cơ dọc đoạn [a]→[b] (từ tỉ lệ [from] tới [to]), lệch
-/// sang một bên [offset] và phồng [bulge]: nét màu da sẫm, không dùng đen
-/// (sel-line), để tay chân có cơ thay vì ống tròn trơn.
-void _muscle(
-  Canvas canvas,
-  Offset a,
-  Offset b,
-  double from,
-  double to,
-  double offset,
-  double bulge,
-  Color skin,
-) {
-  final d = b - a;
-  if (d.distance < 1) return;
-  final n = Offset(-d.dy, d.dx) / d.distance;
-  final p0 = Offset.lerp(a, b, from)! + n * offset;
-  final p1 = Offset.lerp(a, b, to)! + n * offset;
-  final mid = Offset.lerp(p0, p1, 0.5)! + n * bulge * offset.sign;
-  canvas.drawPath(
-    Path()
-      ..moveTo(p0.dx, p0.dy)
-      ..quadraticBezierTo(mid.dx, mid.dy, p1.dx, p1.dy),
-    Paint()
-      ..color = darken(skin, 0.28).withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9
-      ..strokeCap = StrokeCap.round,
-  );
-}
-
 void _leg(
   Canvas canvas,
   HeroLook look,
@@ -437,15 +363,16 @@ void _leg(
   // chân phồng phía sau ở 1/3 trên, ống chân phía trước thẳng, cổ chân thắt.
   shadedLimb(
     canvas,
-    [(hip, knee, look.female ? _thighFemale : _thigh), (knee, ankle, _shin)],
+    [
+      (hip, knee, look.female ? HumanAnatomy.thighFemale : HumanAnatomy.thigh),
+      (knee, ankle, HumanAnatomy.shin),
+    ],
     shade(look.skin),
     scale: k,
     highlight: far ? 0 : 1.4,
   );
   if (!far) {
-    // Cơ đùi trước, bắp chân sau, xương bánh chè.
-    _muscle(canvas, hip, knee, 0.25, 0.85, 3.8 * k, 1.8, look.skin);
-    _muscle(canvas, knee, ankle, 0.1, 0.55, -3.2 * k, 1.8, look.skin);
+    // Xương bánh chè (rãnh cơ tay chân do vector_anatomy vẽ).
     final kd = (ankle - knee) / (ankle - knee).distance;
     canvas.drawArc(
       Rect.fromCircle(center: knee + kd * 1.5, radius: 2.6 * k),

@@ -1,0 +1,19 @@
+name: vector_anatomy
+description: >-
+  Hình học giải phẫu cho đồ hoạ vector vẽ bằng code (Flutter Canvas): đường
+  cong Catmull-Rom, nét thon hai đầu, khung toạ độ theo chi, profile cơ và rãnh
+  cơ người / mèo lớn. Chỉ tạo Path — việc tô màu, đổ bóng do app quyết định.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
