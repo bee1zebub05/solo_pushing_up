@@ -553,7 +553,18 @@ class _HeroComponent extends Component {
     final from = _from;
     if (from != null && _blend < 1) {
       _blend = math.min(1, _blend + dt / 0.45);
-      _shown = HeroPose.lerp(from, pose, Curves.easeInOut.transform(_blend));
+      final k = Curves.easeInOut.transform(_blend);
+      _shown = HeroPose.lerp(from, pose, k);
+      if (_mode == _HeroMode.plank) {
+        // Xuống thế chống đẩy: chống tay xuống sàn trước rồi mới hạ người
+        // (không để bàn tay lơ lửng giữa chừng).
+        final hands = Curves.easeOut.transform(math.min(1, _blend * 2));
+        _shown = HeroPose({
+          ..._shown.joints,
+          for (final j in const [HeroJoint.wrist, HeroJoint.farWrist])
+            j: Offset.lerp(from[j], pose[j], hands)!,
+        });
+      }
     } else {
       _shown = pose;
     }
