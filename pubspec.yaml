@@ -47,6 +47,9 @@ dependencies:
   # Hình học giải phẫu (đường cong, profile cơ) — thư viện riêng của dự án.
   vector_anatomy:
     path: packages/vector_anatomy
+  # Ảnh chụp sẵn lớp tĩnh + ngân sách bộ nhớ GPU — thư viện riêng của dự án.
+  stage_raster:
+    path: packages/stage_raster
 
 dev_dependencies:
   flutter_test:

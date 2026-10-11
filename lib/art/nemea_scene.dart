@@ -87,23 +87,36 @@ void paintNemeaDusty(Canvas canvas) {
   }
 }
 
+/// Bộ lọc màu "phủ bụi Trì Trệ": còn 18 % bão hoà, ngả xám tím. Vẽ lại
+/// ảnh lớp sạch qua bộ lọc này với độ đục = lượng bụi (không cần giữ ảnh
+/// bụi riêng — tiết kiệm một nửa bộ nhớ ảnh phông).
+const nemeaDustFilter = ColorFilter.matrix([
+  0.2126 * 0.82 + 0.18, 0.7152 * 0.82, 0.0722 * 0.82, 0, -8, //
+  0.2126 * 0.82, 0.7152 * 0.82 + 0.18, 0.0722 * 0.82, 0, -10,
+  0.2126 * 0.82, 0.7152 * 0.82, 0.0722 * 0.82 + 0.18, 0, -2,
+  0, 0, 0, 1, 0,
+]);
+
 /// Một lớp phông nền phủ bụi (để chồng đúng lên lớp tương ứng khi parallax).
+/// Dùng cho ảnh xem trước; trong trận vẽ ảnh sạch qua [nemeaDustFilter] rồi
+/// [paintNemeaDustExtras].
 void paintNemeaDustyLayer(Canvas canvas, NemeaLayer layer) {
-  const s = 0.18; // độ bão hoà còn lại
-  const r = 0.2126 * (1 - s), g = 0.7152 * (1 - s), b = 0.0722 * (1 - s);
   canvas.saveLayer(
     const Rect.fromLTRB(-20, -20, 420, 280),
-    Paint()
-      ..colorFilter = const ColorFilter.matrix([
-        r + s, g, b, 0, -8, //
-        r, g + s, b, 0, -10,
-        r, g, b + s, 0, -2,
-        0, 0, 0, 1, 0,
-      ]),
+    Paint()..colorFilter = nemeaDustFilter,
   );
   paintNemeaLayer(canvas, layer);
   canvas.restore();
+  paintNemeaDustExtras(canvas, layer);
+}
 
+/// Phần bụi không phải đổi màu: sương xám ở chân trời, mạng nhện, đống bụi.
+/// Ít nét nên vẽ vector trực tiếp mỗi khung với [opacity] = lượng bụi.
+void paintNemeaDustExtras(
+  Canvas canvas,
+  NemeaLayer layer, {
+  double opacity = 1,
+}) {
   switch (layer) {
     case NemeaLayer.sky:
       break;
@@ -114,19 +127,20 @@ void paintNemeaDustyLayer(Canvas canvas, NemeaLayer layer) {
       canvas.drawRect(
         Offset.zero & stageSize,
         Paint()
-          ..shader = Gradient.linear(
-            const Offset(0, 40),
-            Offset(0, stageGroundY),
-            [const Color(0x405E5868), const Color(0x8C77707E)],
-          ),
+          ..shader =
+              Gradient.linear(const Offset(0, 40), Offset(0, stageGroundY), [
+                const Color(0x405E5868).withValues(alpha: 0.25 * opacity),
+                const Color(0x8C77707E).withValues(alpha: 0.55 * opacity),
+              ]),
       );
       // Mạng nhện giăng trên đền.
-      _cobweb(canvas, const Offset(166, 129), 14, math.pi * 0.05);
-      _cobweb(canvas, const Offset(226, 129), 12, math.pi * 0.55);
+      _cobweb(canvas, const Offset(166, 129), 14, math.pi * 0.05, opacity);
+      _cobweb(canvas, const Offset(226, 129), 12, math.pi * 0.55, opacity);
     case NemeaLayer.near:
-      _cobweb(canvas, const Offset(304, 152), 16, math.pi * 0.1);
+      _cobweb(canvas, const Offset(304, 152), 16, math.pi * 0.1, opacity);
       // Bụi đọng thành đống dưới chân cột.
-      final heap = Paint()..color = const Color(0xFF8A8590);
+      final heap = Paint()
+        ..color = const Color(0xFF8A8590).withValues(alpha: opacity);
       for (final (x, w) in [(30.0, 46.0), (150.0, 30.0), (238.0, 40.0)]) {
         canvas.drawOval(
           Rect.fromCenter(
@@ -140,9 +154,15 @@ void paintNemeaDustyLayer(Canvas canvas, NemeaLayer layer) {
   }
 }
 
-void _cobweb(Canvas canvas, Offset corner, double size, double rot) {
+void _cobweb(
+  Canvas canvas,
+  Offset corner,
+  double size,
+  double rot, [
+  double opacity = 1,
+]) {
   final p = Paint()
-    ..color = const Color(0xAADCD8E2)
+    ..color = const Color(0xAADCD8E2).withValues(alpha: 0.67 * opacity)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.6;
   canvas.save();
@@ -1297,14 +1317,13 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
           width: 50 + phase * 60,
           height: 14 + phase * 8,
         ),
+        // Gradient tròn mờ dần thay MaskFilter.blur: nhìn gần như nhau
+        // nhưng blur Gauss mỗi khung rất đắt trên GPU điện thoại.
         Paint()
-          ..color = Color.fromRGBO(
-            82,
-            68,
-            104,
-            0.5 * dust * math.sin(phase * math.pi),
-          )
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..shader = Gradient.radial(Offset(x, y), (50 + phase * 60) / 2, [
+            Color.fromRGBO(82, 68, 104, 0.5 * dust * math.sin(phase * math.pi)),
+            const Color.fromRGBO(82, 68, 104, 0),
+          ]),
       );
     }
   }
@@ -1383,12 +1402,19 @@ void _cloud(Canvas canvas, Offset at, double s) {
   canvas.save();
   canvas.translate(at.dx, at.dy);
   canvas.scale(s);
-  canvas.drawPicture(_cloudPicture);
+  _cloudImage.paint(canvas);
   canvas.restore();
 }
 
 /// Mây chiều: dẹt, nhiều thuỳ không đều, đáy phẳng ngả tím lạnh (bóng),
 /// đỉnh vàng ấm đón nắng — vẽ sẵn một lần.
+/// Mây chụp sẵn thành ảnh (vẽ vector 3 đám mỗi khung tốn tô hình).
+final _cloudImage = RasterLayer(
+  (c) => c.drawPicture(_cloudPicture),
+  bounds: const Rect.fromLTRB(-20, -28, 60, 8),
+  resolution: 1.2,
+);
+
 final Picture _cloudPicture = () {
   final recorder = PictureRecorder();
   final canvas = Canvas(recorder);

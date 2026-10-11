@@ -168,3 +168,18 @@ Tay chân phía xa (khuất, tối) đặt `definition: 0` để tiết kiệm h
 - Nét ngắn (quai, rãnh): ít điểm mẫu (`samples: 6`).
 - Windows Defender quét làm số đo đội lên gấp đôi; so sánh tương đối với
   commit trước trên cùng máy, cùng lúc.
+
+## 10. Ảnh chụp sẵn và GPU điện thoại (đo trên máy thật 12/10/2026)
+
+- `RasterLayer` nằm trong thư viện `packages/stage_raster` (xuất lại qua
+  `vector_style.dart`): ngân sách bộ nhớ chung `RasterBudget.shared` (LRU,
+  trần 3,6 điểm ảnh/đơn vị), sân khấu tự giải phóng khi rời trận.
+- Cùng một lớp mà cần hai tông (sạch / phủ bụi) → **một ảnh**, vẽ lại qua
+  `paint(colorFilter: ...)`; đừng giữ ảnh thứ hai.
+- Lớp xa (trời, núi) dùng `resolution` < 1: mềm hợp phối cảnh không khí,
+  tiết kiệm bộ nhớ.
+- **Không dùng `MaskFilter.blur` cho thứ vẽ mỗi khung** — thay bằng
+  `Gradient.radial` mờ dần. Blur chỉ dùng trong lớp chụp sẵn.
+- Impeller tính "raster" gồm cả chia tam giác đường cong vector: mọi thứ
+  vector vẽ mỗi khung (mây, tiền cảnh…) đều tốn; tĩnh thì chụp sẵn.
+- Đo: `bash tool/bench_device.sh` (dọc + ngang, bộ nhớ ảnh, log BENCH).

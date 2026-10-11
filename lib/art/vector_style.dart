@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:vector_anatomy/vector_anatomy.dart';
 
+export 'package:stage_raster/stage_raster.dart';
 export 'package:vector_anatomy/vector_anatomy.dart';
 
 /// Bộ công cụ phong cách "game vector": viền đậm mượt, đổ bóng hai tông
@@ -496,70 +497,4 @@ abstract final class StageQuality {
 
   /// Phủ bụi Trì Trệ (Nemea).
   static bool dust = true;
-
-  /// Độ phân giải chụp sẵn lớp tĩnh thành ảnh (bội số của 400×260). Sân
-  /// khấu tự đặt theo số điểm ảnh thật khi đổi kích thước (dọc 1080 px ≈ 2,7,
-  /// ngang 2400 px ≈ 6); máy yếu có thể ép thấp hơn.
-  static double rasterScale = 2.7;
-}
-
-/// Lớp tĩnh chụp sẵn thành ảnh bitmap một lần (lần vẽ đầu), sau đó mỗi khung
-/// chỉ vẽ ảnh: GPU điện thoại tốn rất nhiều khi phải tô lại hàng nghìn đường
-/// cong vector mỗi khung (đo trên máy thật: phông nền vector ~20 ms/khung).
-/// [bounds]: vùng (toạ độ sân khấu) được chụp — chừa lề cho parallax.
-class RasterLayer {
-  RasterLayer(
-    this.draw, {
-    this.bounds = const Rect.fromLTRB(-20, -20, 420, 280),
-    this.resolution = 1,
-  });
-
-  final void Function(Canvas canvas) draw;
-  final Rect bounds;
-
-  /// Bội số độ phân giải so với sân khấu (vật bị phóng to khi vẽ thì > 1).
-  final double resolution;
-  Image? _image;
-  double _scale = 0;
-  static final _paint = Paint()..filterQuality = FilterQuality.low;
-
-  /// Vẽ ảnh vào đúng [bounds]; [opacity] < 1 để trộn (không cần saveLayer).
-  void paint(Canvas canvas, {double opacity = 1}) {
-    // Chụp lại khi độ phân giải cần thay đổi đáng kể (xoay máy…).
-    if ((StageQuality.rasterScale - _scale).abs() > _scale * 0.15) dispose();
-    final image = _image ??= _render();
-    final paint = opacity >= 1
-        ? _paint
-        : (Paint()
-            ..filterQuality = FilterQuality.low
-            ..color = Color.fromRGBO(0, 0, 0, opacity.clamp(0.0, 1.0)));
-    canvas.drawImageRect(
-      image,
-      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-      bounds,
-      paint,
-    );
-  }
-
-  Image _render() {
-    _scale = StageQuality.rasterScale;
-    final k = _scale * resolution;
-    final recorder = PictureRecorder();
-    final canvas = Canvas(recorder)
-      ..scale(k)
-      ..translate(-bounds.left, -bounds.top);
-    draw(canvas);
-    final picture = recorder.endRecording();
-    final image = picture.toImageSync(
-      (bounds.width * k).ceil(),
-      (bounds.height * k).ceil(),
-    );
-    picture.dispose();
-    return image;
-  }
-
-  void dispose() {
-    _image?.dispose();
-    _image = null;
-  }
 }
