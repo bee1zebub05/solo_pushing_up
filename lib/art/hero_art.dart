@@ -106,6 +106,9 @@ void paintHero(
   bool sword = false,
   double time = 0,
 }) {
+  // Làm tròn khớp tới 0,5 đơn vị (≈ 1 px) để các khung có tư thế gần như
+  // nhau dùng lại hình đã ghi (xem [_cachedPart]).
+  pose = _quantize(pose);
   // Chiều cao: phóng to/thu nhỏ quanh điểm chạm đất (mũi chân), nên tay chân
   // vẫn chạm sàn ở mọi tư thế.
   final toe = pose[HeroJoint.toe];
@@ -224,73 +227,86 @@ void paintHero(
     }
   }
 
+  final poseKey = _poseKey(pose);
+  final lookKey = _lookKey(look);
   // Tay chân phía xa: tối hơn, nằm sau thân.
-  _leg(
-    canvas,
-    look,
-    hip,
-    pose[HeroJoint.farKnee],
-    pose[HeroJoint.farAnkle],
-    pose[HeroJoint.farToe],
-    far: true,
-  );
-  _arm(
-    canvas,
-    look,
-    shoulder,
-    pose[HeroJoint.farElbow],
-    pose[HeroJoint.farWrist],
-    far: true,
-    onGround: ground - pose[HeroJoint.farWrist].dy < 14,
-  );
+  _cachedPart(canvas, 'far|$lookKey|$poseKey', (canvas) {
+    _leg(
+      canvas,
+      look,
+      hip,
+      pose[HeroJoint.farKnee],
+      pose[HeroJoint.farAnkle],
+      pose[HeroJoint.farToe],
+      far: true,
+    );
+    _arm(
+      canvas,
+      look,
+      shoulder,
+      pose[HeroJoint.farElbow],
+      pose[HeroJoint.farWrist],
+      far: true,
+      onGround: ground - pose[HeroJoint.farWrist].dy < 14,
+    );
+  });
 
   if (cloak) {
     withFrame(canvas, hip, up, (f) => _peltBack(canvas, torsoLen, f, time));
   }
   if (shield) withFrame(canvas, hip, up, (f) => _shield(canvas, torsoLen, f));
 
-  final head = pose[HeroJoint.head];
-  final neck = pose[HeroJoint.neck];
-  final headUp = (head - neck) / (head - neck).distance;
-  // Tóc dài/đuôi ngựa nằm sau thân.
-  if (!cloak) {
-    withFrame(canvas, head, headUp, (f) {
-      canvas.scale(_headScale);
-      _hairBack(canvas, look, f);
-    });
-  }
+  final effortKey = (effort.clamp(0.0, 1.0) * 4).round();
+  // Phần còn lại (tóc sau, chân gần, thân, cổ, đầu, tay gần) chỉ phụ thuộc
+  // tư thế + ngoại hình + trang bị + biểu cảm (đã làm tròn).
+  _cachedPart(
+    canvas,
+    'near|$lookKey|$poseKey|$cloak|$sword|$effortKey|${joy > 0.5}',
+    (canvas) {
+      final head = pose[HeroJoint.head];
+      final neck = pose[HeroJoint.neck];
+      final headUp = (head - neck) / (head - neck).distance;
+      // Tóc dài/đuôi ngựa nằm sau thân.
+      if (!cloak) {
+        withFrame(canvas, head, headUp, (f) {
+          canvas.scale(_headScale);
+          _hairBack(canvas, look, f);
+        });
+      }
 
-  _leg(
-    canvas,
-    look,
-    hip,
-    pose[HeroJoint.knee],
-    pose[HeroJoint.ankle],
-    pose[HeroJoint.toe],
-  );
-  withFrame(
-    canvas,
-    hip,
-    up,
-    (f) => _torso(canvas, look, torsoLen, f, cloak: cloak),
-  );
-  if (sword) withFrame(canvas, hip, up, (f) => _sword(canvas, look, f));
+      _leg(
+        canvas,
+        look,
+        hip,
+        pose[HeroJoint.knee],
+        pose[HeroJoint.ankle],
+        pose[HeroJoint.toe],
+      );
+      withFrame(
+        canvas,
+        hip,
+        up,
+        (f) => _torso(canvas, look, torsoLen, f, cloak: cloak),
+      );
+      if (sword) withFrame(canvas, hip, up, (f) => _sword(canvas, look, f));
 
-  shadedChain(
-    canvas,
-    [(shoulder, neck, 5.5 + look.fat * 2, 5 + look.fat * 2)],
-    look.skin,
-    highlight: 0,
-  );
-  _cachedHead(canvas, head, headUp, look, cloak, effort, joy);
+      shadedChain(
+        canvas,
+        [(shoulder, neck, 5.5 + look.fat * 2, 5 + look.fat * 2)],
+        look.skin,
+        highlight: 0,
+      );
+      _cachedHead(canvas, head, headUp, look, cloak, effort, joy);
 
-  _arm(
-    canvas,
-    look,
-    shoulder,
-    pose[HeroJoint.elbow],
-    pose[HeroJoint.wrist],
-    onGround: ground - pose[HeroJoint.wrist].dy < 14,
+      _arm(
+        canvas,
+        look,
+        shoulder,
+        pose[HeroJoint.elbow],
+        pose[HeroJoint.wrist],
+        onGround: ground - pose[HeroJoint.wrist].dy < 14,
+      );
+    },
   );
   canvas.restore();
   if (frost > 0.02) {
@@ -303,6 +319,45 @@ void paintHero(
       }
     }
   }
+}
+
+HeroPose _quantize(HeroPose pose) => HeroPose({
+  for (final e in pose.joints.entries)
+    e.key: Offset(
+      (e.value.dx * 2).roundToDouble() / 2,
+      (e.value.dy * 2).roundToDouble() / 2,
+    ),
+});
+
+String _poseKey(HeroPose pose) => [
+  for (final j in HeroJoint.values)
+    '${(pose[j].dx * 2).round()},${(pose[j].dy * 2).round()}',
+].join(';');
+
+String _lookKey(HeroLook look) =>
+    '${look.sex.index}/${look.skin.toARGB32()}/${look.hair.toARGB32()}/'
+    '${look.hairStyle.index}/${look.fat.toStringAsFixed(2)}';
+
+/// Hình đã ghi của từng phần nhân vật theo khoá (tư thế làm tròn + ngoại
+/// hình + trang bị + biểu cảm). Chống đẩy lặp lại cùng dải tư thế nên từ rep
+/// thứ hai gần như mọi khung đều trúng: bỏ được việc dựng lại bó cơ, nếp
+/// áo… mỗi khung (đo trên CPH2159: phần tốn CPU nhất của khung hình).
+/// Giữ tối đa [_partCacheMax] hình, bỏ hình lâu không dùng nhất.
+final _partCache = <String, Picture>{};
+const _partCacheMax = 240;
+
+void _cachedPart(Canvas canvas, String key, void Function(Canvas) draw) {
+  var picture = _partCache.remove(key);
+  if (picture == null) {
+    final recorder = PictureRecorder();
+    draw(Canvas(recorder));
+    picture = recorder.endRecording();
+    if (_partCache.length >= _partCacheMax) {
+      _partCache.remove(_partCache.keys.first)?.dispose();
+    }
+  }
+  _partCache[key] = picture; // đưa lên cuối (vừa dùng)
+  canvas.drawPicture(picture);
 }
 
 void _iceCrystal(Canvas canvas, Offset at, double size) {
