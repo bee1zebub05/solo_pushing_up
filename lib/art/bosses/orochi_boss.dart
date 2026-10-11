@@ -771,16 +771,44 @@ class OrochiBossArt extends BossArt {
     );
   }
 
+  /// Đầu mọc lại: các sợi gân thịt đỏ vươn ra từ cổ, xoắn quanh đầu non
+  /// rồi rút vào; máu nhỏ giọt; hơi đỏ toả mờ.
   void _regrowSparkle(Canvas canvas, Offset head, double t) {
-    final paint = fillPaint(const Color(0xFFB9F6CA).withValues(alpha: 1 - t));
-    for (var i = 0; i < 6; i++) {
-      final a = math.pi * 2 * i / 6 + t * 2;
-      canvas.drawCircle(
-        head + Offset(math.cos(a), math.sin(a)) * (10 + 16 * t),
-        2.4 * (1 - t) + 0.6,
-        paint,
+    final k = 1 - t;
+    canvas.drawCircle(
+      head,
+      26,
+      Paint()
+        ..shader = Gradient.radial(head, 26, [
+          Color.fromRGBO(200, 40, 40, 0.35 * k),
+          const Color.fromRGBO(200, 40, 40, 0),
+        ]),
+    );
+    final sinew = Paint()..color = Color.fromRGBO(170, 40, 40, 0.9 * k);
+    final lit = Paint()..color = Color.fromRGBO(255, 150, 140, 0.7 * k);
+    for (var i = 0; i < 5; i++) {
+      final a = math.pi * 2 * i / 5 + t * 3;
+      final reach = 8 + 14 * math.sin(t * math.pi);
+      final mid =
+          head + Offset(math.cos(a + 0.8), math.sin(a + 0.8)) * reach * 0.6;
+      final tip = head + Offset(math.cos(a), math.sin(a)) * reach;
+      final pts = [
+        head + Offset(math.cos(a - 0.5), math.sin(a - 0.5)) * 3,
+        mid,
+        tip,
+      ];
+      canvas.drawPath(
+        taperedStroke(pts, 2.4 * k + 0.6, peak: 0.1, startWidth: 1),
+        sinew,
       );
+      canvas.drawPath(taperedStroke(pts.sublist(0, 2), 0.8 * k + 0.2), lit);
     }
+    final drip = (t * 2) % 1;
+    canvas.drawCircle(
+      head + Offset(2, 10 + 10 * drip),
+      1.4 * k,
+      fillPaint(Color.fromRGBO(120, 20, 20, k)),
+    );
   }
 
   /// Thân khổng lồ (tĩnh) chụp sẵn: thở chỉ dời ảnh lên xuống.
