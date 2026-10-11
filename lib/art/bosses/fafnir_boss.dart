@@ -51,8 +51,32 @@ class FafnirBossArt extends BossArt {
           const [0, 0.6, 1],
         ),
     );
-    // Sao.
+    // Dải Ngân Hà chéo trời: dày sao nhỏ, quầng mờ.
     final rnd = math.Random(11);
+    canvas.save();
+    canvas.translate(200, 60);
+    canvas.rotate(-0.35);
+    // Quầng Ngân Hà mờ dần hai mép (gradient ngang dải, không mép cứng).
+    canvas.drawRect(
+      const Rect.fromLTRB(-300, -22, 300, 22),
+      Paint()
+        ..shader = Gradient.linear(
+          const Offset(0, -22),
+          const Offset(0, 22),
+          const [Color(0x00B8C8F0), Color(0x2EB8C8F0), Color(0x00B8C8F0)],
+          const [0, 0.5, 1],
+        ),
+    );
+    for (var i = 0; i < 160; i++) {
+      final x = (rnd.nextDouble() - 0.5) * 500;
+      final y = (rnd.nextDouble() + rnd.nextDouble() - 1) * 16;
+      canvas.drawCircle(
+        Offset(x, y),
+        rnd.nextDouble() * 0.45 + 0.15,
+        fillPaint(Color.fromRGBO(230, 238, 255, 0.4 + rnd.nextDouble() * 0.5)),
+      );
+    }
+    canvas.restore();
     for (var i = 0; i < 40; i++) {
       canvas.drawCircle(
         Offset(rnd.nextDouble() * w, rnd.nextDouble() * 110),
@@ -60,60 +84,83 @@ class FafnirBossArt extends BossArt {
         fillPaint(const Color(0xCCFFFFFF)),
       );
     }
-    // Núi tuyết xa.
-    final mountains = Path()
-      ..moveTo(0, 175)
-      ..lineTo(40, 128)
-      ..lineTo(80, 158)
-      ..lineTo(130, 112)
-      ..lineTo(185, 160)
-      ..lineTo(240, 120)
-      ..lineTo(300, 165)
-      ..lineTo(350, 130)
-      ..lineTo(400, 160)
-      ..lineTo(400, 200)
-      ..lineTo(0, 200)
-      ..close();
-    canvas.drawPath(mountains, fillPaint(const Color(0xFF2F4A63)));
-    // Đỉnh phủ tuyết.
-    final caps = fillPaint(const Color(0xFFB9CFE0));
-    for (final (x, y) in [
-      (40.0, 128.0),
-      (130.0, 112.0),
-      (240.0, 120.0),
-      (350.0, 130.0),
-    ]) {
-      canvas.drawPath(
-        Path()
-          ..moveTo(x, y)
-          ..lineTo(x - 11, y + 12)
-          ..lineTo(x - 3, y + 9)
-          ..lineTo(x + 4, y + 13)
-          ..lineTo(x + 11, y + 11)
-          ..close(),
-        caps,
+    // Trăng khuyết có quầng.
+    const moon = Offset(84, 40);
+    canvas.drawCircle(
+      moon,
+      34,
+      Paint()
+        ..shader = Gradient.radial(moon, 34, const [
+          Color(0x40DCEBFF),
+          Color(0x00DCEBFF),
+        ]),
+    );
+    canvas.drawPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addOval(Rect.fromCircle(center: moon, radius: 11)),
+        Path()..addOval(
+          Rect.fromCircle(center: moon + const Offset(5, -3), radius: 10),
+        ),
+      ),
+      fillPaint(const Color(0xFFEAF2FF)),
+    );
+    // Hai dãy núi tuyết: xa (nhạt, sương) và gần (đậm).
+    _snowRidge(
+      canvas,
+      const [
+        Offset(-10, 160),
+        Offset(30, 122),
+        Offset(70, 146),
+        Offset(118, 104),
+        Offset(170, 142),
+        Offset(226, 112),
+        Offset(286, 150),
+        Offset(340, 118),
+        Offset(410, 146),
+      ],
+      rock: const Color(0xFF3B5770),
+      floor: 196,
+      seed: 3,
+    );
+    _snowRidge(
+      canvas,
+      const [
+        Offset(-10, 178),
+        Offset(52, 148),
+        Offset(96, 168),
+        Offset(150, 140),
+        Offset(214, 172),
+        Offset(262, 150),
+        Offset(320, 176),
+        Offset(372, 152),
+        Offset(410, 170),
+      ],
+      rock: const Color(0xFF263F55),
+      floor: 206,
+      seed: 7,
+    );
+    // Rừng thông phủ tuyết: hàng xa nhỏ, nhạt; hàng gần to, đậm.
+    final trees = math.Random(5);
+    for (var i = 0; i < 16; i++) {
+      _fir(
+        canvas,
+        Offset(i * 27.0 + trees.nextDouble() * 8, 196),
+        22 + trees.nextDouble() * 8,
+        const Color(0xFF29465C),
       );
     }
-    // Rừng thông phủ tuyết.
-    for (var i = 0; i < 12; i++) {
-      final x = i * 36.0 + 10;
-      final top = 150.0 + (i % 3) * 8;
-      final tree = Path()
-        ..moveTo(x, top)
-        ..lineTo(x - 13, 206)
-        ..lineTo(x + 13, 206)
-        ..close();
-      canvas.drawPath(tree, fillPaint(const Color(0xFF173246)));
-      canvas.drawPath(
-        Path()
-          ..moveTo(x, top)
-          ..lineTo(x - 6, top + 14)
-          ..lineTo(x + 5, top + 12)
-          ..close(),
-        fillPaint(const Color(0xFFDCEAF5)),
+    for (var i = 0; i < 11; i++) {
+      final x = i * 38.0 + trees.nextDouble() * 12;
+      if (x > 250 && x < 420) continue; // chừa chỗ đống vàng và rồng
+      _fir(
+        canvas,
+        Offset(x, 210),
+        34 + trees.nextDouble() * 12,
+        const Color(0xFF173246),
       );
     }
-    // Nền tuyết.
+    // Nền tuyết: luống tuyết gió thổi, bóng xanh lạnh, đốm lấp lánh.
     canvas.drawRect(
       Rect.fromLTRB(0, stageGroundY - 6, w, h),
       Paint()
@@ -123,12 +170,157 @@ class FafnirBossArt extends BossArt {
           const [Color(0xFFE3EEF7), Color(0xFFA9C2D6)],
         ),
     );
-    // Bia đá khắc rune phía sau người chơi.
+    for (var i = 0; i < 6; i++) {
+      final x = i * 72.0 - 10;
+      final y = stageGroundY + 6 + (i % 3) * 8.0;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, y)
+          ..quadraticBezierTo(x + 30, y - 7, x + 64, y)
+          ..quadraticBezierTo(x + 30, y - 2, x, y)
+          ..close(),
+        fillPaint(const Color(0x668FAAC4)),
+      );
+    }
+    final sparkle = math.Random(13);
+    for (var i = 0; i < 40; i++) {
+      canvas.drawCircle(
+        Offset(
+          sparkle.nextDouble() * w,
+          stageGroundY + sparkle.nextDouble() * (h - stageGroundY),
+        ),
+        0.5,
+        fillPaint(const Color(0xCCFFFFFF)),
+      );
+    }
+    _runestone(canvas);
+  }
+
+  /// Dãy núi tuyết: đá lộ ở sườn dốc, tuyết phủ sườn đón sáng (trái) và
+  /// đọng thành vệt trong khe xói; sương lạnh phủ chân núi.
+  static void _snowRidge(
+    Canvas canvas,
+    List<Offset> peaks, {
+    required Color rock,
+    required double floor,
+    required int seed,
+  }) {
+    final rnd = math.Random(seed);
+    final body = Path()..moveTo(peaks.first.dx, floor);
+    for (final p in peaks) {
+      body.lineTo(p.dx, p.dy);
+    }
+    body
+      ..lineTo(peaks.last.dx, floor)
+      ..close();
+    canvas.drawPath(body, fillPaint(rock));
+    canvas.save();
+    canvas.clipPath(body);
+    final snowLit = fillPaint(const Color(0xFFD5E4F0));
+    final snowShade = fillPaint(const Color(0xFF7F9BB4));
+    for (var i = 1; i < peaks.length - 1; i++) {
+      final p = peaks[i];
+      if (p.dy > peaks[i - 1].dy || p.dy > peaks[i + 1].dy) continue;
+      final hgt = floor - p.dy;
+      final l = peaks[i - 1], r = peaks[i + 1];
+      // Mũ tuyết hai sườn, mép dưới răng cưa (tuyết bám theo gờ đá).
+      for (final (side, paint) in [(l, snowLit), (r, snowShade)]) {
+        final dir = (side - p) / (side - p).distance;
+        canvas.drawPath(
+          Path()
+            ..moveTo(p.dx, p.dy)
+            ..lineTo(p.dx + dir.dx * hgt * 0.6, p.dy + dir.dy * hgt * 0.6)
+            ..lineTo(p.dx + dir.dx * hgt * 0.35, p.dy + hgt * 0.42)
+            ..close(),
+          paint,
+        );
+      }
+      // Vệt tuyết trong khe xói chảy xuống.
+      for (var k = 0; k < 2; k++) {
+        final x0 = p.dx + (k - 0.5) * hgt * 0.3;
+        final top = Offset(x0, p.dy + hgt * 0.35 + rnd.nextDouble() * 6);
+        final end =
+            top + Offset((k - 0.5) * 4, hgt * (0.14 + rnd.nextDouble() * 0.1));
+        canvas.drawPath(
+          taperedStroke(
+            [top, Offset.lerp(top, end, 0.5)! + const Offset(1, 0), end],
+            2.2,
+            peak: 0.2,
+            startWidth: 1,
+          ),
+          k == 0 ? snowLit : snowShade,
+        );
+      }
+    }
+    // Sương lạnh chân núi.
+    final top = peaks.map((p) => p.dy).reduce(math.min);
+    canvas.drawRect(
+      Rect.fromLTRB(-20, top, 420, floor),
+      Paint()
+        ..shader = Gradient.linear(
+          Offset(0, top + (floor - top) * 0.4),
+          Offset(0, floor),
+          const [Color(0x00B8CCE0), Color(0x66B8CCE0)],
+        ),
+    );
+    canvas.restore();
+  }
+
+  /// Cây thông phủ tuyết: thân, 5 tầng cành răng cưa thu nhỏ dần lên ngọn,
+  /// tuyết đọng thành dải trên mép trên mỗi tầng.
+  static void _fir(Canvas canvas, Offset base, double h, Color color) {
+    canvas.drawRect(
+      Rect.fromLTWH(base.dx - h * 0.04, base.dy - h * 0.18, h * 0.08, h * 0.2),
+      fillPaint(const Color(0xFF2A2420)),
+    );
+    for (var t = 0; t < 5; t++) {
+      final w = h * (0.46 - t * 0.075);
+      final bottom = base.dy - h * (0.12 + t * 0.17);
+      final top = bottom - h * 0.3;
+      final tier = Path()
+        ..moveTo(base.dx, top)
+        ..lineTo(base.dx + w * 0.55, bottom - h * 0.05)
+        ..lineTo(base.dx + w * 0.35, bottom - h * 0.06)
+        ..lineTo(base.dx + w * 0.7, bottom)
+        ..lineTo(base.dx - w * 0.7, bottom)
+        ..lineTo(base.dx - w * 0.35, bottom - h * 0.06)
+        ..lineTo(base.dx - w * 0.55, bottom - h * 0.05)
+        ..close();
+      canvas.drawPath(
+        tier,
+        fillPaint(
+          Color.lerp(color, const Color(0xFF0B1A26), 0.15 * (4 - t) / 4)!,
+        ),
+      );
+      // Tuyết đọng mép trên tầng cành (nghiêng sáng phía trái).
+      canvas.drawPath(
+        taperedStroke(
+          [
+            Offset(base.dx - w * 0.6, bottom - h * 0.02),
+            Offset(base.dx - w * 0.2, bottom - h * 0.1),
+            Offset(base.dx + w * 0.1, bottom - h * 0.12),
+            Offset(base.dx + w * 0.45, bottom - h * 0.05),
+          ],
+          h * 0.06,
+          peak: 0.35,
+          startWidth: 0.3,
+          endWidth: 0.1,
+        ),
+        fillPaint(const Color(0xFFDCEAF5)),
+      );
+    }
+  }
+
+  /// Bia đá rune kiểu khắc đá Ramsund (Thuỵ Điển, cảnh Sigurd giết Fafnir):
+  /// dải thân rắn mang chữ rune chạy vòng theo mép bia, phát sáng lạnh;
+  /// địa y, vết nứt, tuyết đọng trên đỉnh.
+  static void _runestone(Canvas canvas) {
     final stone = Path()
-      ..moveTo(22, stageGroundY - 4)
-      ..lineTo(18, 160)
-      ..quadraticBezierTo(32, 146, 48, 158)
-      ..lineTo(46, stageGroundY - 4)
+      ..moveTo(18, stageGroundY - 2)
+      ..lineTo(14, 164)
+      ..quadraticBezierTo(16, 146, 34, 142)
+      ..quadraticBezierTo(52, 146, 54, 166)
+      ..lineTo(52, stageGroundY - 2)
       ..close();
     shadedPath(
       canvas,
@@ -138,13 +330,112 @@ class FafnirBossArt extends BossArt {
       shadow: 3,
       highlight: 1.2,
     );
-    final rune = Paint()
+    canvas.save();
+    canvas.clipPath(stone);
+    // Dải rắn chạy theo mép bia (vòng chữ U ngược), viền khắc sâu.
+    final band = smoothPath(const [
+      Offset(20, 232),
+      Offset(19, 186),
+      Offset(22, 158),
+      Offset(34, 150),
+      Offset(46, 158),
+      Offset(48, 186),
+      Offset(46, 222),
+    ]);
+    canvas.drawPath(
+      band,
+      Paint()
+        ..color = const Color(0xFF4A5864)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 7.5,
+    );
+    canvas.drawPath(
+      band,
+      Paint()
+        ..color = const Color(0xFF8A9AA6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5,
+    );
+    // Chữ rune dọc dải rắn, sáng lạnh.
+    final glyph = Paint()
       ..color = const Color(0xFF8FE3FF)
-      ..strokeWidth = 1.4
+      ..strokeWidth = 0.8
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(30, 168), const Offset(30, 190), rune);
-    canvas.drawLine(const Offset(30, 172), const Offset(37, 166), rune);
-    canvas.drawLine(const Offset(30, 180), const Offset(37, 174), rune);
+    final line = sampleSmooth(const [
+      Offset(20, 230),
+      Offset(19, 186),
+      Offset(22, 158),
+      Offset(34, 150),
+      Offset(46, 158),
+      Offset(48, 186),
+      Offset(46, 222),
+    ], 22);
+    for (var i = 1; i < line.length - 1; i++) {
+      final d = line[i + 1] - line[i - 1];
+      final dir = d / d.distance;
+      final n = Offset(-dir.dy, dir.dx);
+      final c = line[i];
+      canvas.drawLine(c - n * 1.8, c + n * 1.8, glyph);
+      final k = i % 3;
+      if (k == 0) canvas.drawLine(c - n * 1.8, c + dir * 1.4, glyph);
+      if (k == 1) canvas.drawLine(c, c + dir * 1.4 + n * 1.4, glyph);
+      if (k == 2) canvas.drawLine(c + n * 1.8, c + dir * 1.4 - n * 0.6, glyph);
+    }
+    // Đầu rắn ở cuối dải và hình Sigurd đâm kiếm từ dưới lên (nét khắc).
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(46, 222), Offset(42, 230), Offset(36, 232)],
+        5,
+        peak: 0.3,
+      ),
+      fillPaint(const Color(0xFF8A9AA6)),
+    );
+    final carve = Paint()
+      ..color = const Color(0xFF4A5864)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(30, 214)
+        ..lineTo(33, 200)
+        ..moveTo(33, 200)
+        ..lineTo(38, 176)
+        ..moveTo(30, 206)
+        ..lineTo(36, 204)
+        ..addOval(Rect.fromCircle(center: const Offset(32, 197), radius: 2)),
+      carve,
+    );
+    // Địa y và vết nứt.
+    final lichen = math.Random(21);
+    for (var i = 0; i < 12; i++) {
+      canvas.drawCircle(
+        Offset(16 + lichen.nextDouble() * 36, 150 + lichen.nextDouble() * 80),
+        0.6 + lichen.nextDouble() * 1.2,
+        fillPaint(const Color(0x88B8C27A)),
+      );
+    }
+    canvas.drawPath(
+      taperedStroke(const [
+        Offset(40, 168),
+        Offset(43, 178),
+        Offset(41, 190),
+      ], 1.2),
+      fillPaint(const Color(0xFF45525C)),
+    );
+    canvas.restore();
+    // Tuyết đọng trên đỉnh bia.
+    canvas.drawPath(
+      Path()
+        ..moveTo(15, 160)
+        ..quadraticBezierTo(16, 143, 34, 140)
+        ..quadraticBezierTo(53, 144, 54, 162)
+        ..quadraticBezierTo(46, 154, 40, 158)
+        ..quadraticBezierTo(32, 150, 24, 157)
+        ..quadraticBezierTo(18, 156, 15, 160)
+        ..close(),
+      fillPaint(const Color(0xFFE6F0F8)),
+    );
   }
 
   @override
