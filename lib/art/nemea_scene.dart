@@ -1114,6 +1114,32 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
     );
   }
 
+  // Cột nắng rọi xuống khi bụi tan: lung linh chậm, mạnh dần khi thắng.
+  final clear = (1 - dust * 1.15).clamp(0.0, 1.0);
+  if (clear > 0) {
+    const sun = Offset(172, 34);
+    for (var i = 0; i < 4; i++) {
+      final a = 0.55 + i * 0.32 + math.sin(time * 0.3 + i) * 0.03;
+      final w = 0.05 + 0.02 * math.sin(time * 0.7 + i * 2);
+      final pulse = 0.5 + 0.5 * math.sin(time * 0.9 + i * 1.7);
+      canvas.drawPath(
+        Path()
+          ..moveTo(sun.dx, sun.dy)
+          ..lineTo(
+            sun.dx + math.cos(a - w) * 300,
+            sun.dy + math.sin(a - w) * 300,
+          )
+          ..lineTo(
+            sun.dx + math.cos(a + w) * 300,
+            sun.dy + math.sin(a + w) * 300,
+          )
+          ..close(),
+        Paint()
+          ..color = Color.fromRGBO(255, 240, 200, 0.07 * clear * (0.6 + pulse)),
+      );
+    }
+  }
+
   // Hạt lơ lửng: bụi xám (Trì Trệ) hoặc hạt nắng vàng.
   final mote = Paint();
   for (var i = 0; i < 18; i++) {

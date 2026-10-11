@@ -116,3 +116,7 @@ giữa nhân vật và boss.
 - Hình lặp (bầy chim, bờm, chùm lá) → `Picture` dựng sẵn, mỗi khung chỉ
   biến đổi (xoay/co giãn) khi vẽ.
 - Test hiệu năng đầu file chịu tải biên dịch: đặt cảnh nặng nhất ở cuối.
+- Widget hoạt hình dùng `Ticker`: khởi động trong `initState`
+  (`_ticker.start()`), **không** viết `late final _ticker = createTicker(..)..start()`
+  vì `late` chỉ khởi tạo khi truy cập lần đầu (thường là lúc dispose) nên
+  hình đứng im. Viết widget test có `pump` để chắc hình có chạy.
