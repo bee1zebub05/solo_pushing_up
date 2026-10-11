@@ -731,23 +731,38 @@ void paintErymanthianBoar(
       (26.0, false),
     ]) {
       final c = far ? darken(hide, 0.3) : hide;
-      shadedChain(canvas, [(Offset(x, -30), Offset(x - 2, -6), 8, 5.5)], c);
+      // Bắp đùi dày nối vào thân, cẳng thon, gót guốc; móng chẻ đôi nhỏ.
+      shadedChain(canvas, [
+        (Offset(x, -40), Offset(x - 1, -17), 11, 6),
+        (Offset(x - 1, -17), Offset(x - 2.5, -6), 5, 3.6),
+      ], c);
+      const hoof = Color(0xFF241812);
       canvas.drawPath(
         _poly([
-          Offset(x - 8, 0),
-          Offset(x - 7, -7),
-          Offset(x + 3, -7),
-          Offset(x + 4, 0),
+          Offset(x - 8.5, 0),
+          Offset(x - 6, -6.5),
+          Offset(x + 0.5, -6.5),
+          Offset(x + 1.5, 0),
         ]),
-        _fill(const Color(0xFF241812)),
+        _fill(hoof),
       );
+      canvas.drawLine(
+        Offset(x - 3.5, -5.5),
+        Offset(x - 4, 0),
+        _stroke(lighten(hoof, 0.3), 0.9),
+      );
+      // Móng huyền phía sau gót.
+      canvas.drawCircle(Offset(x + 1.5, -5), 1.4, _fill(hoof));
     }
-    // Thân to, lưng gù.
+    // Thân lợn rừng: nửa trước nặng, u vai cao, lưng dốc xuống mông nhỏ,
+    // bụng thon dần ra sau.
     final body = Path()
-      ..moveTo(-44, -30 + dip)
-      ..cubicTo(-46, -60 + dip, -10, -72 - breath, 22, -64)
-      ..cubicTo(48, -58, 58, -40, 52, -24)
-      ..cubicTo(40, -14, -20, -12, -44, -30 + dip)
+      ..moveTo(-44, -28 + dip)
+      ..cubicTo(-52, -40 + dip, -46, -62 + dip, -30, -72 - breath + dip * 0.5)
+      ..cubicTo(-16, -80 - breath, 4, -72, 22, -64)
+      ..cubicTo(40, -58, 56, -50, 54, -34)
+      ..cubicTo(52, -22, 40, -20, 30, -22)
+      ..cubicTo(10, -18, -24, -14, -44, -28 + dip)
       ..close();
     _shaded(canvas, body, hide, shadow: 6);
     // Lông cứng phủ khắp thân, xuôi từ gáy về mông.
@@ -756,38 +771,78 @@ void paintErymanthianBoar(
       body,
       const Color(0xFF2E211B),
       dir: const Offset(1, 0.5),
-      count: 60,
+      count: 70,
       length: 6,
       width: 1,
       seed: 5,
     );
-    // Vằn lông.
     canvas.save();
     canvas.clipPath(body);
-    for (var i = 0; i < 6; i++) {
-      canvas.drawLine(
-        Offset(-20 + i * 12.0, -60),
-        Offset(-26 + i * 12.0, -36),
-        _stroke(hideLight, 1.4),
-      );
-    }
+    // Khối vai đón sáng, bóng lõi sau vai và trước đùi sau.
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(-28, -54 + dip * 0.5),
+        width: 34,
+        height: 30,
+      ),
+      _fill(hideLight.withValues(alpha: 0.55)),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(-8, -70)
+        ..quadraticBezierTo(0, -48, -10, -22),
+      _stroke(darken(hide, 0.35).withValues(alpha: 0.7), 4),
+    );
+    canvas.drawArc(
+      Rect.fromCenter(center: const Offset(38, -38), width: 36, height: 34),
+      1.9,
+      1.7,
+      false,
+      _stroke(darken(hide, 0.35).withValues(alpha: 0.7), 3.5),
+    );
     canvas.restore();
-    // Bờm gai dựng dọc sống lưng (dựng cao hơn khi húc).
+    // Bờm lông cứng dọc sống lưng: sợi thon dài nhất ở u vai, chĩa lên và
+    // ra sau; dựng cao hơn khi húc.
+    Offset spine(double u) {
+      final p0 = Offset(-44, -58 + dip);
+      final p1 = Offset(-22, -88 - breath);
+      final p2 = const Offset(40, -58);
+      return p0 * ((1 - u) * (1 - u)) + p1 * (2 * u * (1 - u)) + p2 * (u * u);
+    }
+
     final bristles = Path();
-    for (var i = 0; i < 11; i++) {
-      final x = -38 + i * 7.0;
-      final top = -66 - (i < 6 ? i * 1.0 : (10 - i) * 1.2) - breath;
-      final h = 12 + 6 * attack + (i.isEven ? 4 : 0);
+    final sheen = Path();
+    for (var i = 0; i < 17; i++) {
+      final u = (i + 0.5) / 17;
+      final base = spine(u);
+      final d = spine(math.min(1, u + 0.02)) - spine(math.max(0, u - 0.02));
+      final n = Offset(d.dy, -d.dx) / d.distance;
+      final hump = math.sin(math.min(1, u * 1.6) * math.pi * 0.95);
+      final len = (7 + 15 * hump) * (i.isEven ? 1 : 0.78) + 7 * attack * hump;
+      final dir = n + const Offset(0.55, 0) + Offset(0, -0.25 * attack);
+      final unit = dir / dir.distance;
+      final tip = base + unit * len;
+      final mid =
+          Offset.lerp(base, tip, 0.5)! + Offset(-unit.dy, unit.dx) * 1.5;
       bristles.addPath(
-        _poly([
-          Offset(x - 4, top + 8 + (i < 2 ? dip : 0)),
-          Offset(x + 2, top - h + (i < 2 ? dip : 0)),
-          Offset(x + 5, top + 8),
-        ]),
+        taperedStroke(
+          [base - unit * 4, mid, tip],
+          4.2,
+          peak: 0.25,
+          startWidth: 0.9,
+        ),
+        Offset.zero,
+      );
+      sheen.addPath(
+        taperedStroke([
+          Offset.lerp(base, tip, 0.15)!,
+          Offset.lerp(base, tip, 0.6)!,
+        ], 1.1),
         Offset.zero,
       );
     }
     _shaded(canvas, bristles, const Color(0xFF2E211B), shadow: 2);
+    canvas.drawPath(sheen, _fill(const Color(0x88A88A72)));
 
     // Đầu cúi, mõm dài, nanh cong lên.
     canvas.save();
@@ -854,17 +909,13 @@ void paintYoungHydra(
   double regrow = -1,
 }) {
   const scale = Color(0xFF3F7A4A);
-  const belly = Color(0xFFD8C978);
   _withHurt(canvas, hurt, () {
     canvas.drawOval(
       Rect.fromCenter(center: const Offset(4, 1), width: 110, height: 12),
       _fill(const Color(0x55301C10)),
     );
-    // Đuôi cuộn.
-    shadedChain(canvas, [
-      (const Offset(30, -14), const Offset(56, -10), 12, 7),
-      (const Offset(56, -10), const Offset(66, -26), 7, 3),
-    ], darken(scale, 0.1));
+    // Vòng cuộn phía sau (khuất, tối hơn) nằm sau các cổ.
+    _hydraBackCoil.paint(canvas);
     // Cổ: mỗi cổ một đường cong lắc lư theo pha riêng.
     final necks = <(Offset, Offset)>[];
     for (var i = 0; i < heads; i++) {
@@ -881,35 +932,28 @@ void paintYoungHydra(
     for (final (base, tip) in necks) {
       final mid = Offset.lerp(base, tip, 0.5)! + const Offset(10, 0);
       shadedChain(canvas, [(base, mid, 8, 6), (mid, tip, 6, 5)], scale);
-    }
-    // Thân.
-    final body = Path()..addOval(const Rect.fromLTRB(-30, -40, 40, 0));
-    _shaded(canvas, body, scale, shadow: 5);
-    canvas.save();
-    canvas.clipPath(body);
-    canvas.drawOval(const Rect.fromLTRB(-26, -16, 34, 6), _fill(belly));
-    for (var i = 0; i < 5; i++) {
-      canvas.drawLine(
-        Offset(-18 + i * 11.0, -14),
-        Offset(-20 + i * 11.0, 0),
-        _stroke(darken(belly, 0.2), 1),
-      );
-    }
-    // Vảy trên lưng.
-    for (var i = 0; i < 6; i++) {
-      canvas.drawArc(
-        Rect.fromCenter(
-          center: Offset(-14 + i * 9.0, -30),
-          width: 8,
-          height: 6,
+      // Dải vảy bụng sáng ở mặt trước cổ, sống lưng tối ở mặt sau.
+      List<Offset> side(double k) => [
+        for (final (p, w) in [(base, 8.0), (mid, 6.0), (tip, 5.0)])
+          p + Offset(k * w, 0),
+      ];
+      canvas.drawPath(
+        taperedStroke(
+          side(-0.62),
+          4.2,
+          peak: 0.2,
+          startWidth: 1,
+          endWidth: 0.6,
         ),
-        0,
-        math.pi,
-        false,
-        _stroke(lighten(scale, 0.25), 1),
+        _fill(_hydraBelly),
+      );
+      canvas.drawPath(
+        taperedStroke(side(0.6), 2.4, peak: 0.2, startWidth: 1, endWidth: 0.5),
+        _fill(darken(scale, 0.3)),
       );
     }
-    canvas.restore();
+    // Vòng cuộn phía trước, đuôi thon vắt lên.
+    _hydraFrontCoil.paint(canvas);
     // Báo trước phun độc: vũng độc xanh sủi bọt trên đất phía trước.
     if (attack > 0.05) {
       canvas.drawOval(
@@ -946,6 +990,178 @@ void paintYoungHydra(
       _hydraStump(canvas, base, tip, regrow, time);
     }
   });
+}
+
+const _hydraScale = Color(0xFF3F7A4A);
+const _hydraBelly = Color(0xFFD8C978);
+
+final _hydraBackCoil = RasterLayer(
+  (c) => _serpentCoil(
+    c,
+    const [
+      Offset(-26, -12),
+      Offset(-20, -30),
+      Offset(2, -40),
+      Offset(28, -36),
+      Offset(42, -20),
+      Offset(30, -8),
+    ],
+    22,
+    darken(_hydraScale, 0.1),
+    startWidth: 0.85,
+    endWidth: 0.85,
+    belly: false,
+  ),
+  bounds: const Rect.fromLTRB(-46, -60, 62, 8),
+  resolution: 2,
+);
+
+final _hydraFrontCoil = RasterLayer(
+  (c) => _serpentCoil(
+    c,
+    const [
+      Offset(-8, -30),
+      Offset(-30, -24),
+      Offset(-34, -10),
+      Offset(-14, -1),
+      Offset(18, -2),
+      Offset(44, -6),
+      Offset(60, -14),
+      Offset(68, -30),
+    ],
+    21,
+    _hydraScale,
+    startWidth: 0.75,
+    endWidth: 0.12,
+    belly: true,
+  ),
+  bounds: const Rect.fromLTRB(-52, -48, 82, 10),
+  resolution: 2,
+);
+
+/// Một khúc thân rắn dọc đường [pts]: khối tô đổ bóng, các hàng vảy cong
+/// (mở về phía đầu) xếp so le theo thân, sống lưng sẫm; nếu [belly] thì
+/// dải vảy bụng sáng màu, chia đốt ngang ở mép dưới.
+void _serpentCoil(
+  Canvas canvas,
+  List<Offset> pts,
+  double width,
+  Color color, {
+  required double startWidth,
+  required double endWidth,
+  required bool belly,
+}) {
+  final body = taperedStroke(
+    pts,
+    width,
+    peak: 0.35,
+    startWidth: startWidth,
+    endWidth: endWidth,
+    samples: 40,
+  );
+  _shaded(canvas, body, color, shadow: 5);
+  final line = sampleSmooth(pts, 60);
+  double widthAt(double t) {
+    // Xấp xỉ biên dạng của taperedStroke.
+    const peak = 0.35;
+    return t <= peak
+        ? startWidth + (1 - startWidth) * math.sin(t / peak * math.pi / 2)
+        : endWidth +
+              (1 - endWidth) * math.cos((t - peak) / (1 - peak) * math.pi / 2);
+  }
+
+  canvas.save();
+  canvas.clipPath(body);
+  final scaleDark = _stroke(darken(color, 0.35).withValues(alpha: 0.8), 0.9);
+  final scaleLit = _stroke(lighten(color, 0.3).withValues(alpha: 0.7), 0.7);
+  for (var i = 1; i < line.length - 1; i++) {
+    final t = i / (line.length - 1);
+    final d = line[i + 1] - line[i - 1];
+    final dir = d / d.distance;
+    final n = Offset(-dir.dy, dir.dx);
+    final half = width * widthAt(t) / 2;
+    // Mặt dưới của khúc thân (pháp tuyến hướng xuống) là bụng.
+    final down = n.dy >= 0 ? n : -n;
+    for (var row = -2; row <= 2; row++) {
+      if (i.isOdd == row.isEven) continue;
+      final k = row / 2.6;
+      if (belly && k > 0.35 && down == n) continue;
+      final c = line[i] + n * (half * k);
+      final r = math.max(1.2, half * 0.24);
+      // Vảy hình chữ U mở về phía đầu (ngược chiều đường thân).
+      final a0 = math.atan2(dir.dy, dir.dx) - math.pi / 2;
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r),
+        a0,
+        math.pi,
+        false,
+        scaleDark,
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: c - dir * 0.6 - down * 0.6, radius: r * 0.7),
+        a0 + 0.3,
+        math.pi * 0.6,
+        false,
+        scaleLit,
+      );
+    }
+  }
+  // Sống lưng sẫm chạy dọc mép trên.
+  final spine = [
+    for (var i = 0; i < line.length; i++)
+      () {
+        final t = i / (line.length - 1);
+        final d =
+            line[math.min(line.length - 1, i + 1)] - line[math.max(0, i - 1)];
+        final n = Offset(-d.dy, d.dx) / d.distance;
+        final up = n.dy <= 0 ? n : -n;
+        return line[i] + up * (width * widthAt(t) / 2 * 0.62);
+      }(),
+  ];
+  canvas.drawPath(
+    taperedStroke(
+      spine,
+      width * 0.22,
+      peak: 0.35,
+      startWidth: 0.6,
+      endWidth: 0.1,
+    ),
+    _fill(darken(color, 0.3).withValues(alpha: 0.75)),
+  );
+  if (belly) {
+    // Vảy bụng: dải sáng sát mép dưới, chia đốt ngang.
+    final under = <Offset>[];
+    final widths = <double>[];
+    for (var i = 0; i < line.length; i++) {
+      final t = i / (line.length - 1);
+      final d =
+          line[math.min(line.length - 1, i + 1)] - line[math.max(0, i - 1)];
+      final n = Offset(-d.dy, d.dx) / d.distance;
+      final down = n.dy >= 0 ? n : -n;
+      final half = width * widthAt(t) / 2;
+      under.add(line[i] + down * (half * 0.72));
+      widths.add(half);
+    }
+    canvas.drawPath(
+      taperedStroke(
+        under,
+        width * 0.42,
+        peak: 0.35,
+        startWidth: 0.7,
+        endWidth: 0.1,
+        samples: 40,
+      ),
+      _fill(_hydraBelly),
+    );
+    final plate = _stroke(darken(_hydraBelly, 0.3), 0.9);
+    for (var i = 2; i < under.length - 6; i += 2) {
+      final d = under[i + 1] - under[i - 1];
+      final n = Offset(-d.dy, d.dx) / d.distance;
+      final h = widths[i] * 0.42;
+      canvas.drawLine(under[i] - n * h, under[i] + n * h, plate);
+    }
+  }
+  canvas.restore();
 }
 
 void _hydraStump(
