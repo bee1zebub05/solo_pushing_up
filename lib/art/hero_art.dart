@@ -1010,6 +1010,43 @@ void _head(
     Rect.fromCenter(center: const Offset(9, 3.5), width: 6, height: 3),
     fillPaint(lighten(look.skin, 0.12).withValues(alpha: 0.7)),
   );
+  // Mặt dưới gờ mày khuất (hốc mắt) và bóng dưới gò má xuống góc hàm.
+  canvas.drawPath(
+    taperedStroke(
+      const [Offset(4, -4.6), Offset(9, -5.4), Offset(13.5, -4)],
+      2.2,
+      peak: 0.4,
+    ),
+    fillPaint(coreShadeOf(look.skin).withValues(alpha: 0.3)),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [const Offset(5, 6), Offset(4, 10 + c * 0.3), Offset(0, 13 + c * 0.5)],
+      2.4,
+      peak: 0.4,
+    ),
+    fillPaint(coreShadeOf(look.skin).withValues(alpha: 0.22)),
+  );
+  // Nếp mũi–má (rãnh nhân trung bên) khi gắng sức hoặc cười.
+  if (effort > 0.4 || joy > 0.5) {
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(12.8, 4.2), Offset(11.2, 6.6), Offset(11, 8.6)],
+        0.9,
+        peak: 0.3,
+      ),
+      fillPaint(darken(look.skin, 0.32)),
+    );
+  }
+  // Đường hàm dưới (ánh phản xạ lạnh viền dưới cằm).
+  canvas.drawPath(
+    taperedStroke(
+      [Offset(13, 12), Offset(9, 15.6 + c * 0.5), Offset(2, 15 + c * 0.6)],
+      1.2,
+      peak: 0.5,
+    ),
+    fillPaint(lighten(look.skin, 0.18).withValues(alpha: 0.6)),
+  );
   canvas.restore();
   if (look.hairStyle == HairStyle.buzz && !cloak) {
     // Tóc cắt sát: một lớp mỏng trên đỉnh và gáy.
@@ -1027,10 +1064,19 @@ void _head(
     );
     canvas.restore();
   }
-  // Má hồng.
+  // Ửng đỏ trên gò má: nhạt khi nghỉ, đậm dần khi gắng sức (máu dồn lên
+  // mặt) — không phải chấm má hồng cố định kiểu hoạt hình thiếu nhi.
   canvas.drawOval(
-    Rect.fromCenter(center: Offset(7, 5 + cheeks * 0.5), width: 6, height: 3.5),
-    fillPaint(HeroColors.blush.withValues(alpha: 0.35)),
+    Rect.fromCenter(
+      center: Offset(8, 4.6 + cheeks * 0.5),
+      width: 7,
+      height: 3.2,
+    ),
+    Paint()
+      ..shader = Gradient.radial(Offset(8, 4.6 + cheeks * 0.5), 3.5, [
+        HeroColors.blush.withValues(alpha: 0.12 + effort * 0.3),
+        HeroColors.blush.withValues(alpha: 0),
+      ]),
   );
   // Mũi.
   shadedPath(
@@ -1137,13 +1183,20 @@ void _head(
     );
   }
   // Lông mày: gắng sức thì chau xuống phía mũi.
-  canvas.drawLine(
-    eye + Offset(-4, -6.5 - effort * 1.5),
-    eye + Offset(4, -5 + effort * 2.2),
-    Paint()
-      ..color = darken(hair, 0.1)
-      ..strokeWidth = look.female ? 1.6 : 2.3
-      ..strokeCap = StrokeCap.round,
+  // Lông mày nét thon: đậm ở đầu mày (phía mũi), mảnh dần ra đuôi.
+  canvas.drawPath(
+    taperedStroke(
+      [
+        eye + Offset(-4.2, -6.3 - effort * 1.5),
+        eye + Offset(0, -7.2 + effort * 0.2),
+        eye + Offset(4.2, -5 + effort * 2.2),
+      ],
+      look.female ? 1.7 : 2.5,
+      peak: 0.25,
+      startWidth: 0.35,
+      endWidth: 0.6,
+    ),
+    fillPaint(darken(hair, 0.1)),
   );
   final mouthY = 8.6 + cheeks * 0.4;
   if (joy > 0.5) {
@@ -1181,14 +1234,47 @@ void _head(
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.3,
     );
-    canvas.drawRRect(teeth, fillPaint(const Color(0xFFFFFFFF)));
-    final gap = Paint()
-      ..color = darken(look.skin, 0.4)
-      ..strokeWidth = 0.6;
-    canvas.drawLine(Offset(8.8, mouthY + 0.1), Offset(14, mouthY + 0.1), gap);
-    for (final x in [10.4, 12.2]) {
-      canvas.drawLine(Offset(x, mouthY - 1.4), Offset(x, mouthY + 1.6), gap);
+    canvas.drawRRect(teeth, fillPaint(const Color(0xFFF4EEE4)));
+    canvas.save();
+    canvas.clipRRect(teeth);
+    // Răng xa (phía má) chìm trong bóng; khe răng thon, mờ dần.
+    canvas.drawRect(
+      Rect.fromLTRB(8.6, mouthY - 1.6, 10, mouthY + 1.8),
+      fillPaint(const Color(0x55402820)),
+    );
+    final gap = fillPaint(darken(look.skin, 0.45).withValues(alpha: 0.7));
+    canvas.drawPath(
+      taperedStroke(
+        [Offset(8.8, mouthY + 0.15), Offset(14, mouthY)],
+        0.7,
+        peak: 0.5,
+      ),
+      gap,
+    );
+    for (final x in [10.3, 11.9, 13.2]) {
+      canvas.drawPath(
+        taperedStroke(
+          [Offset(x, mouthY - 1.5), Offset(x + 0.1, mouthY + 1.7)],
+          0.55,
+          peak: 0.5,
+        ),
+        gap,
+      );
     }
+    canvas.restore();
+    // Môi kéo căng hai bên khi nghiến.
+    canvas.drawPath(
+      taperedStroke(
+        [
+          Offset(8.2, mouthY + 2.4),
+          Offset(11.4, mouthY + 2.8),
+          Offset(14.4, mouthY + 2.2),
+        ],
+        1,
+        peak: 0.5,
+      ),
+      fillPaint(darken(look.skin, 0.3)),
+    );
   } else {
     // Miệng cười nhẹ.
     canvas.drawPath(
