@@ -13,6 +13,7 @@ import 'package:solo_pushing_up/art/nemea_map_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
 import 'package:solo_pushing_up/art/vector_style.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
+import 'package:solo_pushing_up/art/bosses/dummy_art.dart';
 import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_monster_art.dart';
@@ -715,6 +716,28 @@ void main() {
         joy: 1,
       );
     });
+  });
+
+  testWidgets('bù nhìn tập luyện (thử thách 30 giây)', (tester) async {
+    final art = TrainingDummyArt();
+    for (final (name, hurt) in [('dummy_idle', 0.0), ('dummy_hit', 0.8)]) {
+      await render(tester, name, (c) {
+        art.paintBackdrop(c);
+        art.paintAmbient(c, 1);
+        art.paintBoss(
+          c,
+          BossFrame(
+            time: 1,
+            attack: 0,
+            hurt: hurt,
+            glint: -1,
+            defeat: 0,
+            battle: StageBattleState(),
+          ),
+        );
+        paintHero(c, HeroPose.plank(110), effort: 0.5);
+      });
+    }
   });
 
   test('IK chống đẩy giữ đúng độ dài tay', () {

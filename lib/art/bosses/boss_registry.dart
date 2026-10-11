@@ -1,6 +1,7 @@
 import '../../game/battle.dart';
 import '../../game/labors.dart';
 import '../battle_stage.dart';
+import 'dummy_art.dart';
 import 'fafnir_boss.dart';
 import 'nemea_boss.dart';
 import 'nemea_monster_art.dart';
@@ -26,5 +27,6 @@ BossArt? bossArtFor(EnemySpec enemy) {
   if (enemy == fafnir) return FafnirBossArt();
   if (enemy == orochi) return OrochiBossArt();
   if (enemy == thuyTinh) return ThuyTinhBossArt();
+  if (enemy == trainingDummy) return TrainingDummyArt();
   return null;
 }
