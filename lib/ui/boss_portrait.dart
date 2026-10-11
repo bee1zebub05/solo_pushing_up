@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -24,11 +25,38 @@ class _PortraitPainter extends CustomPainter {
 
   final BossArt art;
 
+  /// Ảnh chân dung đã chụp, theo loại boss và cỡ điểm ảnh. Impeller không
+  /// tự cache hình vector: không có ảnh này thì mỗi khung cuộn danh sách
+  /// GPU phải tô lại cả phông + boss của mọi thẻ.
+  static final _cache = <(Type, int), ui.Image>{};
+
   @override
   void paint(Canvas canvas, Size size) {
+    final side = math.min(size.width, size.height);
+    if (side <= 0) return;
+    final dpr =
+        ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 3;
+    final px = (side * dpr).ceil();
+    final image = _cache.putIfAbsent((art.runtimeType, px), () {
+      final recorder = ui.PictureRecorder();
+      _paintPortrait(Canvas(recorder), px.toDouble());
+      final picture = recorder.endRecording();
+      final img = picture.toImageSync(px, px);
+      picture.dispose();
+      return img;
+    });
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      Rect.fromLTWH(0, 0, side, side),
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+  }
+
+  void _paintPortrait(Canvas canvas, double side) {
     // Khung vuông quanh mặt boss (mỗi boss tự khai báo tâm và độ rộng).
     final view = art.portraitView;
-    final scale = math.min(size.width, size.height) / view;
+    final scale = side / view;
     final focus = art.portraitFocus;
     canvas.save();
     canvas.scale(scale);
