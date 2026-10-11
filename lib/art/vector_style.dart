@@ -242,22 +242,22 @@ void paintStageGrade(
   Color light = const Color(0xFFFFE3C0),
   double vignette = 0.42,
 }) {
+  // Chỉ dùng kiểu trộn thường (srcOver): kiểu trộn multiply / soft light /
+  // screen trên toàn màn hình rất đắt với GPU điện thoại (~12 ms/khung đo trên
+  // máy thật). Ánh sáng chủ đạo phủ nhẹ để thống nhất tông.
   canvas.drawRect(
     stage,
-    Paint()
-      ..color = light.withValues(alpha: 0.24)
-      ..blendMode = BlendMode.multiply,
+    Paint()..color = light.withValues(alpha: 0.1),
   );
-  // Tách tông kiểu fantasy: trên ánh vàng nắng (screen), dưới chàm lạnh
-  // (multiply) — vùng sáng ấm, vùng tối lạnh (Gurney: nhiệt độ tương phản).
+  // Tách tông kiểu fantasy: trên ánh vàng nắng, dưới chàm lạnh (Gurney:
+  // nhiệt độ tương phản giữa sáng và bóng).
   canvas.drawRect(
     stage,
     Paint()
-      ..blendMode = BlendMode.softLight
       ..shader = Gradient.linear(
         stage.topCenter,
         stage.bottomCenter,
-        const [Color(0x66FFD27A), Color(0x00808080), Color(0x553A3A8A)],
+        const [Color(0x2EFFD27A), Color(0x00FFD27A), Color(0x333A3A8A)],
         const [0, 0.5, 1],
       ),
   );
@@ -265,11 +265,10 @@ void paintStageGrade(
   canvas.drawRect(
     stage,
     Paint()
-      ..blendMode = BlendMode.screen
       ..shader = Gradient.radial(
         stage.topLeft + Offset(stage.width * 0.38, stage.height * 0.1),
         stage.longestSide * 0.55,
-        const [Color(0x40FFE6A8), Color(0x00000000)],
+        const [Color(0x2EFFF0C8), Color(0x00FFF0C8)],
       ),
   );
   canvas.drawRect(
@@ -487,4 +486,75 @@ void glint(Canvas canvas, Offset at, double size, {double alpha = 0.75}) {
     Rect.fromCenter(center: at, width: size * 1.6, height: size),
     fillPaint(const Color(0xFFFFFFFF).withValues(alpha: alpha)),
   );
+}
+
+/// Công tắc chất lượng sân khấu (đo trên máy thật: lớp phủ toàn màn hình là
+/// thứ tốn GPU nhất). Mặc định bật hết; máy yếu tắt bớt.
+abstract final class StageQuality {
+  /// Lớp tăng bão hoà màu bọc cả sân khấu (saveLayer toàn màn hình).
+  static bool saturationLayer = true;
+
+  /// Chỉnh màu toàn cảnh (nhân màu, soft light, screen, vignette).
+  static bool grade = true;
+
+  /// Phủ bụi Trì Trệ (Nemea).
+  static bool dust = true;
+
+  /// Độ phân giải chụp sẵn lớp tĩnh thành ảnh (bội số của 400×260). Sân
+  /// khấu tự đặt theo số điểm ảnh thật khi đổi kích thước (dọc 1080 px ≈ 2,7,
+  /// ngang 2400 px ≈ 6); máy yếu có thể ép thấp hơn.
+  static double rasterScale = 2.7;
+}
+
+/// Lớp tĩnh chụp sẵn thành ảnh bitmap một lần (lần vẽ đầu), sau đó mỗi khung
+/// chỉ vẽ ảnh: GPU điện thoại tốn rất nhiều khi phải tô lại hàng nghìn đường
+/// cong vector mỗi khung (đo trên máy thật: phông nền vector ~20 ms/khung).
+/// [bounds]: vùng (toạ độ sân khấu) được chụp — chừa lề cho parallax.
+class RasterLayer {
+  RasterLayer(this.draw, {this.bounds = const Rect.fromLTRB(-20, -20, 420, 280)});
+
+  final void Function(Canvas canvas) draw;
+  final Rect bounds;
+  Image? _image;
+  double _scale = 0;
+  static final _paint = Paint()..filterQuality = FilterQuality.low;
+
+  /// Vẽ ảnh vào đúng [bounds]; [opacity] < 1 để trộn (không cần saveLayer).
+  void paint(Canvas canvas, {double opacity = 1}) {
+    // Chụp lại khi độ phân giải cần thay đổi đáng kể (xoay máy…).
+    if ((StageQuality.rasterScale - _scale).abs() > _scale * 0.15) dispose();
+    final image = _image ??= _render();
+    final paint = opacity >= 1
+        ? _paint
+        : (Paint()
+            ..filterQuality = FilterQuality.low
+            ..color = Color.fromRGBO(0, 0, 0, opacity.clamp(0.0, 1.0)));
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      bounds,
+      paint,
+    );
+  }
+
+  Image _render() {
+    final k = _scale = StageQuality.rasterScale;
+    final recorder = PictureRecorder();
+    final canvas = Canvas(recorder)
+      ..scale(k)
+      ..translate(-bounds.left, -bounds.top);
+    draw(canvas);
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(
+      (bounds.width * k).ceil(),
+      (bounds.height * k).ceil(),
+    );
+    picture.dispose();
+    return image;
+  }
+
+  void dispose() {
+    _image?.dispose();
+    _image = null;
+  }
 }

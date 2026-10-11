@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'dart:ui' show Picture, PictureRecorder;
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -146,9 +146,22 @@ class BattleStageGame extends FlameGame {
 
   @override
   void render(Canvas canvas) {
+    if (!StageQuality.saturationLayer) {
+      super.render(canvas);
+      return;
+    }
     canvas.saveLayer(null, Paint()..colorFilter = saturationFilter(saturation));
     super.render(canvas);
     canvas.restore();
+  }
+
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    // Ảnh chụp sẵn lớp tĩnh khớp điểm ảnh thật của màn hình (không mờ).
+    final dpr = PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 1;
+    final k = math.min(size.x / stageSize.width, size.y / stageSize.height);
+    if (k > 0) StageQuality.rasterScale = (k * dpr).clamp(1.5, 6.0);
   }
 
   @override
@@ -348,19 +361,18 @@ class _SceneComponent extends Component {
   final StageBattleState battle;
   double _time = 0;
 
-  /// Phần tĩnh vẽ một lần, mỗi khung chỉ vẽ lại phần động.
-  late final Picture _backdrop = () {
-    final recorder = PictureRecorder();
-    boss.paintStageBackdrop(Canvas(recorder));
-    return recorder.endRecording();
-  }();
+  /// Phần tĩnh chụp sẵn thành ảnh một lần, mỗi khung chỉ vẽ ảnh + phần động.
+  late final _backdrop = RasterLayer(
+    boss.paintStageBackdrop,
+    bounds: Offset.zero & stageSize,
+  );
 
   @override
   void update(double dt) => _time += dt;
 
   @override
   void render(Canvas canvas) {
-    canvas.drawPicture(_backdrop);
+    _backdrop.paint(canvas);
     boss.paintScene(canvas, _time, battle);
   }
 
@@ -433,14 +445,23 @@ class _ForegroundComponent extends Component {
 
   final _BossComponent boss;
 
+  /// Lớp chỉnh màu toàn cảnh tĩnh → chụp sẵn thành ảnh (một lần vẽ ảnh/khung).
+  late final _grade = RasterLayer(
+    (c) => paintStageGrade(c, Offset.zero & stageSize, light: boss.art.gradeLight),
+    bounds: Offset.zero & stageSize,
+  );
+
+  @override
+  void onRemove() {
+    _grade.dispose();
+    super.onRemove();
+  }
+
   @override
   void render(Canvas canvas) {
     boss.art.paintForeground(canvas, boss.frame);
-    paintStageGrade(
-      canvas,
-      Offset.zero & stageSize,
-      light: boss.art.gradeLight,
-    );
+    if (!StageQuality.grade) return;
+    _grade.paint(canvas);
   }
 }
 
