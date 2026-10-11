@@ -477,20 +477,51 @@ void _node(
     _ when elite => const Color(0xFFCAD1D8),
     _ => const Color(0xFFC08A4A),
   };
+  // Khiên kim loại gò: vành dày tối dưới–phải, mặt lõm chuyển sáng trên–
+  // trái, vòng gờ trong, đinh tán quanh vành, chấm loá.
   canvas.drawCircle(at, r + 1.6, Paint()..color = VectorStyle.outline);
-  canvas.drawCircle(at, r, Paint()..color = face);
   canvas.drawCircle(
-    at + Offset(-r * 0.2, -r * 0.25),
-    r * 0.6,
-    Paint()..color = lighten(face, 0.25),
+    at,
+    r,
+    Paint()
+      ..shader = Gradient.linear(
+        at + Offset(-r, -r),
+        at + Offset(r, r),
+        [lighten(face, 0.35), face, darken(face, 0.35)],
+        const [0, 0.45, 1],
+      ),
   );
   canvas.drawCircle(
     at,
-    r * 0.78,
+    r * 0.74,
     Paint()
-      ..color = darken(face, 0.25)
+      ..shader = Gradient.linear(at + Offset(-r, -r), at + Offset(r, r), [
+        darken(face, 0.15),
+        lighten(face, 0.2),
+      ]),
+  );
+  canvas.drawCircle(
+    at,
+    r * 0.74,
+    Paint()
+      ..color = darken(face, 0.4)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1,
+      ..strokeWidth = 0.9,
+  );
+  for (var i = 0; i < 8; i++) {
+    final a = i * math.pi / 4 + math.pi / 8;
+    final p = at + Offset(math.cos(a), math.sin(a)) * r * 0.87;
+    canvas.drawCircle(p, r * 0.07 + 0.3, Paint()..color = darken(face, 0.45));
+    canvas.drawCircle(
+      p - const Offset(0.25, 0.25),
+      r * 0.035 + 0.15,
+      Paint()..color = lighten(face, 0.5),
+    );
+  }
+  canvas.drawCircle(
+    at + Offset(-r * 0.42, -r * 0.48),
+    r * 0.12,
+    Paint()..color = const Color(0xCCFFFFFF),
   );
   if (state == MapNodeState.done) {
     // Dấu tích xanh.
