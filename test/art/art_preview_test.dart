@@ -168,6 +168,16 @@ void main() {
         );
       });
     }
+    await render(tester, 'stone_soldier', (c) {
+      paintNemeaScene(c, time: 2, dust: 0.6);
+      for (final (x, attack) in [(120.0, 0.0), (280.0, 1.0)]) {
+        c.save();
+        c.translate(x, stageGroundY);
+        c.scale(1.5);
+        paintStoneSoldier(c, time: 1.3, attack: attack);
+        c.restore();
+      }
+    });
     await render(tester, 'spartoi_rise', (c) {
       paintNemeaScene(c, time: 2);
       c.save();
