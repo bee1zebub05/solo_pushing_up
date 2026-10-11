@@ -407,13 +407,16 @@ void shadedLimb(
   );
   for (final belly in bellies) {
     // Bóng che ở mép phía khuất (khối này nằm trên khối dưới).
-    canvas.drawPath(belly.shift(-light * 1.4), occlusion);
+    // Độ lệch tô sáng/tối tỉ lệ theo cỡ khối: khối to (ngực, đùi) cần mảng
+    // bóng rộng mới đọc được thành khối.
+    final k = (belly.getBounds().shortestSide * 0.14).clamp(1.4, 5.0);
+    canvas.drawPath(belly.shift(-light * k * 0.6), occlusion);
     // Tự đổ bóng: phủ màu gốc rồi nửa khuất tối, nửa đón sáng sáng nhẹ.
     canvas.save();
     canvas.clipPath(belly);
     canvas.drawPath(belly, fillPaint(base));
-    canvas.drawPath(belly.shift(-light * 2.4), shade);
-    canvas.drawPath(belly.shift(light * 2.4), lit);
+    canvas.drawPath(belly.shift(-light * k), shade);
+    canvas.drawPath(belly.shift(light * k), lit);
     canvas.restore();
   }
   final ink = fillPaint(
