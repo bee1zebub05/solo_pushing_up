@@ -202,6 +202,16 @@ void main() {
         c.restore();
       }
     });
+    await render(tester, 'hydra_regrow', (c) {
+      paintNemeaScene(c, time: 2);
+      for (final (x, g) in [(110.0, 0.3), (300.0, 1.0)]) {
+        c.save();
+        c.translate(x, stageGroundY + 60);
+        c.scale(1.8);
+        paintYoungHydra(c, time: 1, regrow: g);
+        c.restore();
+      }
+    });
     await render(tester, 'stone_soldier', (c) {
       paintNemeaScene(c, time: 2, dust: 0.6);
       for (final (x, attack) in [(120.0, 0.0), (280.0, 1.0)]) {

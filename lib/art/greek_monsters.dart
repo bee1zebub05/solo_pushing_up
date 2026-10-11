@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flutter/animation.dart' show Curves;
+
 import 'vector_style.dart';
 
 /// Quái thường vùng Hy Lạp (rules/cottruyen.md mục 3b.1), vẽ theo hình
@@ -835,6 +837,7 @@ void paintYoungHydra(
   double attack = 0,
   double hurt = 0,
   int heads = 3,
+  double regrow = -1,
 }) {
   const scale = Color(0xFF3F7A4A);
   const belly = Color(0xFFD8C978);
@@ -918,9 +921,58 @@ void paintYoungHydra(
       final open =
           attack * (i == heads ~/ 2 ? 1 : 0.4) +
           0.15 * (0.5 + 0.5 * math.sin(time * 2.2 + i));
-      _hydraHead(canvas, tip, open, time + i);
+      // [regrow] ≥ 0: cổ giữa vừa bị chém, hai đầu non nhú ra từ vết cụt
+      // (chém một mọc hai, như Hydra xứ Lerna).
+      if (regrow < 0 || i != heads ~/ 2) {
+        _hydraHead(canvas, tip, open, time + i);
+      }
+    }
+    if (regrow >= 0) {
+      final (base, tip) = necks[heads ~/ 2];
+      _hydraStump(canvas, base, tip, regrow, time);
     }
   });
+}
+
+void _hydraStump(
+  Canvas canvas,
+  Offset base,
+  Offset tip,
+  double grow,
+  double time,
+) {
+  final d = tip - base;
+  final dir = d / d.distance;
+  final n = Offset(-dir.dy, dir.dx);
+  // Hai đầu non mọc ra, toả hai bên.
+  final g = Curves.easeOutBack.transform(grow.clamp(0.0, 1.0));
+  for (final side in [-1.0, 1.0]) {
+    final sprout = tip + (dir * 14 + n * side * 16) * g;
+    shadedChain(canvas, [(tip, sprout, 5, 4)], const Color(0xFF4C8E56));
+    if (g > 0.2) {
+      canvas.save();
+      canvas.translate(sprout.dx, sprout.dy);
+      canvas.scale(0.5 * g);
+      canvas.translate(-sprout.dx, -sprout.dy);
+      _hydraHead(canvas, sprout, 0.3, time + side);
+      canvas.restore();
+    }
+  }
+  // Vết cụt: mặt cắt đỏ thẫm, rỉ máu xanh.
+  canvas.drawOval(
+    Rect.fromCenter(center: tip, width: 18, height: 10),
+    _fill(_outline),
+  );
+  canvas.drawOval(
+    Rect.fromCenter(center: tip, width: 15, height: 7),
+    _fill(const Color(0xFF8E2A2A)),
+  );
+  final drip = (time * 1.2) % 1;
+  canvas.drawCircle(
+    tip + Offset(2, 4 + 8 * drip),
+    1.2,
+    _fill(Color.fromRGBO(120, 200, 80, 1 - drip)),
+  );
 }
 
 void _hydraHead(Canvas canvas, Offset at, double open, double time) {
