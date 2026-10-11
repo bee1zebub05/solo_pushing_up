@@ -1,6 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:vector_anatomy/vector_anatomy.dart';
+
+export 'package:vector_anatomy/vector_anatomy.dart';
+
 /// Bộ công cụ phong cách "game vector": viền đậm mượt, đổ bóng hai tông
 /// (cel shading) phía khuất sáng, viền sáng phía có nắng. Ánh sáng chiếu từ
 /// trên bên trái, giữ đúng hướng dù bộ phận đang xoay.
@@ -335,80 +339,39 @@ Path chainPath(
   return path;
 }
 
-/// Một điểm trên profile cơ của một đoạn chi: ở tỉ lệ [t] (0 = gốc, 1 =
-/// ngọn), nửa bề rộng phía trước [front] và phía sau [back]. Phía trước là
-/// bên phải hướng đi từ gốc tới ngọn (ví dụ bắp tay khi tay buông xuôi,
-/// nhân vật quay phải).
-typedef MuscleStop = (double t, double front, double back);
-
-/// Đường bao một đoạn chi theo profile cơ (Loomis: chi không phải ống trụ —
-/// cơ phồng lệch trước/sau, khớp thắt lại). Hai đầu bo tròn để nối liền với
-/// đoạn kế. [grow] phình đều (làm viền), [scale] nhân bề rộng (béo/gầy).
-Path musclePath(
-  Offset a,
-  Offset b,
-  List<MuscleStop> profile, {
-  double grow = 0,
-  double scale = 1,
-}) {
-  var d = b - a;
-  if (d.distance < 0.01) d = const Offset(0, 0.01);
-  final dir = d / d.distance;
-  // Phía trước = bên phải của hướng đi (toạ độ màn hình, y hướng xuống).
-  final front = Offset(-dir.dy, dir.dx);
-  Offset at(MuscleStop s, double side) {
-    final w = (side > 0 ? s.$2 : s.$3) * scale + grow;
-    return a + d * s.$1 + front * (side * w);
-  }
-
-  final fronts = [for (final s in profile) at(s, 1)];
-  final backs = [for (final s in profile.reversed) at(s, -1)];
-  final path = Path()..moveTo(fronts.first.dx, fronts.first.dy);
-  void smooth(List<Offset> pts) {
-    for (var i = 1; i < pts.length - 1; i++) {
-      final mid = Offset.lerp(pts[i], pts[i + 1], 0.5)!;
-      path.quadraticBezierTo(pts[i].dx, pts[i].dy, mid.dx, mid.dy);
-    }
-    path.lineTo(pts.last.dx, pts.last.dy);
-  }
-
-  smooth(fronts);
-  // Bo đầu bằng cubic (≈ nửa hình tròn) đi vòng ra ngoài đầu đoạn, không
-  // dùng arcToPoint: chiều cung dễ ngược, tạo lỗ khi các đoạn chồng nhau.
-  void cap(Offset from, Offset to, Offset outward) {
-    final r = (to - from).distance / 2;
-    path.cubicTo(
-      from.dx + outward.dx * r * 1.33,
-      from.dy + outward.dy * r * 1.33,
-      to.dx + outward.dx * r * 1.33,
-      to.dy + outward.dy * r * 1.33,
-      to.dx,
-      to.dy,
-    );
-  }
-
-  cap(fronts.last, backs.first, dir);
-  smooth(backs);
-  cap(backs.last, fronts.first, -dir);
-  return path..close();
-}
-
-/// Chi nhiều đoạn có khối cơ: tô liền một mảng (đổ bóng 6 vùng), viền là bản
-/// phình to nên chỗ nối khớp không lộ.
+/// Chi nhiều đoạn có khối cơ theo giải phẫu (thư viện `vector_anatomy`):
+/// đường bao Catmull-Rom theo profile (mặt trước / sau độc lập), tô đổ bóng 6
+/// vùng, viền là bản phình to nên không lộ chỗ nối khớp, rồi các rãnh tách
+/// nhóm cơ vẽ bằng nét thon hai đầu màu sẫm của chính mảng (sel-line).
+///
+/// [facing]: hướng nhân vật nhìn (phải: (1, 0), trái: (-1, 0)) để profile
+/// biết đâu là mặt trước. [definition] nhân độ đậm rãnh cơ (0 = không vẽ).
 void shadedLimb(
   Canvas canvas,
-  List<(Offset, Offset, List<MuscleStop>)> segments,
+  List<(Offset, Offset, MuscleProfile)> segments,
   Color base, {
   double scale = 1,
+  Offset facing = const Offset(1, 0),
   double shadow = 3,
   double highlight = 1.4,
+  double definition = 1,
 }) {
   final body = Path();
   final outline = Path();
+  final grooves = <Path>[];
   for (final (a, b, profile) in segments) {
-    body.addPath(musclePath(a, b, profile, scale: scale), Offset.zero);
+    final shape = buildLimb(a, b, profile, facing: facing, scale: scale);
+    body.addPath(shape.outline, Offset.zero);
+    grooves.addAll(shape.grooves);
     outline.addPath(
-      musclePath(a, b, profile, scale: scale, grow: VectorStyle.outlineWidth),
+      buildLimb(
+        a,
+        b,
+        profile,
+        facing: facing,
+        scale: scale,
+        grow: VectorStyle.outlineWidth,
+      ).outline,
       Offset.zero,
     );
   }
@@ -421,6 +384,16 @@ void shadedLimb(
     highlight: highlight,
     outlineShape: outline,
   );
+  if (definition <= 0 || grooves.isEmpty) return;
+  final ink = fillPaint(
+    darken(base, 0.36).withValues(alpha: (0.7 * definition).clamp(0.0, 1.0)),
+  );
+  canvas.save();
+  canvas.clipPath(body);
+  for (final g in grooves) {
+    canvas.drawPath(g, ink);
+  }
+  canvas.restore();
 }
 
 /// Chuỗi đoạn liền (tay, chân): viền là bản phình to nên không lộ chỗ nối.

@@ -147,11 +147,13 @@ void paintHercules(
   shadedLimb(
     canvas,
     [
-      (const Offset(26, -186), const Offset(40, -154), _hUpperArm),
-      (const Offset(40, -154), const Offset(46, -134), _hForearm),
+      (const Offset(26, -186), const Offset(40, -154), HumanAnatomy.upperArm),
+      (const Offset(40, -154), const Offset(46, -134), HumanAnatomy.forearm),
     ],
     skinFar,
     shadow: 4,
+    scale: _hScale,
+    facing: _left,
   );
 
   // Chân theo tư thế dồn trọng lượng (contrapposto): chân gần thẳng chịu
@@ -172,9 +174,11 @@ void paintHercules(
   ]) {
     shadedLimb(
       canvas,
-      [(hip, knee, _hThigh), (knee, ankle, _hShin)],
+      [(hip, knee, HumanAnatomy.thigh), (knee, ankle, HumanAnatomy.shin)],
       c,
       shadow: 5,
+      scale: _hThighScale,
+      facing: _left,
     );
     // Xương bánh chè (sel-line).
     canvas.drawArc(
@@ -275,9 +279,14 @@ void paintHercules(
   final hand = Offset(-84 - 4 * gesture, -180 - 14 * talk + 4 * gesture);
   shadedLimb(
     canvas,
-    [(const Offset(-34, -186), elbow, _hUpperArm), (elbow, hand, _hForearm)],
+    [
+      (const Offset(-34, -186), elbow, HumanAnatomy.upperArm),
+      (elbow, hand, HumanAnatomy.forearm),
+    ],
     skin,
     shadow: 4,
+    scale: _hScale,
+    facing: _left,
   );
   // Khối cơ vai tròn trùm đầu cánh tay (sel-line) + rãnh bắp tay.
   final muscleLine = Paint()
@@ -336,36 +345,11 @@ void paintHercules(
   canvas.restore();
 }
 
-// Profile cơ tay chân cỡ anh hùng (t, nửa rộng trước, nửa rộng sau) — xem
-// musclePath. Tượng Farnese: cơ phóng đại, khớp vẫn thắt gọn.
-const _hUpperArm = <MuscleStop>[
-  (0.0, 14.0, 14.0), // cơ vai
-  (0.2, 14.5, 13.5),
-  (0.45, 11.5, 13.5), // bắp tay sau
-  (0.65, 12.5, 11.5), // bắp tay trước
-  (0.9, 9.0, 9.5),
-  (1.0, 8.5, 9.0), // khuỷu
-];
-const _hForearm = <MuscleStop>[
-  (0.0, 9.0, 8.5),
-  (0.22, 11.5, 10.0), // cơ cánh tay quay
-  (0.5, 9.5, 8.5),
-  (0.85, 7.0, 7.0),
-  (1.0, 7.0, 7.0), // cổ tay
-];
-const _hThigh = <MuscleStop>[
-  (0.0, 15.0, 15.0),
-  (0.3, 16.5, 14.5), // cơ tứ đầu
-  (0.7, 12.5, 11.5),
-  (1.0, 10.0, 10.5), // gối
-];
-const _hShin = <MuscleStop>[
-  (0.0, 10.0, 10.5),
-  (0.28, 9.0, 12.5), // bắp chân
-  (0.62, 8.0, 10.0),
-  (0.9, 6.5, 6.5),
-  (1.0, 6.8, 6.8), // cổ chân
-];
+/// Hercules quay mặt sang trái; tay chân là profile người phóng to cỡ anh
+/// hùng (tượng Farnese: cơ phóng đại, khớp vẫn thắt gọn).
+const _left = Offset(-1, 0);
+const _hScale = 2.0;
+const _hThighScale = 1.75;
 
 /// Thân trên kiểu tượng Farnese: hình chữ V, cơ thang nối cổ, ngực vuông,
 /// bụng 8 múi, răng cưa sườn, cơ chéo, đường chữ V ở hông.

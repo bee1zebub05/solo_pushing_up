@@ -388,11 +388,12 @@ void _leg(
   shadedLimb(
     canvas,
     [
-      (hip, mid, front ? _foreUpper : _hindUpper),
-      (mid, pawTop, front ? _foreLower : _hindLower),
+      (hip, mid, front ? FelineAnatomy.foreUpper : FelineAnatomy.hindUpper),
+      (mid, pawTop, front ? FelineAnatomy.foreLower : FelineAnatomy.hindLower),
     ],
     color,
     shadow: 4,
+    facing: const Offset(-1, 0),
   );
   // Đường cơ bắp chân (sel-line), gân cổ chân.
   final line = Paint()
@@ -418,31 +419,6 @@ void _leg(
   canvas.drawLine(t1, t2, line);
   _paw(canvas, paw, color, clawsOut: clawsOut);
 }
-
-// Profile cơ chân sư tử (t, nửa rộng phía trước/mặt, nửa rộng phía sau).
-const _foreUpper = <MuscleStop>[
-  (0.0, 17.0, 17.0),
-  (0.3, 15.0, 18.5), // khối cơ tam đầu sau vai
-  (0.75, 12.0, 12.5),
-  (1.0, 11.0, 12.0), // khuỷu
-];
-const _foreLower = <MuscleStop>[
-  (0.0, 11.0, 12.0),
-  (0.25, 12.5, 10.0), // cẳng chân trước phồng
-  (0.8, 9.0, 9.0),
-  (1.0, 10.0, 10.0), // cổ chân
-];
-const _hindUpper = <MuscleStop>[
-  (0.0, 21.0, 21.0),
-  (0.3, 21.5, 22.5), // đùi + cơ đùi sau
-  (0.65, 14.0, 14.5),
-  (1.0, 8.5, 9.5), // cổ chân sau (hock)
-];
-const _hindLower = <MuscleStop>[
-  (0.0, 8.5, 10.0),
-  (0.4, 8.0, 8.0),
-  (1.0, 8.5, 8.5),
-];
 
 void _paw(Canvas canvas, Offset paw, Color color, {required bool clawsOut}) {
   // Bàn chân vẽ thẳng (không cắt vùng) cho nhẹ: viền, nền, mảng bóng dưới.
