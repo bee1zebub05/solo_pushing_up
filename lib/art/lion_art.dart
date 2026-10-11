@@ -1233,8 +1233,10 @@ void _stagnationLeaving(Canvas canvas, double t, double fall, double drop) {
       Offset(x, y),
       r,
       Paint()
-        ..color = Color.fromRGBO(120, 100, 150, 0.5 * a * (1 - phase))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        ..shader = Gradient.radial(Offset(x, y), r + 4, [
+          Color.fromRGBO(120, 100, 150, 0.5 * a * (1 - phase)),
+          const Color.fromRGBO(120, 100, 150, 0),
+        ]),
     );
     // Lõi xoắn tối hơn.
     canvas.drawArc(

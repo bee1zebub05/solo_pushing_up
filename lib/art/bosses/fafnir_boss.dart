@@ -440,25 +440,48 @@ class FafnirBossArt extends BossArt {
 
   @override
   void paintAmbient(Canvas canvas, double time) {
-    // Cực quang uốn lượn.
+    // Cực quang uốn lượn: rèm sáng dọc (tia rủ xuống) mờ dần ở mép trên và
+    // dưới bằng gradient — không blur mỗi khung (rất đắt trên GPU).
     for (final (y, color, speed) in [
-      (40.0, const Color(0x4434F5B0), 0.4),
-      (58.0, const Color(0x33A06BFF), 0.3),
+      (40.0, const Color(0xFF34F5B0), 0.4),
+      (58.0, const Color(0xFFA06BFF), 0.3),
     ]) {
       final path = Path()..moveTo(-10, y);
       for (var x = -10.0; x <= 410; x += 20) {
         path.lineTo(x, y + math.sin(x / 50 + time * speed) * 10);
       }
       for (var x = 410.0; x >= -10; x -= 20) {
-        path.lineTo(x, y + 24 + math.sin(x / 45 + time * speed + 1) * 8);
+        path.lineTo(x, y + 30 + math.sin(x / 45 + time * speed + 1) * 8);
       }
       path.close();
       canvas.drawPath(
         path,
         Paint()
-          ..color = color
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..shader = Gradient.linear(
+            Offset(0, y - 10),
+            Offset(0, y + 38),
+            [
+              color.withValues(alpha: 0),
+              color.withValues(alpha: 0.3),
+              color.withValues(alpha: 0.12),
+              color.withValues(alpha: 0),
+            ],
+            const [0, 0.3, 0.7, 1],
+          ),
       );
+      // Tia rèm dọc lung linh.
+      for (var i = 0; i < 14; i++) {
+        final x = i * 30.0 + 8 + math.sin(time * speed * 2 + i) * 4;
+        final top = y + math.sin(x / 50 + time * speed) * 10;
+        final a = 0.08 + 0.06 * math.sin(time * 1.3 + i * 1.7);
+        canvas.drawLine(
+          Offset(x, top),
+          Offset(x, top + 26),
+          Paint()
+            ..color = color.withValues(alpha: a.clamp(0.0, 1.0))
+            ..strokeWidth = 3,
+        );
+      }
     }
     // Tuyết rơi.
     final flake = fillPaint(const Color(0xDDFFFFFF));
