@@ -229,6 +229,7 @@ figcaption{font-size:12.5px;color:var(--mut);margin-top:4px}.wide{grid-column:1/
 <h3>Cần bạn quyết</h3>
 <ul>
 <li>Commit <code>2d37f0d</code> (chưa push) lỡ chứa thư mục build của <code>packages/vector_anatomy</code> (file .dill ~47 MB). Đề xuất viết lại các commit chưa push để loại file này trước khi push.</li>
+<li>Bản <b>release</b> crash ngay khi mở (có từ trước, không do đồ hoạ): R8 xoá constructor của ML Kit và <code>androidx.work</code> → cần thêm luật keep ProGuard. Trên máy đang cài bản profile để chơi thử.</li>
 <li>Ngân sách hiệu năng: đề xuất thay quy tắc "dưới 2 ms ghi lệnh vẽ trên PC" bằng "raster dưới 16 ms trên máy tầm trung", đo bằng công cụ trên.</li>
 </ul>
 <!--ch1-device-end-->
