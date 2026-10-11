@@ -9,7 +9,6 @@ import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
-import 'package:solo_pushing_up/art/nemea_scene.dart';
 
 /// Ngân sách vẽ sân khấu (rules/dohoa.md): dưới 2 ms mỗi khung trên PC, để
 /// điện thoại yếu còn đủ CPU cho ML Kit đếm rep. Lấy lần nhanh nhất trong 5
@@ -124,7 +123,7 @@ void main() {
   test('sân khấu Nemea (bụi Trì Trệ tan dần) vẽ dưới 2 ms/khung', () {
     final art = NemeaBossArt();
     final recorder = ui.PictureRecorder();
-    paintNemeaBackdrop(ui.Canvas(recorder));
+    art.paintStageBackdrop(ui.Canvas(recorder));
     final backdrop = recorder.endRecording();
     final battle = StageBattleState();
 

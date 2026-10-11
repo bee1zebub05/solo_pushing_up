@@ -30,12 +30,28 @@ class NemeaBossArt extends BossArt {
   /// Bụi Trì Trệ: đậm nhất khi sư tử còn đầy máu, tan dần mỗi đòn trúng.
   static const maxDust = 0.85;
 
-  /// Bản phủ bụi vẽ một lần; mỗi khung chỉ vẽ lại với độ đục khác.
-  late final Picture _dusty = () {
+  @override
+  void paintStageBackdrop(Canvas canvas) =>
+      paintNemeaLayer(canvas, NemeaLayer.sky);
+
+  static Picture _record(void Function(Canvas) draw) {
     final recorder = PictureRecorder();
-    paintNemeaDusty(Canvas(recorder));
+    draw(Canvas(recorder));
     return recorder.endRecording();
-  }();
+  }
+
+  /// Mỗi lớp chiều sâu (trừ trời) và bản phủ bụi của nó, vẽ sẵn một lần.
+  static final _layers = [
+    for (final l in NemeaLayer.values.skip(1))
+      (
+        l,
+        _record((c) => paintNemeaLayer(c, l)),
+        _record((c) => paintNemeaDustyLayer(c, l)),
+      ),
+  ];
+  static final _dustySky = _record(
+    (c) => paintNemeaDustyLayer(c, NemeaLayer.sky),
+  );
 
   double _dust = maxDust;
   double _lastTime = 0;
@@ -47,16 +63,26 @@ class NemeaBossArt extends BossArt {
     _lastTime = time;
     final target = maxDust * battle.bossHp.clamp(0.0, 1.0);
     _dust += (target - _dust) * (1 - math.exp(-dt * 2.5));
-    if (_dust > 0.01) {
-      canvas.saveLayer(
-        Offset.zero & stageSize,
-        Paint()..color = Color.fromRGBO(0, 0, 0, _dust),
-      );
-      canvas.drawPicture(_dusty);
+    final dustPaint = Paint()..color = Color.fromRGBO(0, 0, 0, _dust);
+
+    if (_dust > 0.01) _overlay(canvas, _dustySky, dustPaint);
+    // Camera trôi chậm: lớp càng xa càng lệch so với nhân vật (2,5D).
+    final drift = math.sin(time * 0.21) * 5 + math.sin(time * 0.083) * 3;
+    for (final (layer, picture, dusty) in _layers) {
+      canvas.save();
+      canvas.translate(drift * layer.parallax, 0);
+      canvas.drawPicture(picture);
+      if (_dust > 0.01) _overlay(canvas, dusty, dustPaint);
       canvas.restore();
     }
     paintNemeaAmbient(canvas, time: time, dust: _dust);
     _paintFlock(canvas, time, battle.bossHp);
+  }
+
+  void _overlay(Canvas canvas, Picture picture, Paint alpha) {
+    canvas.saveLayer(const Rect.fromLTRB(-20, -20, 420, 280), alpha);
+    canvas.drawPicture(picture);
+    canvas.restore();
   }
 
   /// Đàn chim Stymphalia canh hang sư tử: mỗi phần tư máu sư tử mất đi thì

@@ -67,6 +67,10 @@ abstract class BossArt {
   /// Phần tĩnh của phông nền (vẽ một lần thành Picture).
   void paintBackdrop(Canvas canvas);
 
+  /// Phần tĩnh dùng trong trận. Mặc định là cả phông nền; boss có parallax
+  /// (2,5D) chỉ để lại lớp xa nhất ở đây, các lớp khác vẽ trong [paintScene].
+  void paintStageBackdrop(Canvas canvas) => paintBackdrop(canvas);
+
   /// Phần động của phông nền (mây, mưa, sóng xa…).
   void paintAmbient(Canvas canvas, double time);
 
@@ -302,7 +306,7 @@ class _SceneComponent extends Component {
   /// Phần tĩnh vẽ một lần, mỗi khung chỉ vẽ lại phần động.
   late final Picture _backdrop = () {
     final recorder = PictureRecorder();
-    boss.paintBackdrop(Canvas(recorder));
+    boss.paintStageBackdrop(Canvas(recorder));
     return recorder.endRecording();
   }();
 

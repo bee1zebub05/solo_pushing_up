@@ -31,28 +31,68 @@ const _oliveLit = Color(0xFFA3B07A);
 const _oliveDark = Color(0xFF4F5E38);
 const _bark = Color(0xFF6E5B4A);
 
+/// Các lớp chiều sâu của phông nền (2,5D): lớp xa dịch nhiều hơn khi
+/// camera trôi, lớp gần (nơi nhân vật đứng) đứng yên.
+enum NemeaLayer {
+  /// Trời, mặt trời.
+  sky(0),
+
+  /// Núi xa.
+  far(0.7),
+
+  /// Đồi ô liu, đền.
+  mid(0.4),
+
+  /// Vách hang, đồi gần, đất, cây ô liu, đá đổ.
+  near(0);
+
+  const NemeaLayer(this.parallax);
+
+  /// Tỉ lệ dịch so với độ trôi camera.
+  final double parallax;
+}
+
 /// Phần tĩnh của phông nền: vẽ một lần rồi giữ lại (Picture) để mỗi khung
 /// không phải vẽ lại.
 void paintNemeaBackdrop(Canvas canvas) {
-  _sky(canvas);
-  _farMountains(canvas);
-  _midHills(canvas);
-  _temple(canvas, const Offset(196, 147), 1);
-  _cliff(canvas);
-  _nearHill(canvas);
-  _ground(canvas);
-  _bigOlive(canvas);
-  _ruins(canvas);
+  for (final layer in NemeaLayer.values) {
+    paintNemeaLayer(canvas, layer);
+  }
+}
+
+void paintNemeaLayer(Canvas canvas, NemeaLayer layer) {
+  switch (layer) {
+    case NemeaLayer.sky:
+      _sky(canvas);
+    case NemeaLayer.far:
+      _farMountains(canvas);
+    case NemeaLayer.mid:
+      _midHills(canvas);
+      _temple(canvas, const Offset(196, 147), 1);
+    case NemeaLayer.near:
+      _cliff(canvas);
+      _nearHill(canvas);
+      _ground(canvas);
+      _bigOlive(canvas);
+      _ruins(canvas);
+  }
 }
 
 /// Cùng phông nền nhưng bị Trì Trệ phủ bụi: mất màu, xám tím, mạng nhện
 /// trên đền. Vẽ chồng lên phông nền thật với độ đục = lượng bụi, nên khi
 /// boss mất máu bụi tan dần và màu thật hiện ra.
 void paintNemeaDusty(Canvas canvas) {
+  for (final layer in NemeaLayer.values) {
+    paintNemeaDustyLayer(canvas, layer);
+  }
+}
+
+/// Một lớp phông nền phủ bụi (để chồng đúng lên lớp tương ứng khi parallax).
+void paintNemeaDustyLayer(Canvas canvas, NemeaLayer layer) {
   const s = 0.18; // độ bão hoà còn lại
   const r = 0.2126 * (1 - s), g = 0.7152 * (1 - s), b = 0.0722 * (1 - s);
   canvas.saveLayer(
-    Offset.zero & stageSize,
+    const Rect.fromLTRB(-20, -20, 420, 280),
     Paint()
       ..colorFilter = const ColorFilter.matrix([
         r + s, g, b, 0, -8, //
@@ -61,29 +101,42 @@ void paintNemeaDusty(Canvas canvas) {
         0, 0, 0, 1, 0,
       ]),
   );
-  paintNemeaBackdrop(canvas);
+  paintNemeaLayer(canvas, layer);
   canvas.restore();
 
-  // Màn sương xám đặc dần về phía chân trời.
-  canvas.drawRect(
-    Offset.zero & stageSize,
-    Paint()
-      ..shader = Gradient.linear(const Offset(0, 40), Offset(0, stageGroundY), [
-        const Color(0x405E5868),
-        const Color(0x8C77707E),
-      ]),
-  );
-  // Mạng nhện giăng trên đền và trên vòm hang.
-  _cobweb(canvas, const Offset(166, 129), 14, math.pi * 0.05);
-  _cobweb(canvas, const Offset(226, 129), 12, math.pi * 0.55);
-  _cobweb(canvas, const Offset(304, 152), 16, math.pi * 0.1);
-  // Bụi đọng thành đống dưới chân cột.
-  final heap = Paint()..color = const Color(0xFF8A8590);
-  for (final (x, w) in [(30.0, 46.0), (150.0, 30.0), (238.0, 40.0)]) {
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(x, stageGroundY + 1), width: w, height: 7),
-      heap,
-    );
+  switch (layer) {
+    case NemeaLayer.sky:
+      break;
+    case NemeaLayer.far:
+      break;
+    case NemeaLayer.mid:
+      // Màn sương xám đặc dần về phía chân trời.
+      canvas.drawRect(
+        Offset.zero & stageSize,
+        Paint()
+          ..shader = Gradient.linear(
+            const Offset(0, 40),
+            Offset(0, stageGroundY),
+            [const Color(0x405E5868), const Color(0x8C77707E)],
+          ),
+      );
+      // Mạng nhện giăng trên đền.
+      _cobweb(canvas, const Offset(166, 129), 14, math.pi * 0.05);
+      _cobweb(canvas, const Offset(226, 129), 12, math.pi * 0.55);
+    case NemeaLayer.near:
+      _cobweb(canvas, const Offset(304, 152), 16, math.pi * 0.1);
+      // Bụi đọng thành đống dưới chân cột.
+      final heap = Paint()..color = const Color(0xFF8A8590);
+      for (final (x, w) in [(30.0, 46.0), (150.0, 30.0), (238.0, 40.0)]) {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(x, stageGroundY + 1),
+            width: w,
+            height: 7,
+          ),
+          heap,
+        );
+      }
   }
 }
 

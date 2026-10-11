@@ -201,7 +201,7 @@ void main() {
         attackPhase: phase,
       );
       await render(tester, name, (c) {
-        art.paintBackdrop(c);
+        art.paintStageBackdrop(c);
         art.paintScene(c, 4, battle);
         art.paintBoss(c, frame);
         paintHero(c, HeroPose.plank(110), effort: 0.6);
