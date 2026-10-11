@@ -61,6 +61,43 @@ void paintHercules(
     );
   }
 
+  // Cột sáng giáng xuống lúc xuất hiện, tắt dần khi đã hiện đủ.
+  final beam = 1 - a;
+  if (a < 1) {
+    canvas.drawRect(
+      const Rect.fromLTRB(-46, -400, 46, 0),
+      Paint()
+        ..shader = Gradient.linear(
+          const Offset(-46, 0),
+          const Offset(46, 0),
+          [
+            const Color(0x00FFE9A8),
+            Color.fromRGBO(255, 236, 170, 0.55 * beam + 0.25 * a * (1 - a) * 4),
+            const Color(0x00FFE9A8),
+          ],
+          const [0, 0.5, 1],
+        ),
+    );
+  }
+  // Hạt ánh vàng bay lên quanh người (thần lực), luôn lấp lánh nhẹ.
+  for (var i = 0; i < 14; i++) {
+    final phase = (time * 0.4 + i / 14) % 1;
+    final x = -60 + (i * 37 % 120) + math.sin(time * 2 + i) * 6;
+    final y = -10 - phase * 230;
+    final twinkle = 0.5 + 0.5 * math.sin(time * 6 + i * 1.7);
+    canvas.drawCircle(
+      Offset(x, y),
+      1.2 + twinkle * 1.4,
+      Paint()
+        ..color = Color.fromRGBO(
+          255,
+          232,
+          150,
+          (0.3 + 0.6 * (1 - a)) * twinkle * (1 - phase),
+        ),
+    );
+  }
+
   // Hiện dần: mờ + trồi lên từ ánh sáng.
   canvas.save();
   canvas.translate(0, 30 * (1 - a));
