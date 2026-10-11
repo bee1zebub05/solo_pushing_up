@@ -426,13 +426,18 @@ void _arm(
   // bắp tay trước phồng giữa, khuỷu thắt; cẳng tay to ngay dưới khuỷu (cơ
   // cánh tay quay) rồi thon dần tới cổ tay. Nắm đấm là khối riêng.
   if (far) {
-    // Tay phía xa gần như khuất sau thân: ống thuôn rẻ, không cơ, không
-    // vòng tay (giữ ngân sách hiệu năng).
-    shadedChain(
+    // Tay phía xa (khuất, tối hơn): vẫn có khối cơ nhẹ — nhân vật đã cache
+    // theo tư thế nên không tốn mỗi khung.
+    shadedLimb(
       canvas,
-      [(shoulder, elbow, 6.4 * k, 5.0 * k), (elbow, wrist, 5.2 * k, 4.0 * k)],
+      [
+        (shoulder, elbow, HumanAnatomy.upperArm),
+        (elbow, wrist, HumanAnatomy.forearm),
+      ],
       skin,
+      scale: k * 0.96,
       highlight: 0,
+      definition: 0.3,
     );
     if (onGround) _flatHand(canvas, wrist, skin, 0.95 * k);
     return;
@@ -543,12 +548,21 @@ void _leg(
   // Đùi: cơ tứ đầu phồng phía trước ở 1/3 trên, thắt ở gối; cẳng chân: bắp
   // chân phồng phía sau ở 1/3 trên, ống chân phía trước thẳng, cổ chân thắt.
   if (far) {
-    // Chân phía xa: ống thuôn rẻ + bàn chân/đế đơn giản.
-    shadedChain(
+    // Chân phía xa (khuất, tối hơn): khối cơ nhẹ.
+    shadedLimb(
       canvas,
-      [(hip, knee, 8.2 * k, 6.0 * k), (knee, ankle, 6.0 * k, 4.0 * k)],
+      [
+        (
+          hip,
+          knee,
+          look.female ? HumanAnatomy.thighFemale : HumanAnatomy.thigh,
+        ),
+        (knee, ankle, HumanAnatomy.shin),
+      ],
       shade(look.skin),
+      scale: k * 0.96,
       highlight: 0,
+      definition: 0.3,
     );
     // Bàn chân + dép thật (nhân vật đã cache theo tư thế nên không tốn
     // mỗi khung), tối hơn vì khuất.
