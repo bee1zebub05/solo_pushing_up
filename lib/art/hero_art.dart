@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'costume_art.dart';
 import 'hero_pose.dart';
 import 'vector_style.dart';
 
@@ -214,6 +215,7 @@ void paintHero(
     pose[HeroJoint.farElbow],
     pose[HeroJoint.farWrist],
     far: true,
+    onGround: ground - pose[HeroJoint.farWrist].dy < 6,
   );
 
   if (cloak) {
@@ -259,7 +261,14 @@ void paintHero(
     _head(canvas, look, f, cloak: cloak, effort: effort, joy: joy);
   });
 
-  _arm(canvas, look, shoulder, pose[HeroJoint.elbow], pose[HeroJoint.wrist]);
+  _arm(
+    canvas,
+    look,
+    shoulder,
+    pose[HeroJoint.elbow],
+    pose[HeroJoint.wrist],
+    onGround: ground - pose[HeroJoint.wrist].dy < 6,
+  );
   canvas.restore();
   if (frost > 0.02) {
     canvas.restore();
@@ -300,52 +309,57 @@ void _arm(
   Offset elbow,
   Offset wrist, {
   bool far = false,
+  bool onGround = false,
 }) {
   final k = _limb(look);
   final skin = far ? darken(look.skin, 0.18) : look.skin;
   // Giải phẫu (Loomis): cơ vai trùm đầu cánh tay, bắp tay sau dày phía sau,
   // bắp tay trước phồng giữa, khuỷu thắt; cẳng tay to ngay dưới khuỷu (cơ
   // cánh tay quay) rồi thon dần tới cổ tay. Nắm đấm là khối riêng.
-  final fistDir = wrist - elbow;
-  final fist = wrist + fistDir / math.max(fistDir.distance, 0.01) * 3;
   shadedLimb(
     canvas,
     [
       (shoulder, elbow, HumanAnatomy.upperArm),
       (elbow, wrist, HumanAnatomy.forearm),
-      (wrist, fist, HumanAnatomy.fist),
     ],
     skin,
     scale: k,
     highlight: far ? 0 : 1.4,
     definition: far ? 0 : 0.55,
   );
-  // Vòng tay vàng ánh kim gần cổ tay.
-  final band = capsulePath(
-    Offset.lerp(elbow, wrist, 0.72)!,
-    Offset.lerp(elbow, wrist, 0.84)!,
-    5.2 * k,
-    4.9 * k,
+  // Vòng tay vàng ôm khối cẳng tay gần cổ tay.
+  paintLimbBand(
+    canvas,
+    elbow,
+    wrist,
+    HumanAnatomy.forearm,
+    t0: 0.68,
+    t1: 0.84,
+    scale: k,
   );
-  canvas.drawPath(
-    band,
-    Paint()
-      ..color = HeroColors.outline
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4,
-  );
-  canvas.drawPath(band, goldPaint(band.getBounds()));
-  glint(canvas, Offset.lerp(elbow, wrist, 0.76)! + const Offset(-1.5, -2), 1.6);
-  // Khớp ngón tay trên nắm đấm.
-  final knuckle = Paint()
-    ..color = darken(far ? darken(look.skin, 0.18) : look.skin, 0.35)
-    ..strokeWidth = 1
-    ..strokeCap = StrokeCap.round;
-  final dir = (wrist - elbow) / (wrist - elbow).distance;
-  final side = Offset(-dir.dy, dir.dx);
-  for (final t in [-2.4, 0.0, 2.4]) {
-    final p = wrist + dir * 3.5 + side * t;
-    canvas.drawLine(p, p + dir * 2, knuckle);
+  // Chống đẩy: bàn tay úp phẳng trên sàn, ngón hướng về trước (phía đầu);
+  // đứng: nắm tay buông xuôi.
+  if (onGround) {
+    // Lòng bàn tay úp trên sàn: đáy bàn tay nằm ngang cổ tay (sàn ngay dưới
+    // cổ tay), gót bàn tay ở cổ tay, ngón duỗi về phía đầu.
+    final s = 0.95 * k;
+    shadedHand(
+      canvas,
+      buildHand(
+        wrist + Offset(-1.0 * s, -3.4 * s),
+        const Offset(1, 0),
+        pose: HandPose.flat,
+        facing: const Offset(0, -1),
+        scale: s,
+      ),
+      skin,
+    );
+  } else {
+    shadedHand(
+      canvas,
+      buildHand(wrist, wrist - elbow, pose: HandPose.fist, scale: 0.95 * k),
+      skin,
+    );
   }
 }
 
@@ -388,23 +402,17 @@ void _leg(
         ..strokeCap = StrokeCap.round,
     );
   }
-  // Dây sandal quấn chéo ống chân.
-  final strap = Paint()
-    ..color = shade(darken(HeroColors.sandal, 0.1))
-    ..strokeWidth = 2
-    ..strokeCap = StrokeCap.round;
-  final d = ankle - knee;
-  final n = Offset(-d.dy, d.dx) / d.distance;
-  for (final t in [0.58, 0.72, 0.86]) {
-    final p = Offset.lerp(knee, ankle, t)!;
-    canvas.drawLine(p + n * 5.2 * k, p - n * 5.2 * k + d * 0.07, strap);
-  }
-  shadedChain(
+  // Dép Hy Lạp: bàn chân, đế, quai, dây buộc chéo lên ống chân.
+  paintGreekSandal(
     canvas,
-    [(ankle, toe, 5.4, 4.6)],
-    shade(HeroColors.sandal),
-    shadow: 1.6,
-    highlight: 0.8,
+    knee: knee,
+    ankle: ankle,
+    toe: toe,
+    facingRight: true,
+    skin: look.skin,
+    scale: k,
+    lace: 0.38,
+    far: far,
   );
 }
 

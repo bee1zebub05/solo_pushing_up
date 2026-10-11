@@ -287,20 +287,15 @@ void main() {
         Paint()..color = const Color(0xFFEDE3CF),
       );
       for (final (i, pose) in HandPose.values.indexed) {
-        for (final (j, dir) in [
-          (0, const Offset(0, 1)),
-          (1, const Offset(-0.7, -1)),
+        for (final (j, dir, facing) in [
+          (0, const Offset(0, 1), const Offset(-1, 0)),
+          (1, const Offset(-0.7, -1), const Offset(-1, 0)),
+          (2, const Offset(1, 0), const Offset(0, -1)),
         ]) {
-          final wrist = Offset(60.0 + i * 95, 50.0 + j * 120);
+          final wrist = Offset(40.0 + i * 76, 40.0 + j * 80);
           shadedHand(
             c,
-            buildHand(
-              wrist,
-              dir,
-              pose: pose,
-              facing: const Offset(-1, 0),
-              scale: 3.4,
-            ),
+            buildHand(wrist, dir, pose: pose, facing: facing, scale: 2.6),
             const Color(0xFFC98B5A),
           );
         }
@@ -310,6 +305,12 @@ void main() {
       paintNemeaScene(c, time: 1);
       c.translate(200, 252);
       c.scale(0.95);
+      paintHercules(c, time: 1);
+    });
+    await render(tester, 'hercules_feet_zoom', (c) {
+      paintNemeaScene(c, time: 1);
+      c.translate(200, 150);
+      c.scale(2.6);
       paintHercules(c, time: 1);
     });
     await render(tester, 'hercules_torso_zoom', (c) {

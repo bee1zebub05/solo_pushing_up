@@ -16,6 +16,10 @@ enum HandPose {
 
   /// Bao quanh một cán tròn nằm ngang trục tay (cầm chuỳ, cầm giáo).
   grip,
+
+  /// Úp phẳng nhìn ngang (chống đẩy, chống tay xuống đất): các ngón duỗi
+  /// thẳng chồng lên nhau, ngón cái nằm dọc mép lòng bàn tay.
+  flat,
 }
 
 /// Hình học một bàn tay: mỗi phần một Path để tô riêng (lòng bàn tay, từng
@@ -80,12 +84,14 @@ HandShape buildHand(
   final fingers = <Path>[];
   final creases = <(Offset, Offset)>[];
   for (var i = 3; i >= 0; i--) {
-    final (ka, ks) = knuckles[i];
+    final (ka, ks0) = knuckles[i];
+    // Úp phẳng nhìn ngang: các ngón chồng lên nhau (bề ngang bị ép dẹt).
+    final ks = pose == HandPose.flat ? ks0 * 0.3 : ks0;
     final base = at(ka, ks);
     final len = lengths[i];
     final w = widths[i] * scale;
     final curled = switch (pose) {
-      HandPose.open => false,
+      HandPose.open || HandPose.flat => false,
       HandPose.point => i != 0,
       HandPose.fist || HandPose.grip => true,
     };
@@ -94,10 +100,11 @@ HandShape buildHand(
     if (!curled) {
       // Duỗi, hơi cong tự nhiên; xoè như nan quạt khi mở.
       final splay = pose == HandPose.open ? (1.5 - i) * 0.12 : 0.0;
+      final relax = pose == HandPose.flat ? 0.0 : 0.12;
       var d = _rotate(u, splay);
       var p = base;
       for (final seg in const [0.45, 0.32, 0.23]) {
-        d = _rotate(d, -0.12 * sign);
+        d = _rotate(d, -relax * sign);
         p = p + d * (len * seg * scale);
         pts.add(p);
       }
@@ -128,6 +135,12 @@ HandShape buildHand(
   final sign = _bendSign(u, n);
   final tBase = at(3.0, 3.6);
   final (Offset d1, Offset d2, double l1, double l2) = switch (pose) {
+    HandPose.flat => (
+      _rotate(u, 0.15 * sign),
+      _rotate(u, 0.05 * sign),
+      3.6,
+      2.8,
+    ),
     HandPose.open => (
       _rotate(u, 0.55 * sign),
       _rotate(u, 0.3 * sign),
