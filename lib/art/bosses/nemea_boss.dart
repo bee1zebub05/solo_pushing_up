@@ -61,6 +61,19 @@ class NemeaBossArt extends BossArt {
     (c) => paintNemeaDustyLayer(c, NemeaLayer.sky),
   );
 
+  static final _foreground = _record(paintNemeaForeground);
+
+  double _drift = 0;
+
+  @override
+  void paintForeground(Canvas canvas, BossFrame f) {
+    // Tiền cảnh trôi ngược chiều, mạnh hơn các lớp xa (gần máy quay hơn).
+    canvas.save();
+    canvas.translate(-_drift * 0.6, 0);
+    canvas.drawPicture(_foreground);
+    canvas.restore();
+  }
+
   double _dust = maxDust;
   double _lastTime = 0;
 
@@ -76,6 +89,7 @@ class NemeaBossArt extends BossArt {
     if (_dust > 0.01) _overlay(canvas, _dustySky, dustPaint);
     // Camera trôi chậm: lớp càng xa càng lệch so với nhân vật (2,5D).
     final drift = math.sin(time * 0.21) * 5 + math.sin(time * 0.083) * 3;
+    _drift = drift;
     for (final (layer, picture, dusty) in _layers) {
       canvas.save();
       canvas.translate(drift * layer.parallax, 0);

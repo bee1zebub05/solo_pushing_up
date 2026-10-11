@@ -1210,3 +1210,74 @@ final Picture _cloudPicture = () {
   canvas.restore();
   return recorder.endRecording();
 }();
+
+/// Tiền cảnh (vẽ đè lên nhân vật, góc dưới hai bên): cỏ cao và tảng đá
+/// tối ngược sáng. Trôi ngược chiều camera nên tạo khoảng sâu giữa máy quay
+/// và nhân vật (2,5D). Tránh vùng giữa để không che trận đấu.
+void paintNemeaForeground(Canvas canvas) {
+  const dark = Color(0xFF3B3424);
+  const darker = Color(0xFF2A2419);
+  // Tảng đá góc phải dưới.
+  final rock = Path()
+    ..moveTo(352, 262)
+    ..lineTo(360, 244)
+    ..lineTo(378, 236)
+    ..lineTo(398, 240)
+    ..lineTo(412, 262)
+    ..close();
+  canvas.drawPath(rock, Paint()..color = darker);
+  canvas.drawPath(
+    Path()
+      ..moveTo(360, 244)
+      ..lineTo(378, 236)
+      ..lineTo(384, 246)
+      ..lineTo(366, 252)
+      ..close(),
+    Paint()..color = const Color(0xFF4A4232),
+  );
+  // Viền sáng ấm trên mép đá (ánh chiều hắt).
+  canvas.drawPath(
+    Path()
+      ..moveTo(360, 244)
+      ..lineTo(378, 236)
+      ..lineTo(398, 240),
+    Paint()
+      ..color = const Color(0x88F2C27A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2,
+  );
+  // Bụi cỏ cao hai góc: lá thon cong, tối ngược sáng, mép sáng ấm.
+  final rnd = math.Random(17);
+  for (final (x0, x1, h) in [(-10.0, 40.0, 34.0), (330.0, 410.0, 26.0)]) {
+    for (var i = 0; i < 16; i++) {
+      final x = x0 + rnd.nextDouble() * (x1 - x0);
+      final len = h * (0.5 + rnd.nextDouble() * 0.6);
+      final lean = (rnd.nextDouble() - 0.4) * len * 0.6;
+      final blade = Path()
+        ..moveTo(x - 2, 262)
+        ..quadraticBezierTo(
+          x + lean * 0.3,
+          262 - len * 0.6,
+          x + lean,
+          262 - len,
+        )
+        ..quadraticBezierTo(x + lean * 0.4 + 2, 262 - len * 0.5, x + 2, 262)
+        ..close();
+      canvas.drawPath(blade, Paint()..color = i.isEven ? dark : darker);
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - 1, 262 - len * 0.2)
+          ..quadraticBezierTo(
+            x + lean * 0.3,
+            262 - len * 0.6,
+            x + lean,
+            262 - len,
+          ),
+        Paint()
+          ..color = const Color(0x66E8C27A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
+  }
+}

@@ -239,6 +239,7 @@ void main() {
         art.paintScene(c, 4, battle);
         art.paintBoss(c, frame);
         paintHero(c, HeroPose.plank(110), effort: 0.6);
+        art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
     }
