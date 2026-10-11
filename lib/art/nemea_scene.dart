@@ -525,6 +525,118 @@ void _temple(Canvas canvas, Offset base, double s) {
   canvas.restore();
 }
 
+/// Chất liệu vách đá (nằm trong lớp chụp sẵn nên chi tiết không tốn mỗi
+/// khung): vân trầm tích nghiêng có mép sáng, vệt nước mưa chảy dọc, địa
+/// y, lấm tấm sỏi, bóng tối sát chân vách, búi cỏ trên gờ.
+void _rockTexture(Canvas canvas, Path body) {
+  final rnd = math.Random(21);
+  canvas.save();
+  canvas.clipPath(body);
+  // Vân trầm tích: dải gợn nghiêng nhẹ, mép dưới tối, mép trên sáng.
+  final seam = Paint()..color = darken(_rock, 0.35).withValues(alpha: 0.55);
+  final ledge = Paint()..color = lighten(_rock, 0.35).withValues(alpha: 0.5);
+  for (var i = 0; i < 26; i++) {
+    final y = 80.0 + (i % 9) * 15 + rnd.nextDouble() * 6;
+    final x0 = 252 + rnd.nextDouble() * 140;
+    final len = 16 + rnd.nextDouble() * 32;
+    final pts = [
+      for (var k = 0; k <= 3; k++)
+        () {
+          final x = x0 + len * k / 3;
+          return Offset(x, y - (x - 250) * 0.09 + math.sin(x * 0.11 + i) * 1.6);
+        }(),
+    ];
+    final w = 1.0 + rnd.nextDouble() * 1.1;
+    canvas.drawPath(taperedStroke(pts, w, peak: 0.5), seam);
+    canvas.drawPath(
+      taperedStroke(
+        [for (final p in pts) p - const Offset(0, 1.5)],
+        w * 0.6,
+        peak: 0.5,
+      ),
+      ledge,
+    );
+  }
+  // Vệt nước mưa tối chảy dọc từ các gờ trên xuống.
+  final streak = Paint()..color = darken(_rock, 0.3).withValues(alpha: 0.28);
+  for (var i = 0; i < 22; i++) {
+    final x = 258 + rnd.nextDouble() * 150;
+    final top = 70 + rnd.nextDouble() * 80;
+    final len = 14 + rnd.nextDouble() * 36;
+    canvas.drawPath(
+      taperedStroke(
+        [
+          Offset(x, top),
+          Offset(x + 0.8, top + len * 0.5),
+          Offset(x, top + len),
+        ],
+        1.4 + rnd.nextDouble() * 1.8,
+        peak: 0.2,
+        startWidth: 0.6,
+      ),
+      streak,
+    );
+  }
+  // Địa y: cụm chấm vàng – xanh xám.
+  for (var i = 0; i < 9; i++) {
+    final c = Offset(262 + rnd.nextDouble() * 145, 80 + rnd.nextDouble() * 110);
+    final color = i.isEven ? const Color(0x99C9B25A) : const Color(0x8890A070);
+    for (var j = 0; j < 7; j++) {
+      canvas.drawCircle(
+        c + Offset(rnd.nextDouble() * 8 - 4, rnd.nextDouble() * 5 - 2.5),
+        0.6 + rnd.nextDouble() * 1.3,
+        Paint()..color = color,
+      );
+    }
+  }
+  // Lấm tấm sỏi sáng / tối.
+  for (var i = 0; i < 90; i++) {
+    final p = Offset(250 + rnd.nextDouble() * 162, 66 + rnd.nextDouble() * 160);
+    canvas.drawCircle(
+      p,
+      0.35 + rnd.nextDouble() * 0.5,
+      Paint()
+        ..color = (i.isEven ? lighten(_rock, 0.4) : darken(_rock, 0.4))
+            .withValues(alpha: 0.6),
+    );
+  }
+  // Bóng tối tụ sát chân vách (ambient occlusion).
+  canvas.drawRect(
+    const Rect.fromLTRB(240, stageGroundY - 34, 420, stageGroundY + 2),
+    Paint()
+      ..shader = Gradient.linear(
+        const Offset(0, stageGroundY - 34),
+        const Offset(0, stageGroundY),
+        [const Color(0x00281A10), const Color(0x66281A10)],
+      ),
+  );
+  canvas.restore();
+  // Búi cỏ khô mọc trên các gờ đá.
+  final grass = Paint()..color = const Color(0xFF8A8A3A);
+  final grassLit = Paint()..color = const Color(0xFFC2B65A);
+  for (final base in const [
+    Offset(276, 151),
+    Offset(306, 97),
+    Offset(353, 71),
+    Offset(285, 120),
+  ]) {
+    for (var j = 0; j < 5; j++) {
+      final a = -math.pi / 2 + (j - 2) * 0.32;
+      final len = 5 + (j * 37 % 5).toDouble();
+      final tip = base + Offset(math.cos(a), math.sin(a)) * len;
+      canvas.drawPath(
+        taperedStroke(
+          [base, Offset.lerp(base, tip, 0.5)! + const Offset(0.8, 0), tip],
+          1.3,
+          peak: 0.1,
+          startWidth: 1,
+        ),
+        j.isEven ? grass : grassLit,
+      );
+    }
+  }
+}
+
 /// Vách đá hang sư tử bên phải, các mặt đá xếp cạnh (cel-shading theo mặt).
 void _cliff(Canvas canvas) {
   const outlineC = VectorStyle.outline;
@@ -585,6 +697,8 @@ void _cliff(Canvas canvas) {
   ]) {
     canvas.drawPath(Path()..addPolygon(c, false), crack);
   }
+
+  _rockTexture(canvas, body);
 
   // Cửa hang: vòm tối sâu dần, mép đá dày.
   final mouth = Path()
