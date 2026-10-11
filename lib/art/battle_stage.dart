@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui show Gradient;
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flame/components.dart';
@@ -625,12 +626,20 @@ class _Bolt extends PositionComponent {
       canvas.drawPath(
         tail,
         Paint()
-          ..color = color.withValues(alpha: 0.45)
+          ..color = color.withValues(alpha: 0.2)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = r * 1.6
+          ..strokeWidth = r * 2.6
           ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+          ..strokeJoin = StrokeJoin.round,
+      );
+      canvas.drawPath(
+        tail,
+        Paint()
+          ..color = color.withValues(alpha: 0.4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 1.4
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
       );
       canvas.drawPath(
         tail,
@@ -645,8 +654,10 @@ class _Bolt extends PositionComponent {
       Offset.zero,
       r * 2.2,
       Paint()
-        ..color = color.withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        ..shader = ui.Gradient.radial(Offset.zero, r * 2.6, [
+          color.withValues(alpha: 0.45),
+          color.withValues(alpha: 0),
+        ]),
     );
     canvas.drawCircle(Offset.zero, r, Paint()..color = color);
     canvas.drawCircle(
