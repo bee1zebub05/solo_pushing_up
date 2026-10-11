@@ -967,11 +967,8 @@ void _peltBack(Canvas canvas, double len, PartFrame f, double time) {
   final w2 = math.sin(time * 3.1 + 1.3) * 2;
   final pelt = Path()
     ..moveTo(-6, -len - 6)
-    ..cubicTo(-20, -len * 0.75, -22 + w1 * 0.4, -len * 0.3, -17 + w1, 8)
-    // Mép dưới răng cưa như lông thú.
-    ..lineTo(-12 + w2 * 0.5, 4)
-    ..lineTo(-9 + w2, 11)
-    ..lineTo(-5, 4)
+    ..cubicTo(-22, -len * 0.75, -25 + w1 * 0.4, -len * 0.3, -19 + w1, 6)
+    ..quadraticBezierTo(-12 + w2, 9, -5, 4)
     ..cubicTo(-8, -len * 0.3, -6, -len * 0.7, 4, -len - 2)
     ..close();
   // Chân trước sư tử rủ xuống sau lưng, móng còn nguyên.
@@ -986,7 +983,56 @@ void _peltBack(Canvas canvas, double len, PartFrame f, double time) {
   for (final dx in [-1.5, 0.5, 2.5]) {
     canvas.drawLine(Offset(-19 + dx, 15), Offset(-20 + dx, 18), claw);
   }
+  // Tua lông ở mép dưới tấm da: lọn thon rủ theo trọng lực (f.down), bay
+  // nhẹ theo nhịp — thay mép răng cưa.
+  final down = f.down;
+  final fringe = Path();
+  for (var i = 0; i < 6; i++) {
+    final t = i / 5;
+    final root =
+        Offset.lerp(Offset(-19 + w1, 4), const Offset(-6, 2), t)! +
+        Offset(0, math.sin(t * math.pi) * 3);
+    final sway = math.sin(time * 3.1 + i) * 0.15;
+    final dir = Offset(down.dx + sway, down.dy);
+    final len2 = 5 + (i % 3) * 1.6;
+    final pts = [
+      root,
+      root + dir * (len2 * 0.5) + Offset(-0.6, 0),
+      root + dir * len2,
+    ];
+    fringe.addPath(
+      taperedStroke(pts, 2.6, peak: 0.2, startWidth: 0.9, samples: 6),
+      Offset.zero,
+    );
+  }
+  shadedPath(
+    canvas,
+    fringe,
+    darken(HeroColors.pelt, 0.08),
+    f,
+    shadow: 1,
+    highlight: 0.4,
+    outlineWidth: 1,
+  );
   shadedPath(canvas, pelt, HeroColors.pelt, f, shadow: 4, highlight: 1.5);
+  // Nếp da rủ dọc tấm áo choàng.
+  canvas.save();
+  canvas.clipPath(pelt);
+  for (final x in const [-14.0, -9.0]) {
+    canvas.drawPath(
+      taperedStroke(
+        [
+          Offset(x + 4, -len * 0.8),
+          Offset(x, -len * 0.3),
+          Offset(x + w1 * 0.4, 4),
+        ],
+        1.6,
+        peak: 0.6,
+      ),
+      fillPaint(darken(HeroColors.pelt, 0.32).withValues(alpha: 0.7)),
+    );
+  }
+  canvas.restore();
   // Lông xuôi theo trọng lực.
   furStrokes(
     canvas,
