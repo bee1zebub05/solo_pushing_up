@@ -349,28 +349,37 @@ void _midHills(Canvas canvas) {
 }
 
 void _tinyOlive(Canvas canvas, Offset base, double s) {
+  // Cây ô liu xa: thân xoắn ngắn, tán xoè thấp lệch (không phải kẹo mút).
   canvas.drawLine(
     base,
-    base + Offset(0, -3 * s),
+    base + Offset(0.8 * s, -3 * s),
     Paint()
       ..color = const Color(0xFF5E4C3C)
-      ..strokeWidth = 1,
+      ..strokeWidth = 1.1,
   );
+  final dark = Paint()..color = const Color(0xFF66744A);
+  final lit = Paint()..color = const Color(0xFF96A374);
+  for (final (dx, dy, w, h) in [
+    (-2.2, -4.2, 5.6, 3.6),
+    (1.8, -5.0, 6.0, 4.2),
+    (0.2, -6.4, 4.4, 3.0),
+  ]) {
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: base + Offset(dx * s, dy * s),
+        width: w * s,
+        height: h * s,
+      ),
+      dark,
+    );
+  }
   canvas.drawOval(
     Rect.fromCenter(
-      center: base + Offset(0.5 * s, -4.5 * s),
-      width: 8 * s,
-      height: 5.5 * s,
+      center: base + Offset(-1.2 * s, -6 * s),
+      width: 4.2 * s,
+      height: 2.2 * s,
     ),
-    Paint()..color = const Color(0xFF6B7A4C),
-  );
-  canvas.drawOval(
-    Rect.fromCenter(
-      center: base + Offset(-0.8 * s, -5.5 * s),
-      width: 5 * s,
-      height: 3 * s,
-    ),
-    Paint()..color = const Color(0xFF9DAA78),
+    lit,
   );
 }
 
@@ -884,55 +893,95 @@ void _bigOlive(Canvas canvas) {
     (const Offset(38, 100), 14.0),
     (const Offset(30, 54), 15.0),
   ];
+  // Mỗi chùm lá: mép răng cưa không đều (lá ô liu thuôn), không phải
+  // hình bầu dục trơn.
+  Path clump(Offset c, double r, double grow, int seed) {
+    final rnd = math.Random(seed);
+    final path = Path();
+    const n = 22;
+    for (var i = 0; i <= n; i++) {
+      final a = math.pi * 2 * i / n;
+      final rr =
+          (i.isEven ? r : r * 0.86) * (0.92 + rnd.nextDouble() * 0.16) + grow;
+      final p = c + Offset(math.cos(a) * rr * 1.1, math.sin(a) * rr * 0.8);
+      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    return path..close();
+  }
+
   // Viền ngoài chung cho cả tán.
-  for (final (c, r) in clusters) {
-    canvas.drawOval(
-      Rect.fromCenter(center: c, width: (r + 2) * 2.2, height: (r + 2) * 1.6),
-      Paint()..color = outlineC,
-    );
+  final outlinePaint = Paint()..color = outlineC;
+  for (var i = 0; i < clusters.length; i++) {
+    final (c, r) = clusters[i];
+    canvas.drawPath(clump(c, r, 2, i), outlinePaint);
   }
-  for (final (c, r) in clusters) {
-    canvas.drawOval(
-      Rect.fromCenter(center: c, width: r * 2.2, height: r * 1.6),
-      Paint()..color = _oliveDark,
-    );
+  // Ba tầng lá: tối (lõi khuất) → giữa → sáng (đón nắng trên-trái).
+  final all = Path();
+  for (var i = 0; i < clusters.length; i++) {
+    final (c, r) = clusters[i];
+    all.addPath(clump(c, r, 0, i), Offset.zero);
   }
-  for (final (c, r) in clusters) {
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: c + Offset(-r * 0.18, -r * 0.18),
-        width: r * 1.8,
-        height: r * 1.2,
-      ),
+  canvas.drawPath(all, Paint()..color = _oliveDark);
+  canvas.save();
+  canvas.clipPath(all);
+  for (var i = 0; i < clusters.length; i++) {
+    final (c, r) = clusters[i];
+    canvas.drawPath(
+      clump(c + Offset(-r * 0.16, -r * 0.2), r * 0.82, 0, i + 20),
       Paint()..color = _olive,
     );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: c + Offset(-r * 0.38, -r * 0.34),
-        width: r * 1.0,
-        height: r * 0.6,
-      ),
+    canvas.drawPath(
+      clump(c + Offset(-r * 0.36, -r * 0.38), r * 0.48, 0, i + 40),
       Paint()..color = _oliveLit,
     );
   }
-  // Lá bạc li ti và quả ô liu.
+  // Ánh phản xạ lạnh ở mép dưới tán (Gurney: bóng ngả lạnh dưới nắng ấm).
+  for (final (c, r) in clusters) {
+    canvas.drawArc(
+      Rect.fromCenter(center: c, width: r * 2.1, height: r * 1.5),
+      0.4,
+      2.0,
+      false,
+      Paint()
+        ..color = const Color(0x557C98A8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+  }
+  canvas.restore();
+  // Lá thuôn bạc mặt dưới, xanh xám mặt trên (lá ô liu hai màu).
+  furStrokes(
+    canvas,
+    all,
+    const Color(0xFFCAD3A8),
+    dir: const Offset(1, -0.4),
+    count: 90,
+    length: 4,
+    width: 1.2,
+    seed: 3,
+  );
+  furStrokes(
+    canvas,
+    all,
+    const Color(0xFF3C4A2C),
+    dir: const Offset(-1, -0.5),
+    count: 70,
+    length: 4,
+    width: 1,
+    seed: 4,
+  );
+  // Quả ô liu tím đen.
   final rnd = math.Random(3);
-  final leaf = Paint()..color = const Color(0xFFCAD3A8);
   final fruit = Paint()..color = const Color(0xFF3A2C3E);
-  for (var i = 0; i < 40; i++) {
+  for (var i = 0; i < 12; i++) {
     final (c, r) = clusters[i % clusters.length];
     final a = rnd.nextDouble() * math.pi * 2;
-    final d = rnd.nextDouble() * r * 0.8;
-    final p = c + Offset(math.cos(a) * d * 1.1, math.sin(a) * d * 0.7);
-    if (i % 5 == 0) {
-      canvas.drawCircle(p, 1.3, fruit);
-    } else if (p.dy < c.dy) {
-      canvas.save();
-      canvas.translate(p.dx, p.dy);
-      canvas.rotate(a);
-      canvas.drawOval(const Rect.fromLTWH(-2, -0.6, 4, 1.2), leaf);
-      canvas.restore();
-    }
+    final d = rnd.nextDouble() * r * 0.7;
+    canvas.drawCircle(
+      c + Offset(math.cos(a) * d * 1.1, math.sin(a) * d * 0.7),
+      1.3,
+      fruit,
+    );
   }
 }
 
@@ -1081,28 +1130,57 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
 }
 
 void _cloud(Canvas canvas, Offset at, double s) {
-  final puffs = [
-    (const Offset(0, 0), 11.0),
-    (const Offset(13, -6), 14.0),
-    (const Offset(29, -2), 12.0),
-    (const Offset(41, 2), 8.0),
-  ];
-  final base = Paint()..color = const Color(0xE6E8EEF6);
-  final top = Paint()..color = const Color(0xFFFFFFFF);
   canvas.save();
-  canvas.clipRect(
-    Rect.fromLTRB(
-      at.dx - 20 * s,
-      at.dy - 30 * s,
-      at.dx + 60 * s,
-      at.dy + 6 * s,
-    ),
-  );
-  for (final (o, r) in puffs) {
-    canvas.drawCircle(at + o * s, r * s, base);
-  }
-  for (final (o, r) in puffs) {
-    canvas.drawCircle(at + (o + const Offset(-2, -3)) * s, r * 0.82 * s, top);
-  }
+  canvas.translate(at.dx, at.dy);
+  canvas.scale(s);
+  canvas.drawPicture(_cloudPicture);
   canvas.restore();
 }
+
+/// Mây chiều: dẹt, nhiều thuỳ không đều, đáy phẳng ngả tím lạnh (bóng),
+/// đỉnh vàng ấm đón nắng — vẽ sẵn một lần.
+final Picture _cloudPicture = () {
+  final recorder = PictureRecorder();
+  final canvas = Canvas(recorder);
+  final lobes = [
+    (const Offset(-6, 0), 9.0),
+    (const Offset(6, -6), 12.0),
+    (const Offset(20, -9), 14.0),
+    (const Offset(34, -4), 11.0),
+    (const Offset(46, 0), 8.0),
+    (const Offset(28, 2), 10.0),
+    (const Offset(12, 2), 9.0),
+  ];
+  final body = Path();
+  for (final (o, r) in lobes) {
+    body.addOval(Rect.fromCircle(center: o, radius: r));
+  }
+  canvas.save();
+  canvas.clipRect(const Rect.fromLTRB(-30, -40, 70, 6));
+  // Đáy và mặt khuất: tím lạnh.
+  canvas.drawPath(body, Paint()..color = const Color(0xFFC7C3D9));
+  // Thân: trắng ngà, lệch lên trên-trái.
+  canvas.drawPath(
+    body.shift(const Offset(-1.5, -3)),
+    Paint()..color = const Color(0xFFF4F1EC),
+  );
+  // Đỉnh đón nắng: vàng ấm.
+  canvas.save();
+  canvas.clipPath(body.shift(const Offset(-1.5, -3)));
+  for (final (o, r) in lobes) {
+    canvas.drawCircle(
+      o + const Offset(-3, -5),
+      r * 0.62,
+      Paint()..color = const Color(0xFFFFF4DA),
+    );
+  }
+  canvas.restore();
+  // Đáy phẳng: dải tím đậm hơn, chỉ trong thân mây.
+  canvas.clipPath(body);
+  canvas.drawRect(
+    const Rect.fromLTRB(-20, 1, 60, 6),
+    Paint()..color = const Color(0xFFB2ADC9),
+  );
+  canvas.restore();
+  return recorder.endRecording();
+}();
