@@ -1026,152 +1026,241 @@ void _ground(Canvas canvas) {
 }
 
 /// Cây ô liu già phía trái: thân xoắn, tán bạc xanh nhiều chùm.
+/// Cây ô liu già: thân nhiều thớ xoắn vặn tách rời (ô liu trăm tuổi), khe
+/// tối giữa các thớ, u bướu và hốc; cành chẻ ba vươn lên tán. Tán thưa,
+/// hở trời, dựng từ hàng trăm lá thuôn hai màu (mặt trên xanh xám, mặt
+/// dưới bạc) chứ không phải các cục tròn. Nằm trong lớp chụp sẵn.
 void _bigOlive(Canvas canvas) {
   const outlineC = VectorStyle.outline;
-  // Thân xoắn hai nhánh.
-  final trunk = Path()
-    ..moveTo(4, stageGroundY + 2)
-    ..cubicTo(14, 196, 2, 170, 14, 140)
-    ..cubicTo(18, 128, 30, 112, 44, 96)
-    ..lineTo(50, 100)
-    ..cubicTo(36, 118, 28, 134, 28, 150)
-    ..cubicTo(30, 170, 26, 200, 34, stageGroundY + 2)
+  // Bóng tối giữa các thớ: khối thân chung tô sẫm trước.
+  final trunkMass = Path()
+    ..moveTo(0, stageGroundY + 2)
+    ..cubicTo(10, 200, 4, 168, 14, 138)
+    ..cubicTo(22, 118, 34, 106, 46, 96)
+    ..lineTo(52, 102)
+    ..cubicTo(38, 118, 30, 136, 30, 152)
+    ..cubicTo(32, 176, 28, 204, 38, stageGroundY + 2)
     ..close();
-  final branch = Path()
-    ..moveTo(16, 142)
-    ..cubicTo(10, 122, 0, 110, -6, 98)
-    ..lineTo(-1, 95)
-    ..cubicTo(6, 106, 16, 118, 22, 132)
-    ..close();
-  for (final p in [trunk, branch]) {
-    canvas.drawPath(
-      p,
-      Paint()
-        ..color = outlineC
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.2
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-  for (final p in [trunk, branch]) {
-    shadedPath(canvas, p, _bark, PartFrame.world, shadow: 4, outline: false);
-  }
-  // Vân vỏ cây xoắn.
-  final grain = Paint()
-    ..color = const Color(0xFF4B3D31)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 0.8;
   canvas.drawPath(
-    Path()
-      ..moveTo(12, 210)
-      ..cubicTo(18, 190, 12, 170, 20, 150)
-      ..moveTo(24, 214)
-      ..cubicTo(22, 196, 24, 172, 30, 130),
-    grain,
+    trunkMass,
+    Paint()
+      ..color = outlineC
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeJoin = StrokeJoin.round,
   );
-  // Hốc cây.
-  canvas.drawOval(
-    const Rect.fromLTWH(15, 172, 6, 9),
-    Paint()..color = const Color(0xFF2E241B),
-  );
-
-  final clusters = [
-    (const Offset(-4, 84), 20.0),
-    (const Offset(22, 72), 22.0),
-    (const Offset(50, 84), 19.0),
-    (const Offset(70, 96), 14.0),
-    (const Offset(8, 100), 15.0),
-    (const Offset(38, 100), 14.0),
-    (const Offset(30, 54), 15.0),
+  canvas.drawPath(trunkMass, fillPaint(const Color(0xFF3A2E24)));
+  // Ba thớ xoắn quanh nhau: mỗi thớ một nét thon lượn sóng lệch pha.
+  final strands = [
+    (
+      const [
+        Offset(4, 232),
+        Offset(12, 206),
+        Offset(6, 180),
+        Offset(16, 152),
+        Offset(28, 124),
+        Offset(-4, 96),
+      ],
+      11.0,
+    ),
+    (
+      const [
+        Offset(20, 232),
+        Offset(16, 204),
+        Offset(24, 178),
+        Offset(18, 154),
+        Offset(26, 128),
+        Offset(24, 76),
+      ],
+      10.0,
+    ),
+    (
+      const [
+        Offset(34, 232),
+        Offset(28, 204),
+        Offset(30, 178),
+        Offset(26, 152),
+        Offset(38, 118),
+        Offset(50, 98),
+      ],
+      10.0,
+    ),
   ];
-  // Mỗi chùm lá: mép răng cưa không đều (lá ô liu thuôn), không phải
-  // hình bầu dục trơn.
-  Path clump(Offset c, double r, double grow, int seed) {
-    final rnd = math.Random(seed);
-    final path = Path();
-    const n = 22;
-    for (var i = 0; i <= n; i++) {
-      final a = math.pi * 2 * i / n;
-      final rr =
-          (i.isEven ? r : r * 0.86) * (0.92 + rnd.nextDouble() * 0.16) + grow;
-      final p = c + Offset(math.cos(a) * rr * 1.1, math.sin(a) * rr * 0.8);
-      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+  for (final (pts, w) in strands) {
+    final strand = taperedStroke(
+      pts,
+      w,
+      peak: 0.05,
+      startWidth: 1.2,
+      endWidth: 0.3,
+      samples: 30,
+    );
+    shadedPath(
+      canvas,
+      strand,
+      _bark,
+      PartFrame.world,
+      shadow: 3,
+      highlight: 1.2,
+      outlineWidth: 1.4,
+    );
+    canvas.save();
+    canvas.clipPath(strand);
+    // Thớ vỏ chạy dọc theo thớ gỗ, xoắn theo thân.
+    for (final k in const [-0.25, 0.1, 0.35]) {
+      canvas.drawPath(
+        taperedStroke(
+          offsetLine(pts, w * k, taper: 0.6),
+          0.9,
+          peak: 0.5,
+          samples: 24,
+        ),
+        fillPaint(const Color(0xFF4B3D31)),
+      );
     }
-    return path..close();
+    canvas.drawPath(
+      taperedStroke(
+        offsetLine(pts, -w * 0.38, taper: 0.6),
+        1.2,
+        peak: 0.5,
+        samples: 24,
+      ),
+      fillPaint(lighten(_bark, 0.3).withValues(alpha: 0.7)),
+    );
+    canvas.restore();
+  }
+  // Vết sẹo cành gãy: mắt gỗ hình thấu kính tối, môi trên bắt sáng.
+  for (final (c, w) in const [
+    (Offset(10, 186), 5.0),
+    (Offset(31, 200), 4.0),
+    (Offset(24, 140), 3.6),
+  ]) {
+    canvas.drawPath(
+      taperedStroke([c - Offset(w, -1), c, c + Offset(w, 1)], 2.2, peak: 0.5),
+      fillPaint(const Color(0xFF2A2019)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        [c - Offset(w, 0.2), c - const Offset(0, 1.6), c + Offset(w, 0)],
+        1,
+        peak: 0.5,
+      ),
+      fillPaint(lighten(_bark, 0.3)),
+    );
+  }
+  canvas.drawOval(
+    const Rect.fromLTWH(15, 162, 7, 11),
+    fillPaint(const Color(0xFF1E1712)),
+  );
+  canvas.drawArc(
+    const Rect.fromLTWH(14, 161, 9, 13),
+    3.6,
+    2.4,
+    false,
+    Paint()
+      ..color = lighten(_bark, 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1,
+  );
+  // Cành nhỏ toả vào tán.
+  for (final pts in const [
+    [Offset(-4, 96), Offset(-10, 84), Offset(-6, 72)],
+    [Offset(24, 76), Offset(30, 62), Offset(28, 50)],
+    [Offset(50, 98), Offset(62, 92), Offset(72, 96)],
+    [Offset(28, 112), Offset(40, 92), Offset(46, 80)],
+    [Offset(6, 120), Offset(4, 106), Offset(12, 98)],
+  ]) {
+    shadedPath(
+      canvas,
+      taperedStroke(pts, 4, peak: 0.05, startWidth: 1, endWidth: 0.2),
+      _bark,
+      PartFrame.world,
+      shadow: 1.2,
+      highlight: 0.5,
+      outlineWidth: 1.1,
+    );
   }
 
-  // Viền ngoài chung cho cả tán.
-  final outlinePaint = Paint()..color = outlineC;
-  for (var i = 0; i < clusters.length; i++) {
-    final (c, r) = clusters[i];
-    canvas.drawPath(clump(c, r, 2, i), outlinePaint);
-  }
-  // Ba tầng lá: tối (lõi khuất) → giữa → sáng (đón nắng trên-trái).
-  final all = Path();
-  for (var i = 0; i < clusters.length; i++) {
-    final (c, r) = clusters[i];
-    all.addPath(clump(c, r, 0, i), Offset.zero);
-  }
-  canvas.drawPath(all, Paint()..color = _oliveDark);
-  canvas.save();
-  canvas.clipPath(all);
-  for (var i = 0; i < clusters.length; i++) {
-    final (c, r) = clusters[i];
-    canvas.drawPath(
-      clump(c + Offset(-r * 0.16, -r * 0.2), r * 0.82, 0, i + 20),
-      Paint()..color = _olive,
-    );
-    canvas.drawPath(
-      clump(c + Offset(-r * 0.36, -r * 0.38), r * 0.48, 0, i + 40),
-      Paint()..color = _oliveLit,
-    );
-  }
-  // Ánh phản xạ lạnh ở mép dưới tán (Gurney: bóng ngả lạnh dưới nắng ấm).
+  // Tán lá: mỗi chùm một khối tối thưa (lõi khuất) + lá thuôn rời mọc ra
+  // ngoài mép, sáng dần lên phía trên–trái.
+  const clusters = [
+    (Offset(-4, 82), 19.0),
+    (Offset(22, 66), 21.0),
+    (Offset(50, 82), 18.0),
+    (Offset(72, 96), 13.0),
+    (Offset(6, 104), 14.0),
+    (Offset(38, 102), 13.0),
+    (Offset(30, 46), 14.0),
+  ];
+  final rnd = math.Random(29);
+  final core = Path();
   for (final (c, r) in clusters) {
-    canvas.drawArc(
-      Rect.fromCenter(center: c, width: r * 2.1, height: r * 1.5),
-      0.4,
-      2.0,
-      false,
-      Paint()
-        ..color = const Color(0x557C98A8)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6,
-    );
+    // Lõi tối không đều: vài hình ellipse lệch nhau.
+    for (var k = 0; k < 4; k++) {
+      final o =
+          c +
+          Offset(
+            (rnd.nextDouble() - 0.5) * r * 0.8,
+            (rnd.nextDouble() - 0.5) * r * 0.5,
+          );
+      core.addOval(
+        Rect.fromCenter(
+          center: o,
+          width: r * (0.9 + rnd.nextDouble() * 0.5),
+          height: r * (0.6 + rnd.nextDouble() * 0.3),
+        ),
+      );
+    }
   }
-  canvas.restore();
-  // Lá thuôn bạc mặt dưới, xanh xám mặt trên (lá ô liu hai màu).
-  furStrokes(
-    canvas,
-    all,
-    const Color(0xFFCAD3A8),
-    dir: const Offset(1, -0.4),
-    count: 90,
-    length: 4,
-    width: 1.2,
-    seed: 3,
-  );
-  furStrokes(
-    canvas,
-    all,
-    const Color(0xFF3C4A2C),
-    dir: const Offset(-1, -0.5),
-    count: 70,
-    length: 4,
-    width: 1,
-    seed: 4,
-  );
-  // Quả ô liu tím đen.
-  final rnd = math.Random(3);
-  final fruit = Paint()..color = const Color(0xFF3A2C3E);
-  for (var i = 0; i < 12; i++) {
+  canvas.drawPath(core, fillPaint(_oliveDark));
+  // Lá: ba lượt từ trong ra ngoài, từ tối tới sáng.
+  final shades = [
+    darken(_olive, 0.18),
+    _olive,
+    const Color(0xFF9AAE78), // xanh xám mặt trên
+    const Color(0xFFC9D2AC), // bạc mặt dưới lá
+  ];
+  for (final (c, r) in clusters) {
+    for (var i = 0; i < 150; i++) {
+      final a = rnd.nextDouble() * math.pi * 2;
+      final d = math.sqrt(rnd.nextDouble()) * r * 1.0;
+      final p = c + Offset(math.cos(a) * d * 1.15, math.sin(a) * d * 0.8);
+      // Phía trên–trái đón nắng → tông sáng.
+      final light = ((c.dx - p.dx) * 0.6 + (c.dy - p.dy)) / r;
+      final idx = (1.4 + light * 1.4 + rnd.nextDouble() * 0.8).floor().clamp(
+        0,
+        3,
+      );
+      final ang = -0.6 + (rnd.nextDouble() - 0.5) * 2.2;
+      final len = 4.5 + rnd.nextDouble() * 2.5;
+      final dir = Offset(math.cos(ang), math.sin(ang));
+      canvas.drawPath(
+        taperedStroke(
+          [p - dir * len * 0.5, p + dir * len * 0.5],
+          2.1,
+          peak: 0.45,
+          startWidth: 0.1,
+          samples: 5,
+        ),
+        fillPaint(shades[idx]),
+      );
+    }
+  }
+  // Quả ô liu tím đen có chấm sáng.
+  final fruit = math.Random(3);
+  for (var i = 0; i < 16; i++) {
     final (c, r) = clusters[i % clusters.length];
-    final a = rnd.nextDouble() * math.pi * 2;
-    final d = rnd.nextDouble() * r * 0.7;
+    final a = fruit.nextDouble() * math.pi * 2;
+    final d = fruit.nextDouble() * r * 0.8;
+    final p = c + Offset(math.cos(a) * d * 1.1, math.sin(a) * d * 0.7);
+    canvas.drawOval(
+      Rect.fromCenter(center: p, width: 2.6, height: 3.2),
+      fillPaint(const Color(0xFF3A2C3E)),
+    );
     canvas.drawCircle(
-      c + Offset(math.cos(a) * d * 1.1, math.sin(a) * d * 0.7),
-      1.3,
-      fruit,
+      p + const Offset(-0.5, -0.6),
+      0.45,
+      fillPaint(const Color(0xAAFFFFFF)),
     );
   }
 }
