@@ -271,6 +271,11 @@ void _arm(
     skin,
     highlight: far ? 0 : 1.4,
   );
+  if (!far) {
+    // Đường cơ (sel-line màu da sẫm): bắp tay, cơ cẳng tay.
+    _muscle(canvas, shoulder, elbow, 0.2, 0.85, 3.2 * k, 1.6, look.skin);
+    _muscle(canvas, elbow, wrist, 0.08, 0.5, -3 * k, 1.4, look.skin);
+  }
   // Vòng tay vàng ánh kim gần cổ tay.
   final band = capsulePath(
     Offset.lerp(elbow, wrist, 0.72)!,
@@ -300,6 +305,37 @@ void _arm(
   }
 }
 
+/// Đường viền khối cơ dọc đoạn [a]→[b] (từ tỉ lệ [from] tới [to]), lệch
+/// sang một bên [offset] và phồng [bulge]: nét màu da sẫm, không dùng đen
+/// (sel-line), để tay chân có cơ thay vì ống tròn trơn.
+void _muscle(
+  Canvas canvas,
+  Offset a,
+  Offset b,
+  double from,
+  double to,
+  double offset,
+  double bulge,
+  Color skin,
+) {
+  final d = b - a;
+  if (d.distance < 1) return;
+  final n = Offset(-d.dy, d.dx) / d.distance;
+  final p0 = Offset.lerp(a, b, from)! + n * offset;
+  final p1 = Offset.lerp(a, b, to)! + n * offset;
+  final mid = Offset.lerp(p0, p1, 0.5)! + n * bulge * offset.sign;
+  canvas.drawPath(
+    Path()
+      ..moveTo(p0.dx, p0.dy)
+      ..quadraticBezierTo(mid.dx, mid.dy, p1.dx, p1.dy),
+    Paint()
+      ..color = darken(skin, 0.28).withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round,
+  );
+}
+
 void _leg(
   Canvas canvas,
   HeroLook look,
@@ -320,6 +356,23 @@ void _leg(
     shade(look.skin),
     highlight: far ? 0 : 1.4,
   );
+  if (!far) {
+    // Cơ đùi trước, bắp chân sau, xương bánh chè.
+    _muscle(canvas, hip, knee, 0.25, 0.85, 3.8 * k, 1.8, look.skin);
+    _muscle(canvas, knee, ankle, 0.1, 0.55, -3.2 * k, 1.8, look.skin);
+    final kd = (ankle - knee) / (ankle - knee).distance;
+    canvas.drawArc(
+      Rect.fromCircle(center: knee + kd * 1.5, radius: 2.6 * k),
+      math.atan2(kd.dy, kd.dx) + 1.9,
+      2.4,
+      false,
+      Paint()
+        ..color = darken(look.skin, 0.28).withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9
+        ..strokeCap = StrokeCap.round,
+    );
+  }
   // Dây sandal quấn chéo ống chân.
   final strap = Paint()
     ..color = shade(darken(HeroColors.sandal, 0.1))

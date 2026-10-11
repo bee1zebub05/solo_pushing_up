@@ -7,9 +7,9 @@ import 'vector_style.dart';
 /// bờm đỏ sẫm ngả đen ở ngọn như tranh cổ, mắt hổ phách rực.
 abstract final class LionColors {
   static const outline = Color(0xFF241510);
-  static const body = Color(0xFFD99A34);
-  static const bodyShade = Color(0xFFA9701F);
-  static const belly = Color(0xFFEFC67A);
+  static const body = Color(0xFFC99140);
+  static const bodyShade = Color(0xFF94652A);
+  static const belly = Color(0xFFE2C08A);
   static const mane = Color(0xFF5E2210);
   static const maneMid = Color(0xFF8E3714);
   static const maneLight = Color(0xFFC0611E);

@@ -9,7 +9,7 @@ import 'dart:ui';
 /// bóng và viền sáng làm bằng vùng cắt chồng lớp, phần nặng do GPU xử lý.
 abstract final class VectorStyle {
   static const outline = Color(0xFF2B1D16);
-  static const outlineWidth = 1.8;
+  static const outlineWidth = 1.4;
 
   /// Hướng tới nguồn sáng (toạ độ màn hình): trên, lệch trái.
   static const lightWorld = Offset(-0.55, -0.83);
