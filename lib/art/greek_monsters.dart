@@ -245,6 +245,11 @@ void paintSpartoi(
   final sway = math.sin(time * 1.8) * 1.2;
   final lunge = attack;
 
+  // Bóng tiếp đất, đậm dần khi trồi lên.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(6, 1), width: 52, height: 8),
+    _fill(Color.fromRGBO(48, 28, 48, 0.3 * rise)),
+  );
   canvas.save();
   // Phần dưới đất bị che bằng vùng cắt.
   canvas.clipRect(const Rect.fromLTRB(-80, -140, 80, 1));
@@ -455,6 +460,11 @@ void paintHarpy(
   const skin = Color(0xFFB9B3A2);
   final flap = math.sin(time * 6);
   final hover = math.sin(time * 3) * 3;
+  // Bóng mờ trên đất (đang bay): nhỏ và nhạt — báo độ cao.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(4, 1), width: 34 - hover, height: 6),
+    _fill(const Color(0x30402A50)),
+  );
   canvas.save();
   canvas.translate(0, -60 + hover);
   _withHurt(canvas, hurt, () {
