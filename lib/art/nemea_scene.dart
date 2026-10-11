@@ -569,12 +569,31 @@ void _temple(Canvas canvas, Offset base, double s) {
       Rect.fromLTRB(x + 0.9, top, x + 2.6, -8),
       Paint()..color = shadeC,
     );
-    canvas.drawLine(
-      Offset(x - 0.8, top + 1),
-      Offset(x - 0.8, -9),
+    // Rãnh dọc (fluting): nét tối mảnh + nét sáng kề bên.
+    for (final fx in const [-1.7, -0.6, 0.5]) {
+      canvas.drawLine(
+        Offset(x + fx, top + 1),
+        Offset(x + fx, -9),
+        Paint()
+          ..color = const Color(0x66A89A88)
+          ..strokeWidth = 0.35,
+      );
+      canvas.drawLine(
+        Offset(x + fx - 0.35, top + 1),
+        Offset(x + fx - 0.35, -9),
+        Paint()
+          ..color = const Color(0x55FFFFFF)
+          ..strokeWidth = 0.3,
+      );
+    }
+    // Vệt nước mưa ố dưới đầu cột.
+    canvas.drawRect(
+      Rect.fromLTRB(x - 2.6, top, x + 2.6, top + 6),
       Paint()
-        ..color = const Color(0x55A89A88)
-        ..strokeWidth = 0.4,
+        ..shader = Gradient.linear(Offset(0, top), Offset(0, top + 6), const [
+          Color(0x447D6F66),
+          Color(0x007D6F66),
+        ]),
     );
     if (broken) {
       // Mặt gãy lởm chởm và khúc cột đổ dưới chân.
@@ -591,12 +610,18 @@ void _temple(Canvas canvas, Offset base, double s) {
       canvas.drawRect(Rect.fromLTRB(x - 2.6, top - 4, x + 2.6, -8), outline);
     } else {
       canvas.drawRect(col, outline);
-      // Đầu cột (capital).
-      canvas.drawRect(
-        Rect.fromLTRB(x - 3.6, top - 2, x + 3.6, top),
-        Paint()..color = _marble,
-      );
-      canvas.drawRect(Rect.fromLTRB(x - 3.6, top - 2, x + 3.6, top), outline);
+      // Đầu cột Doric: đệm cong (echinus) + tấm vuông (abacus).
+      final echinus = Path()
+        ..moveTo(x - 2.6, top)
+        ..quadraticBezierTo(x - 3.8, top - 0.6, x - 3.8, top - 1.4)
+        ..lineTo(x + 3.8, top - 1.4)
+        ..quadraticBezierTo(x + 3.8, top - 0.6, x + 2.6, top)
+        ..close();
+      canvas.drawPath(echinus, Paint()..color = _marble);
+      canvas.drawPath(echinus, outline);
+      final abacus = Rect.fromLTRB(x - 4, top - 2.6, x + 4, top - 1.4);
+      canvas.drawRect(abacus, Paint()..color = _marble);
+      canvas.drawRect(abacus, outline);
     }
   }
 
@@ -607,11 +632,35 @@ void _temple(Canvas canvas, Offset base, double s) {
     const Rect.fromLTRB(-35, -43.5, 30, -42),
     Paint()..color = shadeC,
   );
-  for (var x = -32.0; x < 28; x += 5) {
-    canvas.drawRect(
-      Rect.fromLTWH(x, -47, 1.6, 3),
-      Paint()..color = const Color(0xFFB9AC98),
-    );
+  // Diềm Doric: triglyph (3 rãnh dọc) xen metope (ô phù điêu).
+  for (var i = 0; i < 13; i++) {
+    final x = -34.0 + i * 5;
+    if (i.isEven) {
+      for (final dx in const [0.6, 1.6, 2.6]) {
+        canvas.drawRect(
+          Rect.fromLTWH(x + dx, -47.4, 0.5, 3.4),
+          Paint()..color = const Color(0xFF9E907C),
+        );
+      }
+    } else {
+      // Phù điêu nhỏ: dáng người–quái vật vật lộn (gợi Mười hai kỳ công).
+      canvas.drawCircle(
+        Offset(x + 1.6, -46.4),
+        0.6,
+        Paint()..color = const Color(0xFFB9AC98),
+      );
+      canvas.drawLine(
+        Offset(x + 1.6, -45.8),
+        Offset(x + 1.2, -44.4),
+        Paint()
+          ..color = const Color(0xFFB9AC98)
+          ..strokeWidth = 0.6,
+      );
+      canvas.drawOval(
+        Rect.fromLTWH(x + 1.8, -46.2, 2.2, 1.4),
+        Paint()..color = const Color(0xFFC9BCA8),
+      );
+    }
   }
   canvas.drawRect(beam, outline);
 
@@ -634,7 +683,40 @@ void _temple(Canvas canvas, Offset base, double s) {
     ]),
     Paint()..color = const Color(0xFFE2D7C2),
   );
+  // Tượng trên trán tường (phần còn lại): Hercules ở giữa, sư tử nằm bên
+  // trái — khối tròn đơn giản ở xa, đổ bóng xuống nền tam giác.
+  final relief = Paint()..color = const Color(0xFFF2EADB);
+  final reliefShade = Paint()..color = const Color(0xFFB9AC98);
+  canvas.drawOval(const Rect.fromLTWH(-21, -52.6, 9, 3), reliefShade);
+  canvas.drawOval(const Rect.fromLTWH(-21.6, -53.2, 9, 3), relief);
+  canvas.drawCircle(const Offset(-12.8, -53.6), 1.4, relief);
+  canvas.drawRect(const Rect.fromLTWH(-4.4, -57.6, 2.6, 7.4), reliefShade);
+  canvas.drawRect(const Rect.fromLTWH(-4.9, -58, 2.6, 7.6), relief);
+  canvas.drawCircle(const Offset(-3.6, -59.2), 1.3, relief);
+  canvas.drawLine(
+    const Offset(-2.4, -56.4),
+    const Offset(1.2, -59),
+    relief..strokeWidth = 0.8,
+  );
   canvas.drawPath(pediment, outline);
+  // Vết ố phong hoá chảy từ dầm xuống, rêu ở bậc.
+  for (final x in const [-26.0, -6.0, 13.0]) {
+    canvas.drawRect(
+      Rect.fromLTRB(x, -42, x + 2.4, -30),
+      Paint()
+        ..shader = Gradient.linear(
+          const Offset(0, -42),
+          const Offset(0, -30),
+          const [Color(0x337D6F66), Color(0x007D6F66)],
+        ),
+    );
+  }
+  for (final x in const [-38.0, -20.0, 24.0, 36.0]) {
+    canvas.drawOval(
+      Rect.fromLTWH(x, -1.6, 4, 1.4),
+      Paint()..color = const Color(0x887A9A5A),
+    );
+  }
   // Viên đá rơi dưới chân đền.
   canvas.drawRect(const Rect.fromLTWH(38, -4, 7, 4), Paint()..color = _marble);
   canvas.drawRect(const Rect.fromLTWH(38, -4, 7, 4), outline);
