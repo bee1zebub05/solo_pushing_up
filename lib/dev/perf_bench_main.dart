@@ -109,7 +109,7 @@ class _BenchScreen extends StatefulWidget {
 
 class _BenchScreenState extends State<_BenchScreen>
     with SingleTickerProviderStateMixin {
-  final _game = BattleStageGame(boss: NemeaBossArt(), cloak: true);
+  BattleStageGame _game = BattleStageGame(boss: NemeaBossArt(), cloak: true);
   final _timings = <FrameTiming>[];
   late final Ticker _ticker = createTicker(_tick);
   double _t = 0;
@@ -126,11 +126,20 @@ class _BenchScreenState extends State<_BenchScreen>
       // Đo cấu hình đầy đủ ở cả hai hướng máy: ảnh chụp sẵn phụ thuộc độ
       // phân giải màn hình nên bộ nhớ/thời gian tô khác hẳn khi nằm ngang.
       // Mốc `BENCH phase <tên>` báo cho tool/bench_device.sh đo bộ nhớ.
-      for (final (name, orientation) in [
-        ('full', DeviceOrientation.portraitUp),
-        ('full-landscape', DeviceOrientation.landscapeLeft),
+      // Nemea đo cả hai hướng máy (ảnh chụp sẵn phụ thuộc độ phân giải);
+      // các boss khác đo dọc. Mốc `BENCH phase <tên>` báo cho
+      // tool/bench_device.sh đo bộ nhớ.
+      for (final (name, orientation, boss) in <(String, DeviceOrientation, BossArt?)>[
+        ('full', DeviceOrientation.portraitUp, null),
+        ('full-landscape', DeviceOrientation.landscapeLeft, null),
+        ('orochi', DeviceOrientation.portraitUp, OrochiBossArt()),
+        ('fafnir', DeviceOrientation.portraitUp, FafnirBossArt()),
+        ('thuy_tinh', DeviceOrientation.portraitUp, ThuyTinhBossArt()),
       ]) {
         await SystemChrome.setPreferredOrientations([orientation]);
+        if (boss != null) {
+          setState(() => _game = BattleStageGame(boss: boss, cloak: true));
+        }
         setState(() => _status = 'Đo cấu hình $name…');
         await Future<void>.delayed(const Duration(seconds: 2));
         _timings.clear();
@@ -206,7 +215,7 @@ class _BenchScreenState extends State<_BenchScreen>
         builder: (context, box) {
           final stage = AspectRatio(
             aspectRatio: 400 / 260,
-            child: GameWidget(game: _game),
+            child: GameWidget(key: ObjectKey(_game), game: _game),
           );
           final status = Padding(
             padding: const EdgeInsets.all(16),
