@@ -87,7 +87,8 @@ class _HeroPreviewPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = background);
+    canvas.clipRect(Offset.zero & size);
+    _paintBackdrop(canvas, size);
     // Vùng nội dung trên sân khấu: đứng ở x≈110, chống đẩy trải 30–215.
     final content = pushups
         ? const Rect.fromLTRB(10, 105, 250, 230)
@@ -100,6 +101,29 @@ class _HeroPreviewPainter extends CustomPainter {
     canvas.translate(size.width / 2, size.height / 2);
     canvas.scale(scale);
     canvas.translate(-content.center.dx, -content.center.dy);
+    // Bệ đá cẩm thạch dưới chân: mặt trên sáng, thành bệ tối, mép viền.
+    final plinthTop = Rect.fromCenter(
+      center: Offset(content.center.dx, 223),
+      width: content.width * 1.25,
+      height: 14,
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(plinthTop.left, 223, plinthTop.right, 240),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [const Color(0xFFB8AC98), background],
+        ).createShader(Rect.fromLTRB(0, 223, 1, 240)),
+    );
+    canvas.drawOval(plinthTop, Paint()..color = const Color(0xFFD9CFBE));
+    canvas.drawOval(
+      plinthTop,
+      Paint()
+        ..color = const Color(0xFF8E8070)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
     // Bóng dưới chân.
     canvas.drawOval(
       Rect.fromCenter(
@@ -124,6 +148,53 @@ class _HeroPreviewPainter extends CustomPainter {
       time: seconds,
     );
     canvas.restore();
+  }
+
+  /// Phông xem trước: nền sẫm có quầng nắng ấm sau lưng nhân vật và hai
+  /// cột Doric mờ hai bên (như đứng trong đền).
+  void _paintBackdrop(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..color = background);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(0, -0.2),
+          radius: 0.8,
+          colors: [
+            const Color(0xFFE8B83A).withValues(alpha: 0.28),
+            const Color(0xFFE8B83A).withValues(alpha: 0),
+          ],
+        ).createShader(rect),
+    );
+    final column = Paint()..color = const Color(0x22F3ECDC);
+    final flute = Paint()
+      ..color = const Color(0x14000000)
+      ..strokeWidth = 1;
+    final w = size.width * 0.07;
+    for (final cx in [size.width * 0.12, size.width * 0.88]) {
+      canvas.drawRect(
+        Rect.fromLTWH(cx - w / 2, size.height * 0.08, w, size.height),
+        column,
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(
+          cx - w * 0.75,
+          size.height * 0.04,
+          w * 1.5,
+          size.height * 0.04,
+        ),
+        column,
+      );
+      for (var i = 1; i < 3; i++) {
+        final x = cx - w / 2 + w * i / 3;
+        canvas.drawLine(
+          Offset(x, size.height * 0.08),
+          Offset(x, size.height),
+          flute,
+        );
+      }
+    }
   }
 
   @override
