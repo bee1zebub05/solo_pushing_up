@@ -20,4 +20,14 @@ void main() {
     expect(find.byType(BossPortrait), findsNWidgets(labors.length));
     expect(tester.takeException(), isNull);
   });
+
+  test('mỗi loại quái có khoá chân dung riêng (bộ đệm không lẫn hình)', () {
+    final stages = labors.firstWhere((l) => l.id == 'nemea').allStages;
+    final keys = {
+      for (final s in stages)
+        if (bossArtFor(s.enemy) case final art?) s.enemy.name: art.artKey,
+    };
+    // Khác loại quái → khác khoá.
+    expect(keys.values.toSet().length, keys.length);
+  });
 }

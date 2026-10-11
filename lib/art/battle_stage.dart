@@ -101,6 +101,10 @@ abstract class BossArt {
 
   /// Tâm và bề rộng khung chân dung (thẻ kỳ công ở trang chủ): mặt boss.
   Vector2 get portraitFocus => target;
+
+  /// Khoá phân biệt hình boss/quái (bộ đệm chân dung): mặc định theo lớp;
+  /// lớp vẽ nhiều loại quái phải trả khoá riêng cho từng loại.
+  Object get artKey => runtimeType;
   double get portraitView => 96;
 
   /// Ánh sáng chủ đạo của cảnh, phủ lên toàn sân khấu để thống nhất tông.

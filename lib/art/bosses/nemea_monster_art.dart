@@ -53,6 +53,9 @@ class NemeaMonsterArt extends NemeaBossArt {
   Vector2 get portraitFocus => target;
 
   @override
+  Object get artKey => (runtimeType, kind);
+
+  @override
   double get portraitView => 110;
 
   // Theo dõi thay đổi để diễn hoạt cảnh (Spartoi trồi lại, Harpy vừa cướp).

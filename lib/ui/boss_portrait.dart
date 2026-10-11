@@ -28,7 +28,7 @@ class _PortraitPainter extends CustomPainter {
   /// Ảnh chân dung đã chụp, theo loại boss và cỡ điểm ảnh. Impeller không
   /// tự cache hình vector: không có ảnh này thì mỗi khung cuộn danh sách
   /// GPU phải tô lại cả phông + boss của mọi thẻ.
-  static final _cache = <(Type, int), ui.Image>{};
+  static final _cache = <(Object, int), ui.Image>{};
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -37,7 +37,7 @@ class _PortraitPainter extends CustomPainter {
     final dpr =
         ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 3;
     final px = (side * dpr).ceil();
-    final image = _cache.putIfAbsent((art.runtimeType, px), () {
+    final image = _cache.putIfAbsent((art.artKey, px), () {
       final recorder = ui.PictureRecorder();
       _paintPortrait(Canvas(recorder), px.toDouble());
       final picture = recorder.endRecording();
@@ -79,6 +79,5 @@ class _PortraitPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PortraitPainter old) =>
-      old.art.runtimeType != art.runtimeType;
+  bool shouldRepaint(_PortraitPainter old) => old.art.artKey != art.artKey;
 }
