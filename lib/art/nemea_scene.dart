@@ -1613,18 +1613,30 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
 
   // Lá ô liu lấp lánh khi gió thổi qua tán.
   final shimmer = Paint()..color = const Color(0xFFE4EAC8);
+  final leafLive = 1 - dust.clamp(0.0, 1.0);
   for (var i = 0; i < 6; i++) {
     final phase = math.sin(time * 1.8 + i * 2.1);
     if (phase < 0.55) continue;
     final p = Offset(-2 + i * 13.0, 70 + (i % 3) * 12.0);
     canvas.drawOval(
       Rect.fromCenter(center: p, width: 3.6, height: 1.2),
-      shimmer..color = Color.fromRGBO(228, 234, 200, (phase - 0.55) * 2.2),
+      shimmer
+        ..color = Color.fromRGBO(
+          228,
+          234,
+          200,
+          (phase - 0.55) * 2.2 * leafLive,
+        ),
     );
   }
 
+  // Cỏ ngả xám theo bụi Trì Trệ (khớp màu với phông đã phủ bụi).
   final grass = Paint()
-    ..color = const Color(0xFF6E8B45)
+    ..color = Color.lerp(
+      const Color(0xFF6E8B45),
+      const Color(0xFF85808A),
+      (dust * 1.1).clamp(0.0, 1.0),
+    )!
     ..strokeWidth = 1.6
     ..strokeCap = StrokeCap.round;
   final rnd = math.Random(7);
