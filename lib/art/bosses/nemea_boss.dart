@@ -93,16 +93,17 @@ class NemeaBossArt extends BossArt {
     // Camera trôi chậm: lớp càng xa càng lệch so với nhân vật (2,5D).
     final drift = math.sin(time * 0.21) * 5 + math.sin(time * 0.083) * 3;
     _drift = drift;
-    // Bụi: mỗi tầng vẽ ảnh sạch, rồi vẽ lại chính ảnh đó qua bộ lọc mất
-    // màu với độ đục = lượng bụi, thêm sương/mạng nhện vẽ thẳng.
+    // Bụi: mỗi tầng vẽ ảnh sạch MỘT lần qua bộ lọc mất màu nội suy theo
+    // lượng bụi, thêm sương/mạng nhện vẽ thẳng.
     final dust = StageQuality.dust && _dust > 0.01 ? _dust : 0.0;
     for (final (layer, image) in _layers) {
       canvas.save();
       canvas.translate(drift * layer.parallax, 0);
-      image.paint(canvas);
       if (dust > 0) {
-        image.paint(canvas, opacity: dust, colorFilter: nemeaDustFilter);
+        image.paint(canvas, colorFilter: nemeaDustFilterAt(dust));
         paintNemeaDustExtras(canvas, layer, opacity: dust);
+      } else {
+        image.paint(canvas);
       }
       canvas.restore();
     }

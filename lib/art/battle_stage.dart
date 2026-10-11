@@ -751,7 +751,7 @@ class _BlockedBadge extends PositionComponent {
     canvas.rotate(-0.12);
     canvas.scale(0.4 + 0.6 * pop);
     canvas.saveLayer(
-      const Rect.fromLTRB(-60, -60, 60, 60),
+      Rect.fromLTRB(-_label.width - 60, -60, _label.width + 60, 60),
       Paint()..color = Color.fromRGBO(0, 0, 0, alpha.clamp(0.0, 1.0)),
     );
     // Khiên thép.
