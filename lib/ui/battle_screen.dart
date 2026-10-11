@@ -15,6 +15,7 @@ import '../rep/pushup_counter.dart';
 import '../session/workout_session.dart';
 import '../sim/pose_simulator.dart';
 import 'depth_bar.dart';
+import 'greek_ui.dart';
 import 'pill.dart';
 import 'pose_source_view.dart';
 
@@ -268,7 +269,7 @@ class _BattleScreenState extends State<BattleScreen>
     return _guardExit(
       finished,
       Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: GreekUi.background,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, box) => _buildPlain(box, finished),
@@ -365,9 +366,11 @@ class _BattleScreenState extends State<BattleScreen>
               child: Text(
                 widget.enemy.name,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: GreekUi.ink,
                   fontSize: 22,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4)],
                 ),
               ),
             ),
@@ -384,16 +387,29 @@ class _BattleScreenState extends State<BattleScreen>
           ],
         ),
         const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: _battle.hpFraction),
-            duration: const Duration(milliseconds: 300),
-            builder: (context, value, _) => LinearProgressIndicator(
-              value: value,
-              minHeight: 18,
-              backgroundColor: Colors.white12,
-              color: Color.lerp(Colors.red, Colors.lightGreen, value),
+        // Thanh máu khung đồng: viền vàng, rãnh tối, máu chuyển đỏ→vàng→lục
+        // có vệt sáng trên (khối trụ), vạch chia mỗi 10 %.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: GreekUi.gold, width: 1.5),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x88000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: _battle.hpFraction),
+              duration: const Duration(milliseconds: 300),
+              builder: (context, value, _) => SizedBox(
+                height: 18,
+                child: CustomPaint(painter: _HpBarPainter(value)),
+              ),
             ),
           ),
         ),
@@ -499,7 +515,7 @@ class _BattleScreenState extends State<BattleScreen>
       child: _buildTopBar(),
     );
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: GreekUi.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, box) {
@@ -759,4 +775,53 @@ class _BattleScreenState extends State<BattleScreen>
       ),
     );
   }
+}
+
+class _HpBarPainter extends CustomPainter {
+  _HpBarPainter(this.value);
+
+  final double value;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Offset.zero & size;
+    canvas.drawRect(r, Paint()..color = const Color(0xFF241A14));
+    final v = value.clamp(0.0, 1.0);
+    final fill = Rect.fromLTWH(0, 0, size.width * v, size.height);
+    final base = v > 0.5
+        ? Color.lerp(
+            const Color(0xFFE8B83A),
+            const Color(0xFF7CB342),
+            (v - 0.5) * 2,
+          )!
+        : Color.lerp(const Color(0xFFD32F2F), const Color(0xFFE8B83A), v * 2)!;
+    canvas.drawRect(
+      fill,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.lerp(base, Colors.white, 0.35)!,
+            base,
+            Color.lerp(base, Colors.black, 0.35)!,
+          ],
+          stops: const [0, 0.45, 1],
+        ).createShader(r),
+    );
+    final tick = Paint()
+      ..color = const Color(0x66000000)
+      ..strokeWidth = 1;
+    for (var i = 1; i < 10; i++) {
+      final x = size.width * i / 10;
+      canvas.drawLine(
+        Offset(x, size.height * 0.25),
+        Offset(x, size.height * 0.75),
+        tick,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HpBarPainter old) => old.value != value;
 }
