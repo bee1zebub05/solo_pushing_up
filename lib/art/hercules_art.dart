@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'costume_art.dart';
 import 'vector_style.dart';
 
 /// Hercules: linh hồn huyền thoại dẫn đường cho người kế nhiệm (cảnh mở đầu
@@ -206,36 +207,17 @@ void paintHercules(
         ..strokeWidth = 1.2
         ..strokeCap = StrokeCap.round,
     );
-    final foot = ankle + const Offset(-4, 4);
-    final sandal = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: foot + const Offset(-6, 5),
-            width: 28,
-            height: 8,
-          ),
-          const Radius.circular(4),
-        ),
-      );
-    shadedPath(
+    paintGreekSandal(
       canvas,
-      sandal,
-      const Color(0xFF6B4A2C),
-      PartFrame.world,
-      shadow: 2,
+      knee: knee,
+      ankle: ankle,
+      facingRight: false,
+      skin: c,
+      scale: 1.95,
+      // Dây buộc theo đúng bề rộng ống chân đã vẽ (scale chân / scale dép).
+      shin: HumanAnatomy.shin.scaled(_hThighScale / 1.95),
+      far: c != skin,
     );
-    final strap = Paint()
-      ..color = const Color(0xFF4A3220)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 3; i++) {
-      canvas.drawLine(
-        foot + Offset(-8, -6.0 - i * 8),
-        foot + Offset(8, -2.0 - i * 8),
-        strap,
-      );
-    }
   }
 
   // Khố chiton ngắn trắng, viền vàng (để lộ đùi và cơ bụng).
@@ -257,13 +239,6 @@ void paintHercules(
     );
   }
   canvas.drawLine(
-    const Offset(-30, -128),
-    const Offset(30, -128),
-    Paint()
-      ..color = const Color(0xFF6B4A2C)
-      ..strokeWidth = 4,
-  );
-  canvas.drawLine(
     const Offset(-31, -97),
     const Offset(31, -97),
     Paint()
@@ -272,6 +247,8 @@ void paintHercules(
   );
 
   _heroicTorso(canvas, skin, breath);
+  // Thắt lưng da khoá vàng ở cạp khố (đè lên mép dưới thân).
+  paintBelt(canvas, const Offset(-29, -127), const Offset(29, -127), height: 6);
 
   // Cổ và đầu.
   shadedChain(canvas, [
@@ -333,14 +310,16 @@ void paintHercules(
       ),
     muscleLine,
   );
-  // Vòng tay vàng.
-  canvas.drawLine(
-    Offset.lerp(elbow, hand, 0.55)! + const Offset(-2, -7),
-    Offset.lerp(elbow, hand, 0.55)! + const Offset(4, 7),
-    Paint()
-      ..color = gold
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round,
+  // Vòng tay vàng ôm khối cẳng tay gần cổ tay.
+  paintLimbBand(
+    canvas,
+    elbow,
+    hand,
+    HumanAnatomy.forearm,
+    t0: 0.66,
+    t1: 0.84,
+    scale: _hScale,
+    facing: _left,
   );
   // Bàn tay xoè khi nói (lòng tay hướng về người chơi), chỉ khi im lặng.
   shadedHand(
