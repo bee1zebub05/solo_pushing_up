@@ -588,9 +588,41 @@ void _leg(
     shade(look.skin),
     scale: k,
     highlight: far ? 0 : 1.4,
-    definition: far ? 0 : 0.55,
+    // Chân: cơ đùi trước và bắp chân là khối lớn nhất cơ thể — nổi rõ hơn
+    // tay (cache theo tư thế nên không tốn mỗi khung).
+    definition: far ? 0 : 0.85,
   );
   if (!far) {
+    // Bóng lõi mặt sau đùi và bắp chân (khối tròn quay khỏi ánh sáng).
+    final thighDir = (knee - hip) / (knee - hip).distance;
+    final back = Offset(-thighDir.dy, thighDir.dx);
+    final shinDir = (ankle - knee) / (ankle - knee).distance;
+    final shinBack = Offset(-shinDir.dy, shinDir.dx);
+    final core = coreShadeOf(look.skin).withValues(alpha: 0.3);
+    canvas.drawPath(
+      taperedStroke(
+        [
+          hip + back * 5 * k + thighDir * 4,
+          Offset.lerp(hip, knee, 0.5)! + back * 6.4 * k,
+          knee + back * 3.4 * k,
+        ],
+        2.4 * k,
+        peak: 0.5,
+      ),
+      fillPaint(core),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        [
+          knee + shinBack * 3.6 * k + shinDir * 3,
+          Offset.lerp(knee, ankle, 0.35)! + shinBack * 5 * k,
+          ankle + shinBack * 2 * k,
+        ],
+        2.2 * k,
+        peak: 0.35,
+      ),
+      fillPaint(core),
+    );
     // Xương bánh chè (rãnh cơ tay chân do vector_anatomy vẽ).
     final kd = (ankle - knee) / (ankle - knee).distance;
     canvas.drawArc(
