@@ -98,7 +98,40 @@ class NemeaBossArt extends BossArt {
       canvas.restore();
     }
     paintNemeaAmbient(canvas, time: time, dust: _dust);
+    _paintCleansing(canvas, time);
     _paintFlock(canvas, time, battle.bossHp);
+  }
+
+  /// Lúc bụi vừa tan hết: vòng ánh sáng vàng nở ra từ đền (thung lũng được
+  /// giải phóng). Chỉ diễn một lần mỗi trận.
+  double? _cleansedAt;
+
+  void _paintCleansing(Canvas canvas, double time) {
+    if (_dust < 0.04) _cleansedAt ??= time;
+    if (_dust > 0.3) _cleansedAt = null; // trận mới
+    final t0 = _cleansedAt;
+    if (t0 == null) return;
+    final t = (time - t0) / 1.6;
+    if (t > 1) return;
+    const temple = Offset(196, 118);
+    final fade = 1 - t;
+    canvas.drawCircle(
+      temple,
+      20 + 260 * t,
+      Paint()
+        ..color = Color.fromRGBO(255, 236, 170, 0.8 * fade)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6 * fade + 1,
+    );
+    canvas.drawCircle(
+      temple,
+      30 + 60 * t,
+      Paint()
+        ..shader = Gradient.radial(temple, 30 + 60 * t, [
+          Color.fromRGBO(255, 250, 220, 0.6 * fade),
+          const Color(0x00FFF0C0),
+        ]),
+    );
   }
 
   void _overlay(Canvas canvas, Picture picture, Paint alpha) {

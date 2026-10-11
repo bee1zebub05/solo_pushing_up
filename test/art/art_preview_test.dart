@@ -340,6 +340,23 @@ void main() {
     });
   });
 
+  testWidgets('Nemea: thung lũng được giải phóng (vòng sáng từ đền)', (
+    tester,
+  ) async {
+    final art = NemeaBossArt();
+    final battle = StageBattleState()..bossHp = 0;
+    var t = 0.0;
+    // Bụi tan hết sau ~1,2 giây; chụp lúc vòng sáng đang nở.
+    for (; t < 1.6; t += 1 / 30) {
+      art.paintScene(ui.Canvas(ui.PictureRecorder()), t, battle);
+    }
+    await render(tester, 'nemea_cleansing', (c) {
+      art.paintStageBackdrop(c);
+      art.paintScene(c, t + 0.0, battle);
+      paintHero(c, HeroPose.victory(), cloak: true, joy: 1);
+    });
+  });
+
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {
     await render(
       tester,
