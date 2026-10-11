@@ -422,65 +422,153 @@ void _curlRows(
 /// Da sư tử Nemea vắt trên đầu chuỳ: đầu sư tử ở trên, tấm da rủ xuống,
 /// chân trước có móng đung đưa nhẹ.
 void _peltOnClub(Canvas canvas, double time) {
+  final sway = math.sin(time * 1.4) * 1.5;
+  // Da sư tử vắt trên chuỳ: chụp sẵn, mỗi khung chỉ đung đưa quanh đỉnh.
+  const pivot = Offset(49, -146);
+  canvas.save();
+  canvas.translate(pivot.dx, pivot.dy);
+  canvas.rotate(sway * 0.012);
+  canvas.translate(-pivot.dx, -pivot.dy);
+  _peltImage.paint(canvas);
+  canvas.restore();
+}
+
+final _peltImage = RasterLayer(
+  _paintPelt,
+  bounds: const Rect.fromLTRB(14, -176, 86, -52),
+  resolution: 1.6,
+);
+
+/// Tấm da Sư tử Nemea vắt qua đầu chuỳ (tượng Farnese): da rủ thành nếp
+/// võng theo trọng lực giữa hai chân trước buông thõng, lông chảy dọc;
+/// đầu sư tử gục trên đỉnh chuỳ, bờm bằng lọn lông (vector_texture).
+void _paintPelt(Canvas canvas) {
   const hide = Color(0xFFC99140);
   const mane = Color(0xFF8E3714);
-  final sway = math.sin(time * 1.4) * 1.5;
   final skin = Path()
     ..moveTo(36, -138)
     ..quadraticBezierTo(48, -146, 62, -138)
-    ..quadraticBezierTo(72, -110, 68 + sway, -78)
-    ..lineTo(72 + sway, -62)
-    ..lineTo(64 + sway, -64)
+    ..quadraticBezierTo(72, -110, 68, -78)
+    ..lineTo(72, -62)
+    ..lineTo(64, -64)
     ..lineTo(60, -76)
     ..quadraticBezierTo(52, -70, 44, -78)
-    ..lineTo(40 - sway, -64)
-    ..lineTo(32 - sway, -66)
+    ..lineTo(40, -64)
+    ..lineTo(32, -66)
     ..lineTo(36, -82)
     ..quadraticBezierTo(30, -110, 36, -138)
     ..close();
   shadedPath(canvas, skin, hide, PartFrame.world, shadow: 4);
+  canvas.save();
+  canvas.clipPath(skin);
+  // Nếp rủ: da võng giữa hai điểm treo (đỉnh chuỳ) → các nếp chữ U chảy
+  // xuống; rãnh tối + sống sáng.
+  final crease = Paint()..color = darken(hide, 0.35).withValues(alpha: 0.8);
+  final ridge = Paint()..color = lighten(hide, 0.3).withValues(alpha: 0.75);
+  for (final (x, top, len) in const [
+    (41.0, -128.0, 46.0),
+    (49.0, -132.0, 54.0),
+    (58.0, -128.0, 44.0),
+    (64.0, -118.0, 30.0),
+  ]) {
+    final pts = [
+      Offset(x, top),
+      Offset(x - 1.5, top + len * 0.5),
+      Offset(x + 0.5, top + len),
+    ];
+    canvas.drawPath(taperedStroke(pts, 2.6, peak: 0.55), crease);
+    canvas.drawPath(
+      taperedStroke(
+        [for (final p in pts) p + const Offset(-2.4, 0)],
+        1.6,
+        peak: 0.55,
+      ),
+      ridge,
+    );
+  }
+  // Mặt trong da (sẫm, lộ ra ở mép võng giữa hai chân).
+  canvas.drawPath(
+    Path()
+      ..moveTo(44, -78)
+      ..quadraticBezierTo(52, -70, 60, -76)
+      ..quadraticBezierTo(52, -74, 44, -78)
+      ..close(),
+    fillPaint(const Color(0xFF7A4A2A)),
+  );
+  canvas.restore();
   furStrokes(
     canvas,
     skin,
     darken(hide, 0.32),
     dir: const Offset(0.05, 1),
-    count: 40,
+    count: 60,
     length: 7,
     width: 0.9,
     seed: 21,
   );
-  final claw = Paint()
-    ..color = const Color(0xFFFFF4DC)
-    ..strokeWidth = 1.3
-    ..strokeCap = StrokeCap.round;
-  for (final p in [Offset(68 + sway, -62), Offset(36 - sway, -65)]) {
-    for (final dx in [-2.4, 0.0, 2.4]) {
-      canvas.drawLine(p + Offset(dx, 0), p + Offset(dx - 0.8, 3.6), claw);
+  // Chân trước buông thõng: bàn chân có đệm, móng cong.
+  for (final p in const [Offset(68, -62), Offset(36, -65)]) {
+    shadedPath(
+      canvas,
+      Path()..addOval(
+        Rect.fromCenter(center: p + const Offset(0, -1), width: 10, height: 6),
+      ),
+      hide,
+      PartFrame.world,
+      shadow: 1.5,
+      highlight: 0.6,
+      outlineWidth: 1.1,
+    );
+    for (final dx in [-3.0, 0.0, 3.0]) {
+      canvas.drawPath(
+        taperedStroke(
+          [
+            p + Offset(dx, 1),
+            p + Offset(dx - 0.6, 4),
+            p + Offset(dx - 1.6, 5.4),
+          ],
+          1.4,
+          peak: 0.1,
+          startWidth: 1,
+        ),
+        fillPaint(const Color(0xFFFFF4DC)),
+      );
     }
   }
-  // Bờm quanh đầu sư tử trên đỉnh chuỳ.
+  // Bờm quanh đầu sư tử trên đỉnh chuỳ: lọn lông rủ xuống hai bên.
   const c = Offset(49, -146);
-  final tufts = Path();
-  for (var i = 0; i < 10; i++) {
-    final a = math.pi * (0.9 + 1.2 * i / 9);
-    final dir = Offset(math.cos(a), math.sin(a));
-    final n = Offset(-dir.dy, dir.dx);
-    final base = c + dir * 9;
-    final tip = base + dir * (10 + (i.isEven ? 3 : 0));
-    tufts
-      ..moveTo(base.dx + n.dx * 4, base.dy + n.dy * 4)
-      ..quadraticBezierTo(tip.dx + n.dx, tip.dy + n.dy, tip.dx, tip.dy)
-      ..quadraticBezierTo(
-        base.dx - n.dx,
-        base.dy - n.dy,
-        base.dx - n.dx * 4,
-        base.dy - n.dy * 4,
-      )
-      ..close();
-  }
-  tufts.addOval(Rect.fromCircle(center: c, radius: 10));
-  shadedPath(canvas, tufts, mane, PartFrame.world, shadow: 2.5);
-  // Đầu sư tử nghiêng, mắt nhắm, nanh.
+  final locks = buildLocks(
+    center: c,
+    rnd: math.Random(41),
+    r0: 6,
+    length: 16,
+    width: 6,
+    count: 14,
+    from: math.pi * 0.85,
+    to: math.pi * 2.15,
+    drift: const Offset(0, 0.3),
+    wave: 3,
+  );
+  shadedPath(
+    canvas,
+    locks.mass,
+    mane,
+    PartFrame.world,
+    shadow: 2.5,
+    outlineWidth: 1.4,
+  );
+  canvas.save();
+  canvas.clipPath(locks.mass);
+  canvas.drawPath(
+    locks.creases,
+    fillPaint(darken(mane, 0.45).withValues(alpha: 0.8)),
+  );
+  canvas.drawPath(
+    locks.sheens,
+    fillPaint(lighten(mane, 0.38).withValues(alpha: 0.75)),
+  );
+  canvas.restore();
+  // Đầu sư tử gục, mắt nhắm, nanh trắng; mõm và mũi sẫm.
   final head = Path()
     ..moveTo(40, -150)
     ..quadraticBezierTo(48, -158, 58, -152)
@@ -489,6 +577,14 @@ void _peltOnClub(Canvas canvas, double time) {
     ..quadraticBezierTo(38, -142, 40, -150)
     ..close();
   shadedPath(canvas, head, hide, PartFrame.world, shadow: 2);
+  canvas.drawOval(
+    const Rect.fromLTWH(44, -143, 10, 5),
+    fillPaint(const Color(0xFFE2C08A)),
+  );
+  canvas.drawOval(
+    const Rect.fromLTWH(47, -144, 4, 2.2),
+    fillPaint(const Color(0xFF3A1E14)),
+  );
   canvas.drawPath(
     Path()
       ..moveTo(44, -148)
