@@ -230,6 +230,7 @@ class BattleStageGame extends FlameGame {
       return;
     }
     _boss.hurt = 1;
+    world.add(_ImpactFlash(critical: critical)..position = boss.target.clone());
     _boss.add(
       MoveByEffect(
         Vector2(critical ? 10 : 6, 0),
@@ -917,5 +918,64 @@ class _RewardBanner extends Component {
       _label.paint(canvas, c - Offset(_label.width / 2, _label.height / 2));
     }
     canvas.restore();
+  }
+}
+
+/// Khoảnh khắc trúng đòn (impact frame): vòng chấn động nở ra và các tia
+/// sáng toả quanh điểm trúng; chí mạng to hơn, màu lửa.
+class _ImpactFlash extends PositionComponent {
+  _ImpactFlash({required this.critical});
+
+  final bool critical;
+  static const _life = 0.28;
+  double _age = 0;
+
+  @override
+  void update(double dt) {
+    _age += dt;
+    if (_age >= _life) removeFromParent();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final t = (_age / _life).clamp(0.0, 1.0);
+    final e = Curves.easeOut.transform(t);
+    final size = critical ? 46.0 : 30.0;
+    final color = critical ? const Color(0xFFFF8A50) : const Color(0xFFFFF3C4);
+    final fade = 1 - t;
+    // Vòng chấn động.
+    canvas.drawCircle(
+      Offset.zero,
+      size * (0.3 + 0.9 * e),
+      Paint()
+        ..color = color.withValues(alpha: 0.9 * fade)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4 * fade + 0.5,
+    );
+    // Lõi loé trắng (chỉ vài khung đầu).
+    if (t < 0.35) {
+      canvas.drawCircle(
+        Offset.zero,
+        size * 0.45 * (1 - t),
+        Paint()..color = Color.fromRGBO(255, 255, 255, 0.9 * (1 - t / 0.35)),
+      );
+    }
+    // Tia sáng toả nhọn.
+    final ray = Paint()..color = color.withValues(alpha: fade);
+    for (var i = 0; i < 8; i++) {
+      final a = i * math.pi / 4 + 0.3;
+      final dir = Offset(math.cos(a), math.sin(a));
+      final n = Offset(-dir.dy, dir.dx);
+      final inner = dir * size * (0.35 + 0.6 * e);
+      final outer = dir * size * (0.6 + (i.isEven ? 0.9 : 0.6) * e);
+      canvas.drawPath(
+        Path()
+          ..moveTo(inner.dx + n.dx * 2, inner.dy + n.dy * 2)
+          ..lineTo(outer.dx, outer.dy)
+          ..lineTo(inner.dx - n.dx * 2, inner.dy - n.dy * 2)
+          ..close(),
+        ray,
+      );
+    }
   }
 }

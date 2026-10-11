@@ -61,6 +61,8 @@ void main() {
     game.hit(critical: true);
     await run(const Duration(milliseconds: 120));
     await shot('stage_bolt');
+    await run(const Duration(milliseconds: 150));
+    await shot('stage_impact');
     await run(const Duration(milliseconds: 300));
 
     game.blocked();
