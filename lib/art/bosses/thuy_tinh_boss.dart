@@ -746,18 +746,19 @@ class ThuyTinhBossArt extends BossArt {
     // gò má, hàm vuông.
     final face = smoothPath(
       const [
-        Offset(334, 50),
-        Offset(322, 45),
-        Offset(306, 47),
-        Offset(299, 54),
-        Offset(296, 58),
-        Offset(289, 66),
+        Offset(334, 48),
+        Offset(322, 43),
+        Offset(307, 45),
+        Offset(300, 51),
+        Offset(299, 56),
+        Offset(290, 66),
         Offset(296, 69),
-        Offset(297, 74),
-        Offset(302, 80),
-        Offset(316, 84),
-        Offset(330, 78),
-        Offset(337, 64),
+        Offset(296, 75),
+        Offset(299, 84),
+        Offset(310, 89),
+        Offset(324, 86),
+        Offset(334, 74),
+        Offset(338, 60),
       ],
       closed: true,
       tension: 0.08,
@@ -775,14 +776,57 @@ class ThuyTinhBossArt extends BossArt {
     // Gò má và hốc mắt (mặt phẳng Loomis), quầng mắt phát sáng gradient.
     canvas.save();
     canvas.clipPath(face);
+    final core = coreShadeOf(ThuyTinhColors.skin);
+    // Bóng dưới gò má xuống góc hàm, gờ mày dô, rãnh mũi–má, cơ thái dương.
     canvas.drawPath(
       taperedStroke(const [
         Offset(306, 72),
-        Offset(314, 76),
-        Offset(324, 72),
-      ], 3),
-      fillPaint(coreShadeOf(ThuyTinhColors.skin).withValues(alpha: 0.35)),
+        Offset(316, 78),
+        Offset(328, 76),
+      ], 3.4),
+      fillPaint(core.withValues(alpha: 0.38)),
     );
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(300, 55), Offset(309, 52), Offset(318, 55)],
+        2.6,
+        peak: 0.4,
+      ),
+      fillPaint(lighten(ThuyTinhColors.skin, 0.3).withValues(alpha: 0.7)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(298, 66), Offset(301, 72), Offset(301, 78)],
+        1.2,
+        peak: 0.3,
+      ),
+      fillPaint(core.withValues(alpha: 0.6)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(328, 56), Offset(332, 64), Offset(330, 72)],
+        3,
+        peak: 0.5,
+      ),
+      fillPaint(core.withValues(alpha: 0.25)),
+    );
+    // Vảy cá li ti ở thái dương và má (thần biển).
+    for (var i = 0; i < 6; i++) {
+      final c0 = Offset(
+        322 + (i % 3) * 4.0,
+        60 + (i ~/ 3) * 5.0 + (i.isOdd ? 2 : 0),
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: c0, radius: 1.8),
+        0.2,
+        2.7,
+        false,
+        Paint()
+          ..color = core.withValues(alpha: 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
     canvas.drawCircle(
       eye + const Offset(1, -1),
       7,
@@ -802,10 +846,26 @@ class ThuyTinhBossArt extends BossArt {
           ThuyTinhColors.glow.withValues(alpha: 0),
         ]),
     );
-    canvas.drawOval(
-      Rect.fromCenter(center: eye, width: 7, height: 4.5),
-      fillPaint(const Color(0xFFE8FFFF)),
+    // Mắt hạnh nhân xếch, hẹp (nhìn hằm hằm), tròng sáng như ánh nước.
+    final almond = Path()
+      ..moveTo(eye.dx - 4, eye.dy + 0.8)
+      ..quadraticBezierTo(eye.dx - 0.5, eye.dy - 2.6, eye.dx + 4, eye.dy - 1)
+      ..quadraticBezierTo(eye.dx + 0.5, eye.dy + 2, eye.dx - 4, eye.dy + 0.8)
+      ..close();
+    canvas.drawPath(almond, fillPaint(const Color(0xFF0E3440)));
+    canvas.save();
+    canvas.clipPath(almond);
+    canvas.drawCircle(
+      eye + const Offset(-0.6, -0.2),
+      2,
+      fillPaint(const Color(0xFFB8FFFF)),
     );
+    canvas.drawCircle(
+      eye + const Offset(-0.6, -0.2),
+      0.8,
+      fillPaint(const Color(0xFFFFFFFF)),
+    );
+    canvas.restore();
     canvas.drawPath(
       taperedStroke(
         [
@@ -827,32 +887,128 @@ class ThuyTinhBossArt extends BossArt {
       ..quadraticBezierTo(303, 72, 296, 74)
       ..close();
     canvas.drawPath(mouth, fillPaint(const Color(0xFF14323C)));
-    // Vương miện vàng có ngọc trai.
-    final crown = Path()
-      ..moveTo(300, 50)
-      ..lineTo(302, 34)
-      ..lineTo(309, 44)
-      ..lineTo(316, 28)
-      ..lineTo(323, 42)
-      ..lineTo(331, 32)
-      ..lineTo(334, 50)
-      ..quadraticBezierTo(317, 45, 300, 50)
+    // Ria như hai dòng nước chảy rủ từ dưới mũi qua khoé miệng.
+    for (final (pts, w) in [
+      (
+        const [
+          Offset(298, 70),
+          Offset(302, 74),
+          Offset(300, 82),
+          Offset(294, 90),
+        ],
+        3.2,
+      ),
+      (
+        const [
+          Offset(300, 70),
+          Offset(306, 73),
+          Offset(308, 80),
+          Offset(306, 88),
+        ],
+        2.6,
+      ),
+    ]) {
+      final m = taperedStroke(pts, w, peak: 0.2, startWidth: 0.6);
+      canvas.drawPath(m, fillPaint(ThuyTinhColors.hair));
+      canvas.drawPath(
+        taperedStroke(
+          [for (final p in pts) p + const Offset(-0.6, -0.6)],
+          w * 0.35,
+          peak: 0.2,
+        ),
+        fillPaint(const Color(0xCCFFFFFF)),
+      );
+    }
+    // Vương miện thuỷ thần: vành vàng ôm trán, trên là ba ngọn sóng vàng
+    // cuộn ra sau (sóng cao nhất ở giữa), đính ngọc trai ở chân sóng và
+    // hạt ngọc lục giữa trán.
+    final band = Path()
+      ..moveTo(299, 50)
+      ..quadraticBezierTo(318, 44, 337, 49)
+      ..lineTo(337, 54)
+      ..quadraticBezierTo(318, 49, 299, 55)
       ..close();
+    Path wave(Offset base, double h, double w) => Path()
+      ..moveTo(base.dx - w * 0.5, base.dy)
+      ..cubicTo(
+        base.dx - w * 0.6,
+        base.dy - h * 0.7,
+        base.dx + w * 0.1,
+        base.dy - h * 1.1,
+        base.dx + w * 0.55,
+        base.dy - h * 0.8,
+      )
+      ..cubicTo(
+        base.dx + w * 0.75,
+        base.dy - h * 0.62,
+        base.dx + w * 0.55,
+        base.dy - h * 0.38,
+        base.dx + w * 0.3,
+        base.dy - h * 0.48,
+      )
+      ..cubicTo(
+        base.dx + w * 0.2,
+        base.dy - h * 0.3,
+        base.dx + w * 0.4,
+        base.dy - h * 0.1,
+        base.dx + w * 0.5,
+        base.dy,
+      )
+      ..close();
+    final waves = Path()
+      ..addPath(wave(const Offset(306, 49), 12, 12), Offset.zero)
+      ..addPath(wave(const Offset(318, 47), 18, 14), Offset.zero)
+      ..addPath(wave(const Offset(330, 49), 12, 12), Offset.zero);
+    final crown = Path.combine(PathOperation.union, band, waves);
     canvas.drawPath(
       crown,
       Paint()
         ..color = VectorStyle.outline
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
+        ..strokeWidth = 2.6
         ..strokeJoin = StrokeJoin.round,
     );
     canvas.drawPath(crown, goldPaint(crown.getBounds()));
+    // Rãnh khắc dọc ngọn sóng.
+    canvas.save();
+    canvas.clipPath(waves);
+    for (final c0 in const [
+      Offset(306, 43),
+      Offset(318, 38),
+      Offset(330, 43),
+    ]) {
+      canvas.drawArc(
+        Rect.fromCircle(center: c0, radius: 3.4),
+        3.4,
+        3.6,
+        false,
+        Paint()
+          ..color = const Color(0xFF8A6418)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+    }
+    canvas.restore();
+    for (final p in const [
+      Offset(304, 51.5),
+      Offset(311, 50.5),
+      Offset(325, 50.5),
+      Offset(332, 51.5),
+    ]) {
+      canvas.drawCircle(p, 1.5, fillPaint(const Color(0xFFFFFAF0)));
+    }
     canvas.drawCircle(
-      const Offset(316, 40),
-      2.6,
-      fillPaint(const Color(0xFFFFFAF0)),
+      const Offset(318, 49.5),
+      2.4,
+      fillPaint(VectorStyle.outline),
     );
-    glint(canvas, const Offset(306, 44), 1.4);
+    canvas.drawCircle(
+      const Offset(318, 49.5),
+      1.8,
+      fillPaint(const Color(0xFF2EC4A6)),
+    );
+    glint(canvas, const Offset(317.4, 48.8), 0.9);
+    glint(canvas, const Offset(316, 34), 1.4);
   }
 
   void _frontArm(Canvas canvas, BossFrame f) => f.attack < 0.02
