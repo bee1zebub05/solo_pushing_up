@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:ui' show Picture, PictureRecorder;
 
 import 'package:flame/components.dart';
@@ -168,13 +168,23 @@ class BattleStageGame extends FlameGame {
     world.add(_HorseComponent());
   }
 
-  /// Khoác Áo choàng da sư tử ngay trên sân khấu (lần đầu thắng Nemea).
+  /// Khoác Áo choàng da sư tử ngay trên sân khấu (lần đầu thắng Nemea):
+  /// bộ da bay từ xác sư tử theo vòng cung tới vai nhân vật rồi khoác lên.
   void equipCloak() {
-    _hero.cloak = true;
-    _burst(
-      _hero.chest,
-      count: 30,
-      colors: const [Color(0xFFFFE082), Color(0xFFFFFFFF)],
+    world.add(
+      _PeltFlight(
+        from: boss.target.clone(),
+        to: _hero.chest,
+        onArrive: () {
+          _hero.cloak = true;
+          _burst(
+            _hero.chest,
+            count: 30,
+            colors: const [Color(0xFFFFE082), Color(0xFFFFFFFF)],
+          );
+          world.add(_RewardBanner('ÁO CHOÀNG DA SƯ TỬ'));
+        },
+      ),
     );
   }
 
@@ -612,6 +622,198 @@ class _BlockedBadge extends PositionComponent {
     _labelOutline.paint(canvas, textAt);
     _label.paint(canvas, textAt);
     canvas.restore();
+    canvas.restore();
+  }
+}
+
+/// Bộ da sư tử bay từ boss tới nhân vật: phấp phới, kéo vệt sáng vàng.
+class _PeltFlight extends Component {
+  _PeltFlight({required this.from, required this.to, required this.onArrive});
+
+  final Vector2 from;
+  final Vector2 to;
+  final void Function() onArrive;
+  static const _duration = 1.4;
+  double _age = 0;
+  final _trail = <Offset>[];
+
+  Offset _at(double t) {
+    final e = Curves.easeInOut.transform(t);
+    final p = Offset.lerp(Offset(from.x, from.y), Offset(to.x, to.y), e)!;
+    return p + Offset(0, -70 * math.sin(math.pi * e));
+  }
+
+  @override
+  void update(double dt) {
+    _age += dt;
+    _trail.add(_at((_age / _duration).clamp(0.0, 1.0)));
+    if (_trail.length > 14) _trail.removeAt(0);
+    if (_age >= _duration) {
+      onArrive();
+      removeFromParent();
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final t = (_age / _duration).clamp(0.0, 1.0);
+    for (var i = 0; i < _trail.length; i++) {
+      final k = i / _trail.length;
+      canvas.drawCircle(
+        _trail[i],
+        2 + 6 * k,
+        Paint()..color = Color.fromRGBO(255, 214, 110, 0.35 * k),
+      );
+    }
+    final at = _at(t);
+    canvas.save();
+    canvas.translate(at.dx, at.dy);
+    canvas.rotate(math.sin(_age * 9) * 0.25);
+    canvas.scale(0.9 - 0.3 * t);
+    canvas.drawCircle(
+      Offset.zero,
+      34,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0x88FFE9A0), Color(0x00FFE9A0)],
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: 34)),
+    );
+    _paintPelt(canvas, _age);
+    canvas.restore();
+  }
+}
+
+/// Bộ da sư tử trải ra: đầu có bờm ở trên, thân da vàng, bốn chân rủ.
+void _paintPelt(Canvas canvas, double time) {
+  const outline = Color(0xFF241510);
+  const hide = Color(0xFFD99A34);
+  final flutter = math.sin(time * 12) * 3;
+  final skin = Path()
+    ..moveTo(-12, -6)
+    ..quadraticBezierTo(-22, 10, -18 + flutter, 26)
+    ..lineTo(-10, 22)
+    ..lineTo(-6, 30 + flutter)
+    ..lineTo(6, 30 - flutter)
+    ..lineTo(10, 22)
+    ..lineTo(18 - flutter, 26)
+    ..quadraticBezierTo(22, 10, 12, -6)
+    ..close();
+  canvas.drawPath(
+    skin,
+    Paint()
+      ..color = outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeJoin = StrokeJoin.round,
+  );
+  canvas.drawPath(skin, Paint()..color = hide);
+  canvas.drawPath(
+    Path()
+      ..moveTo(-6, 0)
+      ..lineTo(-4, 24)
+      ..lineTo(4, 24)
+      ..lineTo(6, 0)
+      ..close(),
+    Paint()..color = const Color(0xFFEFC67A),
+  );
+  // Bờm quanh đầu.
+  for (var i = 0; i < 10; i++) {
+    final a = i / 10 * math.pi * 2;
+    final p = Offset(math.cos(a) * 11, -12 + math.sin(a) * 10);
+    canvas.drawCircle(p, 6.5, Paint()..color = outline);
+  }
+  for (var i = 0; i < 10; i++) {
+    final a = i / 10 * math.pi * 2;
+    final p = Offset(math.cos(a) * 11, -12 + math.sin(a) * 10);
+    canvas.drawCircle(
+      p,
+      5,
+      Paint()
+        ..color = i.isEven ? const Color(0xFF8E3714) : const Color(0xFFC0611E),
+    );
+  }
+  canvas.drawCircle(const Offset(0, -12), 9, Paint()..color = outline);
+  canvas.drawCircle(const Offset(0, -12), 7.6, Paint()..color = hide);
+  // Mắt nhắm (bộ da đã thuần).
+  for (final dx in [-3.0, 3.0]) {
+    canvas.drawLine(
+      Offset(dx - 1.6, -13),
+      Offset(dx + 1.6, -13),
+      Paint()
+        ..color = outline
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+  canvas.drawCircle(const Offset(0, -9), 1.6, Paint()..color = outline);
+}
+
+/// Dải băng phần thưởng bung ra giữa trời rồi mờ dần.
+class _RewardBanner extends Component {
+  _RewardBanner(String text)
+    : _label = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+            color: Color(0xFF3A1E0C),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+  final TextPainter _label;
+  static const _life = 3.2;
+  double _age = 0;
+
+  @override
+  void update(double dt) {
+    _age += dt;
+    if (_age >= _life) removeFromParent();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final open = Curves.easeOutBack.transform((_age / 0.5).clamp(0.0, 1.0));
+    final fade = _age < _life - 0.6 ? 1.0 : (_life - _age) / 0.6;
+    final w = (_label.width + 40) * open;
+    const h = 24.0;
+    final c = Offset(stageSize.width / 2, 34);
+    canvas.saveLayer(
+      null,
+      Paint()..color = Color.fromRGBO(0, 0, 0, fade.clamp(0.0, 1.0)),
+    );
+    // Hai đuôi băng gấp.
+    for (final side in [-1.0, 1.0]) {
+      final x = c.dx + side * w / 2;
+      final tail = Path()
+        ..moveTo(x, c.dy - h / 2 + 4)
+        ..lineTo(x + side * 18, c.dy - h / 2 + 4)
+        ..lineTo(x + side * 12, c.dy + 4)
+        ..lineTo(x + side * 18, c.dy + h / 2 + 4)
+        ..lineTo(x, c.dy + h / 2 + 4)
+        ..close();
+      canvas.drawPath(tail, Paint()..color = const Color(0xFF9A6A12));
+    }
+    final band = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: c, width: w, height: h),
+      const Radius.circular(3),
+    );
+    canvas.drawRRect(band.inflate(2), Paint()..color = const Color(0xFF2B1D16));
+    canvas.drawRRect(
+      band,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFFE9A0), Color(0xFFE8B83A)],
+        ).createShader(band.outerRect),
+    );
+    if (open > 0.8) {
+      _label.paint(canvas, c - Offset(_label.width / 2, _label.height / 2));
+    }
     canvas.restore();
   }
 }

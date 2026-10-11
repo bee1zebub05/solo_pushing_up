@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solo_pushing_up/art/greek_monsters.dart';
+import 'package:solo_pushing_up/art/hercules_art.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
@@ -14,6 +15,7 @@ import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
 import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
+import 'package:solo_pushing_up/ui/nemea_intro_screen.dart';
 
 /// Vẽ thử các khung hình nhân vật. Mặc định chỉ kiểm tra vẽ không lỗi;
 /// đặt biến môi trường ART_PREVIEW=1 để ghi PNG vào build/art_preview/.
@@ -204,6 +206,22 @@ void main() {
         paintHero(c, HeroPose.plank(110), effort: 0.6);
       });
     }
+  });
+
+  testWidgets('cảnh mở đầu: Hercules hiện ra và dặn dò', (tester) async {
+    await render(tester, 'intro_appear', (c) => paintNemeaIntro(c, time: 0.8));
+    await render(
+      tester,
+      'intro_talk',
+      (c) => paintNemeaIntro(c, time: 3, talking: true),
+    );
+    await render(tester, 'hercules_closeup', (c) {
+      paintNemeaScene(c, time: 1);
+      c.save();
+      c.translate(200, stageGroundY + 40);
+      paintHercules(c, time: 1, talk: 1);
+      c.restore();
+    });
   });
 
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {

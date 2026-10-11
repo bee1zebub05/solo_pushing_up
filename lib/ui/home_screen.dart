@@ -14,6 +14,7 @@ import 'boss_portrait.dart';
 import 'character_creator_screen.dart';
 import 'counter_screen.dart';
 import 'hero_preview.dart';
+import 'nemea_intro_screen.dart';
 
 /// Màn hình chính tạm: tiến trình, chọn chế độ, các kỳ công, luyện tập,
 /// và màn hình đếm (debug).
@@ -91,21 +92,35 @@ class _HomeScreenState extends State<HomeScreen> {
     required String emoji,
     Labor? labor,
   }) {
+    final battle = MaterialPageRoute<void>(
+      builder: (_) => BattleScreen(
+        enemy: enemy,
+        mode: _mode,
+        emoji: emoji,
+        victoryText: labor == null
+            ? null
+            : 'Kỳ công ${labor.number} hoàn thành',
+        onFinished: (outcome) => _recordOutcome(outcome, labor: labor),
+        heroCloak: _hasCloak,
+        heroShield: _hasShield,
+        heroSword: _hasSword,
+        heroHorse: _hasHorse,
+        heroLook: _profile?.look ?? const HeroLook(),
+      ),
+    );
+    // Lần đầu vào Kỳ công 1: Hercules xuất hiện dặn dò trước trận.
+    final firstNemea =
+        labor?.id == nemea.id &&
+        !(_progress?.completedLabors.contains(nemea.id) ?? false);
+    if (!firstNemea) {
+      Navigator.of(context).push(battle);
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => BattleScreen(
-          enemy: enemy,
-          mode: _mode,
-          emoji: emoji,
-          victoryText: labor == null
-              ? null
-              : 'Kỳ công ${labor.number} hoàn thành',
-          onFinished: (outcome) => _recordOutcome(outcome, labor: labor),
-          heroCloak: _hasCloak,
-          heroShield: _hasShield,
-          heroSword: _hasSword,
-          heroHorse: _hasHorse,
-          heroLook: _profile?.look ?? const HeroLook(),
+        builder: (context) => NemeaIntroScreen(
+          look: _profile?.look ?? const HeroLook(),
+          onDone: () => Navigator.of(context).pushReplacement(battle),
         ),
       ),
     );
