@@ -129,13 +129,14 @@ class _BenchScreenState extends State<_BenchScreen>
       // Nemea đo cả hai hướng máy (ảnh chụp sẵn phụ thuộc độ phân giải);
       // các boss khác đo dọc. Mốc `BENCH phase <tên>` báo cho
       // tool/bench_device.sh đo bộ nhớ.
-      for (final (name, orientation, boss) in <(String, DeviceOrientation, BossArt?)>[
-        ('full', DeviceOrientation.portraitUp, null),
-        ('full-landscape', DeviceOrientation.landscapeLeft, null),
-        ('orochi', DeviceOrientation.portraitUp, OrochiBossArt()),
-        ('fafnir', DeviceOrientation.portraitUp, FafnirBossArt()),
-        ('thuy_tinh', DeviceOrientation.portraitUp, ThuyTinhBossArt()),
-      ]) {
+      for (final (name, orientation, boss)
+          in <(String, DeviceOrientation, BossArt?)>[
+            ('full', DeviceOrientation.portraitUp, null),
+            ('full-landscape', DeviceOrientation.landscapeLeft, null),
+            ('orochi', DeviceOrientation.portraitUp, OrochiBossArt()),
+            ('fafnir', DeviceOrientation.portraitUp, FafnirBossArt()),
+            ('thuy_tinh', DeviceOrientation.portraitUp, ThuyTinhBossArt()),
+          ]) {
         await SystemChrome.setPreferredOrientations([orientation]);
         if (boss != null) {
           setState(() => _game = BattleStageGame(boss: boss, cloak: true));
@@ -187,8 +188,10 @@ class _BenchScreenState extends State<_BenchScreen>
     final raster = ms((t) => t.rasterDuration);
     final total = ms((t) => t.totalSpan);
     final janky = total.where((v) => v > 16.7).length;
-    _log('[$name] frames ${_timings.length} (~${(_timings.length / 6).toStringAsFixed(1)} fps) '
-        '>16.7ms: $janky');
+    _log(
+      '[$name] frames ${_timings.length} (~${(_timings.length / 6).toStringAsFixed(1)} fps) '
+      '>16.7ms: $janky',
+    );
     _log('[$name] build  ${stats(build)} ms');
     _log('[$name] raster ${stats(raster)} ms');
     final cache = RasterBudget.shared;
