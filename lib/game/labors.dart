@@ -57,7 +57,11 @@ class Stage {
     required this.enemy,
     required this.tip,
     required this.emoji,
+    this.lore = '',
   });
+
+  /// Một câu kể thần thoại dẫn vào màn (giữ mạch truyện như Zombies, Run!).
+  final String lore;
 
   /// Khoá lưu tiến trình, ví dụ 'nemea_1_3'.
   final String id;
@@ -125,6 +129,8 @@ const nemeaStages = <Stage>[
     enemy: stymphalianFlock,
     tip: 'Làm quen: mỗi lần hít đất là một đòn đánh',
     emoji: '🐦',
+    lore:
+        'Bìa rừng ô liu phủ bụi xám. Lũ chim lông đồng của hồ Stymphalia đã bay tới tận đây.',
   ),
   Stage(
     id: 'nemea_1_2',
@@ -133,6 +139,8 @@ const nemeaStages = <Stage>[
     enemy: stymphalianSwarm,
     tip: 'Giữ nhịp đều để combo tăng dần',
     emoji: '🐦',
+    lore:
+        'Tiếng cánh đồng rít như lưỡi dao: cả bầy đang kéo về phía người kế nhiệm.',
   ),
   Stage(
     id: 'nemea_1_3',
@@ -141,6 +149,8 @@ const nemeaStages = <Stage>[
     enemy: spartoi,
     tip: 'Ngã một lần sẽ đứng dậy: đánh dứt điểm',
     emoji: '💀',
+    lore:
+        'Từ răng rồng gieo xuống đất, chiến binh Spartoi trỗi dậy — và không chịu nằm yên.',
   ),
   Stage(
     id: 'nemea_1_4',
@@ -149,6 +159,8 @@ const nemeaStages = <Stage>[
     enemy: stoneSoldier,
     tip: 'Chỉ rep đúng form mới làm vỡ đá',
     emoji: '🗿',
+    lore:
+        'Tượng hoplite canh đền bị Trì Trệ nhập. Đá chỉ vỡ trước đòn đánh chuẩn.',
   ),
   Stage(
     id: 'nemea_1_5',
@@ -157,6 +169,8 @@ const nemeaStages = <Stage>[
     enemy: erymanthianBoar,
     tip: 'Thấy mũi tên đỏ thì giữ tay thẳng để né cú húc',
     emoji: '🐗',
+    lore:
+        'Lợn rừng Erymanthus, kẻ Hercules từng bắt sống, đang húc đổ từng hàng ô liu.',
   ),
   Stage(
     id: 'nemea_1_6',
@@ -165,6 +179,7 @@ const nemeaStages = <Stage>[
     enemy: harpy,
     tip: 'Nghỉ quá 4 giây là bị cướp vàng',
     emoji: '🦅',
+    lore: 'Harpy lượn quanh đền, chờ kẻ nào lơ là để cướp vàng.',
   ),
   Stage(
     id: 'nemea_1_7',
@@ -173,6 +188,7 @@ const nemeaStages = <Stage>[
     enemy: spartoiPack,
     tip: 'Ôn lại: nhịp đều, đánh dứt điểm',
     emoji: '⚔️',
+    lore: 'Chim và xương binh cùng chặn cây cầu đá cuối cùng.',
   ),
   Stage(
     id: 'nemea_1_8',
@@ -181,6 +197,7 @@ const nemeaStages = <Stage>[
     enemy: youngHydra,
     tip: 'Đứt combo thì đầu đang chém mọc lại',
     emoji: '🐍',
+    lore: 'Dưới đầm lầy, Hydra non thè ba cái lưỡi. Chém một, mọc hai.',
   ),
   Stage(
     id: 'nemea_1_9',
@@ -189,6 +206,8 @@ const nemeaStages = <Stage>[
     enemy: stoneGuard,
     tip: 'Màn cuối trước hang sư tử: giữ form chuẩn',
     emoji: '🗿',
+    lore:
+        'Trước cửa hang, lính đá cuối cùng đứng gác. Từ bóng tối, đôi mắt hổ phách đang nhìn ra.',
   ),
   Stage(
     id: 'nemea',
@@ -197,6 +216,8 @@ const nemeaStages = <Stage>[
     enemy: nemeanLion,
     tip: 'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương',
     emoji: '🦁',
+    lore:
+        'Sư tử Nemea: da không vũ khí nào xuyên thủng. Chỉ sức mạnh rèn từng lần một mới hạ được nó.',
   ),
 ];
 

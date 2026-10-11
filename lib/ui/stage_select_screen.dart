@@ -122,7 +122,24 @@ class _StageTile extends StatelessWidget {
                 )
               : null,
         ),
-        subtitle: Text(unlocked ? stage.tip : 'Thắng màn trước để mở'),
+        subtitle: unlocked
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (stage.lore.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        stage.lore,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  Text('🎯 ${stage.tip}'),
+                ],
+              )
+            : const Text('Thắng màn trước để mở'),
         trailing: done
             ? const Icon(Icons.check_circle, color: Colors.lightGreen)
             : unlocked
