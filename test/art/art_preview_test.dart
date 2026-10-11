@@ -277,6 +277,12 @@ void main() {
       c.translate(151, 154);
       paintLion(c, const LionState(time: 1, mouth: 0.7));
     });
+    await render(tester, 'hero_zoom', (c) {
+      paintNemeaScene(c, time: 1);
+      c.scale(2.2);
+      c.translate(-40, -110);
+      paintHero(c, HeroPose.plank(110), effort: 0.6);
+    });
   });
 
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {

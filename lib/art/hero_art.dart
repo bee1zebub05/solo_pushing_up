@@ -441,13 +441,37 @@ void _torso(
     ..strokeWidth = 1.2
     ..style = PaintingStyle.stroke
     ..strokeCap = StrokeCap.round;
+  // Nếp căng toả từ thắt lưng lên dây vai (vải bị kéo), nếp chữ V nhỏ.
   canvas.drawPath(
     Path()
       ..moveTo(-2, -len * 0.35)
       ..quadraticBezierTo(2, -len * 0.2, 0, -10)
       ..moveTo(5, -len * 0.3)
-      ..quadraticBezierTo(7, -len * 0.18, 6, -11),
+      ..quadraticBezierTo(7, -len * 0.18, 6, -11)
+      ..moveTo(-6, -len * 0.62)
+      ..quadraticBezierTo(-4, -len * 0.4, -6, -12)
+      ..moveTo(9, -len * 0.46)
+      ..quadraticBezierTo(11, -len * 0.3, 10, -12),
     fold,
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(-1, -14)
+      ..lineTo(2, -10)
+      ..lineTo(5, -14)
+      ..moveTo(6, -16)
+      ..lineTo(8.5, -12)
+      ..lineTo(11, -15),
+    fold..strokeWidth = 0.8,
+  );
+  fold.strokeWidth = 1.2;
+  // Bóng đổ của dây vai lên vải.
+  canvas.drawLine(
+    Offset(-shoulderBack + 1.5, -len + 5),
+    Offset(chest + 1.5, -len * 0.45 + 3),
+    Paint()
+      ..color = shadeOf(HeroColors.tunic).withValues(alpha: 0.6)
+      ..strokeWidth = 2,
   );
   canvas.restore();
 
@@ -476,13 +500,28 @@ void _torso(
   for (var x = hemRect.left + 1.5; x < hemRect.right - 1; x += 5) {
     canvas.drawRect(Rect.fromLTWH(x, hem - 3.8, 2.4, 2.4), key);
   }
-  // Nếp gấp váy.
-  canvas.drawLine(
-    Offset(-2, -4),
-    Offset(-3 - flare * 0.5, hem - 5),
-    fold..strokeWidth = 1,
+  // Váy xếp ly: dải sáng–tối xen kẽ, loe dần xuống gấu.
+  final pleatDark = fillPaint(
+    shadeOf(HeroColors.tunic).withValues(alpha: 0.45),
   );
-  canvas.drawLine(Offset(5, -4), Offset(6 + flare * 0.5, hem - 5), fold);
+  final pleatLit = fillPaint(
+    lighten(HeroColors.tunic, 0.4).withValues(alpha: 0.6),
+  );
+  final left = -back - 1;
+  final width = hipFront - left;
+  for (var i = 0; i < 5; i++) {
+    final x0 = left + width * (i + 0.5) / 5;
+    final x1 = x0 + (x0 - (left + width / 2)) * 0.25 + flare * (i - 2) * 0.3;
+    canvas.drawPath(
+      Path()
+        ..moveTo(x0, -5)
+        ..lineTo(x0 + 1.2, -5)
+        ..lineTo(x1 + 2, hem - 5)
+        ..lineTo(x1, hem - 5)
+        ..close(),
+      i.isEven ? pleatDark : pleatLit,
+    );
+  }
   canvas.restore();
 
   // Thắt lưng da, khoá vàng.
@@ -1087,26 +1126,78 @@ void _head(
         );
       }
   }
-  // Băng đô đỏ, đuôi bay phía sau.
-  final band = Paint()
-    ..color = HeroColors.headband
-    ..strokeWidth = 3.4
+  // Băng đô đỏ: viền + vệt sáng, nút thắt sau gáy, hai đuôi băng thon.
+  final arcRect = Rect.fromCircle(center: const Offset(-1, 0), radius: r);
+  Paint bandStroke(Color c, double w) => Paint()
+    ..color = c
+    ..strokeWidth = w
     ..strokeCap = StrokeCap.round
     ..style = PaintingStyle.stroke;
+  // Đuôi băng (vẽ trước để nút thắt che gốc).
+  for (final (tip, ctrl, wid) in [
+    (const Offset(-26, -2), const Offset(-21, -8), 2.2),
+    (const Offset(-23, 6), const Offset(-21, 0), 1.8),
+  ]) {
+    const root = Offset(-14, -5);
+    final d = tip - root;
+    final n = Offset(-d.dy, d.dx) / d.distance;
+    final tail = Path()
+      ..moveTo(root.dx + n.dx * wid, root.dy + n.dy * wid)
+      ..quadraticBezierTo(
+        ctrl.dx + n.dx * wid,
+        ctrl.dy + n.dy * wid,
+        tip.dx,
+        tip.dy,
+      )
+      ..quadraticBezierTo(
+        ctrl.dx - n.dx * wid,
+        ctrl.dy - n.dy * wid,
+        root.dx - n.dx * wid,
+        root.dy - n.dy * wid,
+      )
+      ..close();
+    shadedPath(
+      canvas,
+      tail,
+      HeroColors.headband,
+      f,
+      shadow: 1.2,
+      highlight: 0.6,
+      outlineWidth: 1,
+    );
+  }
   canvas.drawArc(
-    Rect.fromCircle(center: const Offset(-1, 0), radius: r),
+    arcRect,
     -math.pi * 0.95,
     math.pi * 0.72,
     false,
-    band,
+    bandStroke(HeroColors.outline, 5.4),
   );
-  canvas.drawPath(
-    Path()
-      ..moveTo(-14, -5)
-      ..quadraticBezierTo(-21, -6, -25, -1)
-      ..moveTo(-14, -5)
-      ..quadraticBezierTo(-20, -2, -22, 4),
-    band..strokeWidth = 2.6,
+  canvas.drawArc(
+    arcRect,
+    -math.pi * 0.95,
+    math.pi * 0.72,
+    false,
+    bandStroke(HeroColors.headband, 3.4),
+  );
+  canvas.drawArc(
+    Rect.fromCircle(center: const Offset(-1, -0.8), radius: r),
+    -math.pi * 0.85,
+    math.pi * 0.5,
+    false,
+    bandStroke(lighten(HeroColors.headband, 0.35), 0.9),
+  );
+  // Nút thắt.
+  shadedPath(
+    canvas,
+    Path()..addOval(
+      Rect.fromCenter(center: const Offset(-14, -5), width: 5, height: 4.4),
+    ),
+    darken(HeroColors.headband, 0.08),
+    f,
+    shadow: 1,
+    highlight: 0.5,
+    outlineWidth: 1,
   );
 }
 
