@@ -109,6 +109,8 @@ void paintLion(Canvas canvas, LionState s) {
   );
 
   canvas.save();
+  // Gục nằm rạp: không để bờm/đầu lòi xuống dưới mặt đất.
+  if (fall > 0) canvas.clipRect(const Rect.fromLTRB(-400, -400, 400, 4));
   canvas.translate(10 * s.hurt + 10 * windup - 18 * strike + 10 * fall, 0);
   // Trúng đòn: co người lại.
   canvas.scale(1 + 0.04 * s.hurt, 1 - 0.05 * s.hurt);
@@ -177,11 +179,13 @@ void paintLion(Canvas canvas, LionState s) {
 
   final head = Offset(
     -74 - 16 * strike + 4 * windup - 10 * fall,
-    -104 + drop + 10 * windup - lift + math.sin(t * 1.1) * 1.2,
+    // Gục: đầu rũ xuống sát đất.
+    -104 + drop + 26 * fall + 10 * windup - lift + math.sin(t * 1.1) * 1.2,
   );
   _mane(canvas, head, t, fall);
   canvas.save();
   canvas.translate(head.dx, head.dy);
+  canvas.rotate(-0.32 * fall); // mõm chúi xuống
   canvas.scale(1.18);
   _head(canvas, Offset.zero, s, roar, fall, t);
   canvas.restore();
@@ -191,6 +195,7 @@ void paintLion(Canvas canvas, LionState s) {
 
   if (tint != null) canvas.restore();
 
+  if (fall > 0.3) _stagnationLeaving(canvas, t, fall, drop);
   if (s.glint >= 0) _shieldFlash(canvas, head + const Offset(12, 14), s.glint);
   canvas.restore();
 }
@@ -1004,4 +1009,35 @@ void _shieldFlash(Canvas canvas, Offset at, double g) {
         const Color(0x00FFF0B0),
       ]),
   );
+}
+
+/// Gục ngã: làn khói Trì Trệ tím xám bốc lên rời khỏi xác sư tử (sức mạnh
+/// tà ác bị đánh bật), cuộn xoắn rồi tan.
+void _stagnationLeaving(Canvas canvas, double t, double fall, double drop) {
+  final a = ((fall - 0.3) / 0.7).clamp(0.0, 1.0);
+  for (var i = 0; i < 6; i++) {
+    final phase = (t * 0.35 + i / 6) % 1;
+    final x = -40 + i * 22.0 + math.sin(t * 1.3 + i * 2) * 8 * phase;
+    final y = -90 + drop - phase * 90;
+    final r = 6 + phase * 12;
+    canvas.drawCircle(
+      Offset(x, y),
+      r,
+      Paint()
+        ..color = Color.fromRGBO(120, 100, 150, 0.5 * a * (1 - phase))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    // Lõi xoắn tối hơn.
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(x, y), radius: r * 0.55),
+      t * 2 + i,
+      3.2,
+      false,
+      Paint()
+        ..color = Color.fromRGBO(70, 56, 92, 0.6 * a * (1 - phase))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round,
+    );
+  }
 }
