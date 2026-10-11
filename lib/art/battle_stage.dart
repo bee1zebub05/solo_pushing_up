@@ -231,6 +231,17 @@ class BattleStageGame extends FlameGame {
     }
     _boss.hurt = 1;
     world.add(_ImpactFlash(critical: critical)..position = boss.target.clone());
+    // Hạt sức mạnh bay ngược về người chơi (cảm giác mạnh lên sau mỗi rep).
+    for (var i = 0; i < (critical ? 6 : 3); i++) {
+      world.add(
+        _PowerMote(
+          from: boss.target.clone(),
+          to: _hero.chest,
+          delay: i * 0.06,
+          seed: _random.nextDouble(),
+        ),
+      );
+    }
     _boss.add(
       MoveByEffect(
         Vector2(critical ? 10 : 6, 0),
@@ -978,5 +989,46 @@ class _ImpactFlash extends PositionComponent {
         ray,
       );
     }
+  }
+}
+
+/// Hạt sáng vàng bay theo đường cong từ boss về ngực người chơi.
+class _PowerMote extends Component {
+  _PowerMote({
+    required this.from,
+    required this.to,
+    required this.delay,
+    required this.seed,
+  });
+
+  final Vector2 from;
+  final Vector2 to;
+  final double delay;
+  final double seed;
+  static const _flight = 0.6;
+  double _age = 0;
+
+  @override
+  void update(double dt) {
+    _age += dt;
+    if (_age >= delay + _flight) removeFromParent();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final t = ((_age - delay) / _flight).clamp(0.0, 1.0);
+    if (_age < delay) return;
+    final e = Curves.easeInCubic.transform(t);
+    final a = Offset(from.x, from.y);
+    final b = Offset(to.x, to.y);
+    final lift = -40 - 40 * seed;
+    final p = Offset.lerp(a, b, e)! + Offset(0, lift * math.sin(math.pi * e));
+    final r = 2.4 * (1 - t * 0.5);
+    canvas.drawCircle(
+      p,
+      r * 3,
+      Paint()..color = Color.fromRGBO(255, 214, 90, 0.3 * (1 - t * 0.5)),
+    );
+    canvas.drawCircle(p, r, Paint()..color = const Color(0xFFFFF3C4));
   }
 }

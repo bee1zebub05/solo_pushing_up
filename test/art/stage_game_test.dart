@@ -64,6 +64,8 @@ void main() {
     await run(const Duration(milliseconds: 150));
     await shot('stage_impact');
     await run(const Duration(milliseconds: 300));
+    await shot('stage_motes');
+    await run(const Duration(milliseconds: 300));
 
     game.blocked();
     await run(const Duration(milliseconds: 330));
