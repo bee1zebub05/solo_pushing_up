@@ -509,19 +509,57 @@ class _HorseComponent extends Component {
   }
 }
 
-/// Luồng sức mạnh bay từ người chơi tới boss.
+/// Luồng sức mạnh bay từ người chơi tới boss: sao chổi năng lượng có đuôi
+/// theo hướng bay, lõi trắng, tia lấp lánh (chí mạng: lửa cam).
 class _Bolt extends PositionComponent {
   _Bolt({required this.critical});
 
   final bool critical;
+  final _trail = <Offset>[];
+  double _age = 0;
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _age += dt;
+    _trail.add(Offset(position.x, position.y));
+    if (_trail.length > 8) _trail.removeAt(0);
+  }
 
   @override
   void render(Canvas canvas) {
-    final r = critical ? 9.0 : 6.0;
+    final r = critical ? 8.0 : 5.5;
     final color = critical ? const Color(0xFFFF7043) : const Color(0xFFFFD54F);
+    // Đuôi: vẽ theo toạ độ cục bộ (vị trí cũ trừ vị trí hiện tại).
+    final here = Offset(position.x, position.y);
+    if (_trail.length > 1) {
+      final tail = Path()..moveTo(0, 0);
+      for (var i = _trail.length - 1; i >= 0; i--) {
+        final p = _trail[i] - here;
+        tail.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(
+        tail,
+        Paint()
+          ..color = color.withValues(alpha: 0.45)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 1.6
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+      );
+      canvas.drawPath(
+        tail,
+        Paint()
+          ..color = const Color(0xCCFFFFFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 0.5
+          ..strokeCap = StrokeCap.round,
+      );
+    }
     canvas.drawCircle(
       Offset.zero,
-      r * 2,
+      r * 2.2,
       Paint()
         ..color = color.withValues(alpha: 0.35)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
@@ -529,9 +567,25 @@ class _Bolt extends PositionComponent {
     canvas.drawCircle(Offset.zero, r, Paint()..color = color);
     canvas.drawCircle(
       Offset.zero,
-      r * 0.5,
+      r * 0.55,
       Paint()..color = const Color(0xFFFFFFFF),
     );
+    // Tia lấp lánh bốn cánh xoay.
+    canvas.save();
+    canvas.rotate(_age * 9);
+    final spark = Paint()..color = const Color(0xEEFFFFFF);
+    for (var i = 0; i < 4; i++) {
+      canvas.rotate(math.pi / 2);
+      canvas.drawPath(
+        Path()
+          ..moveTo(-1.2, 0)
+          ..lineTo(0, -r * 2.1)
+          ..lineTo(1.2, 0)
+          ..close(),
+        spark,
+      );
+    }
+    canvas.restore();
   }
 }
 
@@ -698,69 +752,102 @@ class _PeltFlight extends Component {
   }
 }
 
-/// Bộ da sư tử trải ra: đầu có bờm ở trên, thân da vàng, bốn chân rủ.
+/// Bộ da sư tử bay phấp phới: tấm da rủ có bốn vạt chân và móng, bờm
+/// ngọn lửa, đầu nghiêng với nanh trên (không phải mặt tròn hoạt hình).
 void _paintPelt(Canvas canvas, double time) {
-  const outline = Color(0xFF241510);
-  const hide = Color(0xFFD99A34);
-  final flutter = math.sin(time * 12) * 3;
+  const hide = Color(0xFFC99140);
+  const mane = Color(0xFF8E3714);
+  final wave = math.sin(time * 12);
+  // Tấm da: mép dưới gợn sóng, hai vạt chân trước/sau rủ xuống.
   final skin = Path()
-    ..moveTo(-12, -6)
-    ..quadraticBezierTo(-22, 10, -18 + flutter, 26)
-    ..lineTo(-10, 22)
-    ..lineTo(-6, 30 + flutter)
-    ..lineTo(6, 30 - flutter)
-    ..lineTo(10, 22)
-    ..lineTo(18 - flutter, 26)
-    ..quadraticBezierTo(22, 10, 12, -6)
+    ..moveTo(-16, -4)
+    ..quadraticBezierTo(-4, -10, 14, -6)
+    ..quadraticBezierTo(22, 2, 20 + wave * 2, 16)
+    ..lineTo(24 + wave * 3, 28)
+    ..lineTo(17, 26)
+    ..lineTo(12, 20)
+    ..quadraticBezierTo(4, 24 - wave * 2, -4, 20)
+    ..lineTo(-8, 30 - wave * 3)
+    ..lineTo(-14, 28)
+    ..lineTo(-12, 18)
+    ..quadraticBezierTo(-20, 8, -16, -4)
     ..close();
-  canvas.drawPath(
+  shadedPath(canvas, skin, hide, PartFrame.world, shadow: 3);
+  furStrokes(
+    canvas,
     skin,
-    Paint()
-      ..color = outline
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeJoin = StrokeJoin.round,
+    darken(hide, 0.32),
+    dir: const Offset(0.1, 1),
+    count: 34,
+    length: 6,
+    width: 0.9,
+    seed: 11,
   );
-  canvas.drawPath(skin, Paint()..color = hide);
+  // Móng ở hai vạt chân.
+  final claw = Paint()
+    ..color = const Color(0xFFFFF4DC)
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round;
+  for (final p in [Offset(22 + wave * 3, 28), Offset(-11, 29 - wave * 3)]) {
+    for (final dx in [-2.0, 0.0, 2.0]) {
+      canvas.drawLine(p + Offset(dx, 0), p + Offset(dx - 0.8, 3), claw);
+    }
+  }
+  // Bờm ngọn lửa quanh cổ.
+  final tufts = Path();
+  for (var i = 0; i < 9; i++) {
+    final a = math.pi * (0.85 + 1.0 * i / 8);
+    final dir = Offset(math.cos(a), math.sin(a));
+    final n = Offset(-dir.dy, dir.dx);
+    final base = const Offset(-6, -8) + dir * 8;
+    final tip = base + dir * (9 + (i.isEven ? 3 : 0)) + const Offset(2, -1);
+    tufts
+      ..moveTo(base.dx + n.dx * 3.5, base.dy + n.dy * 3.5)
+      ..quadraticBezierTo(tip.dx + n.dx, tip.dy + n.dy, tip.dx, tip.dy)
+      ..quadraticBezierTo(
+        base.dx - n.dx,
+        base.dy - n.dy,
+        base.dx - n.dx * 3.5,
+        base.dy - n.dy * 3.5,
+      )
+      ..close();
+  }
+  tufts.addOval(Rect.fromCircle(center: const Offset(-6, -8), radius: 9));
+  shadedPath(canvas, tufts, mane, PartFrame.world, shadow: 2.5);
+  // Đầu nghiêng: mõm dài, mắt nhắm, nanh trên.
+  final head = Path()
+    ..moveTo(-12, -12)
+    ..quadraticBezierTo(-4, -18, 6, -14)
+    ..quadraticBezierTo(14, -12, 15, -7)
+    ..lineTo(8, -4)
+    ..quadraticBezierTo(-4, -2, -12, -12)
+    ..close();
+  shadedPath(canvas, head, hide, PartFrame.world, shadow: 2);
   canvas.drawPath(
     Path()
-      ..moveTo(-6, 0)
-      ..lineTo(-4, 24)
-      ..lineTo(4, 24)
-      ..lineTo(6, 0)
-      ..close(),
-    Paint()..color = const Color(0xFFEFC67A),
+      ..moveTo(-1, -12)
+      ..quadraticBezierTo(2, -10.5, 5, -11.5),
+    Paint()
+      ..color = VectorStyle.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round,
   );
-  // Bờm quanh đầu.
-  for (var i = 0; i < 10; i++) {
-    final a = i / 10 * math.pi * 2;
-    final p = Offset(math.cos(a) * 11, -12 + math.sin(a) * 10);
-    canvas.drawCircle(p, 6.5, Paint()..color = outline);
-  }
-  for (var i = 0; i < 10; i++) {
-    final a = i / 10 * math.pi * 2;
-    final p = Offset(math.cos(a) * 11, -12 + math.sin(a) * 10);
-    canvas.drawCircle(
-      p,
-      5,
-      Paint()
-        ..color = i.isEven ? const Color(0xFF8E3714) : const Color(0xFFC0611E),
+  for (final x in [9.0, 12.0]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(x - 1, -5.5)
+        ..lineTo(x + 1, -5.5)
+        ..lineTo(x, -1.5)
+        ..close(),
+      Paint()..color = const Color(0xFFFFF6DE),
     );
   }
-  canvas.drawCircle(const Offset(0, -12), 9, Paint()..color = outline);
-  canvas.drawCircle(const Offset(0, -12), 7.6, Paint()..color = hide);
-  // Mắt nhắm (bộ da đã thuần).
-  for (final dx in [-3.0, 3.0]) {
-    canvas.drawLine(
-      Offset(dx - 1.6, -13),
-      Offset(dx + 1.6, -13),
-      Paint()
-        ..color = outline
-        ..strokeWidth = 1.2
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-  canvas.drawCircle(const Offset(0, -9), 1.6, Paint()..color = outline);
+  canvas.drawCircle(
+    const Offset(14.5, -8.5),
+    1.4,
+    Paint()..color = VectorStyle.outline,
+  );
 }
 
 /// Dải băng phần thưởng bung ra giữa trời rồi mờ dần.

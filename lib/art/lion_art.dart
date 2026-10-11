@@ -358,6 +358,28 @@ void _leg(
     (hip, mid, front ? 17 : 21, front ? 12 : 10),
     (mid, pawTop, front ? 12 : 10, front ? 10 : 8),
   ], color);
+  // Đường cơ bắp chân (sel-line), gân cổ chân.
+  final line = Paint()
+    ..color = darken(color, 0.3).withValues(alpha: 0.75)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round;
+  final m1 = Offset.lerp(hip, mid, 0.3)! + n * (front ? 6 : 9);
+  final m2 = Offset.lerp(hip, mid, 0.95)! + n * (front ? 3 : 4);
+  canvas.drawPath(
+    Path()
+      ..moveTo(m1.dx, m1.dy)
+      ..quadraticBezierTo(
+        (m1.dx + m2.dx) / 2 + n.dx * 4,
+        (m1.dy + m2.dy) / 2 + n.dy * 4,
+        m2.dx,
+        m2.dy,
+      ),
+    line,
+  );
+  final t1 = Offset.lerp(mid, pawTop, 0.25)! - n * 3;
+  final t2 = Offset.lerp(mid, pawTop, 0.8)! - n * 2.5;
+  canvas.drawLine(t1, t2, line);
   _paw(canvas, paw, color, clawsOut: clawsOut);
 }
 
