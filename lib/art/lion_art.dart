@@ -642,6 +642,18 @@ void _head(
       ),
       _fill(LionColors.tongue),
     );
+    // Hàng răng cửa nhỏ giữa hai nanh.
+    for (var i = 0; i < 4; i++) {
+      final x = -33.0 + i * 3;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, 12.5)
+          ..lineTo(x + 2.4, 12.5)
+          ..lineTo(x + 1.2, 15.5)
+          ..close(),
+        _fill(LionColors.fang),
+      );
+    }
   }
   canvas.save();
   canvas.translate(pivot.dx, pivot.dy);
@@ -689,6 +701,55 @@ void _head(
   canvas.clipPath(skull);
   // Mõm sáng màu.
   canvas.drawOval(const Rect.fromLTWH(-48, 0, 30, 16), _fill(LionColors.belly));
+  // Mặt phẳng (Loomis): sống mũi đón nắng sáng, má dưới mắt khuất tối.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-26, -15)
+      ..quadraticBezierTo(-38, -10, -46, -4)
+      ..lineTo(-42, -1)
+      ..quadraticBezierTo(-34, -7, -22, -11)
+      ..close(),
+    _fill(lighten(LionColors.body, 0.22)),
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(-12, -2)
+      ..quadraticBezierTo(-6, 6, -10, 14)
+      ..lineTo(4, 14)
+      ..quadraticBezierTo(8, 2, 2, -6)
+      ..close(),
+    _fill(coreShadeOf(LionColors.body).withValues(alpha: 0.35)),
+  );
+  // Hai đệm râu phồng, chấm chân râu.
+  for (final (cx, cy) in [(-37.0, 6.0), (-28.0, 8.0)]) {
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy), width: 13, height: 9),
+      _fill(lighten(LionColors.belly, 0.12)),
+    );
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx, cy), width: 13, height: 9),
+      0.3,
+      2.4,
+      false,
+      Paint()
+        ..color = darken(LionColors.belly, 0.25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9,
+    );
+  }
+  // Lông má lởm chởm ở mép sau mặt, nối vào bờm.
+  final cheekFur = Path()..moveTo(8, -18);
+  for (var i = 0; i < 6; i++) {
+    final y = -14.0 + i * 6;
+    cheekFur
+      ..lineTo(14 - (i.isEven ? 0 : 3), y - 2)
+      ..lineTo(8 - (i.isEven ? 4 : 1), y + 1);
+  }
+  cheekFur
+    ..lineTo(22, 20)
+    ..lineTo(24, -20)
+    ..close();
+  canvas.drawPath(cheekFur, _fill(LionColors.bodyShade));
   // Nếp nhăn sống mũi khi gầm (mặt dữ).
   final wrinkle = Paint()
     ..color = LionColors.bodyShade
@@ -727,6 +788,20 @@ void _head(
   // Chấm râu.
   for (final (x, y) in [(-38.0, 5.0), (-33.0, 7.0), (-36.0, 9.0)]) {
     canvas.drawCircle(Offset(x, y), 0.8, _fill(LionColors.outline));
+  }
+  // Sợi râu trắng mảnh, cong xuống.
+  final whisker = Paint()
+    ..color = const Color(0xCCFFF8EA)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.6
+    ..strokeCap = StrokeCap.round;
+  for (final (y, bend) in [(4.0, 2.0), (7.0, 5.0), (10.0, 8.0)]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(-38, y)
+        ..quadraticBezierTo(-50, y - 1 + bend * 0.3, -60, y + bend),
+      whisker,
+    );
   }
   // Nanh trên lòi ra ngoài cả khi ngậm miệng.
   for (final (x, len) in [(-36.0, 7.0), (-24.0, 9.0)]) {

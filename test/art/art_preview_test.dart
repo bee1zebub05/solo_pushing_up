@@ -269,6 +269,16 @@ void main() {
     });
   });
 
+  testWidgets('cận mặt sư tử và nhân vật (soát chi tiết)', (tester) async {
+    await render(tester, 'lion_face_zoom', (c) {
+      paintNemeaScene(c, time: 1);
+      // Đầu sư tử (toạ độ cục bộ ~(-74, -104)) vào giữa khung.
+      c.scale(2.6);
+      c.translate(151, 154);
+      paintLion(c, const LionState(time: 1, mouth: 0.7));
+    });
+  });
+
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {
     await render(
       tester,
