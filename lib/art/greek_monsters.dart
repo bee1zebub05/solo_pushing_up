@@ -560,6 +560,17 @@ void paintErymanthianBoar(
       ..cubicTo(40, -14, -20, -12, -44, -30 + dip)
       ..close();
     _shaded(canvas, body, hide, shadow: 6);
+    // Lông cứng phủ khắp thân, xuôi từ gáy về mông.
+    furStrokes(
+      canvas,
+      body,
+      const Color(0xFF2E211B),
+      dir: const Offset(1, 0.5),
+      count: 60,
+      length: 6,
+      width: 1,
+      seed: 5,
+    );
     // Vằn lông.
     canvas.save();
     canvas.clipPath(body);

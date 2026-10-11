@@ -74,24 +74,35 @@ void paintHercules(
     ..cubicTo(64, -50, 54, -96, 50, -134)
     ..close();
   shadedPath(canvas, club, const Color(0xFF7A5634), PartFrame.world, shadow: 5);
-  // Mấu gỗ trên chuỳ.
-  for (final (x, y, r) in [
-    (52.0, -40.0, 4.0),
-    (60.0, -20.0, 5.0),
-    (44.0, -70.0, 3.0),
-    (62.0, -60.0, 3.5),
-  ]) {
-    final knot = Path()
-      ..addOval(Rect.fromCircle(center: Offset(x, y), radius: r));
-    shadedPath(
-      canvas,
-      knot,
-      const Color(0xFF5E4026),
-      PartFrame.world,
-      shadow: 1.5,
+  // Vân gỗ dọc chuỳ.
+  final grain = Paint()
+    ..color = const Color(0xFF4E3620)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.9
+    ..strokeCap = StrokeCap.round;
+  for (final (x0, x1) in [(44.0, 46.0), (48.0, 56.0), (52.0, 64.0)]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(x0, -124)
+        ..cubicTo(x0 - 2, -80, x1 - 4, -40, x1, -8),
+      grain,
     );
   }
-
+  // Mấu cành gãy chĩa ra (gỗ ô liu sần), mặt cắt sáng màu.
+  for (final (from, to) in [
+    (const Offset(56, -40), const Offset(66, -46)),
+    (const Offset(62, -20), const Offset(72, -22)),
+    (const Offset(44, -70), const Offset(36, -76)),
+    (const Offset(54, -88), const Offset(60, -96)),
+  ]) {
+    shadedChain(
+      canvas,
+      [(from, to, 3.4, 2.6)],
+      const Color(0xFF6A4A2C),
+      shadow: 1.5,
+    );
+    canvas.drawCircle(to, 2, Paint()..color = const Color(0xFFC9A577));
+  }
   // Tay xa: từ vai xuống đầu chuỳ.
   shadedChain(canvas, [
     (const Offset(26, -184), const Offset(42, -152), 12, 10),
@@ -214,6 +225,31 @@ void paintHercules(
     ..quadraticBezierTo(18, -140, -32, -176)
     ..close();
   shadedPath(canvas, drape, robe, PartFrame.world, shadow: 5);
+  // Gạch bóng kiểu khắc gỗ ở nửa khuất của áo (phải-dưới).
+  canvas.save();
+  canvas.clipRect(const Rect.fromLTRB(8, -200, 50, -96));
+  hatch(
+    canvas,
+    drape,
+    darken(robe, 0.35),
+    spacing: 2.4,
+    angle: 1.1,
+    width: 0.8,
+  );
+  canvas.restore();
+  // Nếp áo căng từ trâm vai xuống hông.
+  for (var i = 0; i < 3; i++) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(-26 + i * 6.0, -186)
+        ..quadraticBezierTo(4 + i * 6.0, -160, 24 + i * 4.0, -120),
+      Paint()
+        ..color = darken(robe, 0.25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..strokeCap = StrokeCap.round,
+    );
+  }
   final meander = Paint()
     ..color = gold
     ..style = PaintingStyle.stroke
@@ -260,6 +296,32 @@ void paintHercules(
     (const Offset(-34, -184), elbow, 14, 11),
     (elbow, hand, 11, 9),
   ], skin);
+  // Cơ vai và bắp tay (sel-line màu da sẫm).
+  final muscleLine = Paint()
+    ..color = const Color(0xFF9A6440)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round;
+  canvas.drawArc(
+    Rect.fromCircle(center: const Offset(-36, -182), radius: 11),
+    1.2,
+    2.2,
+    false,
+    muscleLine,
+  );
+  final upper = elbow - const Offset(-34, -184);
+  final un = Offset(-upper.dy, upper.dx) / upper.distance;
+  canvas.drawPath(
+    Path()
+      ..moveTo(-38 + un.dx * 5, -178 + un.dy * 5)
+      ..quadraticBezierTo(
+        (-34 + elbow.dx) / 2 + un.dx * 9,
+        (-184 + elbow.dy) / 2 + un.dy * 9,
+        elbow.dx + un.dx * 4,
+        elbow.dy + un.dy * 4,
+      ),
+    muscleLine,
+  );
   // Vòng tay vàng.
   canvas.drawLine(
     Offset.lerp(elbow, hand, 0.55)! + const Offset(-2, -7),
@@ -326,6 +388,28 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
     beard.addOval(Rect.fromCircle(center: c + Offset(dx, dy), radius: r));
   }
   shadedPath(canvas, beard, hair, PartFrame.world, shadow: 2.5);
+  // Lọn xoăn trong râu.
+  final curl = Paint()
+    ..color = const Color(0xFF2E1C12)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.9
+    ..strokeCap = StrokeCap.round;
+  for (final (dx, dy) in [
+    (-12.0, 12.0),
+    (-4.0, 16.0),
+    (4.0, 19.0),
+    (10.0, 13.0),
+    (0.0, 25.0),
+    (8.0, 23.0),
+  ]) {
+    canvas.drawArc(
+      Rect.fromCircle(center: c + Offset(dx, dy), radius: 2.4),
+      0.3,
+      4.2,
+      false,
+      curl,
+    );
+  }
   for (final (dx, dy) in [(-6.0, 18.0), (6.0, 22.0), (-2.0, 26.0)]) {
     canvas.drawArc(
       Rect.fromCircle(center: c + Offset(dx, dy), radius: 3),
