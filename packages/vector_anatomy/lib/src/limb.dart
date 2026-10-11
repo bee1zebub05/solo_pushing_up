@@ -236,6 +236,7 @@ LimbShape buildLimb(
           pts,
           grooveWidth * g.weight * scale.clamp(0.6, 2.4),
           peak: g.peak,
+          samples: 6,
         ),
       );
     }
