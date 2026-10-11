@@ -127,3 +127,16 @@ giữa nhân vật và boss.
 - Mọi đòn kẻ thù có dấu hiệu báo trước riêng, cố định; đọc được ≥ 0,6 giây.
 - Mỗi đòn trúng: hitstop + loé trắng + giật lùi + rung khung + hạt.
 - Ánh sáng đổi theo hành trình trong chương (`BossArt.gradeLight`).
+
+## 7. Art bible tối thiểu (từ CCGS `rules/thamkhao/ccgs/templates/art-bible.md`)
+
+- **Luật hình ảnh một dòng:** "Thần thoại khắc gỗ sống dậy — mọi thứ có khối,
+  có ánh sáng một hướng, và chuyển động theo nhịp rep." Design test: hình mới
+  phẳng, không ánh sáng trên-trái, hoặc đứng im khi người chơi hít đất → sửa.
+- **Màu có nghĩa (giữ cố định):** vàng = sức mạnh người chơi / đòn trúng; tím
+  xám = Trì Trệ / thứ bị nhiễm; đỏ = nguy hiểm sắp tới (báo đòn); xanh độc =
+  chất độc; lục lam = nước/lạnh. Mỗi màu luôn kèm hình dạng/âm riêng (dự phòng
+  mù màu: đỏ–xanh lá không bao giờ là cặp duy nhất phân biệt).
+- **Mood theo trạng thái:** sẵn sàng (ánh sáng dịu, bụi đứng), giao chiến (tương
+  phản cao), sắp bị đánh (đỏ + rung), thắng (ấm, sáng, hạt vàng), thua (nhạt màu).
+- **Kiểm hình bóng:** quái/boss phải nhận ra khi tô đen hết ở cỡ 48 px.
