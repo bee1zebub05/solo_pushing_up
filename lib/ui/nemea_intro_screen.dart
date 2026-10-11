@@ -58,13 +58,21 @@ class NemeaIntroScreen extends StatefulWidget {
 
 class _NemeaIntroScreenState extends State<NemeaIntroScreen>
     with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick)..start();
+  // Không dùng `late ... ..start()`: late chỉ khởi tạo khi truy cập lần đầu
+  // (lúc dispose), ticker sẽ không bao giờ chạy.
+  late final Ticker _ticker = createTicker(_tick);
   double _seconds = 0;
   int _line = 0;
   double _lineStart = 1.6;
 
   /// Số chữ hiện ra mỗi giây (hiệu ứng gõ chữ).
   static const _charsPerSecond = 32.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker.start();
+  }
 
   void _tick(Duration elapsed) =>
       setState(() => _seconds = elapsed.inMicroseconds / 1e6);
@@ -147,20 +155,58 @@ class _NemeaIntroScreenState extends State<NemeaIntroScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'HERCULES',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFFE8B83A),
-                        letterSpacing: 2,
-                      ),
+                    const SizedBox(
+                      height: 8,
+                      width: double.infinity,
+                      child: CustomPaint(painter: _MeanderPainter()),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      text,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: const Color(0xFFF6EEDD),
-                        height: 1.4,
-                      ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFFE8B83A),
+                              width: 2,
+                            ),
+                          ),
+                          child: ClipOval(
+                            child: CustomPaint(
+                              painter: _HerculesPortraitPainter(
+                                seconds: _seconds,
+                                talking: talking,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'HERCULES',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: const Color(0xFFE8B83A),
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                text,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: const Color(0xFFF6EEDD),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     if (_lineDone && _seconds >= 1.6)
                       Align(
@@ -207,4 +253,62 @@ class _IntroPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_IntroPainter old) => true;
+}
+
+/// Chân dung Hercules trong khung thoại: cắt quanh đầu, miệng theo lời nói.
+class _HerculesPortraitPainter extends CustomPainter {
+  _HerculesPortraitPainter({required this.seconds, required this.talking});
+
+  final double seconds;
+  final bool talking;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0xFFFFE9A8), Color(0xFFB9822E)],
+        ).createShader(Offset.zero & size),
+    );
+    const view = 72.0;
+    canvas.save();
+    canvas.scale(size.width / view);
+    canvas.translate(view / 2 + 6, view / 2 + 214);
+    paintHercules(canvas, time: seconds, talk: talking ? 1 : 0);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_HerculesPortraitPainter old) => true;
+}
+
+/// Dải hoa văn chìa khoá Hy Lạp (meander) vàng làm viền khung thoại.
+class _MeanderPainter extends CustomPainter {
+  const _MeanderPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final h = size.height;
+    final paint = Paint()
+      ..color = const Color(0xFFE8B83A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeJoin = StrokeJoin.miter;
+    final path = Path()..moveTo(0, h);
+    for (var x = 0.0; x + h * 1.5 <= size.width; x += h * 1.5) {
+      path
+        ..lineTo(x, 0)
+        ..lineTo(x + h, 0)
+        ..lineTo(x + h, h * 0.66)
+        ..lineTo(x + h * 0.5, h * 0.66)
+        ..lineTo(x + h * 0.5, h * 0.33)
+        ..moveTo(x + h, h)
+        ..lineTo(x + h * 1.5, h);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_MeanderPainter old) => false;
 }

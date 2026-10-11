@@ -31,8 +31,16 @@ class HeroPreview extends StatefulWidget {
 
 class _HeroPreviewState extends State<HeroPreview>
     with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick)..start();
+  // Không dùng `late ... ..start()`: late chỉ khởi tạo khi truy cập lần đầu
+  // (lúc dispose), ticker sẽ không bao giờ chạy.
+  late final Ticker _ticker = createTicker(_tick);
   double _seconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker.start();
+  }
 
   void _tick(Duration elapsed) =>
       setState(() => _seconds = elapsed.inMicroseconds / 1e6);
