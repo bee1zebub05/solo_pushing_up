@@ -18,18 +18,18 @@ $A logcat -c
 $A shell am force-stop $PKG
 $A shell am start -n $PKG/.MainActivity >/dev/null
 wait_for() {
-  for _ in $(seq 1 90); do
+  for _ in $(seq 1 180); do
     $A logcat -d | grep -q "$1" && return 0
     sleep 1
   done
   echo "Hết giờ chờ: $1"
 }
-for phase in full full-landscape; do
+for phase in full full-landscape orochi fafnir thuy_tinh; do
   wait_for "BENCH phase $phase\$"
   sleep 3
   echo "MEM $phase:"
   $A shell dumpsys meminfo $PKG | grep -E "^ +(Native Heap|Graphics|GL mtrack|EGL mtrack|TOTAL PSS|TOTAL:)" | sed 's/^ */  /'
 done
-wait_for 'BENCH \[full-landscape\] raster'
+wait_for 'BENCH [thuy_tinh] raster'
 $A logcat -d | grep 'BENCH' | grep -E "record|\] (frames|build|raster)" | sed 's/.*BENCH/BENCH/'
 $A shell am force-stop $PKG

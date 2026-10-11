@@ -304,8 +304,25 @@ class ThuyTinhBossArt extends BossArt {
     }
   }
 
-  void _trident(Canvas canvas, BossFrame f) {
-    final lift = -12 * f.attack;
+  // Tư thế nghỉ (không ra đòn) của đinh ba + tay và tay trước chụp sẵn:
+  // bó cơ, bàn tay giải phẫu tốn CPU nếu tính lại mỗi khung.
+  static final _tridentIdle = RasterLayer(
+    (c) => _paintTrident(c, 0),
+    bounds: const Rect.fromLTRB(340, -12, 404, 216),
+    resolution: 1.3,
+  );
+  static final _frontArmIdle = RasterLayer(
+    (c) => _paintFrontArm(c, 0),
+    bounds: const Rect.fromLTRB(236, 92, 306, 152),
+    resolution: 1.4,
+  );
+
+  void _trident(Canvas canvas, BossFrame f) => f.attack < 0.02
+      ? _tridentIdle.paint(canvas)
+      : _paintTrident(canvas, f.attack);
+
+  static void _paintTrident(Canvas canvas, double attack) {
+    final lift = -12 * attack;
     final top = Offset(374, 22 + lift);
     final bottom = Offset(380, 210 + lift);
     final shaft = Paint()
@@ -351,14 +368,14 @@ class ThuyTinhBossArt extends BossArt {
       outlineWidth: 1.4,
     );
     // Ánh nước toả ra khi đe doạ.
-    if (f.attack > 0.05) {
-      final r = 18 + 14 * f.attack;
+    if (attack > 0.05) {
+      final r = 18 + 14 * attack;
       canvas.drawCircle(
         top,
         r,
         Paint()
           ..shader = Gradient.radial(top, r, [
-            ThuyTinhColors.glow.withValues(alpha: 0.55 * f.attack),
+            ThuyTinhColors.glow.withValues(alpha: 0.55 * attack),
             ThuyTinhColors.glow.withValues(alpha: 0),
           ]),
       );
@@ -667,10 +684,14 @@ class ThuyTinhBossArt extends BossArt {
     glint(canvas, const Offset(306, 44), 1.4);
   }
 
-  void _frontArm(Canvas canvas, BossFrame f) {
-    // Tay trái chỉ về phía người chơi, bàn tay xoè; lòng bàn tay toả nước
-    // khi đe doạ.
-    final reach = 6 * f.attack;
+  void _frontArm(Canvas canvas, BossFrame f) => f.attack < 0.02
+      ? _frontArmIdle.paint(canvas)
+      : _paintFrontArm(canvas, f.attack);
+
+  /// Tay trái chỉ về phía người chơi, bàn tay xoè; lòng bàn tay toả nước
+  /// khi đe doạ.
+  static void _paintFrontArm(Canvas canvas, double attack) {
+    final reach = 6 * attack;
     final wrist = Offset(264 - reach, 130 - reach);
     const elbow = Offset(278, 122);
     shadedLimb(
@@ -696,15 +717,15 @@ class ThuyTinhBossArt extends BossArt {
       ),
       ThuyTinhColors.skin,
     );
-    if (f.attack > 0.05) {
+    if (attack > 0.05) {
       final c = wrist + const Offset(-12, 0);
-      final r = 14 * f.attack + 4;
+      final r = 14 * attack + 4;
       canvas.drawCircle(
         c,
         r,
         Paint()
           ..shader = Gradient.radial(c, r, [
-            ThuyTinhColors.glow.withValues(alpha: 0.7 * f.attack),
+            ThuyTinhColors.glow.withValues(alpha: 0.7 * attack),
             ThuyTinhColors.glow.withValues(alpha: 0),
           ]),
       );
