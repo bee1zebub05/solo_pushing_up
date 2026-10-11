@@ -192,6 +192,16 @@ void main() {
         c.restore();
       }
     });
+    await render(tester, 'spartoi_zoom', (c) {
+      paintNemeaScene(c, time: 2);
+      for (final (x, attack) in [(110.0, 0.0), (290.0, 1.0)]) {
+        c.save();
+        c.translate(x, stageGroundY + 10);
+        c.scale(2.2);
+        paintSpartoi(c, time: 1, attack: attack);
+        c.restore();
+      }
+    });
     await render(tester, 'stone_soldier', (c) {
       paintNemeaScene(c, time: 2, dust: 0.6);
       for (final (x, attack) in [(120.0, 0.0), (280.0, 1.0)]) {

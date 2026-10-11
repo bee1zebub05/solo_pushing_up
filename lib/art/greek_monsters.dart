@@ -251,31 +251,7 @@ void paintSpartoi(
       );
     }
     _shaded(canvas, skirt, const Color(0xFF7A3B2A), shadow: 1.5);
-    // Lồng ngực + giáp ngực đồng nứt vỡ.
-    final chest = Path()
-      ..moveTo(-12, -38)
-      ..lineTo(-14, -62)
-      ..quadraticBezierTo(0, -68, 14, -62)
-      ..lineTo(12, -38)
-      ..close();
-    _shaded(canvas, chest, bronze, shadow: 3);
-    canvas.drawPath(
-      Path()
-        ..moveTo(2, -64)
-        ..lineTo(-2, -54)
-        ..lineTo(4, -48)
-        ..lineTo(0, -40),
-      _stroke(_outline, 1.2),
-    );
-    for (var i = 0; i < 3; i++) {
-      canvas.drawLine(
-        Offset(-9, -58 + i * 6.0),
-        Offset(-3, -56 + i * 6.0),
-        _stroke(const Color(0xFF7A5A28), 1),
-      );
-    }
-
-    // Tay cầm khiên (xa) và khiên tròn hoplon có hình răng rồng.
+    // Tay cầm khiên (xa, sau thân) và khiên tròn hoplon có hình răng rồng.
     shadedChain(canvas, [
       (const Offset(10, -60), const Offset(14, -46), 3, 2.5),
     ], darken(bone, 0.15));
@@ -293,6 +269,61 @@ void paintSpartoi(
       ]),
       _fill(bone),
     );
+
+    // Cột sống + xương sườn lộ ra ở nửa dưới (giáp đã vỡ).
+    canvas.drawLine(
+      const Offset(0, -62),
+      const Offset(0, -38),
+      _stroke(_outline, 4.4),
+    );
+    canvas.drawLine(
+      const Offset(0, -62),
+      const Offset(0, -38),
+      _stroke(bone, 2.6),
+    );
+    for (var i = 0; i < 4; i++) {
+      final y = -54.0 + i * 4.5;
+      final w = 11.0 - i * 1.5;
+      final rib = Path()
+        ..moveTo(0, y)
+        ..quadraticBezierTo(-w, y - 1, -w + 1, y + 4)
+        ..moveTo(0, y)
+        ..quadraticBezierTo(w, y - 1, w - 1, y + 4);
+      canvas.drawPath(rib, _stroke(_outline, 3));
+      canvas.drawPath(rib, _stroke(bone, 1.4));
+    }
+    // Giáp ngực đồng vỡ: chỉ còn nửa trên, mép dưới lởm chởm.
+    final chest = Path()
+      ..moveTo(-14, -62)
+      ..quadraticBezierTo(0, -68, 14, -62)
+      ..lineTo(13, -54)
+      ..lineTo(9, -51)
+      ..lineTo(6, -55)
+      ..lineTo(1, -50)
+      ..lineTo(-4, -54)
+      ..lineTo(-9, -50)
+      ..lineTo(-13, -54)
+      ..close();
+    _shaded(canvas, chest, bronze, shadow: 3);
+    canvas.drawPath(
+      Path()
+        ..moveTo(4, -64)
+        ..lineTo(1, -58)
+        ..lineTo(5, -54),
+      _stroke(_outline, 1.1),
+    );
+    // Khớp xương tròn ở gối.
+    for (final (p, c) in [
+      (const Offset(10, -16), darken(bone, 0.15)),
+      (const Offset(-10, -16), bone),
+    ]) {
+      _shaded(
+        canvas,
+        Path()..addOval(Rect.fromCircle(center: p, radius: 3.4)),
+        c,
+        shadow: 1.2,
+      );
+    }
 
     // Đầu sọ trong mũ Corinth có mào lông đỏ.
     final headC = Offset(-1 + sway * 0.4 - 4 * lunge, -76);
@@ -351,6 +382,14 @@ void paintSpartoi(
       (const Offset(-10, -60), Offset(-14 - 6 * lunge, -52), 3, 2.5),
       (Offset(-14 - 6 * lunge, -52), hand, 2.5, 2.5),
     ], bone);
+    _shaded(
+      canvas,
+      Path()..addOval(
+        Rect.fromCircle(center: Offset(-14 - 6 * lunge, -52), radius: 3),
+      ),
+      bone,
+      shadow: 1,
+    );
     final spearBack = hand + const Offset(30, -30);
     final spearTip = hand + Offset(-30 - 10 * lunge, 30 * 0 - 6);
     canvas.drawLine(spearBack, spearTip, _stroke(_outline, 3.4));

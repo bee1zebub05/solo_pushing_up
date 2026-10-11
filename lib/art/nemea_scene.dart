@@ -1114,6 +1114,30 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
     );
   }
 
+  // Sương Trì Trệ rỉ ra từ cửa hang, bò sát đất về phía thung lũng.
+  if (dust > 0.05) {
+    for (var i = 0; i < 5; i++) {
+      final phase = (time * 0.07 + i / 5) % 1;
+      final x = 330 - phase * 200;
+      final y = stageGroundY - 8 - math.sin(phase * math.pi) * 10;
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x, y),
+          width: 50 + phase * 60,
+          height: 14 + phase * 8,
+        ),
+        Paint()
+          ..color = Color.fromRGBO(
+            82,
+            68,
+            104,
+            0.5 * dust * math.sin(phase * math.pi),
+          )
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+    }
+  }
+
   // Cột nắng rọi xuống khi bụi tan: lung linh chậm, mạnh dần khi thắng.
   final clear = (1 - dust * 1.15).clamp(0.0, 1.0);
   if (clear > 0) {
