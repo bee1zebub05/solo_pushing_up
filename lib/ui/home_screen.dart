@@ -486,22 +486,22 @@ class _HomeBanner extends StatelessWidget {
                     dust: valleyFreed ? 0 : 0.85,
                   ),
                 ),
-                // Tựa nằm trên dải đất phía dưới (không che nhân vật): nền tối
-                // mờ dần từ đáy lên để chữ đọc được.
+                // Tựa ở góc trời trên–phải (trên đầu sư tử, không che nhân
+                // vật): nền tối mờ dần từ góc để chữ đọc được.
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.center,
-                      colors: [Color(0xE61C1612), Color(0x001C1612)],
+                      begin: Alignment.topRight,
+                      end: Alignment(0.1, 0.1),
+                      colors: [Color(0xCC1C1612), Color(0x001C1612)],
                     ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 14, 0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('12 Kỳ Công', style: title),
                       Text(
