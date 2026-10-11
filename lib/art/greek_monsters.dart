@@ -537,6 +537,22 @@ void paintHarpy(
       _stroke(const Color(0xFFF2EAD8), 0.8),
     );
     _harpyWing(canvas, const Offset(-2, -16), flap, feather);
+    // Tiếng rít: vòng sóng âm toả ra từ miệng khi vồ.
+    if (attack > 0.3) {
+      for (var i = 0; i < 3; i++) {
+        final r = 6.0 + i * 6 + (time * 30) % 6;
+        canvas.drawArc(
+          Rect.fromCircle(center: face + const Offset(-6, 4), radius: r),
+          math.pi * 0.7,
+          math.pi * 0.6,
+          false,
+          _stroke(
+            Color.fromRGBO(220, 200, 255, 0.7 * attack * (1 - i / 3)),
+            1.2,
+          ),
+        );
+      }
+    }
   });
   canvas.restore();
 }
@@ -860,6 +876,25 @@ void paintYoungHydra(
       );
     }
     canvas.restore();
+    // Báo trước phun độc: vũng độc xanh sủi bọt trên đất phía trước.
+    if (attack > 0.05) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: const Offset(-70, 0),
+          width: 70 * attack,
+          height: 10 * attack,
+        ),
+        _fill(Color.fromRGBO(140, 230, 70, 0.45 * attack)),
+      );
+      for (var i = 0; i < 4; i++) {
+        final ph = (time * 1.5 + i / 4) % 1;
+        canvas.drawCircle(
+          Offset(-86 + i * 10.0, -2 - ph * 10),
+          1.4 + ph * 2,
+          _stroke(Color.fromRGBO(190, 255, 120, attack * (1 - ph)), 0.8),
+        );
+      }
+    }
     // Đầu rắn.
     for (var i = 0; i < necks.length; i++) {
       final (_, tip) = necks[i];
