@@ -41,6 +41,14 @@ class NemeaMonsterArt extends NemeaBossArt {
     _ => Vector2(_x - 8, stageGroundY - 70),
   };
 
+  /// Ánh sáng đổi theo hành trình: 1.1 sáng sớm trong, 1.9 hoàng hôn đỏ
+  /// cam — càng gần hang sư tử trời càng về chiều (màn boss giữ ánh chiều).
+  @override
+  Color get gradeLight {
+    final t = kind.index / (NemeaMonster.values.length - 1);
+    return Color.lerp(const Color(0xFFE6F0FF), const Color(0xFFFFB27A), t)!;
+  }
+
   @override
   Vector2 get portraitFocus => target;
 

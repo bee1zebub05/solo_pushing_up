@@ -120,3 +120,10 @@ giữa nhân vật và boss.
   (`_ticker.start()`), **không** viết `late final _ticker = createTicker(..)..start()`
   vì `late` chỉ khởi tạo khi truy cập lần đầu (thường là lúc dispose) nên
   hình đứng im. Viết widget test có `pump` để chắc hình có chạy.
+
+## 6. Thiết kế màn và game feel (xem rules/dohoa.md mục 5)
+
+- Chương nhiều màn: độ khó răng cưa, mỗi cơ chế theo kishōtenketsu.
+- Mọi đòn kẻ thù có dấu hiệu báo trước riêng, cố định; đọc được ≥ 0,6 giây.
+- Mỗi đòn trúng: hitstop + loé trắng + giật lùi + rung khung + hạt.
+- Ánh sáng đổi theo hành trình trong chương (`BossArt.gradeLight`).

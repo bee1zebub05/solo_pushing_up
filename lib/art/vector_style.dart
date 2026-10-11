@@ -236,7 +236,7 @@ void paintStageGrade(
   canvas.drawRect(
     stage,
     Paint()
-      ..color = light.withValues(alpha: 0.18)
+      ..color = light.withValues(alpha: 0.24)
       ..blendMode = BlendMode.multiply,
   );
   canvas.drawRect(
