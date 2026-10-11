@@ -226,6 +226,49 @@ void main() {
     });
   });
 
+  testWidgets('chân dung boss trên thẻ kỳ công', (tester) async {
+    final arts = <BossArt>[
+      NemeaBossArt(),
+      FafnirBossArt(),
+      OrochiBossArt(),
+      ThuyTinhBossArt(),
+    ];
+    await render(tester, 'portraits', (c) {
+      c.drawRect(
+        const Rect.fromLTWH(0, 0, 400, 260),
+        Paint()..color = const Color(0xFF2A2420),
+      );
+      for (var i = 0; i < arts.length; i++) {
+        final art = arts[i];
+        const size = 90.0;
+        c.save();
+        c.translate(10 + i * 98.0, 80);
+        c.clipPath(Path()..addOval(const Rect.fromLTWH(0, 0, size, size)));
+        final view = art.portraitView;
+        c.scale(size / view);
+        c.translate(
+          view / 2 - art.portraitFocus.x,
+          view / 2 - art.portraitFocus.y,
+        );
+        art.paintBackdrop(c);
+        art.paintBoss(
+          c,
+          BossFrame(
+            time: 0.4,
+            attack: 0.6,
+            hurt: 0,
+            glint: -1,
+            defeat: 0,
+            battle: StageBattleState()
+              ..totalHeads = 8
+              ..headsLeft = 8,
+          ),
+        );
+        c.restore();
+      }
+    });
+  });
+
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {
     await render(
       tester,

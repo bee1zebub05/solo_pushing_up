@@ -20,6 +20,14 @@ class NemeaBossArt extends BossArt {
     stageGroundY - 96 * lionScale,
   );
 
+  /// Chân dung: đầu sư tử (mõm nhô sang trái) và một phần bờm.
+  @override
+  Vector2 get portraitFocus =>
+      Vector2(lionX - 88 * lionScale, stageGroundY - 104 * lionScale);
+
+  @override
+  double get portraitView => 104;
+
   @override
   void paintBackdrop(Canvas canvas) => paintNemeaBackdrop(canvas);
 
@@ -134,6 +142,8 @@ class NemeaBossArt extends BossArt {
       LionState(
         time: f.time,
         attackPhase: f.attackPhase,
+        // Không có đòn vồ (chân dung, xem trước): attack chỉ là há miệng gầm.
+        mouth: f.attackPhase < 0 ? f.attack : 0,
         hurt: f.hurt,
         glint: f.glint,
         defeat: f.defeat,
