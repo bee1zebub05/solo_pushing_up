@@ -69,7 +69,8 @@ LockSet buildLocks({
   final lines = <(List<Offset>, double)>[];
   for (var i = 0; i < count; i++) {
     final a = from + (to - from) * (i + rnd.nextDouble() * 0.4) / count;
-    final l = length * (lengthAt?.call(a) ?? 1) * (0.82 + rnd.nextDouble() * 0.36);
+    final l =
+        length * (lengthAt?.call(a) ?? 1) * (0.82 + rnd.nextDouble() * 0.36);
     final w = width * (0.85 + rnd.nextDouble() * 0.3);
     final line = [
       for (final p in lockLine(
@@ -108,8 +109,7 @@ LockSet buildLocks({
 List<Offset> offsetLine(List<Offset> line, double k, {double taper = 0}) {
   final out = <Offset>[];
   for (var j = 0; j < line.length; j++) {
-    final d =
-        line[math.min(line.length - 1, j + 1)] - line[math.max(0, j - 1)];
+    final d = line[math.min(line.length - 1, j + 1)] - line[math.max(0, j - 1)];
     final len = d.distance;
     final n = len == 0 ? Offset.zero : Offset(-d.dy, d.dx) / len;
     out.add(line[j] + n * (k * (1 - j / line.length * taper)));

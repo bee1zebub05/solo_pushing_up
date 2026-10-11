@@ -21,9 +21,11 @@ import 'package:vector_anatomy/vector_anatomy.dart';
   final stepY = radius * spacingY;
   var row = 0;
   for (var y = area.top; y <= area.bottom; y += stepY, row++) {
-    for (var x = area.left + (row.isOdd ? stepX / 2 : 0);
-        x <= area.right;
-        x += stepX) {
+    for (
+      var x = area.left + (row.isOdd ? stepX / 2 : 0);
+      x <= area.right;
+      x += stepX
+    ) {
       final p = Offset(
         x + rnd.nextDouble() * radius * 0.35,
         y + rnd.nextDouble() * radius * 0.35,

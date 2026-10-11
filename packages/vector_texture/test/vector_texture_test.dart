@@ -53,10 +53,12 @@ void main() {
   });
 
   test('buildScaleBody: vảy và bụng nằm trong thân', () {
-    final s = buildScaleBody(
-      const [Offset(0, 0), Offset(40, 10), Offset(80, 0), Offset(120, 10)],
-      20,
-    );
+    final s = buildScaleBody(const [
+      Offset(0, 0),
+      Offset(40, 10),
+      Offset(80, 0),
+      Offset(120, 10),
+    ], 20);
     final body = s.body.getBounds().inflate(2);
     for (final p in [s.scaleDark, s.scaleLit, s.spine, s.belly, s.plates]) {
       final r = p.getBounds();

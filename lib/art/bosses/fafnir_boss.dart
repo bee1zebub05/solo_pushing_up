@@ -21,6 +21,9 @@ abstract final class FafnirColors {
 
 /// Kỳ công 2 — Rồng Fafnir canh kho vàng (rules/cottruyen.md). Hơi thở băng
 /// khi đe doạ; nhân vật đóng băng dần khi nghỉ lâu (StageBattleState.cold).
+/// Cổ Fafnir đã ghi theo (độ chồm, nhịp thở) làm tròn.
+final _neckCache = PictureCache<(int, int)>(maxEntries: 40);
+
 class FafnirBossArt extends BossArt {
   @override
   final Vector2 target = Vector2(292, 108);
@@ -1080,54 +1083,70 @@ class FafnirBossArt extends BossArt {
   void _neckAndHead(Canvas canvas, BossFrame f, double breathe) {
     final rear = 8 * f.attack;
     final head = Offset(292, 104 - rear + breathe);
-    // Cổ cong chữ S, thon dần lên đầu; dải bụng nhạt ở mặt dưới.
-    final pts = [
-      const Offset(330, 162),
-      const Offset(338, 136),
-      Offset(310, 122 - rear * 0.5),
-      head + const Offset(10, 2),
-    ];
-    shadedPath(
-      canvas,
-      taperedStroke(
+    // Cổ cong chữ S phủ vảy, dải vảy bụng chia đốt ở mặt dưới. Hình cổ
+    // chỉ phụ thuộc tư thế (làm tròn 1 đơn vị) → ghi sẵn bằng PictureCache.
+    final rq = rear.round();
+    final bq = breathe.round();
+    _neckCache.draw(canvas, (rq, bq), (c) {
+      final hq = Offset(292, 104.0 - rq + bq);
+      final pts = [
+        const Offset(330, 162),
+        const Offset(338, 136),
+        Offset(310, 122 - rq * 0.5),
+        hq + const Offset(10, 2),
+      ];
+      final b = buildScaleBody(
         pts,
         20,
         peak: 0,
         startWidth: 1,
         endWidth: 0.6,
-        samples: 14,
-      ),
-      FafnirColors.body,
-      PartFrame.world,
-      shadow: 3,
-      highlight: 1.3,
-      outlineWidth: 1.6,
-    );
-    canvas.drawPath(
-      taperedStroke(
-        offsetLine(pts, -5.5, taper: 0.4),
-        6.5,
-        peak: 0,
-        startWidth: 1,
-        endWidth: 0.6,
-        samples: 14,
-      ),
-      fillPaint(FafnirColors.belly),
-    );
-    canvas.drawPath(
-      taperedStroke(
-        offsetLine(pts, 5.5, taper: 0.4),
-        3.2,
-        peak: 0,
-        startWidth: 1,
-        endWidth: 0.4,
-        samples: 14,
-      ),
-      fillPaint(darken(FafnirColors.body, 0.3)),
-    );
+        samples: 24,
+        rows: 2,
+        bellySide: -1,
+      );
+      shadedPath(
+        c,
+        b.body,
+        FafnirColors.body,
+        PartFrame.world,
+        shadow: 3,
+        highlight: 1.3,
+        outlineWidth: 1.6,
+      );
+      c.save();
+      c.clipPath(b.body);
+      c.drawPath(
+        b.scaleDark,
+        Paint()
+          ..color = darken(FafnirColors.body, 0.38).withValues(alpha: 0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.9,
+      );
+      c.drawPath(
+        b.scaleLit,
+        Paint()
+          ..color = lighten(FafnirColors.body, 0.35).withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.7,
+      );
+      c.drawPath(
+        b.spine,
+        fillPaint(darken(FafnirColors.body, 0.3).withValues(alpha: 0.8)),
+      );
+      c.drawPath(b.belly, fillPaint(FafnirColors.belly));
+      c.drawPath(
+        b.plates,
+        Paint()
+          ..color = darken(FafnirColors.belly, 0.3)
+          ..strokeWidth = 0.9,
+      );
+      c.restore();
+    });
 
     canvas.save();
     canvas.translate(head.dx, head.dy);
+    canvas.scale(1.25);
     // Sừng cong vuốt ra sau, diềm gai sau má.
     for (final (pts, w) in const [
       ([Offset(4, -9), Offset(14, -18), Offset(27, -17)], 4.0),
@@ -1245,6 +1264,17 @@ class FafnirBossArt extends BossArt {
       fillPaint(FafnirColors.belly),
     );
     canvas.restore();
+    // Nanh trên lộ ra mép môi cả khi ngậm miệng.
+    for (final (x, len) in const [(-27.0, 4.5), (-18.0, 6.0), (-9.0, 3.8)]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, 2.4)
+          ..lineTo(x + 2.4, 2.4)
+          ..quadraticBezierTo(x + 1.6, 2.4 + len * 0.6, x + 0.6, 2.4 + len)
+          ..close(),
+        fillPaint(const Color(0xFFF5F9FF)),
+      );
+    }
     // Lỗ mũi bốc hơi lạnh.
     canvas.drawOval(
       const Rect.fromLTWH(-31, -4.4, 2.6, 1.4),
