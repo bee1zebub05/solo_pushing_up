@@ -9,6 +9,7 @@ import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
+import 'package:solo_pushing_up/art/nemea_map_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
 import 'package:solo_pushing_up/art/vector_style.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
@@ -391,6 +392,20 @@ void main() {
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
     }
+  });
+
+  testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {
+    await render(tester, 'nemea_map', (c) {
+      c.scale(400 / nemeaMapSize.width, 260 / nemeaMapSize.height);
+      paintNemeaMap(c, [
+        for (var i = 0; i < 10; i++)
+          i < 3
+              ? MapNodeState.done
+              : i == 3
+              ? MapNodeState.open
+              : MapNodeState.locked,
+      ], time: 1);
+    });
   });
 
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {

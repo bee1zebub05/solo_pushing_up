@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
+import '../art/nemea_map_art.dart';
 import '../art/bosses/boss_registry.dart';
 import '../game/labors.dart';
 import '../game/progress.dart';
@@ -36,7 +38,27 @@ class StageSelectScreen extends StatelessWidget {
           LinearProgressIndicator(value: done / stages.length),
           const SizedBox(height: 4),
           Text('$done/${stages.length} màn', style: theme.textTheme.bodySmall),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          if (stages.length == nemeaMapNodes.length) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AspectRatio(
+                aspectRatio: nemeaMapSize.width / nemeaMapSize.height,
+                child: _StageMap(
+                  states: [
+                    for (final s in stages)
+                      progress.isStageDone(s)
+                          ? MapNodeState.done
+                          : progress.isStageUnlocked(labor, s)
+                          ? MapNodeState.open
+                          : MapNodeState.locked,
+                  ],
+                  onTap: (i) => onPlay(stages[i]),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           for (final (i, stage) in stages.indexed)
             _StageTile(
               stage: stage,
@@ -110,4 +132,77 @@ class _StageTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Bản đồ thung lũng có hoạt hình (nước chảy, điểm kế tiếp nhấp nháy);
+/// chạm vào điểm màn đã mở để chơi.
+class _StageMap extends StatefulWidget {
+  const _StageMap({required this.states, required this.onTap});
+
+  final List<MapNodeState> states;
+  final void Function(int index) onTap;
+
+  @override
+  State<_StageMap> createState() => _StageMapState();
+}
+
+class _StageMapState extends State<_StageMap>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker(
+    (e) => setState(() => _seconds = e.inMicroseconds / 1e6),
+  );
+  double _seconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker.start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final scale = box.maxWidth / nemeaMapSize.width;
+      return GestureDetector(
+        onTapUp: (d) {
+          final p = d.localPosition / scale;
+          for (var i = 0; i < nemeaMapNodes.length; i++) {
+            if ((nemeaMapNodes[i] - p).distance < 18 &&
+                widget.states[i] != MapNodeState.locked) {
+              widget.onTap(i);
+              return;
+            }
+          }
+        },
+        child: CustomPaint(
+          size: Size(box.maxWidth, box.maxWidth / nemeaMapSize.aspectRatio),
+          painter: _MapPainter(widget.states, _seconds),
+        ),
+      );
+    },
+  );
+}
+
+class _MapPainter extends CustomPainter {
+  _MapPainter(this.states, this.seconds);
+
+  final List<MapNodeState> states;
+  final double seconds;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / nemeaMapSize.width);
+    paintNemeaMap(canvas, states, time: seconds);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_MapPainter old) => true;
 }
