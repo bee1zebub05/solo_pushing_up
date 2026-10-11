@@ -442,11 +442,14 @@ void paintSpartoi(
 // ---------------------------------------------------------------------------
 // Harpy: mình chim mặt người, cánh thay tay, móng quắp.
 
+/// [stealing]: đang quắp túi vàng của người chơi bay đi (cướp vàng khi
+/// người chơi nghỉ quá lâu — rules/cottruyen.md mục 3b.1).
 void paintHarpy(
   Canvas canvas, {
   double time = 0,
   double attack = 0,
   double hurt = 0,
+  bool stealing = false,
 }) {
   const feather = Color(0xFF5B4A66);
   const skin = Color(0xFFB9B3A2);
@@ -556,6 +559,7 @@ void paintHarpy(
       _stroke(const Color(0xFFF2EAD8), 0.8),
     );
     _harpyWing(canvas, const Offset(-2, -16), flap, feather);
+    if (stealing) _goldPouch(canvas, time);
     // Tiếng rít: vòng sóng âm toả ra từ miệng khi vồ.
     if (attack > 0.3) {
       for (var i = 0; i < 3; i++) {
@@ -1281,6 +1285,46 @@ void paintStoneSoldier(
       Offset(-10 + i * 7.0, -70 + t * 66),
       1.1 * (1 - t) + 0.3,
       dust,
+    );
+  }
+}
+
+/// Túi vàng quắp dưới móng Harpy, đồng xu rơi lả tả.
+void _goldPouch(Canvas canvas, double time) {
+  const at = Offset(0, 32);
+  final sway = math.sin(time * 3) * 0.15;
+  canvas.save();
+  canvas.translate(at.dx, at.dy);
+  canvas.rotate(sway);
+  final pouch = Path()
+    ..moveTo(-4, -4)
+    ..quadraticBezierTo(-11, 2, -8, 9)
+    ..quadraticBezierTo(0, 13, 8, 9)
+    ..quadraticBezierTo(11, 2, 4, -4)
+    ..close();
+  _shaded(canvas, pouch, const Color(0xFF8A5A2E), shadow: 2);
+  // Dây buộc miệng túi + vàng lấp ló.
+  canvas.drawLine(
+    const Offset(-4, -3),
+    const Offset(4, -3),
+    _stroke(const Color(0xFFE8B83A), 1.6),
+  );
+  canvas.drawOval(
+    const Rect.fromLTWH(-3, -7, 6, 3.4),
+    goldPaint(const Rect.fromLTWH(-3, -7, 6, 3.4)),
+  );
+  glint(canvas, const Offset(-1, -6), 1.2);
+  canvas.restore();
+  // Đồng xu rơi xoay.
+  for (var i = 0; i < 4; i++) {
+    final ph = (time * 0.9 + i / 4) % 1;
+    final p = at + Offset(-4 + i * 3.0, 10 + ph * 50);
+    final w = 4 * math.cos(time * 8 + i).abs() + 0.8;
+    final coin = Rect.fromCenter(center: p, width: w, height: 4);
+    canvas.drawOval(coin, _fill(Color.fromRGBO(43, 29, 22, 1 - ph)));
+    canvas.drawOval(
+      coin.deflate(0.6),
+      _fill(Color.fromRGBO(240, 196, 70, 1 - ph)),
     );
   }
 }

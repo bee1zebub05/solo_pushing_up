@@ -181,7 +181,7 @@ void main() {
     await render(tester, 'monsters_zoom', (c) {
       paintNemeaScene(c, time: 2);
       for (final (x, s, draw) in <(double, double, void Function())>[
-        (70, 2.0, () => paintHarpy(c, time: 1, attack: 0.6)),
+        (70, 2.0, () => paintHarpy(c, time: 1, attack: 0.6, stealing: true)),
         (210, 1.5, () => paintErymanthianBoar(c, time: 1)),
         (340, 1.4, () => paintYoungHydra(c, time: 1, attack: 0.5)),
       ]) {
