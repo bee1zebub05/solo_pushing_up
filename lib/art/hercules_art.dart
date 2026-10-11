@@ -154,6 +154,7 @@ void paintHercules(
     shadow: 4,
     scale: _hScale,
     facing: _left,
+    definition: 0.8,
   );
 
   // Chân theo tư thế dồn trọng lượng (contrapposto): chân gần thẳng chịu
@@ -179,6 +180,7 @@ void paintHercules(
       shadow: 5,
       scale: _hThighScale,
       facing: _left,
+      definition: 0.8,
     );
     // Xương bánh chè (sel-line).
     canvas.drawArc(
@@ -287,6 +289,7 @@ void paintHercules(
     shadow: 4,
     scale: _hScale,
     facing: _left,
+    definition: 0.8,
   );
   // Khối cơ vai tròn trùm đầu cánh tay (sel-line) + rãnh bắp tay.
   final muscleLine = Paint()

@@ -31,6 +31,16 @@ abstract final class HumanAnatomy {
       // Rãnh tách bắp tay trước / sau.
       Groove([(0.42, 0.05), (0.66, -0.05), (0.88, 0.15)], weight: 0.7),
     ],
+    bellies: [
+      // Cơ cánh tay (brachialis) — sâu, lộ ra hai bên dưới bắp tay.
+      MuscleBelly((0.45, 0.1), (1.02, 0.15), width: 0.75, peak: 0.6),
+      // Bắp tay sau (triceps): khối dài mặt sau, đỉnh cao.
+      MuscleBelly((0.12, -0.45), (0.95, -0.35), width: 0.62, peak: 0.42),
+      // Bắp tay trước (biceps): khối tròn mặt trước, đỉnh thấp.
+      MuscleBelly((0.28, 0.35), (0.98, 0.3), width: 0.6, peak: 0.55),
+      // Cơ vai (deltoid): nông nhất, trùm đầu cánh tay, nhọn xuống giữa.
+      MuscleBelly((-0.08, 0.0), (0.46, 0.05), width: 1.0, peak: 0.32),
+    ],
   );
 
   /// Cẳng tay (khuỷu → cổ tay). Trước: cơ cánh tay quay phồng ngay dưới
@@ -52,6 +62,14 @@ abstract final class HumanAnatomy {
     grooves: [
       Groove([(0.04, 0.6), (0.32, 0.15), (0.7, 0.3)], weight: 0.8),
       Groove([(0.12, -0.7), (0.55, -0.45), (0.92, -0.4)], weight: 0.45),
+    ],
+    bellies: [
+      // Nhóm cơ gấp (mặt sau/trong), thon thành gân cổ tay.
+      MuscleBelly((0.02, -0.4), (0.85, -0.25), width: 0.6, peak: 0.3),
+      // Nhóm cơ duỗi.
+      MuscleBelly((0.05, 0.05), (0.9, 0.0), width: 0.55, peak: 0.3),
+      // Cơ cánh tay quay: nông, phồng ngay dưới khuỷu phía trước.
+      MuscleBelly((-0.06, 0.55), (0.72, 0.35), width: 0.55, peak: 0.28),
     ],
   );
 
@@ -86,6 +104,16 @@ abstract final class HumanAnatomy {
       // Rãnh tách cơ rộng ngoài / gân kheo.
       Groove([(0.22, -0.55), (0.6, -0.4), (0.9, -0.35)], weight: 0.55),
     ],
+    bellies: [
+      // Gân kheo (mặt sau).
+      MuscleBelly((0.08, -0.45), (0.95, -0.4), width: 0.6, peak: 0.4),
+      // Cơ rộng ngoài: khối lớn giữa đùi.
+      MuscleBelly((0.05, 0.05), (0.92, 0.1), width: 0.7, peak: 0.42),
+      // Cơ thẳng đùi: dải giữa mặt trước.
+      MuscleBelly((0.02, 0.45), (0.9, 0.35), width: 0.5, peak: 0.38),
+      // Cơ rộng trong ("giọt nước") ngay trên gối.
+      MuscleBelly((0.6, 0.55), (0.98, 0.35), width: 0.55, peak: 0.62),
+    ],
   );
 
   static const thighFemale = MuscleProfile(
@@ -119,6 +147,14 @@ abstract final class HumanAnatomy {
       // Cơ chày trước dọc ống quyển.
       Groove([(0.1, 0.5), (0.45, 0.35), (0.75, 0.4)], weight: 0.45),
     ],
+    bellies: [
+      // Cơ dép (soleus) — sâu, lộ hai bên dưới bắp chân.
+      MuscleBelly((0.25, -0.35), (0.85, -0.45), width: 0.6, peak: 0.45),
+      // Cơ chày trước dọc ống quyển.
+      MuscleBelly((0.05, 0.45), (0.8, 0.4), width: 0.42, peak: 0.3),
+      // Cơ sinh đôi (bắp chân): nông, phồng cao, kết thúc thành gân gót.
+      MuscleBelly((0.02, -0.4), (0.62, -0.55), width: 0.7, peak: 0.42),
+    ],
   );
 }
 
@@ -132,6 +168,11 @@ abstract final class FelineAnatomy {
     grooves: [
       Groove([(0.08, -0.9), (0.35, -0.3), (0.62, -0.4)], weight: 1.1),
     ],
+    bellies: [
+      MuscleBelly((0.05, 0.3), (0.95, 0.25), width: 0.55, peak: 0.4),
+      // Khối tam đầu sau vai.
+      MuscleBelly((0.0, -0.4), (0.9, -0.35), width: 0.75, peak: 0.35),
+    ],
   );
 
   /// Cẳng chân trước (khuỷu → cổ chân): phồng phía trước rồi thon.
@@ -141,6 +182,7 @@ abstract final class FelineAnatomy {
     grooves: [
       Groove([(0.1, 0.5), (0.4, 0.2), (0.75, 0.3)], weight: 0.8),
     ],
+    bellies: [MuscleBelly((0.0, 0.35), (0.75, 0.25), width: 0.6, peak: 0.3)],
   );
 
   /// Chân sau trên (hông → cổ chân sau): đùi + cơ đùi sau khổng lồ.
@@ -151,6 +193,12 @@ abstract final class FelineAnatomy {
       // Rãnh tách cơ đùi trước / sau, cong theo khối đùi.
       Groove([(0.1, 0.4), (0.38, 0.0), (0.7, -0.25)], weight: 1.2),
       Groove([(0.5, 0.9), (0.66, 0.5), (0.8, 0.55)], weight: 0.7),
+    ],
+    bellies: [
+      // Cơ đùi sau (gân kheo mèo lớn).
+      MuscleBelly((0.05, -0.4), (0.85, -0.3), width: 0.7, peak: 0.38),
+      // Cơ tứ đầu phía trước.
+      MuscleBelly((0.0, 0.35), (0.7, 0.3), width: 0.65, peak: 0.35),
     ],
   );
 
