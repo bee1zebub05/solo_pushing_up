@@ -922,28 +922,29 @@ void _harpyWing(Canvas canvas, Offset root, double flap, Color color) {
     final ang = 0.35 + i * 0.16;
     final len = 22.0 - i * 1.5;
     final tip = base + Offset(math.cos(ang) * len, math.sin(ang) * len);
-    final d = tip - base;
-    final n = Offset(-d.dy, d.dx) / d.distance;
-    final feather = Path()
-      ..moveTo(base.dx + n.dx * 3, base.dy + n.dy * 3)
-      ..lineTo(tip.dx + n.dx * 1.2, tip.dy + n.dy * 1.2)
-      // Mép rách: răng cưa ở ngọn.
-      ..lineTo(
-        tip.dx - n.dx * 0.2 + d.dx * 0.03,
-        tip.dy - n.dy * 0.2 + d.dy * 0.03,
-      )
-      ..lineTo(
-        tip.dx - n.dx * 1.6 - d.dx * 0.12,
-        tip.dy - n.dy * 1.6 - d.dy * 0.12,
-      )
-      ..lineTo(base.dx - n.dx * 3, base.dy - n.dy * 3)
-      ..close();
-    _shaded(canvas, feather, darken(color, 0.12 + i * 0.02), shadow: 1.4);
-    canvas.drawLine(
-      base,
-      Offset.lerp(base, tip, 0.85)!,
-      _stroke(darken(color, 0.4), 0.6),
+    // Lông thon cong nhẹ, ngọn hơi tù; cuống lông sẫm chạy dọc.
+    final bend = Offset(-(tip - base).dy, (tip - base).dx) * 0.06;
+    final mid = Offset.lerp(base, tip, 0.5)! + bend;
+    final feather = taperedStroke(
+      [base, mid, tip],
+      6 - i * 0.35,
+      peak: 0.3,
+      startWidth: 0.8,
+      endWidth: 0.18,
     );
+    _shaded(canvas, feather, darken(color, 0.12 + i * 0.02), shadow: 1.4);
+    canvas.drawPath(
+      taperedStroke([base, mid, Offset.lerp(base, tip, 0.88)!], 0.8),
+      _fill(darken(color, 0.45)),
+    );
+    // Mép rách: khía nhỏ gần ngọn.
+    if (i.isEven) {
+      final notch = Offset.lerp(base, tip, 0.8)! + bend * 0.5;
+      canvas.drawPath(
+        taperedStroke([notch, notch + (tip - base) * 0.08 + bend * 1.5], 1.4),
+        _fill(darken(color, 0.5)),
+      );
+    }
   }
   // Lông thứ cấp + lông bao phủ phần gốc cánh.
   final coverts = Path()
@@ -956,17 +957,34 @@ void _harpyWing(Canvas canvas, Offset root, double flap, Color color) {
     ..lineTo(8, 6)
     ..close();
   _shaded(canvas, coverts, color, shadow: 3);
-  // Hàng vảy lông nhỏ trên lông bao.
-  for (var i = 0; i < 5; i++) {
-    final p = Offset.lerp(const Offset(6, -6), const Offset(24, -22), i / 4)!;
-    canvas.drawArc(
-      Rect.fromCircle(center: p, radius: 3),
-      0.2,
-      2.6,
-      false,
-      _stroke(darken(color, 0.35), 0.8),
-    );
+  // Lông bao xếp ngói hai hàng dọc xương cánh: mép dưới tối, sống sáng.
+  canvas.save();
+  canvas.clipPath(coverts);
+  final dark = _fill(darken(color, 0.38));
+  final lit = _fill(lighten(color, 0.25).withValues(alpha: 0.8));
+  for (var row = 0; row < 2; row++) {
+    for (var k = 0; k < 7; k++) {
+      final p = Offset.lerp(
+        Offset(4 + row * 2.0, -4 + row * 4.0),
+        Offset(26 + row * 1.0, -24 + row * 5.0),
+        k / 6,
+      )!;
+      canvas.drawPath(
+        taperedStroke(
+          [
+            p + const Offset(-1.8, -0.6),
+            p + const Offset(0.6, 2.6),
+            p + const Offset(2.2, -0.8),
+          ],
+          1,
+          peak: 0.5,
+        ),
+        dark,
+      );
+      canvas.drawPath(taperedStroke([p, p + const Offset(0.4, 1.8)], 0.7), lit);
+    }
   }
+  canvas.restore();
   // Móng ở khớp cánh.
   canvas.drawPath(
     Path()
