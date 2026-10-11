@@ -307,6 +307,12 @@ void main() {
       c.scale(0.95);
       paintHercules(c, time: 1);
     });
+    await render(tester, 'hercules_head_zoom', (c) {
+      paintNemeaScene(c, time: 1);
+      c.translate(200, 870);
+      c.scale(3.6);
+      paintHercules(c, time: 1, talk: 1);
+    });
     await render(tester, 'hercules_feet_zoom', (c) {
       paintNemeaScene(c, time: 1);
       c.translate(200, 150);
