@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../battle_stage.dart';
+import '../greek_monsters.dart';
 import '../lion_art.dart';
 import '../nemea_scene.dart';
 
@@ -55,6 +56,46 @@ class NemeaBossArt extends BossArt {
       canvas.restore();
     }
     paintNemeaAmbient(canvas, time: time, dust: _dust);
+    _paintFlock(canvas, time, battle.bossHp);
+  }
+
+  /// Đàn chim Stymphalia canh hang sư tử: mỗi phần tư máu sư tử mất đi thì
+  /// một con bị hạ, xoay tròn rơi xuống.
+  static const flockSize = 4;
+  int _birds = flockSize;
+  final _falling = <(int, double)>[];
+
+  void _paintFlock(Canvas canvas, double time, double hp) {
+    final alive = (hp.clamp(0.0, 1.0) * flockSize).ceil();
+    while (_birds > alive) {
+      _birds--;
+      _falling.add((_birds, time));
+    }
+    if (alive > _birds) _birds = alive; // trận mới
+    _falling.removeWhere((f) => time - f.$2 > 1.2);
+    for (var i = 0; i < _birds; i++) {
+      _bird(canvas, i, time, 0);
+    }
+    for (final (i, t0) in _falling) {
+      _bird(canvas, i, time, (time - t0) / 1.2);
+    }
+  }
+
+  void _bird(Canvas canvas, int i, double time, double fall) {
+    // Mỗi con bay một vòng elip riêng quanh khoảng trời trên hang.
+    final a = time * (0.5 + i * 0.08) + i * 1.7;
+    final at = Offset(
+      290 + math.cos(a) * (40 + i * 8),
+      58 + i * 12 + math.sin(a) * 14,
+    );
+    paintBirdSprite(
+      canvas,
+      at,
+      time + i * 0.3,
+      size: 0.55 + (i % 2) * 0.1,
+      facingRight: -math.sin(a) > 0,
+      fall: fall,
+    );
   }
 
   @override

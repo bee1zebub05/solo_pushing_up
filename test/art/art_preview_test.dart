@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solo_pushing_up/art/greek_monsters.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
@@ -112,6 +113,95 @@ void main() {
         c.translate(250, stageGroundY);
         paintLion(c, lion);
         c.restore();
+      });
+    }
+  });
+
+  testWidgets('quái Hy Lạp: bình thường và ra đòn', (tester) async {
+    for (final (name, attack) in [
+      ('monsters', 0.0),
+      ('monsters_attack', 1.0),
+    ]) {
+      await render(tester, name, (c) {
+        paintNemeaScene(c, time: 2);
+        void at(double x, double y, double s, void Function() draw) {
+          c.save();
+          c.translate(x, y);
+          c.scale(s);
+          draw();
+          c.restore();
+        }
+
+        at(
+          60,
+          70,
+          1.6,
+          () => paintStymphalianBird(c, time: 0.3, attack: attack),
+        );
+        at(130, 50, 1.2, () => paintStymphalianBird(c, time: 0.5));
+        at(
+          70,
+          stageGroundY,
+          1.1,
+          () => paintSpartoi(c, time: 1, attack: attack),
+        );
+        at(
+          150,
+          stageGroundY,
+          1.1,
+          () => paintHarpy(c, time: 1, attack: attack),
+        );
+        at(
+          250,
+          stageGroundY,
+          1.0,
+          () => paintErymanthianBoar(c, time: 1, attack: attack),
+        );
+        at(
+          350,
+          stageGroundY,
+          1.0,
+          () => paintYoungHydra(c, time: 1, attack: attack),
+        );
+      });
+    }
+    await render(tester, 'spartoi_rise', (c) {
+      paintNemeaScene(c, time: 2);
+      c.save();
+      c.translate(200, stageGroundY);
+      c.scale(1.4);
+      paintSpartoi(c, rise: 0.5);
+      c.restore();
+    });
+  });
+
+  testWidgets('trận Nemea đầy đủ: bụi, đàn chim, sư tử, nhân vật', (
+    tester,
+  ) async {
+    for (final (name, hp, phase) in [
+      ('nemea_stage_start', 1.0, 0.55),
+      ('nemea_stage_half', 0.45, -1.0),
+    ]) {
+      final art = NemeaBossArt();
+      final battle = StageBattleState()..bossHp = hp;
+      // Chạy vài khung để bụi đạt mức theo máu.
+      for (var i = 0; i < 120; i++) {
+        art.paintScene(ui.Canvas(ui.PictureRecorder()), i / 30, battle);
+      }
+      final frame = BossFrame(
+        time: 4,
+        attack: 0,
+        hurt: 0,
+        glint: -1,
+        defeat: 0,
+        battle: battle,
+        attackPhase: phase,
+      );
+      await render(tester, name, (c) {
+        art.paintBackdrop(c);
+        art.paintScene(c, 4, battle);
+        art.paintBoss(c, frame);
+        paintHero(c, HeroPose.plank(110), effort: 0.6);
       });
     }
   });
