@@ -114,8 +114,16 @@ void paintHero(
   final toe = pose[HeroJoint.toe];
   if (frost > 0.02) {
     // Tách lớp để phủ màu lạnh lên cả người (chỉ tốn khi đang lạnh).
+    // Khoanh lớp quanh nhân vật (null = engine có thể lấy cả màn hình).
+    final xs = [for (final p in pose.joints.values) p.dx];
+    final ys = [for (final p in pose.joints.values) p.dy];
     canvas.saveLayer(
-      null,
+      Rect.fromLTRB(
+        xs.reduce(math.min) - 40,
+        ys.reduce(math.min) - 50,
+        xs.reduce(math.max) + 40,
+        ys.reduce(math.max) + 20,
+      ),
       Paint()
         ..colorFilter = ColorFilter.mode(
           const Color(0xFF9FD8FF).withValues(alpha: 0.55 * frost),
@@ -351,21 +359,53 @@ final _partCache = PictureCache<String>(maxEntries: 240);
 void _cachedPart(Canvas canvas, String key, void Function(Canvas) draw) =>
     _partCache.draw(canvas, key, draw);
 
+/// Cụm tinh thể băng mọc trên người: 4–5 khối lăng trụ thon nhọn toả ra,
+/// mỗi khối có mặt sáng (đón sáng) và mặt tối, viền xanh lạnh, chấm loá.
 void _iceCrystal(Canvas canvas, Offset at, double size) {
-  final paint = Paint()
-    ..color = const Color(0xFFE6F7FF)
-    ..strokeWidth = 1.6
-    ..strokeCap = StrokeCap.round;
-  final edge = Paint()
-    ..color = const Color(0xFF3B8FCF)
-    ..strokeWidth = 3
-    ..strokeCap = StrokeCap.round;
-  for (var i = 0; i < 3; i++) {
-    final a = math.pi / 3 * i;
-    final d = Offset(math.cos(a), math.sin(a)) * size;
-    canvas.drawLine(at - d, at + d, edge);
-    canvas.drawLine(at - d, at + d, paint);
+  const angles = [-1.9, -1.35, -0.8, -2.5, -0.3];
+  for (var i = 0; i < angles.length; i++) {
+    final a = angles[i];
+    final len = size * (i.isEven ? 1.3 : 0.9);
+    final w = size * 0.32;
+    final dir = Offset(math.cos(a), math.sin(a));
+    final n = Offset(-dir.dy, dir.dx);
+    final base = at + dir * (size * 0.1);
+    final shoulder = base + dir * (len * 0.72);
+    final tip = base + dir * len;
+    final left = Path()
+      ..moveTo(base.dx, base.dy)
+      ..lineTo(base.dx + n.dx * w, base.dy + n.dy * w)
+      ..lineTo(shoulder.dx + n.dx * w, shoulder.dy + n.dy * w)
+      ..lineTo(tip.dx, tip.dy)
+      ..close();
+    final right = Path()
+      ..moveTo(base.dx, base.dy)
+      ..lineTo(base.dx - n.dx * w, base.dy - n.dy * w)
+      ..lineTo(shoulder.dx - n.dx * w, shoulder.dy - n.dy * w)
+      ..lineTo(tip.dx, tip.dy)
+      ..close();
+    final outline = Path()
+      ..addPath(left, Offset.zero)
+      ..addPath(right, Offset.zero);
+    canvas.drawPath(
+      outline,
+      Paint()
+        ..color = const Color(0xFF2E6E9E)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeJoin = StrokeJoin.round,
+    );
+    canvas.drawPath(left, Paint()..color = const Color(0xEEE9F8FF));
+    canvas.drawPath(right, Paint()..color = const Color(0xDD9FD3F2));
+    canvas.drawLine(
+      base,
+      tip,
+      Paint()
+        ..color = const Color(0xAAFFFFFF)
+        ..strokeWidth = 0.6,
+    );
   }
+  glint(canvas, at + Offset(-size * 0.3, -size * 0.9), size * 0.3);
 }
 
 /// Tay chân to ra theo độ béo, nữ thon hơn một chút.
