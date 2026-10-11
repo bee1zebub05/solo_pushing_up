@@ -11,6 +11,10 @@ import '../vector_style.dart';
 abstract final class OrochiColors {
   static const body = Color(0xFF3F5E3A);
   static const belly = Color(0xFFCDB98A);
+
+  /// Bụng đỏ rỉ máu (Kojiki: "bụng nó lúc nào cũng đẫm máu, viêm đỏ").
+  static const bloodBelly = Color(0xFFB0473A);
+  static const cedar = Color(0xFF2E4A2E);
   static const moss = Color(0xFF6E8F3A);
   static const eye = Color(0xFFFF3B30);
   static const stump = Color(0xFF8E2A2A);
@@ -223,33 +227,65 @@ class OrochiBossArt extends BossArt {
     if (tint != null) canvas.restore();
   }
 
+  /// Cổ thon dần từ thân lên đầu, dải vảy bụng sáng chia đốt ở mặt dưới,
+  /// sống lưng sẫm ở mặt trên (ít mẫu vì vẽ mỗi khung, 8 cổ).
   void _neckPath(Canvas canvas, Offset head, {required bool severed}) {
     final end = severed ? Offset.lerp(_base, head, 0.55)! : head;
     final mid = Offset.lerp(_base, end, 0.5)! + const Offset(14, -6);
-    final neck = Path()
-      ..moveTo(_base.dx, _base.dy)
-      ..quadraticBezierTo(mid.dx, mid.dy, end.dx, end.dy);
-    for (final (width, color) in [
-      (17.0, VectorStyle.outline),
-      (13.0, OrochiColors.body),
-    ]) {
-      canvas.drawPath(
-        neck,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-    // Sọc bụng sáng chạy dọc cổ.
+    final pts = [_base, mid, end];
+    const width = 16.0;
+    final neck = taperedStroke(
+      pts,
+      width,
+      peak: 0,
+      startWidth: 1,
+      endWidth: severed ? 0.85 : 0.62,
+      samples: 12,
+    );
+    shadedPath(
+      canvas,
+      neck,
+      OrochiColors.body,
+      PartFrame.world,
+      shadow: 3,
+      highlight: 1.2,
+      outlineWidth: 1.6,
+    );
+    // Mặt bụng là phía pháp tuyến hướng xuống đất.
+    final d = end - _base;
+    final n = Offset(-d.dy, d.dx);
+    final bellySide = n.dy > 0 ? 1.0 : -1.0;
+    final under = offsetLine(pts, width * 0.27 * bellySide, taper: 0.4);
     canvas.drawPath(
-      neck.shift(const Offset(2, 3)),
-      Paint()
-        ..color = OrochiColors.belly.withValues(alpha: 0.85)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4
-        ..strokeCap = StrokeCap.round,
+      taperedStroke(
+        under,
+        width * 0.34,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.6,
+        samples: 12,
+      ),
+      fillPaint(OrochiColors.belly),
+    );
+    final plate = Paint()
+      ..color = darken(OrochiColors.belly, 0.35)
+      ..strokeWidth = 0.9;
+    final line = sampleSmooth(under, 9);
+    for (var i = 1; i < line.length - 1; i++) {
+      final dd = line[i + 1] - line[i - 1];
+      final nn = Offset(-dd.dy, dd.dx) / dd.distance * (width * 0.15);
+      canvas.drawLine(line[i] - nn, line[i] + nn, plate);
+    }
+    canvas.drawPath(
+      taperedStroke(
+        offsetLine(pts, -width * 0.28 * bellySide, taper: 0.4),
+        width * 0.16,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.4,
+        samples: 12,
+      ),
+      fillPaint(darken(OrochiColors.body, 0.32)),
     );
   }
 
@@ -279,10 +315,12 @@ class OrochiBossArt extends BossArt {
       // Viền sáng cho đầu đang bị chém.
       canvas.drawCircle(
         Offset.zero,
-        20,
+        26,
         Paint()
-          ..color = const Color(0xFFFFE082).withValues(alpha: 0.45)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..shader = Gradient.radial(Offset.zero, 26, const [
+            Color(0x73FFE082),
+            Color(0x00FFE082),
+          ]),
       );
     }
     final open = f.attack * 0.5;
@@ -304,13 +342,40 @@ class OrochiBossArt extends BossArt {
       outlineWidth: 1.4,
     );
     canvas.restore();
-    // Đầu rắn hướng về người chơi (trái).
-    final skull = Path()
-      ..moveTo(10, -6)
-      ..cubicTo(6, -14, -12, -14, -24, -4)
-      ..quadraticBezierTo(-26, 1, -20, 2)
-      ..cubicTo(-8, 4, 6, 6, 12, 2)
-      ..close();
+    // Sừng cong vuốt ra sau (vẽ trước để sọ che gốc).
+    for (final (pts, w) in const [
+      ([Offset(0, -9), Offset(9, -17), Offset(19, -19)], 3.4),
+      ([Offset(5, -8), Offset(13, -12), Offset(21, -11)], 2.6),
+    ]) {
+      shadedPath(
+        canvas,
+        taperedStroke(pts, w, peak: 0.1, startWidth: 1),
+        const Color(0xFFE8DCC0),
+        PartFrame.world,
+        shadow: 1,
+        highlight: 0,
+        outlineWidth: 1.1,
+      );
+    }
+    // Sọ rồng-rắn hướng về người chơi (trái): mõm dài hơi hếch, gờ mày
+    // nặng, má bạnh phía sau.
+    final skull = smoothPath(
+      const [
+        Offset(-27, -1),
+        Offset(-24, -5),
+        Offset(-15, -8),
+        Offset(-9, -12),
+        Offset(0, -12.5),
+        Offset(9, -9),
+        Offset(13, -2),
+        Offset(11, 4),
+        Offset(0, 5),
+        Offset(-14, 3.5),
+        Offset(-25, 2.5),
+      ],
+      closed: true,
+      tension: 0.1,
+    );
     shadedPath(
       canvas,
       skull,
@@ -319,19 +384,46 @@ class OrochiBossArt extends BossArt {
       shadow: 2.5,
       highlight: 1.2,
     );
-    // Sừng nhỏ.
-    shadedPath(
-      canvas,
-      Path()
-        ..moveTo(2, -10)
-        ..lineTo(10, -20)
-        ..lineTo(7, -9)
-        ..close(),
-      const Color(0xFFE8DCC0),
-      PartFrame.world,
-      shadow: 1,
-      highlight: 0,
-      outlineWidth: 1.2,
+    canvas.save();
+    canvas.clipPath(skull);
+    // Vảy sọ: hai hàng cung nhỏ + môi sáng dọc hàm.
+    final plates = Paint()
+      ..color = darken(OrochiColors.body, 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var i = 0; i < 6; i++) {
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(8 - i * 4.0, -8 + i * 0.6), radius: 2.4),
+        0.2,
+        2.6,
+        false,
+        plates,
+      );
+      canvas.drawArc(
+        Rect.fromCircle(
+          center: Offset(6 - i * 4.0, -3.5 + i * 0.4),
+          radius: 2.2,
+        ),
+        0.2,
+        2.6,
+        false,
+        plates,
+      );
+    }
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(-26, 1), Offset(-12, 2.6), Offset(4, 3), Offset(11, 1.5)],
+        2.6,
+        peak: 0.3,
+        startWidth: 0.6,
+      ),
+      fillPaint(OrochiColors.belly),
+    );
+    canvas.restore();
+    // Lỗ mũi.
+    canvas.drawOval(
+      const Rect.fromLTWH(-26, -3.6, 2.2, 1.3),
+      fillPaint(const Color(0xFF1A2414)),
     );
     if (open > 0.05) {
       // Răng nanh khi há miệng.
@@ -347,13 +439,16 @@ class OrochiBossArt extends BossArt {
       }
     }
     // Mắt đỏ rực.
-    const eye = Offset(-10, -6);
+    const eye = Offset(-8, -6.5);
+    // Mắt đỏ như quả hōzuki: quầng sáng gradient (không blur mỗi khung).
     canvas.drawCircle(
       eye,
-      5,
+      8,
       Paint()
-        ..color = OrochiColors.eye.withValues(alpha: 0.6)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+        ..shader = Gradient.radial(eye, 8, [
+          OrochiColors.eye.withValues(alpha: 0.7),
+          OrochiColors.eye.withValues(alpha: 0),
+        ]),
     );
     canvas.drawOval(
       Rect.fromCenter(center: eye, width: 6, height: 4),
@@ -362,6 +457,21 @@ class OrochiBossArt extends BossArt {
     canvas.drawOval(
       Rect.fromCenter(center: eye, width: 1.6, height: 4),
       fillPaint(VectorStyle.outline),
+    );
+    // Gờ mày sụp che nửa trên mắt: ánh nhìn hằm hằm.
+    shadedPath(
+      canvas,
+      Path()
+        ..moveTo(-14, -6.5)
+        ..quadraticBezierTo(-8, -12.5, -1, -10.5)
+        ..lineTo(-2.5, -7.4)
+        ..quadraticBezierTo(-8, -8.6, -14, -6.5)
+        ..close(),
+      darken(OrochiColors.body, 0.2),
+      PartFrame.world,
+      shadow: 0.8,
+      highlight: 0.6,
+      outlineWidth: 1,
     );
     canvas.restore();
   }
@@ -410,49 +520,178 @@ class OrochiBossArt extends BossArt {
     }
   }
 
+  /// Thân khổng lồ (tĩnh) chụp sẵn: thở chỉ dời ảnh lên xuống.
+  static final _bodyImage = RasterLayer(
+    _paintBody,
+    bounds: const Rect.fromLTRB(236, 120, 436, 252),
+    resolution: 1.2,
+  );
+
   void _bodyMound(Canvas canvas, BossFrame f) {
     final breathe = math.sin(f.time * 1.6) * 2;
-    final body = Path()
-      ..moveTo(262, stageGroundY + 2)
-      ..cubicTo(262, 180 - breathe, 300, 168 - breathe, 335, 170 - breathe)
-      ..cubicTo(372, 172 - breathe, 404, 186, 410, stageGroundY + 2)
-      ..close();
-    shadedPath(
-      canvas,
-      body,
-      OrochiColors.body,
-      PartFrame.world,
-      shadow: 6,
-      highlight: 2,
-    );
-    // Vảy hình cung.
-    final scale = Paint()
-      ..color = darken(OrochiColors.body, 0.3)
-      ..strokeWidth = 1.1
-      ..style = PaintingStyle.stroke;
-    for (var row = 0; row < 3; row++) {
-      for (var i = 0; i < 7; i++) {
-        final x = 282 + i * 16.0 + (row.isOdd ? 8 : 0);
-        final y = 184.0 + row * 10 - breathe;
-        canvas.drawArc(Rect.fromLTWH(x, y, 14, 9), 0, math.pi, false, scale);
-      }
-    }
-    // Rêu và cây nhỏ mọc trên lưng (như truyền thuyết).
-    for (final (x, s) in [(300.0, 1.0), (340.0, 1.3), (378.0, 0.9)]) {
-      final top = Offset(x, 168 - breathe - 10 * s);
-      canvas.drawRect(
-        Rect.fromLTWH(x - 1.2, top.dy, 2.4, 10 * s),
-        fillPaint(const Color(0xFF4A3424)),
+    canvas.save();
+    canvas.translate(0, -breathe * 0.6);
+    _bodyImage.paint(canvas);
+    canvas.restore();
+  }
+
+  /// Ba vòng thân rắn chồng nhau phủ vảy (vòng sau tối hơn), bụng đỏ rỉ
+  /// máu, đuôi thòi ra bên phải; trên lưng rêu và tuyết tùng mọc (Kojiki).
+  static void _paintBody(Canvas canvas) {
+    void coil(
+      List<Offset> pts,
+      double width,
+      Color color, {
+      bool belly = true,
+      double start = 0.8,
+      double end = 0.8,
+    }) {
+      final b = buildScaleBody(
+        pts,
+        width,
+        startWidth: start,
+        endWidth: end,
+        belly: belly,
       );
       shadedPath(
         canvas,
-        Path()..addOval(Rect.fromCircle(center: top, radius: 6 * s)),
-        OrochiColors.moss,
+        b.body,
+        color,
         PartFrame.world,
-        shadow: 1.5,
-        highlight: 0.8,
-        outlineWidth: 1.2,
+        shadow: 6,
+        highlight: 2,
       );
+      canvas.save();
+      canvas.clipPath(b.body);
+      canvas.drawPath(
+        b.scaleDark,
+        Paint()
+          ..color = darken(color, 0.38).withValues(alpha: 0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+      canvas.drawPath(
+        b.scaleLit,
+        Paint()
+          ..color = lighten(color, 0.3).withValues(alpha: 0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+      canvas.drawPath(
+        b.spine,
+        fillPaint(darken(color, 0.3).withValues(alpha: 0.8)),
+      );
+      if (belly) {
+        canvas.drawPath(b.belly, fillPaint(OrochiColors.bloodBelly));
+        canvas.drawPath(
+          b.plates,
+          Paint()
+            ..color = darken(OrochiColors.bloodBelly, 0.35)
+            ..strokeWidth = 1,
+        );
+      }
+      canvas.restore();
+    }
+
+    final far = darken(OrochiColors.body, 0.18);
+    // Đuôi phía sau thòi ra bên phải, cong lên.
+    for (final pts in const [
+      [Offset(380, 214), Offset(404, 200), Offset(422, 182), Offset(418, 162)],
+      [Offset(392, 228), Offset(416, 222), Offset(430, 206)],
+    ]) {
+      coil(pts, 12, far, belly: false, start: 1, end: 0);
+    }
+    coil(
+      const [
+        Offset(262, 230),
+        Offset(276, 196),
+        Offset(316, 176),
+        Offset(360, 178),
+        Offset(396, 198),
+        Offset(408, 230),
+      ],
+      34,
+      far,
+      belly: false,
+    );
+    coil(
+      const [
+        Offset(252, 238),
+        Offset(272, 214),
+        Offset(312, 202),
+        Offset(354, 206),
+        Offset(390, 220),
+        Offset(408, 240),
+      ],
+      26,
+      OrochiColors.body,
+    );
+    coil(
+      const [
+        Offset(244, 246),
+        Offset(284, 234),
+        Offset(334, 232),
+        Offset(378, 238),
+        Offset(414, 248),
+      ],
+      20,
+      OrochiColors.body,
+      start: 0.6,
+      end: 0.3,
+    );
+    // Rêu bám dọc sống lưng vòng sau.
+    final moss = math.Random(5);
+    for (var i = 0; i < 18; i++) {
+      final x = 282 + i * 6.5 + moss.nextDouble() * 3;
+      final y =
+          178 + math.pow((x - 336) / 60, 2) * 14 - 2 + moss.nextDouble() * 3;
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x, y),
+          width: 7 + moss.nextDouble() * 5,
+          height: 3.5,
+        ),
+        fillPaint(
+          i.isEven ? OrochiColors.moss : darken(OrochiColors.moss, 0.2),
+        ),
+      );
+    }
+    // Tuyết tùng mọc trên lưng: thân gỗ + các tầng tán răng cưa, tối dần
+    // xuống dưới (ánh sáng chiều từ trên–trái).
+    for (final (x, h) in const [
+      (300.0, 22.0),
+      (330.0, 30.0),
+      (352.0, 24.0),
+      (380.0, 18.0),
+    ]) {
+      final baseY = 178 + math.pow((x - 336) / 60, 2) * 14;
+      canvas.drawRect(
+        Rect.fromLTWH(x - 1.2, baseY - h * 0.3, 2.4, h * 0.3 + 2),
+        fillPaint(const Color(0xFF4A3424)),
+      );
+      for (var t = 0; t < 4; t++) {
+        final w = h * (0.42 - t * 0.08);
+        final top = baseY - h * (0.25 + t * 0.2) - h * 0.22;
+        final bottom = top + h * 0.3;
+        final tier = Path()
+          ..moveTo(x, top)
+          ..lineTo(x + w * 0.5, bottom - h * 0.06)
+          ..lineTo(x + w * 0.3, bottom - h * 0.08)
+          ..lineTo(x + w * 0.62, bottom)
+          ..lineTo(x - w * 0.62, bottom)
+          ..lineTo(x - w * 0.3, bottom - h * 0.08)
+          ..lineTo(x - w * 0.5, bottom - h * 0.06)
+          ..close();
+        shadedPath(
+          canvas,
+          tier,
+          Color.lerp(OrochiColors.cedar, OrochiColors.moss, t * 0.12)!,
+          PartFrame.world,
+          shadow: 1.5,
+          highlight: 0.8,
+          outlineWidth: 1.1,
+        );
+      }
     }
   }
 }
