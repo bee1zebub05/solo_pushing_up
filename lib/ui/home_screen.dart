@@ -15,6 +15,7 @@ import 'character_creator_screen.dart';
 import 'counter_screen.dart';
 import 'hero_preview.dart';
 import 'nemea_intro_screen.dart';
+import 'rive_trial_screen.dart';
 import 'stage_select_screen.dart';
 
 /// Màn hình chính tạm: tiến trình, chọn chế độ, các kỳ công, luyện tập,
@@ -250,6 +251,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               icon: const Icon(Icons.bug_report_outlined),
               label: const Text('Chế độ đếm (debug, ghi dữ liệu test)'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RiveTrialScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.science_outlined),
+              label: const Text('Thử Rive (nhân vật hoạt hình xương)'),
             ),
           ],
         ),

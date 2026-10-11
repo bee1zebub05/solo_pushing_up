@@ -44,6 +44,7 @@ dependencies:
   flutter_tts: ^4.2.5
   shared_preferences: ^2.5.6
   flame: ^1.38.2
+  flame_rive: ^1.11.2
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,7 @@ flutter:
 
   assets:
     - assets/sounds/
+    - assets/rive/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flame_rive/flame_rive.dart' show RiveNative;
 
 import 'ui/home_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Bộ vẽ native của Rive (bản thử nhân vật Rive).
+  await RiveNative.init();
   // Cho xoay ngang: phòng nhỏ đôi khi chỉ đặt máy nằm ngang được
   // (review Pushup RPG chê ép xoay camera).
   SystemChrome.setPreferredOrientations([
