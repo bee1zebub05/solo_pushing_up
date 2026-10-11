@@ -1164,6 +1164,35 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
     }
   }
 
+  // Đền sạch bụi lấp lánh: tia sao bốn cánh nhấp nháy trên mái và cột.
+  final shine = ((clear - 0.6) / 0.4).clamp(0.0, 1.0);
+  if (shine > 0) {
+    for (final (i, p) in const [
+      (0, Offset(193, 86)),
+      (1, Offset(166, 98)),
+      (2, Offset(222, 104)),
+      (3, Offset(180, 118)),
+    ]) {
+      final tw = math.sin(time * 2.4 + i * 1.9);
+      if (tw < 0.3) continue;
+      final r = 5 * (tw - 0.3) / 0.7 * shine;
+      final star = Paint()..color = Color.fromRGBO(255, 250, 225, 0.9 * shine);
+      canvas.drawPath(
+        Path()
+          ..moveTo(p.dx, p.dy - r)
+          ..lineTo(p.dx + r * 0.18, p.dy - r * 0.18)
+          ..lineTo(p.dx + r, p.dy)
+          ..lineTo(p.dx + r * 0.18, p.dy + r * 0.18)
+          ..lineTo(p.dx, p.dy + r)
+          ..lineTo(p.dx - r * 0.18, p.dy + r * 0.18)
+          ..lineTo(p.dx - r, p.dy)
+          ..lineTo(p.dx - r * 0.18, p.dy - r * 0.18)
+          ..close(),
+        star,
+      );
+    }
+  }
+
   // Hạt lơ lửng: bụi xám (Trì Trệ) hoặc hạt nắng vàng.
   final mote = Paint();
   for (var i = 0; i < 18; i++) {
