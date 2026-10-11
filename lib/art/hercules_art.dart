@@ -768,6 +768,76 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
     ..quadraticBezierTo(c.dx + 4, c.dy + 22, c.dx + 14, c.dy + 8)
     ..close();
   shadedPath(canvas, face, skin, PartFrame.world, shadow: 4);
+  // Mặt phẳng kiểu tượng (Loomis): gờ mày dô bắt sáng, hốc mắt sâu tối,
+  // mặt bên má khuất, sống mũi sáng, cánh mũi, nếp trán.
+  canvas.save();
+  canvas.clipPath(face);
+  final core = coreShadeOf(skin);
+  canvas.drawPath(
+    Path()
+      ..moveTo(c.dx - 2, c.dy - 6)
+      ..quadraticBezierTo(c.dx + 6, c.dy + 2, c.dx + 2, c.dy + 18)
+      ..lineTo(c.dx + 16, c.dy + 18)
+      ..lineTo(c.dx + 16, c.dy - 8)
+      ..close(),
+    fillPaint(core.withValues(alpha: 0.25)),
+  );
+  canvas.drawCircle(
+    c + const Offset(-9, -2.5),
+    6,
+    Paint()
+      ..shader = Gradient.radial(c + const Offset(-9, -2.5), 6, [
+        core.withValues(alpha: 0.65),
+        core.withValues(alpha: 0),
+      ]),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        c + const Offset(-16, -8),
+        c + const Offset(-9, -10),
+        c + const Offset(-2, -8),
+      ],
+      2.8,
+      peak: 0.4,
+    ),
+    fillPaint(lighten(skin, 0.3).withValues(alpha: 0.8)),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        c + const Offset(-17, -6),
+        c + const Offset(-20, 0),
+        c + const Offset(-21, 4),
+      ],
+      1.6,
+      peak: 0.5,
+    ),
+    fillPaint(lighten(skin, 0.35).withValues(alpha: 0.8)),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        c + const Offset(-18, 4),
+        c + const Offset(-15, 6),
+        c + const Offset(-14, 3),
+      ],
+      1.2,
+      peak: 0.5,
+    ),
+    fillPaint(darken(skin, 0.4)),
+  );
+  for (var i = 0; i < 2; i++) {
+    canvas.drawPath(
+      taperedStroke([
+        c + Offset(-12, -13.5 + i * 2.2),
+        c + Offset(-6, -14.5 + i * 2.2),
+        c + Offset(0, -13.5 + i * 2.2),
+      ], 0.7),
+      fillPaint(darken(skin, 0.3).withValues(alpha: 0.6)),
+    );
+  }
+  canvas.restore();
   // Râu: khối liền từ tóc mai, ôm hàm, nhọn ở cằm (râu tượng cổ), điểm
   // bạc ở cằm; lọn xoăn nét thon xếp hàng theo dòng chảy xuống.
   final beard = smoothPath(
@@ -806,13 +876,43 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
   }
   // Miệng: mấp máy khi nói.
   final open = talk > 0 ? (0.5 + 0.5 * math.sin(time * 14)) * talk : 0.0;
-  canvas.drawOval(
-    Rect.fromCenter(
-      center: c + const Offset(-12, 11),
-      width: 6,
-      height: 1.6 + 4 * open,
+  // Môi dưới đầy (khối sáng) + khe miệng mảnh, mở ra khi nói.
+  canvas.drawPath(
+    taperedStroke(
+      [
+        c + const Offset(-15, 12.4),
+        c + const Offset(-11.5, 13.6),
+        c + const Offset(-8, 12.2),
+      ],
+      2.2,
+      peak: 0.5,
     ),
+    fillPaint(const Color(0xFFB0705A)),
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(c.dx - 16, c.dy + 11)
+      ..quadraticBezierTo(
+        c.dx - 12,
+        c.dy + 11 + 3.5 * open,
+        c.dx - 8,
+        c.dy + 10.6,
+      )
+      ..quadraticBezierTo(c.dx - 12, c.dy + 10.4, c.dx - 16, c.dy + 11)
+      ..close(),
     Paint()..color = const Color(0xFF3A1A14),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        c + const Offset(-16, 11),
+        c + const Offset(-12, 11.2),
+        c + const Offset(-8, 10.6),
+      ],
+      0.9,
+      peak: 0.5,
+    ),
+    fillPaint(const Color(0xFF3A1A14)),
   );
   // Ria mép.
   canvas.drawPath(
@@ -825,29 +925,93 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
   );
   // Mắt nghiêm nghị, mày rậm.
   final eye = c + const Offset(-10, -3);
-  canvas.drawOval(
-    Rect.fromCenter(center: eye, width: 6, height: 4),
-    Paint()..color = const Color(0xFFFFFBF0),
+  // Mắt nhìn nghiêng: hạnh nhân nhỏ trong hốc, mí trên dày đổ bóng xuống
+  // lòng trắng, tròng nâu có chấm sáng, mí dưới mảnh.
+  final almond = Path()
+    ..moveTo(eye.dx - 3.4, eye.dy + 0.2)
+    ..quadraticBezierTo(eye.dx - 0.5, eye.dy - 2.4, eye.dx + 2.8, eye.dy - 0.4)
+    ..quadraticBezierTo(eye.dx, eye.dy + 1.8, eye.dx - 3.4, eye.dy + 0.2)
+    ..close();
+  canvas.drawPath(almond, Paint()..color = const Color(0xFFF2E8D8));
+  canvas.save();
+  canvas.clipPath(almond);
+  canvas.drawCircle(
+    eye + const Offset(-1.4, -0.2),
+    1.6,
+    Paint()..color = const Color(0xFF4A3220),
   );
   canvas.drawCircle(
-    eye + const Offset(-1, 0),
-    1.6,
-    Paint()..color = const Color(0xFF3B2A1E),
+    eye + const Offset(-1.4, -0.2),
+    0.8,
+    Paint()..color = const Color(0xFF1A120C),
   );
-  canvas.drawLine(
-    eye + const Offset(-5, -4),
-    eye + const Offset(5, -5),
-    Paint()
-      ..color = hair
-      ..strokeWidth = 2.6
-      ..strokeCap = StrokeCap.round,
+  canvas.drawRect(
+    Rect.fromLTWH(eye.dx - 4, eye.dy - 3, 8, 1.6),
+    Paint()..color = const Color(0x55402820),
+  );
+  canvas.restore();
+  canvas.drawCircle(
+    eye + const Offset(-1.9, -0.8),
+    0.45,
+    Paint()..color = const Color(0xFFFFFFFF),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        eye + const Offset(-3.8, 0.4),
+        eye + const Offset(-0.5, -2.6),
+        eye + const Offset(3, -0.6),
+      ],
+      1.3,
+      peak: 0.4,
+    ),
+    fillPaint(const Color(0xFF2A1A12)),
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        eye + const Offset(-6, -4.4),
+        eye + const Offset(-0.5, -6.4),
+        eye + const Offset(5, -5),
+      ],
+      2.8,
+      peak: 0.25,
+      startWidth: 0.5,
+    ),
+    fillPaint(hair),
   );
   // Tai.
-  final ear = Path()
-    ..addOval(
-      Rect.fromCenter(center: c + const Offset(6, 0), width: 7, height: 10),
-    );
+  final ear = smoothPath(
+    [
+      c + const Offset(4, -5),
+      c + const Offset(8, -6),
+      c + const Offset(10, -1),
+      c + const Offset(8.5, 4),
+      c + const Offset(6, 6),
+      c + const Offset(3.5, 3),
+    ],
+    closed: true,
+    tension: 0.1,
+  );
   shadedPath(canvas, ear, skin, PartFrame.world, shadow: 1.5);
+  // Vành tai trong (xoắn tai) và lỗ tai.
+  canvas.drawPath(
+    taperedStroke(
+      [
+        c + const Offset(6, -3.5),
+        c + const Offset(8.2, -1),
+        c + const Offset(7, 3),
+      ],
+      1,
+      peak: 0.4,
+    ),
+    fillPaint(darken(skin, 0.35)),
+  );
+  canvas.drawCircle(
+    c + const Offset(5.4, 0.6),
+    0.9,
+    fillPaint(darken(skin, 0.5)),
+  );
   // Vòng nguyệt quế vàng xanh quanh đầu.
   final leaf = Paint()..color = const Color(0xFF8DA548);
   final leafDark = Paint()..color = const Color(0xFF5E7A30);
