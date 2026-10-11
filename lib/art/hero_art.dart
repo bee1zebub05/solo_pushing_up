@@ -13,8 +13,8 @@ abstract final class HeroColors {
   static const sandal = Color(0xFF8A5A30);
   static const headband = Color(0xFFD23C2E);
   static const gold = Color(0xFFE8B83A);
-  static const pelt = Color(0xFFD9A441);
-  static const mane = Color(0xFF9C5A1E);
+  static const pelt = Color(0xFFC99140);
+  static const mane = Color(0xFF8E3714);
   static const lips = Color(0xFFC0584E);
   static const blush = Color(0x55FF7F7F);
   static const eyeWhite = Color(0xFFFFFDF8);
@@ -653,15 +653,30 @@ void _peltBack(Canvas canvas, double len, PartFrame f) {
     ..lineTo(-5, 4)
     ..cubicTo(-8, -len * 0.3, -6, -len * 0.7, 4, -len - 2)
     ..close();
-  shadedPath(canvas, pelt, HeroColors.pelt, f, shadow: 4, highlight: 1.5);
-  // Vệt lông.
-  final fur = Paint()
-    ..color = darken(HeroColors.pelt, 0.2)
-    ..strokeWidth = 1
+  // Chân trước sư tử rủ xuống sau lưng, móng còn nguyên.
+  final paw = chainPath([
+    (Offset(-14, -len * 0.2), const Offset(-17, 14), 3, 2.6),
+  ]);
+  shadedPath(canvas, paw, darken(HeroColors.pelt, 0.12), f, shadow: 1.6);
+  final claw = Paint()
+    ..color = const Color(0xFFFFF4DC)
+    ..strokeWidth = 1.1
     ..strokeCap = StrokeCap.round;
-  for (final y in [0.75, 0.5, 0.25]) {
-    canvas.drawLine(Offset(-15, -len * y), Offset(-11, -len * y + 4), fur);
+  for (final dx in [-1.5, 0.5, 2.5]) {
+    canvas.drawLine(Offset(-19 + dx, 15), Offset(-20 + dx, 18), claw);
   }
+  shadedPath(canvas, pelt, HeroColors.pelt, f, shadow: 4, highlight: 1.5);
+  // Lông xuôi theo trọng lực.
+  furStrokes(
+    canvas,
+    pelt,
+    darken(HeroColors.pelt, 0.3),
+    dir: const Offset(-0.2, 1),
+    count: 26,
+    length: 6,
+    width: 0.9,
+    seed: 7,
+  );
 }
 
 /// Phần tóc nằm sau thân (đuôi ngựa, tóc dài), rủ theo trọng lực.
@@ -1097,28 +1112,92 @@ void _head(
 
 /// Mũ trùm đầu sư tử Nemea (như tượng Hercules cổ đại).
 void _lionHood(Canvas canvas, PartFrame f) {
-  // Bờm viền quanh mũ.
-  final mane = Path();
-  const n = 11;
-  for (var i = 0; i <= n; i++) {
-    final a = math.pi * (0.55 + 1.15 * i / n);
-    final rr = i.isEven ? 21.0 : 17.0;
-    final p = Offset(-2 + math.cos(a) * rr, -1 + math.sin(a) * rr);
-    i == 0 ? mane.moveTo(p.dx, p.dy) : mane.lineTo(p.dx, p.dy);
+  // Bờm hai lớp hình ngọn lửa, ngọn sẫm (khớp bờm Sư tử Nemea).
+  for (final (rr, len, color) in [
+    (13.0, 9.0, darken(HeroColors.mane, 0.25)),
+    (11.0, 6.0, HeroColors.mane),
+  ]) {
+    final mane = Path();
+    const n = 9;
+    for (var i = 0; i < n; i++) {
+      final a = math.pi * (0.72 + 0.9 * i / (n - 1));
+      final dir = Offset(math.cos(a), math.sin(a));
+      final nrm = Offset(-dir.dy, dir.dx);
+      final base = const Offset(-4, -1) + dir * rr;
+      final tip = base + dir * len + const Offset(-2.5, 1.5);
+      mane
+        ..moveTo(base.dx + nrm.dx * 4, base.dy + nrm.dy * 4)
+        ..quadraticBezierTo(
+          base.dx + dir.dx * len * 0.6 + nrm.dx * 2.5,
+          base.dy + dir.dy * len * 0.6 + nrm.dy * 2.5,
+          tip.dx,
+          tip.dy,
+        )
+        ..quadraticBezierTo(
+          base.dx + dir.dx * len * 0.5 - nrm.dx * 2,
+          base.dy + dir.dy * len * 0.5 - nrm.dy * 2,
+          base.dx - nrm.dx * 4,
+          base.dy - nrm.dy * 4,
+        )
+        ..close();
+    }
+    // Lấp phần chân bờm: chỉ dải vòng cung sau đầu (không che mặt).
+    mane.addPolygon([
+      for (var i = 0; i <= 12; i++)
+        const Offset(-4, -1) +
+            Offset(
+                  math.cos(math.pi * (0.72 + 0.9 * i / 12)),
+                  math.sin(math.pi * (0.72 + 0.9 * i / 12)),
+                ) *
+                (rr + 1),
+    ], true);
+    shadedPath(canvas, mane, color, f, shadow: 2.5, highlight: 1);
+    furStrokes(
+      canvas,
+      mane,
+      darken(color, 0.35),
+      dir: const Offset(-1, 0.4),
+      count: 30,
+      length: 5,
+      width: 0.8,
+      seed: rr.round(),
+    );
   }
-  mane.close();
-  shadedPath(canvas, mane, HeroColors.mane, f, shadow: 3, highlight: 1.2);
 
-  // Phần đầu sư tử úp lên đỉnh đầu, mõm nhô ra trước trán.
+  // Đầu sư tử úp lên đỉnh đầu, mõm nhô ra trước trán.
   final hood = Path()
     ..moveTo(-15, 3)
     ..cubicTo(-17, -14, -2, -22, 10, -15)
-    ..quadraticBezierTo(18, -12, 19, -7)
-    ..lineTo(14, -5)
+    ..quadraticBezierTo(18, -12, 20, -7)
+    ..lineTo(14, -4.5)
     ..quadraticBezierTo(4, -9, -6, -3)
     ..quadraticBezierTo(-10, 2, -15, 3)
     ..close();
   shadedPath(canvas, hood, HeroColors.pelt, f, shadow: 3, highlight: 1.4);
+  canvas.save();
+  canvas.clipPath(hood);
+  // Mõm sáng, gờ mày sẫm, ba vết sẹo vuốt.
+  canvas.drawOval(
+    const Rect.fromLTWH(9, -12, 12, 7),
+    fillPaint(const Color(0xFFE2C08A)),
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(1, -17)
+      ..quadraticBezierTo(7, -19, 12, -15)
+      ..lineTo(11, -13)
+      ..quadraticBezierTo(6, -16, 1, -15)
+      ..close(),
+    fillPaint(darken(HeroColors.pelt, 0.3)),
+  );
+  final scar = Paint()
+    ..color = const Color(0xFF8A4A2A)
+    ..strokeWidth = 0.8
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i < 3; i++) {
+    canvas.drawLine(Offset(-2 + i * 2.0, -19), Offset(-5 + i * 2.0, -11), scar);
+  }
+  canvas.restore();
   // Tai sư tử.
   shadedPath(
     canvas,
@@ -1131,29 +1210,40 @@ void _lionHood(Canvas canvas, PartFrame f) {
     highlight: 0.6,
     outlineWidth: 1.2,
   );
-  // Mắt sư tử và răng nanh trên trán.
-  canvas.drawLine(
-    const Offset(5, -14),
-    const Offset(10, -13),
+  // Mắt sư tử nhắm (bộ da đã thuần).
+  canvas.drawPath(
+    Path()
+      ..moveTo(4, -14)
+      ..quadraticBezierTo(7, -12.5, 10, -13.5),
     Paint()
       ..color = HeroColors.outline
-      ..strokeWidth = 1.8
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round,
   );
-  final fang = fillPaint(const Color(0xFFFFF8E7));
-  for (final x in [12.0, 16.0]) {
+  // Ba nanh trên phủ xuống trán người đội.
+  for (final (x, l) in [(11.0, 4.0), (15.0, 5.0), (18.5, 3.5)]) {
+    final fang = Path()
+      ..moveTo(x - 1.6, -5.5)
+      ..lineTo(x + 1.6, -5)
+      ..lineTo(x, -5 + l)
+      ..close();
+    canvas.drawPath(fang, fillPaint(const Color(0xFFFFF6DE)));
     canvas.drawPath(
-      Path()
-        ..moveTo(x - 1.5, -6.5)
-        ..lineTo(x + 1.5, -6)
-        ..lineTo(x, -2.5)
-        ..close(),
       fang,
+      Paint()
+        ..color = HeroColors.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7,
     );
   }
-  canvas.drawCircle(
-    const Offset(18.5, -8.5),
-    1.6,
-    fillPaint(HeroColors.outline),
+  // Da mũi.
+  canvas.drawPath(
+    Path()
+      ..moveTo(18, -10)
+      ..quadraticBezierTo(21.5, -10.5, 21, -7.5)
+      ..quadraticBezierTo(19, -7, 18, -10)
+      ..close(),
+    fillPaint(const Color(0xFF3A1E14)),
   );
 }
