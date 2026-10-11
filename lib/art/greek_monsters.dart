@@ -1094,6 +1094,142 @@ void _harpyWing(Canvas canvas, Offset root, double flap, Color color) {
 // Lợn rừng Erymanthus (tinh anh): bờm gai dựng, nanh cong khổng lồ.
 
 /// [charge] 0–1: cúi đầu lao húc (người chơi phải ngồi xuống để né).
+final _boarHead = RasterLayer(
+  _paintBoarHead,
+  bounds: const Rect.fromLTRB(-46, -34, 20, 18),
+  resolution: 2.2,
+);
+
+void _paintBoarHead(Canvas canvas) {
+  const hide = Color(0xFF5A4134);
+  final head = smoothPath(
+    const [
+      Offset(10, -18),
+      Offset(0, -20),
+      Offset(-12, -15),
+      Offset(-24, -8),
+      Offset(-31, -4),
+      Offset(-33, 3),
+      Offset(-27, 6),
+      Offset(-14, 9),
+      Offset(0, 12),
+      Offset(12, 8),
+    ],
+    closed: true,
+    tension: 0.08,
+  );
+  _shaded(canvas, head, hide, shadow: 4);
+  canvas.save();
+  canvas.clipPath(head);
+  // Má bạnh lông dày: nét lông xuôi ra sau, sẫm phía dưới.
+  final fur = Path();
+  for (var i = 0; i < 26; i++) {
+    final x = -18 + (i % 7) * 5.0 + ((i ~/ 7).isOdd ? 2.5 : 0.0);
+    final y = -10 + (i ~/ 7) * 5.0;
+    fur.addPath(
+      taperedStroke(
+        [Offset(x, y), Offset(x + 3, y + 1.2), Offset(x + 5.5, y + 2.6)],
+        1.1,
+        peak: 0.3,
+        startWidth: 0.8,
+        samples: 5,
+      ),
+      Offset.zero,
+    );
+  }
+  canvas.drawPath(fur, _fill(const Color(0xAA2E211B)));
+  // Sống mũi sáng, nếp nhăn mõm.
+  canvas.drawPath(
+    taperedStroke(
+      const [Offset(-4, -17), Offset(-16, -12.5), Offset(-27, -6)],
+      2.4,
+      peak: 0.4,
+    ),
+    _fill(const Color(0x887D5E4A)),
+  );
+  for (var i = 0; i < 3; i++) {
+    final x = -22.0 + i * 3;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(x, -6 + i * 0.6), width: 4, height: 5),
+      -1.2,
+      2.2,
+      false,
+      _stroke(const Color(0xFF2E211B), 0.7),
+    );
+  }
+  canvas.restore();
+  // Đĩa mõm: mặt phẳng hồng xám, hai lỗ mũi, viền ướt sáng.
+  final snout = Path()
+    ..addOval(
+      Rect.fromCenter(center: const Offset(-32, 0.5), width: 7, height: 12),
+    );
+  _shaded(canvas, snout, const Color(0xFF9C6E5E), shadow: 1.5);
+  for (final dy in [-2.4, 3.2]) {
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(-33, dy), width: 2.2, height: 3),
+      _fill(const Color(0xFF241812)),
+    );
+  }
+  canvas.drawArc(
+    Rect.fromCenter(center: const Offset(-32, 0.5), width: 7, height: 12),
+    3.6,
+    1.8,
+    false,
+    _stroke(const Color(0xAAFFE8E0), 0.7),
+  );
+  // Nanh: ngà cong vút có vân, gốc sẫm trong môi.
+  for (final (x, s) in [(-18.0, 1.0), (-12.0, 0.72)]) {
+    final pts = [
+      Offset(x, 6),
+      Offset(x - 9 * s, 5),
+      Offset(x - 15 * s, -2 * s),
+      Offset(x - 16 * s, -12 * s),
+    ];
+    final tusk = taperedStroke(
+      pts,
+      6 * s,
+      peak: 0.05,
+      startWidth: 1,
+      samples: 12,
+    );
+    _shaded(canvas, tusk, const Color(0xFFF2E6C4), shadow: 1.5);
+    canvas.drawPath(
+      taperedStroke(
+        [for (final p in pts.take(3)) p + const Offset(0.6, -0.8)],
+        1.2 * s,
+        peak: 0.3,
+      ),
+      _fill(const Color(0xCCFFFFFF)),
+    );
+    for (var k = 1; k < 3; k++) {
+      final p = Offset.lerp(pts[0], pts[2], k / 3)!;
+      canvas.drawLine(
+        p - Offset(0, 1.6 * s),
+        p + Offset(0, 1.6 * s),
+        _stroke(const Color(0xFFC9B48A), 0.6),
+      );
+    }
+  }
+  // Tai dựng nhọn có lông viền, lòng tai sẫm.
+  final ear = _poly(const [Offset(2, -18), Offset(14, -30), Offset(11, -14)]);
+  _shaded(canvas, ear, darken(hide, 0.1), shadow: 1.5);
+  canvas.drawPath(
+    _poly(const [Offset(5, -18), Offset(12.5, -26.5), Offset(10, -16)]),
+    _fill(const Color(0xFF3A2620)),
+  );
+  // Mắt nhỏ sâu dưới gờ mày, đỏ rực; mày chau.
+  _glowEye(canvas, const Offset(-10, -10), 1.6, const Color(0xFFFF2A1A));
+  canvas.drawPath(
+    taperedStroke(
+      const [Offset(-16, -14.5), Offset(-10, -13.6), Offset(-4, -11)],
+      2.6,
+      peak: 0.3,
+      startWidth: 0.6,
+    ),
+    _fill(_outline),
+  );
+}
+
 /// Lớp lông lợn rừng (cố định theo khung thân) ghi sẵn một lần.
 final _boarCoat = PictureCache<int>(maxEntries: 1);
 
@@ -1311,43 +1447,9 @@ void paintErymanthianBoar(
     canvas.save();
     canvas.translate(-42, -38 + dip);
     canvas.rotate(0.25 * attack);
-    final head = Path()
-      ..moveTo(8, -18)
-      ..cubicTo(-6, -22, -20, -14, -30, -6)
-      ..lineTo(-32, 6)
-      ..cubicTo(-20, 10, -4, 12, 10, 8)
-      ..close();
-    _shaded(canvas, head, hide, shadow: 4);
-    // Đĩa mõm.
-    final snout = Path()
-      ..addOval(
-        Rect.fromCenter(center: const Offset(-32, 0), width: 8, height: 14),
-      );
-    _shaded(canvas, snout, const Color(0xFF9C6E5E), shadow: 1.5);
-    for (final dy in [-3.0, 3.0]) {
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(-33, dy), width: 2.4, height: 3),
-        _fill(const Color(0xFF241812)),
-      );
-    }
-    // Nanh: to, cong vút, ngà vàng.
-    for (final (x, s) in [(-18.0, 1.0), (-12.0, 0.7)]) {
-      final tusk = Path()
-        ..moveTo(x, 6)
-        ..quadraticBezierTo(x - 14 * s, 6, x - 16 * s, -12 * s)
-        ..quadraticBezierTo(x - 9 * s, -2, x + 4, 2)
-        ..close();
-      _shaded(canvas, tusk, const Color(0xFFF2E6C4), shadow: 1.5);
-    }
-    // Tai nhọn cụp ra sau, mắt đỏ nhỏ dữ tợn.
-    final ear = _poly(const [Offset(2, -18), Offset(14, -28), Offset(10, -14)]);
-    _shaded(canvas, ear, darken(hide, 0.1), shadow: 1.5);
-    _glowEye(canvas, const Offset(-10, -10), 1.6, const Color(0xFFFF2A1A));
-    canvas.drawLine(
-      const Offset(-15, -15),
-      const Offset(-4, -11),
-      _stroke(_outline, 2.2),
-    );
+    // Đầu lợn rừng nhìn nghiêng: trán dốc thẳng xuống mõm dài, má bạnh
+    // phủ lông dày, mõm thon tới đĩa mũi. Chụp sẵn (tĩnh trong khung đầu).
+    _boarHead.paint(canvas);
     canvas.restore();
 
     // Hơi thở phì ra từ mõm.
