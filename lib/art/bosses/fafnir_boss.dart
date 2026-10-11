@@ -209,30 +209,27 @@ class FafnirBossArt extends BossArt {
     if (f.attack > 0.05 && f.defeat == 0) _frostBreath(canvas, f);
   }
 
+  // Phần tĩnh chụp sẵn: kho vàng, thân + chân trước, cánh (xoay quanh vai).
+  static final _hoardImage = RasterLayer(
+    _paintHoard,
+    bounds: const Rect.fromLTRB(250, 168, 420, 246),
+    resolution: 1.3,
+  );
+  static final _bodyImage = RasterLayer(
+    _paintBody,
+    bounds: const Rect.fromLTRB(276, 116, 420, 222),
+    resolution: 1.3,
+  );
+  static final _wingImage = RasterLayer(
+    _paintWing,
+    bounds: const Rect.fromLTRB(326, 36, 426, 162),
+    resolution: 1.2,
+  );
+  static const _shoulder = Offset(346, 150);
+
   void _gold(Canvas canvas, BossFrame f) {
-    final pile = Path()
-      ..moveTo(258, stageGroundY + 4)
-      ..quadraticBezierTo(330, 178, 410, stageGroundY + 4)
-      ..close();
-    canvas.drawPath(
-      pile,
-      Paint()
-        ..color = VectorStyle.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
-    );
-    canvas.drawPath(pile, goldPaint(pile.getBounds()));
-    // Đồng xu và ánh lấp lánh.
-    final coin = fillPaint(const Color(0xFFFFE27A));
-    final rnd = math.Random(2);
-    for (var i = 0; i < 14; i++) {
-      final x = 275 + rnd.nextDouble() * 120;
-      final y = 206 + rnd.nextDouble() * 14;
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(x, y), width: 6, height: 3),
-        coin,
-      );
-    }
+    _hoardImage.paint(canvas);
+    // Ánh lấp lánh chạy trên đống vàng.
     for (var i = 0; i < 3; i++) {
       final phase = (f.time * 0.7 + i * 0.33) % 1;
       if (phase < 0.25) {
@@ -247,114 +244,520 @@ class FafnirBossArt extends BossArt {
     }
   }
 
-  void _wing(Canvas canvas, BossFrame f, double breathe) {
-    final lift = 10 * f.attack;
-    final wing = Path()
-      ..moveTo(340, 150)
-      ..lineTo(352, 60 - lift)
-      ..lineTo(370, 84 - lift)
-      ..lineTo(384, 66 - lift)
-      ..lineTo(396, 96 - lift)
-      ..lineTo(410, 88 - lift)
-      ..lineTo(404, 150)
+  /// Kho báu của Fafnir: núi đồng xu (mỗi đồng có vành tối, mặt sáng), chén
+  /// vàng, chuôi kiếm cắm nghiêng, mũ trụ Bắc Âu lăn bên chân.
+  static void _paintHoard(Canvas canvas) {
+    final pile = Path()
+      ..moveTo(258, stageGroundY + 4)
+      ..quadraticBezierTo(330, 178, 410, stageGroundY + 4)
+      ..close();
+    canvas.drawPath(
+      pile,
+      Paint()
+        ..color = VectorStyle.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    canvas.drawPath(pile, goldPaint(pile.getBounds()));
+    canvas.save();
+    canvas.clipPath(pile);
+    final rnd = math.Random(2);
+    final rim = fillPaint(const Color(0xFF9A6A14));
+    final face = fillPaint(const Color(0xFFFFD55A));
+    final shine = fillPaint(const Color(0xFFFFF4C0));
+    for (var i = 0; i < 90; i++) {
+      final x = 262 + rnd.nextDouble() * 144;
+      // Mặt đống vàng: parabol, đồng xu rải từ đỉnh xuống chân.
+      final t = (x - 258) / 152;
+      final top =
+          stageGroundY + 4 - 4 * t * (1 - t) * (stageGroundY + 4 - 178) * 0.5;
+      final y = top + 2 + rnd.nextDouble() * (stageGroundY - top);
+      final w = 5.0 + rnd.nextDouble() * 2.5;
+      final c = Offset(x, y);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + const Offset(0, 0.8),
+          width: w,
+          height: w * 0.45,
+        ),
+        rim,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: w, height: w * 0.42),
+        face,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + Offset(-w * 0.15, -w * 0.06),
+          width: w * 0.4,
+          height: w * 0.12,
+        ),
+        shine,
+      );
+    }
+    canvas.restore();
+    // Chuôi kiếm cắm nghiêng: lưỡi, chắn tay, cán quấn da, núm.
+    canvas.save();
+    canvas.translate(286, 206);
+    canvas.rotate(-0.35);
+    shadedPath(
+      canvas,
+      Path()..addRect(const Rect.fromLTWH(-1.6, -4, 3.2, 10)),
+      const Color(0xFFCFD8DC),
+      PartFrame.world,
+      shadow: 1,
+      highlight: 0.5,
+      outlineWidth: 1,
+    );
+    shadedPath(
+      canvas,
+      Path()..addRRect(
+        RRect.fromLTRBR(-8, -6.5, 8, -4, const Radius.circular(1.2)),
+      ),
+      FafnirColors.gold,
+      PartFrame.world,
+      shadow: 1,
+      highlight: 0.5,
+      outlineWidth: 1,
+    );
+    shadedPath(
+      canvas,
+      Path()..addRect(const Rect.fromLTWH(-1.8, -17, 3.6, 10.5)),
+      const Color(0xFF5A3A22),
+      PartFrame.world,
+      shadow: 1,
+      highlight: 0.4,
+      outlineWidth: 1,
+    );
+    shadedPath(
+      canvas,
+      Path()
+        ..addOval(Rect.fromCircle(center: const Offset(0, -18.5), radius: 2.6)),
+      FafnirColors.gold,
+      PartFrame.world,
+      shadow: 0.8,
+      highlight: 0.5,
+      outlineWidth: 1,
+    );
+    canvas.restore();
+    // Chén vàng nằm nghiêng.
+    canvas.save();
+    canvas.translate(374, 199);
+    canvas.rotate(0.5);
+    final cup = Path()
+      ..moveTo(-6, -7)
+      ..quadraticBezierTo(-6, 2, 0, 3)
+      ..quadraticBezierTo(6, 2, 6, -7)
+      ..close()
+      ..addRect(const Rect.fromLTWH(-1, 3, 2, 4))
+      ..addOval(
+        Rect.fromCenter(center: const Offset(0, 7.5), width: 8, height: 2.4),
+      );
+    shadedPath(
+      canvas,
+      cup,
+      FafnirColors.gold,
+      PartFrame.world,
+      shadow: 1.5,
+      highlight: 0.8,
+      outlineWidth: 1.1,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(0, -7), width: 12, height: 3),
+      fillPaint(const Color(0xFF7A4E0E)),
+    );
+    canvas.restore();
+    // Mũ trụ Bắc Âu (mũ tròn có che mũi) lăn bên chân đống vàng.
+    canvas.save();
+    canvas.translate(398, 224);
+    canvas.rotate(-0.3);
+    final helm = Path()
+      ..moveTo(-8, 3)
+      ..cubicTo(-8, -8, 8, -8, 8, 3)
       ..close();
     shadedPath(
       canvas,
-      wing,
+      helm,
+      const Color(0xFF8D9AA3),
+      PartFrame.world,
+      shadow: 2,
+      highlight: 1,
+      outlineWidth: 1.2,
+    );
+    canvas.drawRect(
+      const Rect.fromLTWH(-1.2, -1, 2.4, 7),
+      fillPaint(const Color(0xFF6E7A82)),
+    );
+    canvas.drawLine(
+      const Offset(-8, 1.5),
+      const Offset(8, 1.5),
+      Paint()
+        ..color = const Color(0xFF5E6870)
+        ..strokeWidth = 1.4,
+    );
+    canvas.restore();
+  }
+
+  void _wing(Canvas canvas, BossFrame f, double breathe) {
+    // Đập cánh khi phun băng: xoay cả cánh (ảnh chụp sẵn) quanh vai.
+    canvas.save();
+    canvas.translate(_shoulder.dx, _shoulder.dy);
+    canvas.rotate(-0.12 * f.attack + math.sin(f.time * 1.5) * 0.015);
+    canvas.translate(-_shoulder.dx, -_shoulder.dy);
+    _wingImage.paint(canvas);
+    canvas.restore();
+  }
+
+  /// Cánh dơi thật: xương cánh tay tới khớp cổ tay, 4 xương ngón toả ra,
+  /// màng căng giữa các ngón, mép sau lõm cong (võng giữa hai ngón), gân
+  /// màng mảnh, màng tối dần về phía thân; móng nhỏ ở khớp cổ tay.
+  static void _paintWing(Canvas canvas) {
+    const wrist = Offset(360, 86);
+    const tips = [
+      Offset(350, 52),
+      Offset(376, 58),
+      Offset(400, 80),
+      Offset(416, 112),
+    ];
+    const root = Offset(404, 150);
+    final membrane = Path()
+      ..moveTo(_shoulder.dx, _shoulder.dy)
+      ..lineTo(wrist.dx, wrist.dy)
+      ..lineTo(tips[0].dx, tips[0].dy);
+    for (var i = 1; i < tips.length; i++) {
+      final a = tips[i - 1], b = tips[i];
+      final mid = Offset.lerp(a, b, 0.5)!;
+      final inward = (wrist - mid) * 0.32;
+      membrane.quadraticBezierTo(
+        mid.dx + inward.dx,
+        mid.dy + inward.dy,
+        b.dx,
+        b.dy,
+      );
+    }
+    final lastMid = Offset.lerp(tips.last, root, 0.5)!;
+    final lastIn = (wrist - lastMid) * 0.28;
+    membrane
+      ..quadraticBezierTo(
+        lastMid.dx + lastIn.dx,
+        lastMid.dy + lastIn.dy,
+        root.dx,
+        root.dy,
+      )
+      ..close();
+    shadedPath(
+      canvas,
+      membrane,
       FafnirColors.wing,
       PartFrame.world,
       shadow: 4,
       highlight: 1.4,
     );
-    // Xương cánh.
-    final bone = Paint()
-      ..color = darken(FafnirColors.wing, 0.35)
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    for (final tip in [Offset(370, 84 - lift), Offset(396, 96 - lift)]) {
-      canvas.drawLine(const Offset(350, 140), tip, bone);
+    canvas.save();
+    canvas.clipPath(membrane);
+    // Màng tối dần về phía thân (dày hơn, khuất sáng).
+    canvas.drawPath(
+      membrane,
+      Paint()
+        ..shader = Gradient.radial(_shoulder, 90, [
+          darken(FafnirColors.wing, 0.35).withValues(alpha: 0.7),
+          darken(FafnirColors.wing, 0.35).withValues(alpha: 0),
+        ]),
+    );
+    // Gân màng: nét mảnh cong giữa các ngón.
+    final vein = Paint()
+      ..color = darken(FafnirColors.wing, 0.3).withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+    for (var i = 0; i < tips.length; i++) {
+      final b = i + 1 < tips.length ? tips[i + 1] : root;
+      final mid = Offset.lerp(tips[i], b, 0.5)!;
+      for (final k in const [0.35, 0.65]) {
+        final from = Offset.lerp(wrist, mid, 0.2)!;
+        final to = Offset.lerp(wrist, mid, 0.95)!;
+        final ctrl =
+            Offset.lerp(from, to, 0.5)! + (tips[i] - mid) * (k - 0.5) * 0.6;
+        canvas.drawPath(
+          Path()
+            ..moveTo(from.dx, from.dy)
+            ..quadraticBezierTo(ctrl.dx, ctrl.dy, to.dx, to.dy),
+          vein,
+        );
+      }
     }
+    canvas.restore();
+    // Xương: cánh tay + các ngón (thon dần), khớp nổi.
+    final bone = darken(FafnirColors.wing, 0.42);
+    shadedPath(
+      canvas,
+      taperedStroke(
+        [
+          _shoulder,
+          Offset.lerp(_shoulder, wrist, 0.5)! + const Offset(-3, 0),
+          wrist,
+        ],
+        5,
+        peak: 0.3,
+        startWidth: 0.9,
+        endWidth: 0.6,
+      ),
+      bone,
+      PartFrame.world,
+      shadow: 1.2,
+      highlight: 0.6,
+      outlineWidth: 1.1,
+    );
+    for (final t in tips) {
+      shadedPath(
+        canvas,
+        taperedStroke(
+          [wrist, Offset.lerp(wrist, t, 0.5)! + const Offset(1, -1), t],
+          3,
+          peak: 0.1,
+          startWidth: 1,
+          endWidth: 0.15,
+        ),
+        bone,
+        PartFrame.world,
+        shadow: 0.8,
+        highlight: 0.4,
+        outlineWidth: 1,
+      );
+    }
+    shadedPath(
+      canvas,
+      Path()..addOval(Rect.fromCircle(center: wrist, radius: 3.2)),
+      bone,
+      PartFrame.world,
+      shadow: 1,
+      highlight: 0.6,
+      outlineWidth: 1,
+    );
+    // Móng ở khớp cổ tay.
+    shadedPath(
+      canvas,
+      taperedStroke(
+        [
+          wrist + const Offset(-1, -2),
+          wrist + const Offset(-6, -7),
+          wrist + const Offset(-6, -11),
+        ],
+        2.2,
+        peak: 0.1,
+        startWidth: 1,
+      ),
+      FafnirColors.horn,
+      PartFrame.world,
+      shadow: 0.6,
+      highlight: 0,
+      outlineWidth: 0.9,
+    );
   }
 
   void _tail(Canvas canvas, BossFrame f) {
     final sway = math.sin(f.time * 1.2) * 6;
-    final tail = Path()
-      ..moveTo(372, 184)
-      ..quadraticBezierTo(410, 170 + sway, 404, 140 + sway);
-    for (final (width, color) in [
-      (13.0, VectorStyle.outline),
-      (9.0, FafnirColors.body),
-    ]) {
-      canvas.drawPath(
-        tail,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width
-          ..strokeCap = StrokeCap.round,
-      );
-    }
+    final pts = [
+      const Offset(376, 188),
+      Offset(406, 178 + sway * 0.5),
+      Offset(412, 152 + sway),
+      Offset(402, 136 + sway),
+    ];
+    shadedPath(
+      canvas,
+      taperedStroke(
+        pts,
+        13,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.25,
+        samples: 14,
+      ),
+      FafnirColors.body,
+      PartFrame.world,
+      shadow: 2.5,
+      highlight: 1,
+      outlineWidth: 1.6,
+    );
+    // Mũi đuôi hình mũi giáo.
+    final tip = pts.last;
+    final dir = (tip - pts[2]) / (tip - pts[2]).distance;
+    final n = Offset(-dir.dy, dir.dx);
+    shadedPath(
+      canvas,
+      Path()
+        ..moveTo(tip.dx - n.dx * 5, tip.dy - n.dy * 5)
+        ..lineTo(tip.dx + dir.dx * 11, tip.dy + dir.dy * 11)
+        ..lineTo(tip.dx + n.dx * 5, tip.dy + n.dy * 5)
+        ..lineTo(tip.dx - dir.dx * 2, tip.dy - dir.dy * 2)
+        ..close(),
+      FafnirColors.horn,
+      PartFrame.world,
+      shadow: 1,
+      highlight: 0.5,
+      outlineWidth: 1.1,
+    );
   }
 
   void _body(Canvas canvas, double breathe) {
-    final body = Path()
-      ..moveTo(298, 200)
-      ..cubicTo(296, 168 - breathe, 330, 144 - breathe, 360, 150 - breathe)
-      ..cubicTo(386, 156, 392, 186, 380, 204)
-      ..close();
+    canvas.save();
+    canvas.translate(0, -breathe * 0.6);
+    _bodyImage.paint(canvas);
+    canvas.restore();
+  }
+
+  /// Thân rồng-rắn (lindworm) phủ vảy cuộn trên đống vàng, bụng nhạt chia
+  /// đốt, hàng gai sừng dọc sống lưng có sương giá đóng ở ngọn, chân trước
+  /// bám vàng bằng vuốt.
+  static void _paintBody(Canvas canvas) {
+    const spinePts = [
+      Offset(298, 210),
+      Offset(302, 178),
+      Offset(326, 156),
+      Offset(356, 152),
+      Offset(382, 166),
+      Offset(390, 200),
+    ];
+    // Khối thân đặc dưới vòm lưng (không để thân thành vòm rỗng).
+    final mass = smoothPath([
+      const Offset(296, 216),
+      ...spinePts.sublist(1, 5).map((p) => p + const Offset(0, 6)),
+      const Offset(394, 216),
+    ], tension: 0.1)..close();
     shadedPath(
       canvas,
-      body,
+      mass,
+      darken(FafnirColors.body, 0.12),
+      PartFrame.world,
+      shadow: 6,
+      highlight: 1,
+    );
+    final b = buildScaleBody(
+      spinePts,
+      40,
+      startWidth: 0.9,
+      endWidth: 0.7,
+      rows: 3,
+      belly: false,
+    );
+    shadedPath(
+      canvas,
+      b.body,
       FafnirColors.body,
       PartFrame.world,
       shadow: 5,
       highlight: 1.8,
     );
-    // Bụng sọc sáng.
-    final belly = Paint()
-      ..color = FafnirColors.belly
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 4; i++) {
-      final y = 176.0 + i * 7;
-      canvas.drawLine(
-        Offset(302 + i * 2.0, y),
-        Offset(318 + i * 1.0, y + 1),
-        belly,
-      );
-    }
-    // Gai lưng.
-    for (var i = 0; i < 5; i++) {
-      final x = 318.0 + i * 12;
-      final y = 150.0 - breathe + (i - 2).abs() * 2;
+    canvas.save();
+    canvas.clipPath(b.body);
+    canvas.drawPath(
+      b.scaleDark,
+      Paint()
+        ..color = darken(FafnirColors.body, 0.38).withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+    canvas.drawPath(
+      b.scaleLit,
+      Paint()
+        ..color = lighten(FafnirColors.body, 0.35).withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+    canvas.drawPath(
+      b.spine,
+      fillPaint(darken(FafnirColors.body, 0.3).withValues(alpha: 0.8)),
+    );
+    canvas.restore();
+    // Ngực trước: các đốt vảy bụng nhạt xếp chồng (nối dải bụng của cổ).
+    for (var i = 0; i < 6; i++) {
+      final y = 168.0 + i * 7.4;
+      final x = 304.0 - i * 0.8;
+      final plate = Path()
+        ..addRRect(
+          RRect.fromLTRBR(x - 7, y, x + 7, y + 6.6, const Radius.circular(3)),
+        );
       shadedPath(
         canvas,
-        Path()
-          ..moveTo(x - 4, y + 4)
-          ..lineTo(x, y - 8)
-          ..lineTo(x + 4, y + 4)
-          ..close(),
+        plate,
+        FafnirColors.belly,
+        PartFrame.world,
+        shadow: 1.2,
+        highlight: 0.6,
+        outlineWidth: 1,
+      );
+    }
+    // Gai sừng dọc sống lưng, ngọn đóng sương giá.
+    final line = sampleSmooth(spinePts, 40);
+    for (var i = 9; i < 34; i += 3) {
+      final d = line[i + 1] - line[i - 1];
+      var n = Offset(-d.dy, d.dx) / d.distance;
+      if (n.dy > 0) n = -n;
+      final base = line[i] + n * 15;
+      final h = 9 + 4 * math.sin((i - 9) / 25 * math.pi);
+      final tip = base + n * h + const Offset(4, 0);
+      shadedPath(
+        canvas,
+        taperedStroke(
+          [base - n * 3, Offset.lerp(base, tip, 0.5)!, tip],
+          6,
+          peak: 0.1,
+          startWidth: 1,
+        ),
         FafnirColors.horn,
         PartFrame.world,
         shadow: 1,
-        highlight: 0,
-        outlineWidth: 1.2,
+        highlight: 0.3,
+        outlineWidth: 1.1,
+      );
+      canvas.drawPath(
+        taperedStroke(
+          [Offset.lerp(base, tip, 0.55)!, tip],
+          2.6,
+          peak: 0.1,
+          startWidth: 1,
+        ),
+        fillPaint(FafnirColors.snow),
       );
     }
-    // Chân trước có vuốt bám đống vàng.
-    shadedChain(canvas, [
-      (const Offset(312, 186), const Offset(302, 204), 7, 6),
-      (const Offset(302, 204), const Offset(294, 210), 6, 5),
-    ], FafnirColors.body);
-    final claw = fillPaint(FafnirColors.horn);
-    for (final dx in [-6.0, -1.0, 4.0]) {
-      canvas.drawPath(
-        Path()
-          ..moveTo(292 + dx, 212)
-          ..lineTo(289 + dx, 217)
-          ..lineTo(294 + dx, 214)
-          ..close(),
-        claw,
+    // Sương giá bám trên lưng: cụm tinh thể nhỏ.
+    final frost = fillPaint(FafnirColors.frost.withValues(alpha: 0.75));
+    final rnd = math.Random(8);
+    for (var i = 0; i < 26; i++) {
+      final p =
+          line[8 + rnd.nextInt(26)] +
+          Offset(rnd.nextDouble() * 4 - 2, -9 - rnd.nextDouble() * 5);
+      canvas.drawCircle(p, 0.6 + rnd.nextDouble() * 0.9, frost);
+    }
+    // Chân trước: bắp to, cẳng thon, vuốt bám vàng.
+    shadedPath(
+      canvas,
+      taperedStroke(
+        const [Offset(314, 182), Offset(304, 200), Offset(296, 212)],
+        12,
+        peak: 0.2,
+        startWidth: 1,
+        endWidth: 0.5,
+      ),
+      FafnirColors.body,
+      PartFrame.world,
+      shadow: 2,
+      highlight: 1,
+      outlineWidth: 1.4,
+    );
+    for (final dx in [-7.0, -2.0, 3.0]) {
+      shadedPath(
+        canvas,
+        taperedStroke(
+          [Offset(294 + dx, 211), Offset(290 + dx, 215), Offset(291 + dx, 219)],
+          2.4,
+          peak: 0.1,
+          startWidth: 1,
+        ),
+        FafnirColors.horn,
+        PartFrame.world,
+        shadow: 0.6,
+        highlight: 0,
+        outlineWidth: 0.9,
       );
     }
   }
@@ -362,49 +765,81 @@ class FafnirBossArt extends BossArt {
   void _neckAndHead(Canvas canvas, BossFrame f, double breathe) {
     final rear = 8 * f.attack;
     final head = Offset(292, 104 - rear + breathe);
-    // Cổ cong chữ S.
-    final neck = Path()
-      ..moveTo(330, 160)
-      ..cubicTo(342, 130, 300, 132, 312, 110 - rear)
-      ..lineTo(head.dx + 10, head.dy + 2);
-    for (final (width, color) in [
-      (19.0, VectorStyle.outline),
-      (15.0, FafnirColors.body),
-    ]) {
-      canvas.drawPath(
-        neck,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width
-          ..strokeCap = StrokeCap.round,
-      );
-    }
+    // Cổ cong chữ S, thon dần lên đầu; dải bụng nhạt ở mặt dưới.
+    final pts = [
+      const Offset(330, 162),
+      const Offset(338, 136),
+      Offset(310, 122 - rear * 0.5),
+      head + const Offset(10, 2),
+    ];
+    shadedPath(
+      canvas,
+      taperedStroke(
+        pts,
+        20,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.6,
+        samples: 14,
+      ),
+      FafnirColors.body,
+      PartFrame.world,
+      shadow: 3,
+      highlight: 1.3,
+      outlineWidth: 1.6,
+    );
     canvas.drawPath(
-      neck.shift(const Offset(-3, 3)),
-      Paint()
-        ..color = FafnirColors.belly.withValues(alpha: 0.85)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round,
+      taperedStroke(
+        offsetLine(pts, -5.5, taper: 0.4),
+        6.5,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.6,
+        samples: 14,
+      ),
+      fillPaint(FafnirColors.belly),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        offsetLine(pts, 5.5, taper: 0.4),
+        3.2,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.4,
+        samples: 14,
+      ),
+      fillPaint(darken(FafnirColors.body, 0.3)),
     );
 
     canvas.save();
     canvas.translate(head.dx, head.dy);
-    // Sừng cong ra sau.
-    for (final (dx, len) in [(8.0, 22.0), (2.0, 16.0)]) {
+    // Sừng cong vuốt ra sau, diềm gai sau má.
+    for (final (pts, w) in const [
+      ([Offset(4, -9), Offset(14, -18), Offset(27, -17)], 4.0),
+      ([Offset(9, -7), Offset(18, -11), Offset(28, -8)], 3.0),
+    ]) {
       shadedPath(
         canvas,
-        Path()
-          ..moveTo(dx, -8)
-          ..quadraticBezierTo(dx + len * 0.6, -18, dx + len, -14)
-          ..quadraticBezierTo(dx + len * 0.5, -12, dx + 4, -4)
-          ..close(),
+        taperedStroke(pts, w, peak: 0.1, startWidth: 1),
         FafnirColors.horn,
         PartFrame.world,
-        shadow: 1.4,
-        highlight: 0.6,
-        outlineWidth: 1.3,
+        shadow: 1.2,
+        highlight: 0.5,
+        outlineWidth: 1.2,
+      );
+    }
+    for (final (pts, w) in const [
+      ([Offset(10, 2), Offset(17, 5), Offset(23, 4)], 3.0),
+      ([Offset(9, -1), Offset(16, 0), Offset(22, -2)], 2.6),
+    ]) {
+      shadedPath(
+        canvas,
+        taperedStroke(pts, w, peak: 0.1, startWidth: 1),
+        darken(FafnirColors.wing, 0.1),
+        PartFrame.world,
+        shadow: 0.8,
+        highlight: 0.4,
+        outlineWidth: 1,
       );
     }
     // Hàm dưới mở khi phun băng.
@@ -414,8 +849,8 @@ class FafnirBossArt extends BossArt {
       canvas,
       Path()
         ..moveTo(8, 2)
-        ..quadraticBezierTo(-12, 10, -28, 6)
-        ..lineTo(-26, 2)
+        ..quadraticBezierTo(-12, 10, -30, 6)
+        ..lineTo(-28, 2)
         ..close(),
       FafnirColors.belly,
       PartFrame.world,
@@ -423,14 +858,37 @@ class FafnirBossArt extends BossArt {
       highlight: 0.6,
       outlineWidth: 1.4,
     );
+    if (f.attack > 0.1) {
+      for (final x in [-24.0, -16.0, -8.0]) {
+        canvas.drawPath(
+          Path()
+            ..moveTo(x, 3)
+            ..lineTo(x + 2.6, 3)
+            ..lineTo(x + 1.3, -2)
+            ..close(),
+          fillPaint(const Color(0xFFF5F9FF)),
+        );
+      }
+    }
     canvas.restore();
-    // Đầu rồng dài, mõm hướng về người chơi.
-    final skull = Path()
-      ..moveTo(14, -6)
-      ..cubicTo(10, -16, -10, -14, -30, -4)
-      ..quadraticBezierTo(-33, 1, -27, 3)
-      ..cubicTo(-12, 4, 6, 6, 16, 2)
-      ..close();
+    // Sọ rồng dài, mõm hướng về người chơi, gờ mày nặng.
+    final skull = smoothPath(
+      const [
+        Offset(-33, -1),
+        Offset(-29, -6),
+        Offset(-18, -9),
+        Offset(-10, -13),
+        Offset(2, -13.5),
+        Offset(12, -9),
+        Offset(16, -2),
+        Offset(13, 4),
+        Offset(0, 5),
+        Offset(-16, 3.6),
+        Offset(-31, 3),
+      ],
+      closed: true,
+      tension: 0.1,
+    );
     shadedPath(
       canvas,
       skull,
@@ -439,20 +897,60 @@ class FafnirBossArt extends BossArt {
       shadow: 3,
       highlight: 1.4,
     );
+    canvas.save();
+    canvas.clipPath(skull);
+    final plate = Paint()
+      ..color = darken(FafnirColors.body, 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var i = 0; i < 7; i++) {
+      canvas.drawArc(
+        Rect.fromCircle(
+          center: Offset(10 - i * 4.4, -9 + i * 0.7),
+          radius: 2.5,
+        ),
+        0.2,
+        2.6,
+        false,
+        plate,
+      );
+    }
+    canvas.drawPath(
+      taperedStroke(
+        const [
+          Offset(-32, 1),
+          Offset(-14, 2.8),
+          Offset(4, 3.2),
+          Offset(14, 1.5),
+        ],
+        2.8,
+        peak: 0.3,
+        startWidth: 0.6,
+      ),
+      fillPaint(FafnirColors.belly),
+    );
+    canvas.restore();
     // Lỗ mũi bốc hơi lạnh.
-    canvas.drawCircle(
-      const Offset(-25, -3),
-      1.4,
+    canvas.drawOval(
+      const Rect.fromLTWH(-31, -4.4, 2.6, 1.4),
       fillPaint(VectorStyle.outline),
     );
-    // Mắt xanh lạnh phát sáng, mày gai.
-    const eye = Offset(-8, -7);
+    final puff = (f.time * 0.9) % 1;
+    canvas.drawCircle(
+      Offset(-36 - 8 * puff, -6 - 6 * puff),
+      2 + 4 * puff,
+      fillPaint(FafnirColors.snow.withValues(alpha: 0.5 * (1 - puff))),
+    );
+    // Mắt xanh lạnh phát sáng (gradient, không blur), gờ mày sụp.
+    const eye = Offset(-9, -7);
     canvas.drawCircle(
       eye,
-      5,
+      8,
       Paint()
-        ..color = FafnirColors.eye.withValues(alpha: 0.6)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+        ..shader = Gradient.radial(eye, 8, [
+          FafnirColors.eye.withValues(alpha: 0.7),
+          FafnirColors.eye.withValues(alpha: 0),
+        ]),
     );
     canvas.drawOval(
       Rect.fromCenter(center: eye, width: 7, height: 4),
@@ -462,13 +960,19 @@ class FafnirBossArt extends BossArt {
       Rect.fromCenter(center: eye, width: 1.6, height: 4),
       fillPaint(VectorStyle.outline),
     );
-    canvas.drawLine(
-      eye + const Offset(-6, -4),
-      eye + const Offset(7, -2),
-      Paint()
-        ..color = VectorStyle.outline
-        ..strokeWidth = 2.4
-        ..strokeCap = StrokeCap.round,
+    shadedPath(
+      canvas,
+      Path()
+        ..moveTo(-16, -7)
+        ..quadraticBezierTo(-9, -14, -1, -11.5)
+        ..lineTo(-2.5, -8.2)
+        ..quadraticBezierTo(-9, -9.4, -16, -7)
+        ..close(),
+      darken(FafnirColors.body, 0.2),
+      PartFrame.world,
+      shadow: 0.8,
+      highlight: 0.6,
+      outlineWidth: 1,
     );
     canvas.restore();
   }
@@ -493,8 +997,7 @@ class FafnirBossArt extends BossArt {
         ..shader = Gradient.linear(mouth, mouth - Offset(reach, 0), [
           FafnirColors.frost.withValues(alpha: 0.85),
           FafnirColors.frost.withValues(alpha: 0.05),
-        ])
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+        ]),
     );
     final rnd = math.Random(4);
     for (var i = 0; i < 10; i++) {
