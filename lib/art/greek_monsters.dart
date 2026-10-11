@@ -107,16 +107,24 @@ void paintStymphalianBird(
       ..cubicTo(12, 4, -2, 7, -10, 3)
       ..close();
     _shaded(canvas, body, const Color(0xFF4A3A33));
-    // Ức có vảy đồng.
-    for (var i = 0; i < 3; i++) {
-      canvas.drawArc(
-        Rect.fromCenter(center: Offset(-6 + i * 5.0, 0), width: 6, height: 5),
-        0,
-        math.pi,
-        false,
-        _stroke(_bronze, 1.2),
-      );
-    }
+    // Lông vũ xếp ngói (ngọn chĩa ra sau–xuống) + ức phủ vảy đồng sáng.
+    canvas.save();
+    canvas.clipPath(body);
+    final plumage = featherRows(
+      const Rect.fromLTRB(-12, -11, 16, 4),
+      size: 3.4,
+      tipDir: const Offset(1, 0.45),
+    );
+    canvas.drawPath(plumage.dark, _fill(const Color(0xFF241A16)));
+    canvas.drawPath(plumage.lit, _fill(const Color(0x99A07A50)));
+    final breast = featherRows(
+      const Rect.fromLTRB(-10, -2, 6, 5),
+      size: 3,
+      tipDir: const Offset(0.3, 1),
+    );
+    canvas.drawPath(breast.dark, _fill(_bronzeDark));
+    canvas.drawPath(breast.lit, _fill(_bronzeLight));
+    canvas.restore();
 
     // Đầu, mào gai, mỏ đồng dài và cong.
     final head = Path()
@@ -143,15 +151,46 @@ void paintStymphalianBird(
     glint(canvas, const Offset(-25, -10), 1.6);
     _glowEye(canvas, const Offset(-15, -10), 1.6, const Color(0xFFFF3B1F));
 
-    // Móng quặp thò xuống.
+    // Chân chim: cẳng có đốt vảy, ba ngón quặp có vuốt đồng.
     for (final x in [-4.0, 2.0]) {
+      final ankle = Offset(x - 1, 10);
       canvas.drawPath(
-        Path()
-          ..moveTo(x, 4)
-          ..lineTo(x - 1, 10)
-          ..lineTo(x - 4, 12),
-        _stroke(const Color(0xFFE8D9B0), 1.4),
+        taperedStroke(
+          [Offset(x, 3), Offset(x - 0.4, 6.5), ankle],
+          2.2,
+          peak: 0.1,
+          startWidth: 1,
+          endWidth: 0.6,
+        ),
+        _fill(const Color(0xFFC9B07A)),
       );
+      for (var k = 0; k < 3; k++) {
+        final y = 5.0 + k * 1.6;
+        canvas.drawLine(
+          Offset(x - 1.6, y),
+          Offset(x + 0.6, y),
+          _stroke(const Color(0xFF7A6440), 0.5),
+        );
+      }
+      for (final a in const [2.4, 1.7, 1.0]) {
+        final mid = ankle + Offset(math.cos(a) * 2.6, math.sin(a) * 2.6);
+        final tip =
+            mid + Offset(math.cos(a + 0.9) * 2.2, math.sin(a + 0.9) * 2.2);
+        canvas.drawPath(
+          taperedStroke(
+            [ankle, mid],
+            1.3,
+            peak: 0.1,
+            startWidth: 1,
+            endWidth: 0.7,
+          ),
+          _fill(const Color(0xFFC9B07A)),
+        );
+        canvas.drawPath(
+          taperedStroke([mid, tip], 1, peak: 0.1, startWidth: 1),
+          _fill(_bronze),
+        );
+      }
     }
 
     _wing(canvas, const Offset(0, -4), flap);
