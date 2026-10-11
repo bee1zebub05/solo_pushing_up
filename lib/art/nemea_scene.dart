@@ -255,6 +255,9 @@ void _farMountains(Canvas canvas) {
 }
 
 /// Dãy núi cel-shading: sườn đón nắng (trái) sáng, sườn khuất (phải) tối.
+/// Sống núi gồ ghề nhẹ giữa các đỉnh; từ mỗi đỉnh toả các khe xói (tối
+/// bên sáng, sáng bên tối), viền nắng trên sống núi, sương phủ chân núi
+/// (phối cảnh không khí). Nằm trong lớp nền chụp sẵn nên chi tiết miễn phí.
 void _ridge(
   Canvas canvas,
   List<Offset> peaks,
@@ -262,12 +265,23 @@ void _ridge(
   Color shade, {
   required double floor,
 }) {
-  final body = Path()..moveTo(peaks.first.dx, floor);
-  for (final p in peaks) {
+  final rnd = math.Random(peaks.length * 31 + floor.toInt());
+  // Chèn điểm gồ ghề giữa các đỉnh.
+  final line = <Offset>[peaks.first];
+  for (var i = 1; i < peaks.length; i++) {
+    final a = peaks[i - 1], b = peaks[i];
+    for (final t in const [0.33, 0.66]) {
+      final p = Offset.lerp(a, b, t)!;
+      line.add(p + Offset(0, (rnd.nextDouble() - 0.4) * 3.2));
+    }
+    line.add(b);
+  }
+  final body = Path()..moveTo(line.first.dx, floor);
+  for (final p in line) {
     body.lineTo(p.dx, p.dy);
   }
   body
-    ..lineTo(peaks.last.dx, floor)
+    ..lineTo(line.last.dx, floor)
     ..close();
   canvas.drawPath(body, Paint()..color = lit);
   // Mảng bóng: từ mỗi đỉnh đổ xuống sườn phải.
@@ -285,6 +299,49 @@ void _ridge(
       ]),
       dark,
     );
+  }
+  canvas.save();
+  canvas.clipPath(body);
+  // Khe xói toả xuống từ các đỉnh.
+  final gullyOnLit = Paint()..color = shade.withValues(alpha: 0.55);
+  final ridgeOnShade = Paint()..color = lit.withValues(alpha: 0.45);
+  for (var i = 1; i < peaks.length - 1; i++) {
+    final p = peaks[i];
+    final h = floor - p.dy;
+    for (var k = 0; k < 3; k++) {
+      final side = k == 0 ? -1.0 : 1.0;
+      final spread = (0.35 + k * 0.45) * side;
+      final end =
+          p + Offset(spread * h * 0.6, h * (0.55 + rnd.nextDouble() * 0.3));
+      final mid = Offset.lerp(p, end, 0.5)! + Offset(side * 2, 0);
+      canvas.drawPath(
+        taperedStroke(
+          [p + const Offset(0, 2), mid, end],
+          1.2 + rnd.nextDouble(),
+          peak: 0.3,
+        ),
+        side < 0 ? gullyOnLit : ridgeOnShade,
+      );
+    }
+  }
+  // Sương chân núi.
+  final top = peaks.map((p) => p.dy).reduce(math.min);
+  canvas.drawRect(
+    Rect.fromLTRB(-20, top, 420, floor),
+    Paint()
+      ..shader = Gradient.linear(
+        Offset(0, top + (floor - top) * 0.35),
+        Offset(0, floor),
+        [const Color(0x00E8EEF8), const Color(0x66E8EEF8)],
+      ),
+  );
+  canvas.restore();
+  // Viền nắng trên sống núi phía sườn sáng.
+  final rim = Paint()..color = lighten(lit, 0.35).withValues(alpha: 0.8);
+  for (var i = 1; i < line.length; i++) {
+    final a = line[i - 1], b = line[i];
+    if (b.dy >= a.dy) continue; // chỉ đoạn đi lên (sườn trái đón nắng)
+    canvas.drawPath(taperedStroke([a, b], 1.1, peak: 0.6), rim);
   }
 }
 
