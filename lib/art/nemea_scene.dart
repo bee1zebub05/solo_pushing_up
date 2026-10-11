@@ -426,41 +426,52 @@ void _midHills(Canvas canvas) {
 }
 
 void _tinyOlive(Canvas canvas, Offset base, double s) {
-  // Cây ô liu xa: thân xoắn ngắn, tán xoè thấp lệch (không phải kẹo mút).
-  canvas.drawLine(
-    base,
-    base + Offset(0.8 * s, -3 * s),
-    Paint()
-      ..color = const Color(0xFF5E4C3C)
-      ..strokeWidth = 1.1,
-  );
-  final dark = Paint()..color = const Color(0xFF66744A);
-  final lit = Paint()..color = const Color(0xFF96A374);
-  for (final (dx, dy, w, h) in [
-    (-2.2, -4.2, 5.6, 3.6),
-    (1.8, -5.0, 6.0, 4.2),
-    (0.2, -6.4, 4.4, 3.0),
-  ]) {
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: base + Offset(dx * s, dy * s),
-        width: w * s,
-        height: h * s,
-      ),
-      dark,
-    );
-  }
+  // Cây ô liu xa: thân xoắn ngắn chẻ đôi, tán xoè thấp lệch gồm nhiều cụm
+  // nhỏ (mép lởm chởm), sáng phía trên–trái, bóng đổ tròn dưới gốc.
   canvas.drawOval(
     Rect.fromCenter(
-      center: base + Offset(-1.2 * s, -6 * s),
-      width: 4.2 * s,
-      height: 2.2 * s,
+      center: base + Offset(1.2 * s, 0.6 * s),
+      width: 7 * s,
+      height: 1.6 * s,
     ),
-    lit,
+    Paint()..color = const Color(0x334A5A2A),
   );
+  final trunk = Paint()
+    ..color = const Color(0xFF5E4C3C)
+    ..strokeWidth = 1.1
+    ..strokeCap = StrokeCap.round;
+  canvas.drawLine(base, base + Offset(0.8 * s, -3 * s), trunk);
+  canvas.drawLine(
+    base + Offset(0.6 * s, -2.2 * s),
+    base + Offset(-1.6 * s, -4 * s),
+    trunk..strokeWidth = 0.8,
+  );
+  final h = base.dx.round() * 7 + base.dy.round() * 13;
+  final dark = Paint()..color = const Color(0xFF5C6A42);
+  final mid = Paint()..color = const Color(0xFF7A8858);
+  final lit = Paint()..color = const Color(0xFFA2AE7E);
+  for (var k = 0; k < 7; k++) {
+    final j = ((h + k * 31) % 17) / 17;
+    final c =
+        base +
+        Offset((-3 + k * 1.1 + j) * s, (-4.6 - (k % 3) * 0.9 - j * 0.6) * s);
+    final r = (1.5 + j * 0.7) * s;
+    canvas.drawCircle(c, r, dark);
+  }
+  for (var k = 0; k < 5; k++) {
+    final j = ((h + k * 19) % 13) / 13;
+    final c =
+        base +
+        Offset((-2.6 + k * 1.1 + j * 0.5) * s, (-5.4 - (k % 2) * 0.8) * s);
+    canvas.drawCircle(c, (1.0 + j * 0.4) * s, mid);
+  }
+  canvas.drawCircle(base + Offset(-1.6 * s, -6.2 * s), 1.1 * s, lit);
+  canvas.drawCircle(base + Offset(0.2 * s, -6.6 * s), 0.8 * s, lit);
 }
 
 void _cypress(Canvas canvas, Offset base, double h) {
+  // Cây bách Địa Trung Hải: dáng ngọn lửa thon, lá vảy dày thành các
+  // múi xoắn nhẹ; nửa trái đón nắng, mép phải tối.
   final w = h * 0.22;
   final shape = Path()
     ..moveTo(base.dx, base.dy - h)
@@ -480,6 +491,34 @@ void _cypress(Canvas canvas, Offset base, double h) {
     Rect.fromLTRB(base.dx - w, base.dy - h, base.dx - w * 0.1, base.dy),
     Paint()..color = const Color(0xFF5D7A4E),
   );
+  // Múi lá xoắn: các vệt cong chéo tối/sáng chồng nhau dọc thân.
+  final tuftDark = Paint()..color = const Color(0xFF2F4630);
+  final tuftLit = Paint()..color = const Color(0xFF7A9762);
+  for (var i = 0; i < 9; i++) {
+    final y = base.dy - h * (0.12 + i * 0.095);
+    final ww = w * (0.95 - (i / 9) * 0.6);
+    canvas.drawPath(
+      taperedStroke(
+        [
+          Offset(base.dx - ww, y + 1.5),
+          Offset(base.dx, y - 1),
+          Offset(base.dx + ww, y + 1),
+        ],
+        1.1,
+        peak: 0.5,
+        samples: 6,
+      ),
+      tuftDark,
+    );
+    canvas.drawPath(
+      taperedStroke(
+        [Offset(base.dx - ww * 0.9, y), Offset(base.dx - ww * 0.3, y - 1.6)],
+        0.8,
+        samples: 4,
+      ),
+      tuftLit,
+    );
+  }
   canvas.restore();
 }
 
