@@ -342,23 +342,10 @@ String _lookKey(HeroLook look) =>
 /// hình + trang bị + biểu cảm). Chống đẩy lặp lại cùng dải tư thế nên từ rep
 /// thứ hai gần như mọi khung đều trúng: bỏ được việc dựng lại bó cơ, nếp
 /// áo… mỗi khung (đo trên CPH2159: phần tốn CPU nhất của khung hình).
-/// Giữ tối đa [_partCacheMax] hình, bỏ hình lâu không dùng nhất.
-final _partCache = <String, Picture>{};
-const _partCacheMax = 240;
+final _partCache = PictureCache<String>(maxEntries: 240);
 
-void _cachedPart(Canvas canvas, String key, void Function(Canvas) draw) {
-  var picture = _partCache.remove(key);
-  if (picture == null) {
-    final recorder = PictureRecorder();
-    draw(Canvas(recorder));
-    picture = recorder.endRecording();
-    if (_partCache.length >= _partCacheMax) {
-      _partCache.remove(_partCache.keys.first)?.dispose();
-    }
-  }
-  _partCache[key] = picture; // đưa lên cuối (vừa dùng)
-  canvas.drawPicture(picture);
-}
+void _cachedPart(Canvas canvas, String key, void Function(Canvas) draw) =>
+    _partCache.draw(canvas, key, draw);
 
 void _iceCrystal(Canvas canvas, Offset at, double size) {
   final paint = Paint()
@@ -987,7 +974,7 @@ void _hairBack(Canvas canvas, HeroLook look, PartFrame f) {
 /// mức gắng sức làm tròn 1/4, cười): mỗi khung chỉ vẽ lại hình đã có thay
 /// vì dựng lại hàng chục Path tóc, mặt, mắt. Góc làm tròn nên hướng sáng
 /// lệch tối đa 2,5° — không nhận ra.
-final _headCache = <String, Picture>{};
+final _headCache = PictureCache<String>(maxEntries: 160);
 
 void _cachedHead(
   Canvas canvas,
@@ -1013,18 +1000,12 @@ void _cachedHead(
     e,
     j,
   ].join('|');
-  var picture = _headCache[key];
-  if (picture == null) {
-    if (_headCache.length > 160) {
-      _headCache.remove(_headCache.keys.first)?.dispose();
-    }
-    final recorder = PictureRecorder();
-    final c = Canvas(recorder)
+  final picture = _headCache.get(key, (c) {
+    c
       ..rotate(angle)
       ..scale(_headScale);
     _head(c, look, PartFrame(angle), cloak: cloak, effort: e, joy: j);
-    picture = _headCache[key] = recorder.endRecording();
-  }
+  });
   canvas.save();
   canvas.translate(head.dx, head.dy);
   canvas.drawPicture(picture);

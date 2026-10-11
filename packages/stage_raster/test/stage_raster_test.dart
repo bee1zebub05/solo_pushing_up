@@ -93,4 +93,25 @@ void main() {
     expect(budget.bytes, 0);
     expect(a.hasImage || b.hasImage, isFalse);
   });
+
+  test('PictureCache: ghi một lần, LRU bỏ khoá lâu không dùng', () {
+    final cache = PictureCache<int>(maxEntries: 2);
+    var records = 0;
+    void rec(Canvas c) {
+      records++;
+      c.drawRect(const Rect.fromLTWH(0, 0, 1, 1), Paint());
+    }
+
+    cache.get(1, rec);
+    cache.get(2, rec);
+    cache.get(1, rec); // trúng, 1 thành mới dùng nhất
+    expect(records, 2);
+    cache.get(3, rec); // đầy → bỏ 2 (lâu không dùng nhất)
+    expect(cache.length, 2);
+    cache.get(1, rec);
+    expect(records, 3);
+    cache.get(2, rec);
+    expect(records, 4);
+    expect(cache.hits, 2);
+  });
 }

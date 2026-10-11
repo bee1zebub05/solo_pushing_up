@@ -11,4 +11,5 @@
 library;
 
 export 'src/budget.dart';
+export 'src/picture_cache.dart';
 export 'src/raster_layer.dart';
