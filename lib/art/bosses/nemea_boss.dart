@@ -66,7 +66,7 @@ class NemeaBossArt extends BossArt {
       canvas,
       LionState(
         time: f.time,
-        mouth: f.attack,
+        attackPhase: f.attackPhase,
         hurt: f.hurt,
         glint: f.glint,
         defeat: f.defeat,

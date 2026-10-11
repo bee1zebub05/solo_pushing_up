@@ -95,6 +95,27 @@ void main() {
     }
   });
 
+  testWidgets('Sư tử Nemea: rình, lấy đà, vồ, trúng đòn, bị chặn, gục', (
+    tester,
+  ) async {
+    for (final (name, lion) in [
+      ('lion_idle', const LionState(time: 1)),
+      ('lion_windup', const LionState(time: 1, attackPhase: 0.38)),
+      ('lion_strike', const LionState(time: 1, attackPhase: 0.55)),
+      ('lion_hurt', const LionState(time: 1, hurt: 0.8)),
+      ('lion_blocked', const LionState(time: 1, glint: 0.3)),
+      ('lion_defeat', const LionState(time: 1, defeat: 1)),
+    ]) {
+      await render(tester, name, (c) {
+        paintNemeaScene(c, time: 1);
+        c.save();
+        c.translate(250, stageGroundY);
+        paintLion(c, lion);
+        c.restore();
+      });
+    }
+  });
+
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {
     await render(
       tester,
@@ -113,7 +134,7 @@ void main() {
     );
     await render(
       tester,
-      'lion_hurt',
+      'lion_hurt_scene',
       (c) => scene(
         c,
         HeroPose.plank(170),

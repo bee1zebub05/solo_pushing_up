@@ -40,9 +40,13 @@ class BossFrame {
     required this.glint,
     required this.defeat,
     required this.battle,
+    this.attackPhase = -1,
   });
 
   final double time;
+
+  /// Tiến độ đòn tấn công 0–1 (lấy đà → ra đòn → thu về); âm = không đánh.
+  final double attackPhase;
 
   /// Động tác đe doạ/tấn công 0–1 (gầm, giơ vũ khí).
   final double attack;
@@ -198,6 +202,7 @@ class BattleStageGame extends FlameGame {
   void _impact({required bool critical, required bool blocked}) {
     if (blocked) {
       _boss.glint = 0;
+      world.add(_BlockedBadge()..position = boss.target + Vector2(-30, -38));
       _burst(
         boss.target,
         count: 14,
@@ -328,6 +333,9 @@ class _BossComponent extends PositionComponent {
     glint: glint,
     defeat: _defeat,
     battle: battle,
+    attackPhase: !defeated && _attackAge < _attackLength
+        ? _attackAge / _attackLength
+        : -1,
   );
 
   @override
@@ -499,5 +507,111 @@ class _Bolt extends PositionComponent {
       r * 0.5,
       Paint()..color = const Color(0xFFFFFFFF),
     );
+  }
+}
+
+/// Huy hiệu "BỊ CHẶN!" bật lên khi rep sai form bị da boss chặn: khiên
+/// thép viền vàng + chữ đậm có viền, phóng to nảy rồi bay lên và mờ dần.
+class _BlockedBadge extends PositionComponent {
+  static const _life = 1.1;
+  double _age = 0;
+
+  static final TextPainter _label = TextPainter(
+    text: const TextSpan(
+      text: 'BỊ CHẶN!',
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
+        color: Color(0xFFFFF3C4),
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  static final TextPainter _labelOutline = TextPainter(
+    text: TextSpan(
+      text: 'BỊ CHẶN!',
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
+        foreground: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeJoin = StrokeJoin.round
+          ..color = const Color(0xFF2B1D16),
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  @override
+  void update(double dt) {
+    _age += dt;
+    if (_age >= _life) removeFromParent();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final t = _age / _life;
+    final pop = Curves.elasticOut.transform((t / 0.35).clamp(0.0, 1.0));
+    final alpha = t < 0.7 ? 1.0 : 1 - (t - 0.7) / 0.3;
+    canvas.save();
+    canvas.translate(0, -14 * t);
+    canvas.rotate(-0.12);
+    canvas.scale(0.4 + 0.6 * pop);
+    canvas.saveLayer(
+      null,
+      Paint()..color = Color.fromRGBO(0, 0, 0, alpha.clamp(0.0, 1.0)),
+    );
+    // Khiên thép.
+    final shield = Path()
+      ..moveTo(-12, -12)
+      ..lineTo(12, -12)
+      ..lineTo(12, 0)
+      ..quadraticBezierTo(10, 10, 0, 15)
+      ..quadraticBezierTo(-10, 10, -12, 0)
+      ..close();
+    final dx = -(_label.width + 30) / 2;
+    canvas.translate(dx + 12, 0);
+    canvas.drawPath(
+      shield,
+      Paint()
+        ..color = const Color(0xFF2B1D16)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeJoin = StrokeJoin.round,
+    );
+    canvas.drawPath(
+      shield,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFE3E9EE), Color(0xFF8D9AA6)],
+        ).createShader(const Rect.fromLTRB(-12, -12, 12, 15)),
+    );
+    canvas.drawPath(
+      shield,
+      Paint()
+        ..color = const Color(0xFFE8B83A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+    // Vết đòn dội ra trên khiên.
+    canvas.drawLine(
+      const Offset(-5, -5),
+      const Offset(5, 6),
+      Paint()
+        ..color = const Color(0xFF5A6570)
+        ..strokeWidth = 1.4
+        ..strokeCap = StrokeCap.round,
+    );
+    final textAt = Offset(16, -_label.height / 2);
+    _labelOutline.paint(canvas, textAt);
+    _label.paint(canvas, textAt);
+    canvas.restore();
+    canvas.restore();
   }
 }
