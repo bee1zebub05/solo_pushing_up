@@ -321,8 +321,8 @@ void _heroicTorso(Canvas canvas, Color skin, double breath) {
   );
 }
 
-/// Lọn tóc / râu xoăn: các nét thon hình chữ C xếp so le trong vùng [mass]
-/// quanh [center], sáng ở mép trên lọn (bắt nắng), tối ở lòng lọn.
+/// Lọn tóc / râu xoăn kiểu tượng cổ: lọn nhỏ dày xếp so le trong vùng
+/// [mass] (`vector_texture.curlRows`), sáng ở mép trên lọn, tối ở lòng lọn.
 void _curlRows(
   Canvas canvas,
   Path mass,
@@ -330,37 +330,20 @@ void _curlRows(
   double radius,
   Color hair,
 ) {
-  final dark = Paint()..color = darken(hair, 0.45);
-  final lit = Paint()..color = lighten(hair, 0.32).withValues(alpha: 0.8);
   canvas.save();
   canvas.clipPath(mass);
-  final rnd = math.Random(7);
-  for (var row = -2; row <= 2; row++) {
-    for (var col = -2; col <= 2; col++) {
-      final p =
-          center +
-          Offset(
-            col * radius * 0.42 + (row.isOdd ? radius * 0.21 : 0),
-            row * radius * 0.38,
-          ) +
-          Offset(rnd.nextDouble() * 1.4, rnd.nextDouble() * 1.4);
-      const r = 3.2;
-      final a0 = 0.6 + rnd.nextDouble() * 0.6;
-      List<Offset> arc(double from, double sweep, double rr) => [
-        for (var k = 0; k <= 4; k++)
-          p +
-              Offset(
-                math.cos(from + sweep * k / 4) * rr,
-                math.sin(from + sweep * k / 4) * rr,
-              ),
-      ];
-      canvas.drawPath(taperedStroke(arc(a0, 3.6, r), 1.3, samples: 8), dark);
-      canvas.drawPath(
-        taperedStroke(arc(a0 + 3.4, 1.6, r * 0.9), 0.9, samples: 6),
-        lit,
-      );
-    }
-  }
+  final curls = curlRows(
+    mass.getBounds(),
+    radius: 2.4,
+    rnd: math.Random(7),
+    darkWidth: 1.2,
+    litWidth: 0.85,
+  );
+  canvas.drawPath(curls.dark, Paint()..color = darken(hair, 0.45));
+  canvas.drawPath(
+    curls.lit,
+    Paint()..color = lighten(hair, 0.32).withValues(alpha: 0.8),
+  );
   canvas.restore();
 }
 
