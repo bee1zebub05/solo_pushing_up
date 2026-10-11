@@ -970,21 +970,50 @@ void _head(
   }
   canvas.restore();
   _ruffImage.paint(canvas);
-  // Tai nhỏ, tròn, cụp ra sau khi gầm.
+  // Tai tròn của sư tử nhìn nghiêng: vành tai dày, lòng tai lông nhạt
+  // mọc từ đáy, mép sau viền sẫm; khi gầm tai cụp nằm rạp ra sau.
   canvas.save();
-  canvas.translate(10, -22);
-  canvas.rotate(0.5 * roar);
-  _shaded(
-    canvas,
+  canvas.translate(10, -21);
+  canvas.rotate(0.15 + 0.9 * roar);
+  canvas.scale(1, 1 - 0.35 * roar);
+  final ear = Path()
+    ..moveTo(-6, 3)
+    ..cubicTo(-7, -5, -2, -10, 3, -9)
+    ..cubicTo(8, -8, 9, -1, 7, 3)
+    ..close();
+  _shaded(canvas, ear, LionColors.body, shadow: 2);
+  canvas.save();
+  canvas.clipPath(ear);
+  canvas.drawPath(
     Path()
-      ..addOval(Rect.fromCenter(center: Offset.zero, width: 14, height: 12)),
-    LionColors.body,
-    shadow: 2,
+      ..moveTo(-3, 3)
+      ..cubicTo(-4, -3, 0, -6, 2.5, -5.5)
+      ..cubicTo(5, -4, 5, 0, 4, 3)
+      ..close(),
+    _fill(darken(LionColors.body, 0.35)),
   );
-  canvas.drawOval(
-    Rect.fromCenter(center: const Offset(-1, 1), width: 7, height: 6),
-    _fill(LionColors.nose),
+  // Lông trong tai: các sợi sáng mọc từ đáy lên.
+  for (final dx in const [-2.0, 0.0, 2.0]) {
+    canvas.drawPath(
+      taperedStroke(
+        [Offset(dx, 3), Offset(dx + 0.5, -1), Offset(dx + 1.2, -3.5)],
+        1.2,
+        peak: 0.2,
+        startWidth: 1,
+      ),
+      _fill(const Color(0xFFF0DDB8)),
+    );
+  }
+  // Mép sau tai sẫm (sư tử có vệt đen sau tai).
+  canvas.drawPath(
+    taperedStroke(
+      const [Offset(3, -9), Offset(7.5, -5), Offset(7, 2)],
+      2,
+      peak: 0.4,
+    ),
+    _fill(LionColors.mane),
   );
+  canvas.restore();
   canvas.restore();
 
   // Mũi da sẫm có chấm bóng.
