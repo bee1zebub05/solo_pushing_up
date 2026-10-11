@@ -354,7 +354,7 @@ String _lookKey(HeroLook look) =>
 /// hình + trang bị + biểu cảm). Chống đẩy lặp lại cùng dải tư thế nên từ rep
 /// thứ hai gần như mọi khung đều trúng: bỏ được việc dựng lại bó cơ, nếp
 /// áo… mỗi khung (đo trên CPH2159: phần tốn CPU nhất của khung hình).
-final _partCache = PictureCache<String>(maxEntries: 240);
+final _partCache = PictureCache<String>(maxEntries: 800);
 
 void _cachedPart(Canvas canvas, String key, void Function(Canvas) draw) =>
     _partCache.draw(canvas, key, draw);
