@@ -1411,56 +1411,45 @@ void _head(
 
 /// Mũ trùm đầu sư tử Nemea (như tượng Hercules cổ đại).
 void _lionHood(Canvas canvas, PartFrame f) {
-  // Bờm hai lớp hình ngọn lửa, ngọn sẫm (khớp bờm Sư tử Nemea).
-  for (final (rr, len, color) in [
-    (13.0, 9.0, darken(HeroColors.mane, 0.25)),
-    (11.0, 6.0, HeroColors.mane),
+  // Bờm hai lớp bằng lọn lông chảy ra sau gáy và rủ xuống (cùng kiểu bờm
+  // Sư tử Nemea — vector_texture), lớp sau sẫm, lớp trước sáng.
+  final rnd = math.Random(19);
+  for (final (r0, len, w, color, count) in [
+    (10.0, 17.0, 6.0, darken(HeroColors.mane, 0.25), 11),
+    (8.5, 12.0, 5.2, HeroColors.mane, 10),
   ]) {
-    final mane = Path();
-    const n = 9;
-    for (var i = 0; i < n; i++) {
-      final a = math.pi * (0.72 + 0.9 * i / (n - 1));
-      final dir = Offset(math.cos(a), math.sin(a));
-      final nrm = Offset(-dir.dy, dir.dx);
-      final base = const Offset(-4, -1) + dir * rr;
-      final tip = base + dir * len + const Offset(-2.5, 1.5);
-      mane
-        ..moveTo(base.dx + nrm.dx * 4, base.dy + nrm.dy * 4)
-        ..quadraticBezierTo(
-          base.dx + dir.dx * len * 0.6 + nrm.dx * 2.5,
-          base.dy + dir.dy * len * 0.6 + nrm.dy * 2.5,
-          tip.dx,
-          tip.dy,
-        )
-        ..quadraticBezierTo(
-          base.dx + dir.dx * len * 0.5 - nrm.dx * 2,
-          base.dy + dir.dy * len * 0.5 - nrm.dy * 2,
-          base.dx - nrm.dx * 4,
-          base.dy - nrm.dy * 4,
-        )
-        ..close();
-    }
-    // Lấp phần chân bờm: chỉ dải vòng cung sau đầu (không che mặt).
-    mane.addPolygon([
-      for (var i = 0; i <= 12; i++)
-        const Offset(-4, -1) +
-            Offset(
-                  math.cos(math.pi * (0.72 + 0.9 * i / 12)),
-                  math.sin(math.pi * (0.72 + 0.9 * i / 12)),
-                ) *
-                (rr + 1),
-    ], true);
-    shadedPath(canvas, mane, color, f, shadow: 2.5, highlight: 1);
-    furStrokes(
-      canvas,
-      mane,
-      darken(color, 0.35),
-      dir: const Offset(-1, 0.4),
-      count: 30,
-      length: 5,
-      width: 0.8,
-      seed: rr.round(),
+    final locks = buildLocks(
+      center: const Offset(-4, -1),
+      rnd: rnd,
+      r0: r0,
+      length: len,
+      width: w,
+      count: count,
+      from: math.pi * 0.7,
+      to: math.pi * 1.62,
+      drift: const Offset(-0.6, 0.42),
+      wave: 2.5,
     );
+    shadedPath(
+      canvas,
+      locks.mass,
+      color,
+      f,
+      shadow: 2.2,
+      highlight: 1,
+      outlineWidth: 1.1,
+    );
+    canvas.save();
+    canvas.clipPath(locks.mass);
+    canvas.drawPath(
+      locks.creases,
+      fillPaint(darken(color, 0.45).withValues(alpha: 0.8)),
+    );
+    canvas.drawPath(
+      locks.sheens,
+      fillPaint(lighten(color, 0.38).withValues(alpha: 0.75)),
+    );
+    canvas.restore();
   }
 
   // Đầu sư tử úp lên đỉnh đầu, mõm nhô ra trước trán.
