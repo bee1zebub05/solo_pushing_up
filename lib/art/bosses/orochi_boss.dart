@@ -237,7 +237,6 @@ class OrochiBossArt extends BossArt {
     }
     _torii(canvas);
   }
-  }
 
   /// Cây tuyết tùng Nhật (sugi): thân thẳng, tán nhọn nhiều tầng răng cưa;
   /// ngược sáng nên tối, mép trái hắt nắng cam.
