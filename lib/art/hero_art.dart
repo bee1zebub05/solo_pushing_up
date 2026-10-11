@@ -1282,35 +1282,16 @@ void _head(
       );
       canvas.save();
       canvas.clipPath(mass);
-      final curlDark = Paint()..color = darken(hair, 0.45);
-      final curlLit = Paint()
-        ..color = lighten(hair, 0.32).withValues(alpha: 0.85);
-      final rnd = math.Random(look.hairStyle.index * 7 + 3);
-      for (var row = 0; row < 4; row++) {
-        for (var col = 0; col < 6; col++) {
-          final p = Offset(
-            -15 + col * 4.6 + (row.isOdd ? 2.3 : 0) + rnd.nextDouble() * 0.8,
-            -16 + row * 4.4 + rnd.nextDouble() * 0.8,
-          );
-          final a0 = 0.5 + rnd.nextDouble() * 0.7;
-          List<Offset> arc(double from, double sweep, double rr) => [
-            for (var k = 0; k <= 4; k++)
-              p +
-                  Offset(
-                    math.cos(from + sweep * k / 4) * rr,
-                    math.sin(from + sweep * k / 4) * rr,
-                  ),
-          ];
-          canvas.drawPath(
-            taperedStroke(arc(a0, 3.8, 2.3), 1.1, samples: 8),
-            curlDark,
-          );
-          canvas.drawPath(
-            taperedStroke(arc(a0 + 3.5, 1.7, 1.9), 0.75, samples: 6),
-            curlLit,
-          );
-        }
-      }
+      final curls = curlRows(
+        const Rect.fromLTRB(-15, -16, 12, -3),
+        radius: 2.3,
+        rnd: math.Random(look.hairStyle.index * 7 + 3),
+      );
+      canvas.drawPath(curls.dark, Paint()..color = darken(hair, 0.45));
+      canvas.drawPath(
+        curls.lit,
+        Paint()..color = lighten(hair, 0.32).withValues(alpha: 0.85),
+      );
       canvas.restore();
       glint(canvas, const Offset(-5, -15), 1.6, alpha: 0.5);
     case HairStyle.buzz:

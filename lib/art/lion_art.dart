@@ -652,25 +652,6 @@ final _maneImage = RasterLayer(
   resolution: 1.6,
 );
 
-/// Đường giữa một lọn bờm: mọc ra theo hướng [a] từ chân bờm, uốn dần ra
-/// sau (+x) và rủ xuống (+y), lượn chữ S nhẹ.
-List<Offset> _lockLine(double a, double r0, double len, double wave) {
-  var p = Offset(math.cos(a), math.sin(a)) * r0;
-  var dir = Offset(math.cos(a), math.sin(a));
-  final pts = [p];
-  const steps = 5;
-  for (var k = 1; k <= steps; k++) {
-    final u = k / steps;
-    // Càng xa gốc càng bị kéo ra sau và rủ xuống.
-    dir = dir + Offset(0.22, 0.12 + 0.2 * u);
-    dir = dir / dir.distance;
-    final n = Offset(-dir.dy, dir.dx);
-    p = p + dir * (len / steps);
-    pts.add(p + n * (math.sin(u * math.pi * 1.6) * wave));
-  }
-  return pts;
-}
-
 void _paintMane(Canvas canvas) {
   final rnd = math.Random(11);
   for (final (r0, len, width, color, count, from, to) in [
@@ -693,8 +674,9 @@ void _paintMane(Canvas canvas) {
   }
 }
 
-/// Một lớp lọn lông mọc quanh [center] trong cung góc [from]→[to]: khối
-/// chung tô đổ bóng, rồi khe tối / sợi lông / sợi sáng trên từng lọn.
+/// Một lớp lọn lông mọc quanh [center] trong cung góc [from]→[to]
+/// (`vector_texture`): khối chung tô đổ bóng, rồi khe tối / sợi lông / sợi
+/// sáng trên từng lọn trong vùng cắt khối.
 void _lockLayer(
   Canvas canvas,
   Offset center,
@@ -708,59 +690,37 @@ void _lockLayer(
   double to, {
   double outline = 1.6,
 }) {
-  final locks = <(List<Offset>, double)>[];
-  final mass = Path();
-  for (var i = 0; i < count; i++) {
-    final a = from + (to - from) * (i + rnd.nextDouble() * 0.4) / count;
+  final locks = buildLocks(
+    center: center,
+    rnd: rnd,
+    r0: r0,
+    length: len,
+    width: width,
+    count: count,
+    from: from,
+    to: to,
     // Đỉnh đầu ngắn, gáy dài, ngực dài nhất (bờm rủ).
-    final region = a < -1.2
+    lengthAt: (a) => a < -1.2
         ? 0.75
         : a > 1.0
         ? 1.3
-        : 1.0 + 0.15 * math.sin(a);
-    final l = len * region * (0.82 + rnd.nextDouble() * 0.36);
-    final w = width * (0.85 + rnd.nextDouble() * 0.3);
-    final line = [
-      for (final p in _lockLine(a, r0, l, (rnd.nextDouble() - 0.5) * 5))
-        p + center,
-    ];
-    locks.add((line, w));
-    mass.addPath(
-      taperedStroke(line, w, peak: 0.3, startWidth: 0.7, samples: 14),
-      Offset.zero,
-    );
-  }
-  _shaded(canvas, mass, color, shadow: 3, width: outline);
+        : 1.0 + 0.15 * math.sin(a),
+  );
+  _shaded(canvas, locks.mass, color, shadow: 3, width: outline);
   canvas.save();
-  canvas.clipPath(mass);
-  final crease = Paint()..color = darken(color, 0.5).withValues(alpha: 0.85);
-  final strand = Paint()..color = darken(color, 0.28).withValues(alpha: 0.7);
-  final sheen = Paint()..color = lighten(color, 0.38).withValues(alpha: 0.75);
-  for (final (line, w) in locks) {
-    List<Offset> shifted(double k) => [
-      for (var j = 0; j < line.length; j++)
-        () {
-          final d =
-              line[math.min(line.length - 1, j + 1)] - line[math.max(0, j - 1)];
-          final n = Offset(-d.dy, d.dx) / d.distance;
-          return line[j] + n * (k * (1 - j / line.length * 0.6));
-        }(),
-    ];
-    // Khe tối dưới lọn (tách lọn này với lọn kế), sợi lông giữa lọn,
-    // sợi sáng trên mép đón nắng.
-    canvas.drawPath(
-      taperedStroke(shifted(w * 0.42), w * 0.32, samples: 10),
-      crease,
-    );
-    canvas.drawPath(
-      taperedStroke(shifted(w * 0.05), w * 0.12, samples: 10),
-      strand,
-    );
-    canvas.drawPath(
-      taperedStroke(shifted(-w * 0.25).sublist(0, 5), w * 0.16, samples: 8),
-      sheen,
-    );
-  }
+  canvas.clipPath(locks.mass);
+  canvas.drawPath(
+    locks.creases,
+    Paint()..color = darken(color, 0.5).withValues(alpha: 0.85),
+  );
+  canvas.drawPath(
+    locks.strands,
+    Paint()..color = darken(color, 0.28).withValues(alpha: 0.7),
+  );
+  canvas.drawPath(
+    locks.sheens,
+    Paint()..color = lighten(color, 0.38).withValues(alpha: 0.75),
+  );
   canvas.restore();
 }
 
