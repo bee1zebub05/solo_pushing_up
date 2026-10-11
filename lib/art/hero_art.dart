@@ -157,21 +157,48 @@ void paintHero(
 
   final shoulder = pose[HeroJoint.shoulder];
   final hip = pose[HeroJoint.hip];
+  // Bóng dưới ngực khi chống đẩy: ngực càng sát đất bóng càng đậm, gọn;
+  // đẩy lên cao thì nhạt và loang (ánh sáng môi trường lọt vào).
+  final chestH = ground - shoulder.dy;
+  if (chestH < 40 && (hip.dy - ground).abs() < 40) {
+    final k = (1 - chestH / 40).clamp(0.0, 1.0);
+    final cx = shoulder.dx * 0.7 + hip.dx * 0.3;
+    final w = (hip - shoulder).distance * (0.9 - 0.25 * k);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, ground),
+        width: w,
+        height: 3 + 3 * (1 - k),
+      ),
+      Paint()
+        ..shader = Gradient.radial(Offset(cx, ground), w / 2, [
+          Color.fromRGBO(32, 16, 24, 0.15 + 0.35 * k),
+          const Color.fromRGBO(32, 16, 24, 0),
+        ]),
+    );
+  }
   final bodyUp = shoulder - hip;
   final torsoLen = bodyUp.distance;
   final up = bodyUp / torsoLen;
 
   if (glow > 0) {
-    final aura = Paint()
-      ..color = HeroColors.gold.withValues(alpha: 0.5 * glow)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 10 * glow + 2);
-    canvas.drawPath(
-      capsulePath(hip, shoulder, 22, 24)..addPath(
+    // Hào quang: viền vàng nhiều lớp mờ dần (giả blur, không dùng
+    // MaskFilter.blur mỗi khung — rất đắt trên GPU điện thoại).
+    final auraShape = capsulePath(hip, shoulder, 22, 24)
+      ..addPath(
         capsulePath(shoulder, pose[HeroJoint.wrist], 10, 8),
         Offset.zero,
-      ),
-      aura,
-    );
+      );
+    for (final (w, a) in const [(14.0, 0.2), (8.0, 0.3), (3.0, 0.5)]) {
+      canvas.drawPath(
+        auraShape,
+        Paint()
+          ..color = HeroColors.gold.withValues(alpha: a * glow)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = w * (0.6 + glow * 0.4)
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
     // Vệt năng lượng bốc lên từ lưng (tụ lực sau mỗi rep), cao dần rồi tắt.
     final rise = 1 - glow;
     for (var i = 0; i < 3; i++) {
@@ -182,10 +209,9 @@ void paintHero(
         from,
         to,
         Paint()
-          ..color = Color.fromRGBO(255, 190, 60, 0.6 * glow)
-          ..strokeWidth = 6
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+          ..color = Color.fromRGBO(255, 190, 60, 0.35 * glow)
+          ..strokeWidth = 7
+          ..strokeCap = StrokeCap.round,
       );
       canvas.drawLine(
         from,
