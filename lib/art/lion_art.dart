@@ -108,10 +108,18 @@ void paintLion(Canvas canvas, LionState s) {
     _fill(const Color(0x55301C10)),
   );
 
+  // Báo trước đòn vồ: chân sau cào đất, bụi tung (vẽ sau lưng thân).
+  if (windup > 0.05) _pawDust(canvas, t, windup);
+
   canvas.save();
   // Gục nằm rạp: không để bờm/đầu lòi xuống dưới mặt đất.
   if (fall > 0) canvas.clipRect(const Rect.fromLTRB(-400, -400, 400, 4));
-  canvas.translate(10 * s.hurt + 10 * windup - 18 * strike + 10 * fall, 0);
+  // Rung gầm gừ khi lấy đà (báo hiệu đọc được trước đòn).
+  final growl = windup * math.sin(t * 60) * 1.2;
+  canvas.translate(
+    10 * s.hurt + 10 * windup - 18 * strike + 10 * fall + growl,
+    0,
+  );
   // Trúng đòn: co người lại.
   canvas.scale(1 + 0.04 * s.hurt, 1 - 0.05 * s.hurt);
 
@@ -882,7 +890,7 @@ void _eye(
       9 + 4 * roar,
       Paint()
         ..shader = Gradient.radial(eye, 9 + 4 * roar, [
-          Color.fromRGBO(255, 170, 40, 0.35 + 0.4 * roar),
+          Color.fromRGBO(255, 170, 40, math.min(1, 0.35 + 0.6 * roar)),
           const Color(0x00FF8A00),
         ]),
     );
@@ -1038,6 +1046,21 @@ void _stagnationLeaving(Canvas canvas, double t, double fall, double drop) {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.6
         ..strokeCap = StrokeCap.round,
+    );
+  }
+}
+
+/// Bụi đất tung lên sau chân sau khi sư tử cào đất lấy đà.
+void _pawDust(Canvas canvas, double t, double windup) {
+  for (var i = 0; i < 7; i++) {
+    final phase = (t * 1.6 + i / 7) % 1;
+    final x = 84 + i * 7.0 + phase * 50;
+    final y = -2 - phase * 22 - (i % 3) * 3;
+    canvas.drawCircle(
+      Offset(x, y),
+      4 + phase * 8,
+      Paint()
+        ..color = Color.fromRGBO(196, 160, 110, 0.75 * windup * (1 - phase)),
     );
   }
 }
