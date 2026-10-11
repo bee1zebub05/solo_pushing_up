@@ -99,14 +99,29 @@ void paintLion(Canvas canvas, LionState s) {
   final roar = math.max(s.mouth, math.max(strike, windup * 0.4));
 
   // Bóng tiếp đất (không đi theo thân).
+  // Bóng đổ tím lạnh ngả về phía xa nắng + bóng tiếp xúc dưới bàn chân.
+  canvas.drawOval(
+    Rect.fromCenter(
+      center: Offset(16 - 10 * strike, 3),
+      width: 230 - 20 * windup,
+      height: 18,
+    ),
+    _fill(const Color(0x30402A50)),
+  );
   canvas.drawOval(
     Rect.fromCenter(
       center: Offset(4 - 10 * strike, 2),
-      width: 210 - 20 * windup,
-      height: 16,
+      width: 200 - 20 * windup,
+      height: 12,
     ),
-    _fill(const Color(0x55301C10)),
+    _fill(const Color(0x40301C30)),
   );
+  for (final x in [-62.0, -44.0, 56.0, 72.0]) {
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(x - 4, 1), width: 30, height: 5),
+      _fill(const Color(0x55201018)),
+    );
+  }
 
   // Báo trước đòn vồ: chân sau cào đất, bụi tung (vẽ sau lưng thân).
   if (windup > 0.05) _pawDust(canvas, t, windup);
