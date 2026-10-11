@@ -173,9 +173,12 @@ void paintLion(Canvas canvas, LionState s) {
 
   _tail(canvas, t, fall, drop, strike);
 
-  final body = _bodyPath(drop, lift);
-  _shaded(canvas, body, LionColors.body, shadow: 6);
-  _hideDetail(canvas, body, drop, lift, s, t);
+  // Thân chụp sẵn thành ảnh, chỉ dịch lên xuống (lấy đà, thở, gục).
+  canvas.save();
+  canvas.translate(0, drop - lift);
+  _bodyImage.paint(canvas);
+  _hideSheen(canvas, t);
+  canvas.restore();
 
   // Chân gần: chân trước vung vuốt khi vồ.
   final swipe = strike * (1 - fall);
@@ -223,106 +226,121 @@ void paintLion(Canvas canvas, LionState s) {
   canvas.restore();
 }
 
-Path _bodyPath(double drop, double lift) {
-  final y = drop - lift;
-  return Path()
-    ..moveTo(-60, -112 + y)
-    ..cubicTo(-30, -124 + y, 8, -102 + y, 40, -104 + y)
-    ..cubicTo(72, -112 + y, 98, -100 + y, 98, -78 + y)
-    ..cubicTo(98, -58 + y, 86, -48 + y, 70, -50 + y)
-    ..cubicTo(40, -54 + y, 22, -64 + y + lift, -6, -60 + y + lift)
-    ..cubicTo(-36, -56 + y, -64, -54 + y, -72, -72 + y)
-    ..cubicTo(-78, -90 + y, -72, -106 + y, -60, -112 + y)
-    ..close();
-}
+/// Dáng thân mèo lớn nhìn ngang: u vai (bả vai nhô), lõm sau vai, lưng
+/// võng nhẹ rồi nhô ở thắt lưng – mông, đùi sau to, eo thóp trước đùi, da
+/// bụng chùng, ngực sâu.
+Path _bodyPath() => Path()
+  ..moveTo(-62, -112)
+  ..cubicTo(-50, -120, -36, -120, -26, -114)
+  ..cubicTo(-14, -108, 0, -104, 14, -105)
+  ..cubicTo(36, -107, 56, -114, 76, -112)
+  ..cubicTo(94, -110, 102, -96, 100, -80)
+  ..cubicTo(98, -62, 90, -52, 76, -52)
+  ..cubicTo(64, -52, 56, -58, 46, -60)
+  ..cubicTo(30, -58, 14, -50, -4, -50)
+  ..cubicTo(-24, -50, -44, -50, -58, -54)
+  ..cubicTo(-72, -60, -78, -80, -74, -96)
+  ..cubicTo(-72, -106, -68, -110, -62, -112)
+  ..close();
 
-/// Cơ bắp, bụng sáng, ánh kim của bộ da và đường cơ.
-void _hideDetail(
-  Canvas canvas,
-  Path body,
-  double drop,
-  double lift,
-  LionState s,
-  double t,
-) {
-  final y = drop - lift;
+final _bodyShape = _bodyPath();
+
+final _bodyImage = RasterLayer(
+  _paintBody,
+  bounds: const Rect.fromLTRB(-84, -128, 108, -34),
+  resolution: 1.5,
+);
+
+/// Khối cơ dưới da tô sáng–tối mềm (blur chỉ tốn một lần khi chụp ảnh):
+/// bả vai đón nắng, rãnh sau vai, xương sườn lộ, eo thóp, vòm đùi sau có
+/// bóng lõi phía trước-dưới; bụng sáng, ánh kim dọc sống lưng.
+void _paintBody(Canvas canvas) {
+  final body = _bodyShape;
+  _shaded(canvas, body, LionColors.body, shadow: 6);
   canvas.save();
   canvas.clipPath(body);
-  // Bụng sáng màu.
+  Paint soft(Color c, double blur) => Paint()
+    ..color = c
+    ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+  Paint line(Color c, double width, double blur) => Paint()
+    ..color = c
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = width
+    ..strokeCap = StrokeCap.round
+    ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+  const shade = LionColors.bodyShade;
+  final lit = lighten(LionColors.body, 0.28);
+  // Bụng sáng màu, mép dưới da chùng khuất tối.
   canvas.drawPath(
     Path()
-      ..moveTo(-74, -66 + y)
-      ..cubicTo(-40, -66 + y, 20, -70 + y, 70, -58 + y)
-      ..lineTo(70, -40 + y)
-      ..lineTo(-74, -40 + y)
+      ..moveTo(-80, -64)
+      ..cubicTo(-40, -67, 10, -66, 50, -61)
+      ..lineTo(50, -40)
+      ..lineTo(-80, -40)
       ..close(),
-    _fill(LionColors.belly),
+    soft(LionColors.belly, 3),
   );
-  // Khối đùi sau và bả vai sẫm.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-70, -52)
+      ..cubicTo(-30, -49, 10, -47, 46, -57)
+      ..lineTo(46, -40)
+      ..lineTo(-70, -40)
+      ..close(),
+    soft(shade.withValues(alpha: 0.5), 3),
+  );
+  // Bả vai: khối sáng nghiêng, rãnh tối phía sau.
+  canvas.save();
+  canvas.translate(-42, -94);
+  canvas.rotate(0.35);
   canvas.drawOval(
-    Rect.fromCenter(center: Offset(72, -78 + y), width: 54, height: 50),
-    _fill(LionColors.bodyShade.withValues(alpha: 0.55)),
+    Rect.fromCenter(center: Offset.zero, width: 30, height: 46),
+    soft(lit.withValues(alpha: 0.6), 4),
   );
-  canvas.drawOval(
-    Rect.fromCenter(center: Offset(-40, -86 + y), width: 44, height: 46),
-    _fill(LionColors.bodyShade.withValues(alpha: 0.35)),
+  canvas.restore();
+  canvas.drawPath(
+    Path()
+      ..moveTo(-24, -112)
+      ..quadraticBezierTo(-12, -92, -22, -66),
+    line(shade.withValues(alpha: 0.65), 5, 2.5),
   );
-  final muscle = Paint()
-    ..color = LionColors.bodyShade
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.8
-    ..strokeCap = StrokeCap.round;
-  // Bả vai, xương sườn, cơ đùi.
-  canvas.drawArc(
-    Rect.fromCenter(center: Offset(-38, -84 + y), width: 40, height: 44),
-    -0.4,
-    1.8,
-    false,
-    muscle,
-  );
-  for (var i = 0; i < 3; i++) {
-    canvas.drawArc(
-      Rect.fromCenter(
-        center: Offset(4 + i * 12, -78 + y),
-        width: 18,
-        height: 30,
-      ),
-      0.4,
-      1.2,
-      false,
-      muscle..strokeWidth = 1.2,
+  // Xương sườn lộ dưới da: dải tối – sáng xen kẽ.
+  for (var i = 0; i < 4; i++) {
+    final x = -6.0 + i * 11;
+    final rib = Path()
+      ..moveTo(x, -100)
+      ..quadraticBezierTo(x + 8, -84, x + 2, -64);
+    canvas.drawPath(rib, line(shade.withValues(alpha: 0.35), 3, 1.5));
+    canvas.drawPath(
+      rib.shift(const Offset(-3.5, 0)),
+      line(lit.withValues(alpha: 0.35), 2, 1.2),
     );
   }
+  // Eo thóp trước đùi sau.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(46, -72), width: 22, height: 34),
+    soft(shade.withValues(alpha: 0.6), 5),
+  );
+  // Vòm đùi sau đón nắng, bóng lõi viền trước – dưới.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(78, -92), width: 40, height: 32),
+    soft(lit.withValues(alpha: 0.6), 5),
+  );
   canvas.drawArc(
-    Rect.fromCenter(center: Offset(70, -80 + y), width: 46, height: 42),
-    2.2,
-    2.4,
+    Rect.fromCenter(center: const Offset(74, -80), width: 50, height: 50),
+    1.7,
+    1.9,
     false,
-    muscle..strokeWidth = 1.8,
+    line(shade.withValues(alpha: 0.75), 4, 2),
   );
   // Ánh kim chạy dọc sống lưng: da cứng như giáp.
   canvas.drawPath(
     Path()
-      ..moveTo(-50, -110 + y)
-      ..cubicTo(-24, -118 + y, 10, -100 + y, 40, -101 + y)
-      ..cubicTo(70, -108 + y, 90, -98 + y, 94, -84 + y),
-    Paint()
-      ..color = const Color(0xAAFFF0B0)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round,
-  );
-  // Vệt sáng lấp loá chạy chậm qua da (luôn có, nhắc rằng da bất khả xâm).
-  final sweep = (t * 0.35) % 1.6 - 0.3;
-  final x = -80 + 190 * sweep;
-  canvas.drawPath(
-    Path()
-      ..moveTo(x, -130 + y)
-      ..lineTo(x + 10, -130 + y)
-      ..lineTo(x - 14, -40 + y)
-      ..lineTo(x - 24, -40 + y)
-      ..close(),
-    _fill(const Color(0x40FFF8D8)),
+      ..moveTo(-50, -116)
+      ..cubicTo(-36, -120, -26, -114, -18, -110)
+      ..cubicTo(0, -103, 20, -106, 40, -108)
+      ..cubicTo(60, -113, 84, -112, 96, -96),
+    line(const Color(0xAAFFF0B0), 3, 1),
   );
   // Nét lông ngắn theo hướng mọc (từ đầu về đuôi, xuôi xuống bụng).
   final fur = Path();
@@ -330,7 +348,7 @@ void _hideDetail(
   for (var i = 0; i < 34; i++) {
     final p = Offset(
       -60 + rnd.nextDouble() * 150,
-      -112 + y + rnd.nextDouble() * 58,
+      -112 + rnd.nextDouble() * 58,
     );
     final len = 4 + rnd.nextDouble() * 4;
     fur
@@ -357,12 +375,27 @@ void _hideDetail(
     ..strokeWidth = 1.4
     ..strokeCap = StrokeCap.round;
   for (var i = 0; i < 3; i++) {
-    canvas.drawLine(
-      Offset(20 + i * 6, -96 + y),
-      Offset(12 + i * 6, -80 + y),
-      scar,
-    );
+    canvas.drawLine(Offset(20 + i * 6, -96), Offset(12 + i * 6, -80), scar);
   }
+  canvas.restore();
+}
+
+/// Vệt sáng lấp loá chạy chậm qua da (nhắc rằng da bất khả xâm).
+void _hideSheen(Canvas canvas, double t) {
+  final sweep = (t * 0.35) % 1.6 - 0.3;
+  if (sweep < -0.2 || sweep > 1.2) return;
+  final x = -80 + 190 * sweep;
+  canvas.save();
+  canvas.clipPath(_bodyShape);
+  canvas.drawPath(
+    Path()
+      ..moveTo(x, -130)
+      ..lineTo(x + 10, -130)
+      ..lineTo(x - 14, -40)
+      ..lineTo(x - 24, -40)
+      ..close(),
+    _fill(const Color(0x40FFF8D8)),
+  );
   canvas.restore();
 }
 
@@ -910,6 +943,58 @@ void _head(
       wrinkle,
     );
   }
+  // Hốc mắt sâu dưới gờ mày (mắt nhìn ra từ bóng tối — đáng sợ hơn).
+  const eyeAt = Offset(-20, -9);
+  canvas.drawCircle(
+    eyeAt + const Offset(1, -1),
+    12,
+    Paint()
+      ..shader = Gradient.radial(eyeAt + const Offset(1, -1), 12, [
+        coreShadeOf(LionColors.body).withValues(alpha: 0.75),
+        coreShadeOf(LionColors.body).withValues(alpha: 0),
+      ]),
+  );
+  // Mảng lông sáng dưới mắt và góc mắt trong (dấu nhận diện sư tử thật).
+  final pale = _fill(lighten(LionColors.belly, 0.35));
+  canvas.drawPath(
+    taperedStroke(
+      [
+        eyeAt + const Offset(-8, 2),
+        eyeAt + const Offset(-1, 5.5),
+        eyeAt + const Offset(7, 2),
+      ],
+      3.2,
+      peak: 0.4,
+    ),
+    pale,
+  );
+  canvas.drawPath(
+    taperedStroke(
+      [
+        eyeAt + const Offset(-6, -2),
+        eyeAt + const Offset(-9.5, 1.5),
+        eyeAt + const Offset(-11, 6),
+      ],
+      2,
+      peak: 0.3,
+    ),
+    pale,
+  );
+  // Viền môi trên sẫm từ dưới mũi cong xuống khoé miệng.
+  canvas.drawPath(
+    taperedStroke(
+      const [
+        Offset(-45, 3),
+        Offset(-43, 9),
+        Offset(-34, 12.5),
+        Offset(-14, 13),
+      ],
+      2.2,
+      peak: 0.3,
+      startWidth: 0.5,
+    ),
+    _fill(LionColors.nose),
+  );
   // Ba vết sẹo vuốt chéo qua mắt.
   final scar = Paint()
     ..color = LionColors.scar
@@ -1091,12 +1176,19 @@ void _eye(
       ..close(),
     _fill(LionColors.bodyShade),
   );
-  canvas.drawLine(
-    eye + Offset(-10, 1 - 2 * roar),
-    eye + const Offset(8, -7),
-    brow
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.6,
+  // Nét mày thon: đậm ở đầu mày phía mũi, mảnh dần ra đuôi.
+  canvas.drawPath(
+    taperedStroke(
+      [
+        eye + Offset(-11, 1.5 - 2 * roar),
+        eye + const Offset(-3, -5.5),
+        eye + const Offset(8, -7.5),
+      ],
+      3,
+      peak: 0.2,
+      startWidth: 0.8,
+    ),
+    brow..style = PaintingStyle.fill,
   );
 }
 
