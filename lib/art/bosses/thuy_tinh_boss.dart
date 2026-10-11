@@ -51,16 +51,30 @@ class ThuyTinhBossArt extends BossArt {
           const [0, 0.6, 1],
         ),
     );
-    // Mây giông nặng.
-    final cloud = fillPaint(const Color(0xFF2B3850).withValues(alpha: 0.85));
-    for (final (x, y, rx, ry) in [
-      (60.0, 30.0, 90.0, 22.0),
-      (210.0, 18.0, 120.0, 26.0),
-      (360.0, 36.0, 80.0, 20.0),
+    // Mây giông nặng: khối nhiều thuỳ, đáy tối phẳng, đỉnh hắt ánh xám bạc;
+    // màn mưa xiên rủ từ đáy mây xuống biển.
+    for (final (x, y, s) in const [
+      (60.0, 30.0, 1.0),
+      (210.0, 20.0, 1.35),
+      (360.0, 38.0, 0.9),
     ]) {
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(x, y), width: rx * 2, height: ry * 2),
-        cloud,
+      _stormCloud(canvas, Offset(x, y), s);
+    }
+    for (var i = 0; i < 4; i++) {
+      final x = 250.0 + i * 38;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, 52)
+          ..lineTo(x + 26, 52)
+          ..lineTo(x + 6, 170)
+          ..lineTo(x - 20, 170)
+          ..close(),
+        Paint()
+          ..shader = Gradient.linear(
+            const Offset(0, 52),
+            const Offset(0, 170),
+            const [Color(0x332B3850), Color(0x002B3850)],
+          ),
       );
     }
 
@@ -87,11 +101,60 @@ class ThuyTinhBossArt extends BossArt {
         ..close(),
       fillPaint(const Color(0xFF3F5B57)),
     );
-    // Sương vắt ngang sườn núi.
-    canvas.drawOval(
-      const Rect.fromLTWH(20, 118, 210, 14),
-      fillPaint(const Color(0x33FFFFFF)),
+    // Rừng phủ sườn Tản Viên: tán tròn li ti, sáng phía trái.
+    canvas.save();
+    canvas.clipPath(far);
+    final forest = math.Random(8);
+    for (var i = 0; i < 320; i++) {
+      final x = forest.nextDouble() * 262;
+      final y = 80 + forest.nextDouble() * 95;
+      final r = 1.3 + forest.nextDouble() * 1.4;
+      final shaded = x > 150 + (y - 66) * 0.5;
+      canvas.drawCircle(
+        Offset(x, y),
+        r,
+        fillPaint(shaded ? const Color(0xFF42605B) : const Color(0xFF557566)),
+      );
+      canvas.drawCircle(
+        Offset(x - r * 0.3, y - r * 0.3),
+        r * 0.5,
+        fillPaint(shaded ? const Color(0xFF4A6963) : const Color(0xFF628473)),
+      );
+    }
+    canvas.restore();
+    // Đền thờ Sơn Tinh trên đỉnh giữa: mái cong đầu đao.
+    canvas.drawRect(
+      const Rect.fromLTWH(129, 62, 12, 6),
+      fillPaint(const Color(0xFF8A6A4A)),
     );
+    canvas.drawPath(
+      Path()
+        ..moveTo(124, 63)
+        ..quadraticBezierTo(126, 60, 128, 59)
+        ..lineTo(142, 59)
+        ..quadraticBezierTo(144, 60, 146, 63)
+        ..quadraticBezierTo(140, 61, 135, 56)
+        ..quadraticBezierTo(130, 61, 124, 63)
+        ..close(),
+      fillPaint(const Color(0xFF7A3A2A)),
+    );
+    // Sương vắt ngang sườn núi (hai dải mỏng).
+    for (final (y, a) in const [(118.0, 0x33), (136.0, 0x26)]) {
+      canvas.drawRect(
+        Rect.fromLTRB(0, y - 6, 262, y + 6),
+        Paint()
+          ..shader = Gradient.linear(
+            Offset(0, y - 6),
+            Offset(0, y + 6),
+            [
+              const Color(0x00FFFFFF),
+              Color.fromARGB(a, 255, 255, 255),
+              const Color(0x00FFFFFF),
+            ],
+            const [0, 0.5, 1],
+          ),
+      );
+    }
 
     // Biển động phía Thuỷ Tinh.
     canvas.drawRect(
@@ -102,6 +165,34 @@ class ThuyTinhBossArt extends BossArt {
           Color(0xFF194B5A),
         ]),
     );
+    // Sóng lừng xa: dải tối – sáng xen kẽ, bọt trắng ở đỉnh.
+    for (var i = 0; i < 6; i++) {
+      final y = 172.0 + i * 9;
+      final pts = [
+        for (var x = 200.0; x <= w + 10; x += 22)
+          Offset(x, y + math.sin(x * 0.09 + i * 1.7) * 2),
+      ];
+      canvas.drawPath(
+        taperedStroke(
+          pts,
+          2.4 + i * 0.4,
+          peak: 0.5,
+          startWidth: 0.3,
+          endWidth: 0.3,
+        ),
+        fillPaint(const Color(0x4410303C)),
+      );
+      canvas.drawPath(
+        taperedStroke(
+          [for (final p in pts) p - const Offset(0, 1.6)],
+          1 + i * 0.2,
+          peak: 0.5,
+          startWidth: 0.2,
+          endWidth: 0.2,
+        ),
+        fillPaint(const Color(0x88E9FBFF)),
+      );
+    }
 
     // Đồi đất người chơi đứng, dốc xuống biển bên phải.
     final hill = Path()
@@ -119,20 +210,100 @@ class ThuyTinhBossArt extends BossArt {
           const [Color(0xFF6E8B3D), Color(0xFF4C5E2A)],
         ),
     );
-    // Ruộng bậc thang dưới chân đồi.
-    final terrace = Paint()
-      ..color = const Color(0xFF8FAF55)
-      ..strokeWidth = 1.4
-      ..style = PaintingStyle.stroke;
+    // Ruộng bậc thang ngập nước: mỗi thửa một mặt nước phản chiếu trời
+    // giông, bờ đất sáng mép trên, mạ xanh lấm tấm.
+    final seedling = math.Random(31);
     for (var i = 0; i < 4; i++) {
-      final y = stageGroundY + 8 + i * 9.0;
+      final y = stageGroundY + 6 + i * 9.0;
+      final right = 236 - i * 6.0;
+      final paddy = Path()
+        ..moveTo(0, y)
+        ..quadraticBezierTo(120, y - 4, right, y + 2)
+        ..lineTo(right - 2, y + 7)
+        ..quadraticBezierTo(120, y + 3, 0, y + 7)
+        ..close();
+      canvas.drawPath(
+        paddy,
+        Paint()
+          ..shader = Gradient.linear(Offset(0, y), Offset(0, y + 7), const [
+            Color(0xFF8BA3AE),
+            Color(0xFF5E7A80),
+          ]),
+      );
       canvas.drawPath(
         Path()
           ..moveTo(0, y)
-          ..quadraticBezierTo(120, y - 4, 240 - i * 6.0, y + 2),
-        terrace,
+          ..quadraticBezierTo(120, y - 4, right, y + 2),
+        Paint()
+          ..color = const Color(0xFF9DB862)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6,
+      );
+      for (var k = 0; k < 26; k++) {
+        final x = seedling.nextDouble() * (right - 6);
+        final yy = y + 3 + seedling.nextDouble() * 3 - x / right * 1.5;
+        canvas.drawLine(
+          Offset(x, yy),
+          Offset(x + 0.6, yy - 2),
+          Paint()
+            ..color = const Color(0xFF7FB04A)
+            ..strokeWidth = 0.8,
+        );
+      }
+    }
+  }
+
+  /// Mây giông: nhiều thuỳ chồng nhau, đáy phẳng tối, đỉnh thuỳ hắt ánh
+  /// xám bạc (mặt trời sau mây), bóng lõi giữa khối.
+  static void _stormCloud(Canvas canvas, Offset c, double s) {
+    var mass = Path();
+    for (final (o, r) in const [
+      (Offset(-62, 6), 16.0),
+      (Offset(-40, -4), 22.0),
+      (Offset(-12, -10), 26.0),
+      (Offset(18, -6), 24.0),
+      (Offset(46, 2), 18.0),
+      (Offset(66, 8), 12.0),
+    ]) {
+      mass = Path.combine(
+        PathOperation.union,
+        mass,
+        Path()..addOval(Rect.fromCircle(center: c + o * s, radius: r * s)),
       );
     }
+    mass = Path.combine(
+      PathOperation.intersect,
+      mass,
+      Path()..addRect(
+        Rect.fromLTRB(
+          c.dx - 100 * s,
+          c.dy - 60 * s,
+          c.dx + 100 * s,
+          c.dy + 14 * s,
+        ),
+      ),
+    );
+    canvas.drawPath(mass, fillPaint(const Color(0xFF2B3850)));
+    canvas.save();
+    canvas.clipPath(mass);
+    canvas.drawPath(
+      mass.shift(Offset(-3 * s, 5 * s)),
+      fillPaint(const Color(0xFF46566E)),
+    );
+    canvas.drawPath(
+      mass.shift(Offset(-1 * s, 9 * s)),
+      fillPaint(const Color(0xFF2B3850)),
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(
+        c.dx - 100 * s,
+        c.dy + 4 * s,
+        c.dx + 100 * s,
+        c.dy + 14 * s,
+      ),
+      fillPaint(const Color(0xFF1C263A)),
+    );
+    canvas.restore();
   }
 
   @override
