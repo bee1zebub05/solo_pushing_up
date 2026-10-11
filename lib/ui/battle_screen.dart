@@ -702,79 +702,158 @@ class _BattleScreenState extends State<BattleScreen>
 
   Widget _buildResult() {
     final won = _battle.status == BattleStatus.won;
+    final accent = won ? GreekUi.gold : const Color(0xFFE57373);
+    final title = won
+        ? 'CHIẾN THẮNG'
+        : _battle.defeatReason == DefeatReason.flooded
+        ? 'NƯỚC NGẬP NÚI'
+        : 'HẾT GIỜ';
+    // Bảng kết quả kiểu bia đá trong đền: nền gỗ sẫm, viền vàng, dải
+    // meander trên dưới tựa, chữ ngà; thưởng xếp thành các dòng có biểu
+    // tượng. Nền sau mờ để sân khấu (cảnh ăn mừng) vẫn thấy.
     return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.8),
+      color: Colors.black.withValues(alpha: 0.55),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              won
-                  ? 'CHIẾN THẮNG'
-                  : _battle.defeatReason == DefeatReason.flooded
-                  ? 'NƯỚC NGẬP NÚI'
-                  : 'HẾT GIỜ',
-              style: TextStyle(
-                color: won ? Colors.amberAccent : Colors.redAccent,
-                fontSize: 40,
-                fontWeight: FontWeight.w900,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: GreekPanel(
+              highlight: won,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 7,
+                    width: double.infinity,
+                    child: CustomPaint(painter: MeanderPainter(color: accent)),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                      shadows: const [
+                        Shadow(color: Color(0xCC000000), blurRadius: 6),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 7,
+                    width: double.infinity,
+                    child: CustomPaint(painter: MeanderPainter(color: accent)),
+                  ),
+                  if (won && widget.victoryText != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.victoryText!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: GreekUi.ink,
+                        fontStyle: FontStyle.italic,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  _resultRow(
+                    Icons.fitness_center,
+                    '${_battle.reps} rep',
+                    'combo cao nhất ×${_battle.bestCombo}',
+                  ),
+                  if (_reward case final reward?) ...[
+                    _resultRow(
+                      Icons.auto_awesome,
+                      '+${reward.xp} XP',
+                      reward.levelsGained > 0 ? 'LÊN CẤP!' : null,
+                      color: Colors.lightGreenAccent,
+                    ),
+                    if (reward.item case final item?)
+                      _resultRow(Icons.card_giftcard, item, 'phần thưởng'),
+                    if (reward.unlockedLabor case final next?)
+                      _resultRow(
+                        Icons.lock_open,
+                        'Kỳ công ${next.number}: ${next.title}',
+                        'đã mở khoá',
+                        color: GreekUi.gold,
+                      ),
+                  ],
+                  const SizedBox(height: 18),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: GreekUi.gold,
+                          foregroundColor: const Color(0xFF2B211A),
+                        ),
+                        onPressed: _restart,
+                        icon: const Icon(Icons.replay),
+                        label: const Text('Đánh lại'),
+                      ),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: GreekUi.ink,
+                          side: const BorderSide(color: GreekUi.goldDim),
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.home),
+                        label: const Text('Về'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            if (won && widget.victoryText != null)
-              Text(
-                widget.victoryText!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70),
-              ),
-            const SizedBox(height: 16),
-            Text(
-              '${_battle.reps} rep · combo cao nhất ×${_battle.bestCombo}',
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            if (_reward case final reward?) ...[
-              const SizedBox(height: 12),
-              Text(
-                '+${reward.xp} XP'
-                '${reward.levelsGained > 0 ? ' · LÊN CẤP!' : ''}',
-                style: const TextStyle(
-                  color: Colors.lightGreenAccent,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (reward.item != null)
-                Text(
-                  '🎁 ${reward.item}',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              if (reward.unlockedLabor case final next?)
-                Text(
-                  '🔓 Mở khoá Kỳ công ${next.number}: ${next.title}',
-                  style: const TextStyle(color: Colors.amberAccent),
-                ),
-            ],
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              children: [
-                FilledButton.icon(
-                  onPressed: _restart,
-                  icon: const Icon(Icons.replay),
-                  label: const Text('Đánh lại'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.home),
-                  label: const Text('Về'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _resultRow(
+    IconData icon,
+    String main,
+    String? sub, {
+    Color color = GreekUi.ink,
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Icon(icon, color: GreekUi.gold, size: 22),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: main,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (sub != null)
+                  TextSpan(
+                    text: '  ·  $sub',
+                    style: const TextStyle(color: GreekUi.inkDim, fontSize: 14),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _HpBarPainter extends CustomPainter {
