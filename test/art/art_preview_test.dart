@@ -281,6 +281,18 @@ void main() {
       'intro_talk',
       (c) => paintNemeaIntro(c, time: 3, talking: true),
     );
+    await render(tester, 'hercules_full', (c) {
+      paintNemeaScene(c, time: 1);
+      c.translate(200, 252);
+      c.scale(0.95);
+      paintHercules(c, time: 1);
+    });
+    await render(tester, 'hercules_torso_zoom', (c) {
+      paintNemeaScene(c, time: 1);
+      c.translate(200, 520);
+      c.scale(2.3);
+      paintHercules(c, time: 1);
+    });
     await render(tester, 'hercules_closeup', (c) {
       paintNemeaScene(c, time: 1);
       c.save();

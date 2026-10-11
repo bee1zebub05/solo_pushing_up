@@ -158,6 +158,142 @@ abstract final class HumanAnatomy {
   );
 }
 
+/// Thân trên nhìn chính diện (nghiêng 3/4 nhẹ), trục từ hõm cổ (t = 0)
+/// xuống xương chậu (t = 1). Ở đây "trước" / "sau" của [MuscleProfile] là
+/// **hai bên** thân: s > 0 bên phía [LimbFrame.anterior] (thường là bên xa
+/// trong góc 3/4, hẹp hơn), s < 0 bên gần. Đơn vị: cỡ nhân vật thường (nửa
+/// vai ~17); anh hùng dùng scale ~2.
+abstract final class TorsoAnatomy {
+  static const front = MuscleProfile(
+    // Bên xa (hẹp hơn vì nghiêng 3/4).
+    anterior: [
+      (0.0, 10.0), // cơ thang
+      (0.08, 15.5), // đỉnh vai
+      (0.3, 14.0), // nách – cơ lưng xô
+      (0.55, 11.6), // eo
+      (0.8, 12.2), // cơ chéo – mào chậu
+      (1.0, 11.2),
+    ],
+    // Bên gần.
+    posterior: [
+      (0.0, 11.0),
+      (0.08, 17.5),
+      (0.3, 15.6),
+      (0.56, 12.4),
+      (0.8, 13.0),
+      (1.0, 11.8),
+    ],
+    grooves: [
+      // Đường trắng giữa bụng (linea alba) và xương ức.
+      Groove([(0.08, 0.0), (0.3, 0.0), (0.62, 0.0), (0.95, 0.0)], weight: 0.8),
+      // Xương đòn hai bên.
+      Groove([(0.04, -0.12), (0.06, -0.5), (0.05, -0.85)], weight: 0.6),
+      Groove([(0.04, 0.12), (0.06, 0.5), (0.05, 0.85)], weight: 0.6),
+    ],
+    bellies: [
+      // Cơ thang dốc từ cổ xuống vai.
+      MuscleBelly((-0.03, -0.15), (0.1, -0.92), width: 0.32, peak: 0.35),
+      MuscleBelly((-0.03, 0.15), (0.1, 0.92), width: 0.3, peak: 0.35),
+      // Cơ lưng xô lộ hai bên sườn.
+      MuscleBelly((0.22, -0.95), (0.62, -0.78), width: 0.28, peak: 0.35),
+      MuscleBelly((0.22, 0.95), (0.62, 0.78), width: 0.24, peak: 0.35),
+      // Răng cưa sườn (bên gần).
+      MuscleBelly((0.3, -0.86), (0.37, -0.58), width: 0.11, peak: 0.4),
+      MuscleBelly((0.37, -0.86), (0.44, -0.6), width: 0.11, peak: 0.4),
+      MuscleBelly((0.44, -0.84), (0.51, -0.62), width: 0.1, peak: 0.4),
+      // Cơ chéo bụng hai bên, phồng trên mào chậu.
+      MuscleBelly((0.46, -0.9), (0.95, -0.55), width: 0.3, peak: 0.6),
+      MuscleBelly((0.46, 0.9), (0.95, 0.55), width: 0.26, peak: 0.6),
+      // Cơ thẳng bụng: 4 hàng × 2 múi, rồi bụng dưới.
+      MuscleBelly(
+        (0.380, -0.17),
+        (0.470, -0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.380, 0.17),
+        (0.470, 0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.485, -0.17),
+        (0.575, -0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.485, 0.17),
+        (0.575, 0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.590, -0.17),
+        (0.680, -0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.590, 0.17),
+        (0.680, 0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.695, -0.17),
+        (0.785, -0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.695, 0.17),
+        (0.785, 0.17),
+        width: 0.2,
+        peak: 0.5,
+        fullness: 0.22,
+      ),
+      MuscleBelly(
+        (0.8, -0.16),
+        (1.0, -0.12),
+        width: 0.2,
+        peak: 0.4,
+        fullness: 0.3,
+      ),
+      MuscleBelly(
+        (0.8, 0.16),
+        (1.0, 0.12),
+        width: 0.2,
+        peak: 0.4,
+        fullness: 0.3,
+      ),
+      // Cơ ngực: khối quạt từ xương ức tới nách, nông nhất.
+      MuscleBelly(
+        (0.33, -0.04),
+        (0.12, -0.98),
+        width: 0.58,
+        peak: 0.42,
+        fullness: 0.4,
+      ),
+      MuscleBelly(
+        (0.33, 0.04),
+        (0.12, 0.98),
+        width: 0.52,
+        peak: 0.42,
+        fullness: 0.4,
+      ),
+    ],
+  );
+}
+
 /// Profile giải phẫu mèo lớn (sư tử). Đơn vị: cỡ sư tử boss (nửa bề rộng đùi
 /// sau ~22). Phía trước = phía đầu con vật.
 abstract final class FelineAnatomy {

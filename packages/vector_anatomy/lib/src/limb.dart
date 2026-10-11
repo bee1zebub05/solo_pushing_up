@@ -73,6 +73,7 @@ class MuscleBelly {
     this.insertion, {
     this.width = 0.5,
     this.peak = 0.5,
+    this.fullness = 0.75,
     this.name = '',
   });
 
@@ -80,6 +81,10 @@ class MuscleBelly {
   final (double t, double s) insertion;
   final double width;
   final double peak;
+
+  /// Độ đầy khối: 0,75 = thoi (cơ dài như bắp tay); ~0,25 = gần chữ nhật bo
+  /// góc (múi bụng, khối vuông).
+  final double fullness;
   final String name;
 }
 
@@ -172,7 +177,7 @@ Path bellyPath(
     final k = u <= m.peak
         ? math.sin(u / m.peak * math.pi / 2)
         : math.cos((u - m.peak) / (1 - m.peak) * math.pi / 2);
-    final w = half * math.pow(k, 0.75);
+    final w = half * math.pow(k, m.fullness);
     final c = a + d * u;
     left.add(c + n * w);
     right.add(c - n * w);

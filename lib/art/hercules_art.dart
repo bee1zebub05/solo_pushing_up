@@ -354,130 +354,37 @@ const _left = Offset(-1, 0);
 const _hScale = 2.0;
 const _hThighScale = 1.75;
 
-/// Thân trên kiểu tượng Farnese: hình chữ V, cơ thang nối cổ, ngực vuông,
-/// bụng 8 múi, răng cưa sườn, cơ chéo, đường chữ V ở hông.
+/// Thân trên kiểu tượng Farnese dựng từ bó cơ (`TorsoAnatomy.front`):
+/// cơ thang, lưng xô, răng cưa sườn, cơ chéo, 8 múi bụng, ngực — mỗi bó là
+/// một khối đổ bóng riêng, chồng từ sâu ra nông. Phồng nhẹ theo nhịp thở.
 void _heroicTorso(Canvas canvas, Color skin, double breath) {
-  final b = breath;
-  final torso = Path()
-    ..moveTo(-30, -170)
-    ..cubicTo(-34, -150, -26, -136, -22, -124)
-    ..lineTo(22, -124)
-    ..cubicTo(26, -136, 34, -150, 30, -170)
-    ..cubicTo(36, -186, 30, -197 - b, 14, -200 - b)
-    ..quadraticBezierTo(-4, -207 - b, -18, -200 - b)
-    ..cubicTo(-34, -197 - b, -38, -186, -30, -170)
-    ..close();
-  shadedPath(canvas, torso, skin, PartFrame.world, shadow: 6);
-
-  final sel = Paint()
-    ..color = darken(skin, 0.32).withValues(alpha: 0.65)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.2
-    ..strokeCap = StrokeCap.round;
-  final under = Paint()..color = coreShadeOf(skin).withValues(alpha: 0.3);
-  final lit = Paint()..color = sunlitOf(skin).withValues(alpha: 0.45);
-
-  // Một khối cơ: sáng phía trên-trái, bóng lõi mép dưới-phải, sel-line viền
-  // (Loomis: mỗi khối cơ là một khối tròn có mặt khuất).
-  void block(Path p, {bool soft = false}) {
-    canvas.save();
-    canvas.clipPath(p);
-    canvas.drawPath(p.shift(const Offset(-1.5, -2)), lit);
-    canvas.drawPath(p.shift(const Offset(2.5, 3)), under);
-    canvas.restore();
-    // Khối nhỏ (múi bụng): nét mảnh, nhạt để liền mạch, không thành "viên kẹo".
-    canvas.drawPath(
-      p,
-      soft
-          ? (Paint()
-              ..color = darken(skin, 0.3).withValues(alpha: 0.35)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 0.9)
-          : sel,
-    );
-  }
-
+  // Trục thân: hõm cổ → xương chậu; phía "trước" của profile = bên phải
+  // khung hình (vai xa, hẹp hơn trong góc 3/4).
+  // Thân dừng ở cạp khố (phần bo dưới không trùm lên khố).
   canvas.save();
-  canvas.clipPath(torso);
-  // Bóng dưới cơ ngực đổ lên bụng.
-  canvas.drawPath(
-    Path()
-      ..moveTo(-30, -168 - b)
-      ..quadraticBezierTo(-14, -158 - b, 2, -166 - b)
-      ..quadraticBezierTo(16, -158 - b, 28, -168 - b)
-      ..lineTo(28, -162 - b)
-      ..quadraticBezierTo(16, -152 - b, 2, -160 - b)
-      ..quadraticBezierTo(-14, -152 - b, -30, -162 - b)
-      ..close(),
-    Paint()..color = coreShadeOf(skin).withValues(alpha: 0.35),
-  );
-  // Cơ ngực: hai khối vuông bo, chẻ đôi ở xương ức.
-  for (final (l, r) in [(-31.0, -1.0), (2.0, 29.0)]) {
-    block(
-      Path()
-        ..moveTo(l, -192 - b)
-        ..quadraticBezierTo((l + r) / 2, -196 - b, r, -190 - b)
-        ..quadraticBezierTo(r + 1, -176 - b, r - 3, -168 - b)
-        ..quadraticBezierTo((l + r) / 2, -162 - b, l + 2, -168 - b)
-        ..quadraticBezierTo(l - 2, -180 - b, l, -192 - b)
-        ..close(),
-    );
-  }
-  // Bụng: 4 hàng × 2 múi, hẹp dần xuống dưới, đường trắng giữa.
-  for (var row = 0; row < 4; row++) {
-    final y = -160.0 + row * 9;
-    final w = 9.0 - row * 0.8;
-    for (final side in [-1.0, 1.0]) {
-      final x = side < 0 ? -w - 1.2 : 1.2;
-      block(
-        Path()..addRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, y, w, 7.6),
-            const Radius.circular(3.4),
-          ),
-        ),
-      );
-    }
-  }
-  // Răng cưa sườn phía gần.
-  for (var i = 0; i < 3; i++) {
-    final y = -164.0 + i * 6;
-    block(
-      Path()
-        ..moveTo(-27, y)
-        ..quadraticBezierTo(-22, y - 2, -18, y + 1)
-        ..quadraticBezierTo(-22, y + 4, -27, y + 3)
-        ..close(),
-    );
-  }
-  // Cơ chéo bụng hai bên.
-  for (final s in [-1.0, 1.0]) {
-    canvas.drawPath(
-      Path()
-        ..moveTo(s * 20, -148)
-        ..quadraticBezierTo(s * 22, -136, s * 13, -126),
-      sel,
-    );
-  }
-  // Đường chữ V ở hông dẫn xuống khố.
-  canvas.drawPath(
-    Path()
-      ..moveTo(-19, -136)
-      ..quadraticBezierTo(-12, -128, -6, -124)
-      ..moveTo(19, -136)
-      ..quadraticBezierTo(12, -128, 6, -124),
-    sel..strokeWidth = 1.6,
-  );
-  // Xương đòn hai bên hõm cổ.
-  canvas.drawPath(
-    Path()
-      ..moveTo(-26, -196 - b)
-      ..quadraticBezierTo(-14, -194 - b, -5, -197 - b)
-      ..moveTo(5, -197 - b)
-      ..quadraticBezierTo(14, -194 - b, 24, -196 - b),
-    sel..strokeWidth = 1.2,
+  canvas.clipRect(const Rect.fromLTRB(-80, -260, 80, -127));
+  shadedLimb(
+    canvas,
+    [(Offset(-2, -206 - breath), const Offset(0, -118), TorsoAnatomy.front)],
+    skin,
+    scale: 2.05 + breath * 0.01,
+    facing: const Offset(1, 0),
+    shadow: 3.5,
+    definition: 1.35,
   );
   canvas.restore();
+  // Bóng đổ dưới cơ ngực lên bụng (cast shadow) — mặt dưới ngực khuất sáng.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-32, -182 - breath)
+      ..quadraticBezierTo(-16, -168 - breath, -1, -174 - breath)
+      ..quadraticBezierTo(12, -168 - breath, 28, -182 - breath)
+      ..lineTo(28, -177 - breath)
+      ..quadraticBezierTo(12, -163 - breath, -1, -169 - breath)
+      ..quadraticBezierTo(-16, -163 - breath, -32, -177 - breath)
+      ..close(),
+    Paint()..color = coreShadeOf(skin).withValues(alpha: 0.38),
+  );
 }
 
 /// Da sư tử Nemea vắt trên đầu chuỳ: đầu sư tử ở trên, tấm da rủ xuống,
