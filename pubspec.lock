@@ -629,6 +629,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.12.2"
+  stage_raster:
+    dependency: "direct main"
+    description:
+      path: "packages/stage_raster"
+      relative: true
+    source: path
+    version: "0.1.0"
   stream_channel:
     dependency: transitive
     description:

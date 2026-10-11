@@ -1,0 +1,16 @@
+name: stage_raster
+description: Ảnh chụp sẵn cho lớp tĩnh của sân khấu 2D (Flutter Canvas) với ngân sách bộ nhớ GPU chung (LRU) và trần độ phân giải.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

@@ -80,6 +80,10 @@ abstract class BossArt {
   /// (2,5D) chỉ để lại lớp xa nhất ở đây, các lớp khác vẽ trong [paintScene].
   void paintStageBackdrop(Canvas canvas) => paintBackdrop(canvas);
 
+  /// `false` khi boss tự vẽ toàn bộ phông trong [paintScene] (sân khấu khỏi
+  /// giữ một ảnh phông toàn màn hình thừa).
+  bool get hasStageBackdrop => true;
+
   /// Phần động của phông nền (mây, mưa, sóng xa…).
   void paintAmbient(Canvas canvas, double time);
 
@@ -150,7 +154,12 @@ class BattleStageGame extends FlameGame {
       super.render(canvas);
       return;
     }
-    canvas.saveLayer(null, Paint()..colorFilter = saturationFilter(saturation));
+    // Khoanh lớp đúng vùng sân khấu: `null` để engine tự tính giới hạn, có
+    // thể thành cả màn hình (đo trên máy: tốn thêm 2–4 ms/khung).
+    canvas.saveLayer(
+      Offset.zero & canvasSize.toSize(),
+      Paint()..colorFilter = saturationFilter(saturation),
+    );
     super.render(canvas);
     canvas.restore();
   }
@@ -161,7 +170,14 @@ class BattleStageGame extends FlameGame {
     // Ảnh chụp sẵn lớp tĩnh khớp điểm ảnh thật của màn hình (không mờ).
     final dpr = PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 1;
     final k = math.min(size.x / stageSize.width, size.y / stageSize.height);
-    if (k > 0) StageQuality.rasterScale = (k * dpr).clamp(1.5, 6.0);
+    if (k > 0) RasterBudget.shared.scale = (k * dpr).clamp(1.5, 6.0);
+  }
+
+  @override
+  void onRemove() {
+    // Rời trận: trả bộ nhớ GPU của mọi ảnh chụp sẵn (vào trận sau chụp lại).
+    RasterBudget.shared.purge();
+    super.onRemove();
   }
 
   @override
@@ -372,7 +388,7 @@ class _SceneComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    _backdrop.paint(canvas);
+    if (boss.hasStageBackdrop) _backdrop.paint(canvas);
     boss.paintScene(canvas, _time, battle);
   }
 
@@ -447,7 +463,8 @@ class _ForegroundComponent extends Component {
 
   /// Lớp chỉnh màu toàn cảnh tĩnh → chụp sẵn thành ảnh (một lần vẽ ảnh/khung).
   late final _grade = RasterLayer(
-    (c) => paintStageGrade(c, Offset.zero & stageSize, light: boss.art.gradeLight),
+    (c) =>
+        paintStageGrade(c, Offset.zero & stageSize, light: boss.art.gradeLight),
     bounds: Offset.zero & stageSize,
   );
 

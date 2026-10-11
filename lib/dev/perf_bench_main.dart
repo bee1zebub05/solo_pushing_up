@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
+import 'package:stage_raster/stage_raster.dart';
 
 import '../art/battle_stage.dart';
 import '../art/bosses/fafnir_boss.dart';
@@ -13,7 +15,6 @@ import '../art/bosses/orochi_boss.dart';
 import '../art/bosses/thuy_tinh_boss.dart';
 import '../art/hero_art.dart';
 import '../art/hero_pose.dart';
-import '../art/vector_style.dart' show StageQuality;
 
 /// Đo hiệu năng trên máy thật (chạy bằng `--profile`):
 /// `flutter run --profile -d <máy> -t lib/dev/perf_bench_main.dart`
@@ -122,19 +123,18 @@ class _BenchScreenState extends State<_BenchScreen>
       _recordStages();
       SchedulerBinding.instance.addTimingsCallback(_onTimings);
       _ticker.start();
-      for (final (name, sat, grade, dust) in [
-        ('full', true, true, true),
-        ('no-saturation', false, true, true),
-        ('no-grade', true, false, true),
-        ('no-dust', true, true, false),
-        ('none', false, false, false),
+      // Đo cấu hình đầy đủ ở cả hai hướng máy: ảnh chụp sẵn phụ thuộc độ
+      // phân giải màn hình nên bộ nhớ/thời gian tô khác hẳn khi nằm ngang.
+      // Mốc `BENCH phase <tên>` báo cho tool/bench_device.sh đo bộ nhớ.
+      for (final (name, orientation) in [
+        ('full', DeviceOrientation.portraitUp),
+        ('full-landscape', DeviceOrientation.landscapeLeft),
       ]) {
-        StageQuality.saturationLayer = sat;
-        StageQuality.grade = grade;
-        StageQuality.dust = dust;
+        await SystemChrome.setPreferredOrientations([orientation]);
         setState(() => _status = 'Đo cấu hình $name…');
-        await Future<void>.delayed(const Duration(seconds: 1));
+        await Future<void>.delayed(const Duration(seconds: 2));
         _timings.clear();
+        _log('phase $name');
         await Future<void>.delayed(const Duration(seconds: 6));
         _report(name);
       }
@@ -182,6 +182,12 @@ class _BenchScreenState extends State<_BenchScreen>
         '>16.7ms: $janky');
     _log('[$name] build  ${stats(build)} ms');
     _log('[$name] raster ${stats(raster)} ms');
+    final cache = RasterBudget.shared;
+    _log(
+      '[$name] raster-cache ${(cache.bytes / 1048576).toStringAsFixed(1)} MB '
+      'in ${cache.liveCount} images, scale '
+      '${cache.effectiveScale.toStringAsFixed(2)}',
+    );
   }
 
   @override
@@ -193,21 +199,35 @@ class _BenchScreenState extends State<_BenchScreen>
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.black,
-    body: Column(
-      children: [
-        Expanded(
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: 400 / 260,
-              child: GameWidget(game: _game),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(_status, style: const TextStyle(color: Colors.white)),
-        ),
-      ],
+    // Bố cục giống màn trận thật: dọc thì sân khấu trên, camera dưới; ngang
+    // thì sân khấu chiếm 3/5 bên trái (lib/ui/battle_screen.dart).
+    body: SafeArea(
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final stage = AspectRatio(
+            aspectRatio: 400 / 260,
+            child: GameWidget(game: _game),
+          );
+          final status = Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(_status, style: const TextStyle(color: Colors.white)),
+          );
+          if (box.maxWidth > box.maxHeight) {
+            return Row(
+              children: [
+                Expanded(flex: 3, child: Center(child: stage)),
+                Expanded(flex: 2, child: Center(child: status)),
+              ],
+            );
+          }
+          return Column(
+            children: [
+              stage,
+              Expanded(child: Center(child: status)),
+            ],
+          );
+        },
+      ),
     ),
   );
 }

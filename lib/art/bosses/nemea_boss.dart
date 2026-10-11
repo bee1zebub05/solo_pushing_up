@@ -39,31 +39,35 @@ class NemeaBossArt extends BossArt {
   /// Bụi Trì Trệ: đậm nhất khi sư tử còn đầy máu, tan dần mỗi đòn trúng.
   static const maxDust = 0.85;
 
+  /// Trời nằm trong các lớp của Nemea (để phủ bụi được), nên sân khấu
+  /// không cần chụp phông nền riêng.
   @override
-  void paintStageBackdrop(Canvas canvas) =>
-      paintNemeaLayer(canvas, NemeaLayer.sky);
+  bool get hasStageBackdrop => false;
 
-  static Picture _record(void Function(Canvas) draw) {
-    final recorder = PictureRecorder();
-    draw(Canvas(recorder));
-    return recorder.endRecording();
-  }
-
-  /// Mỗi lớp chiều sâu (trừ trời) và bản phủ bụi của nó, chụp sẵn thành
-  /// ảnh một lần (vẽ lại vector mỗi khung tốn GPU điện thoại ~20 ms).
+  /// Mỗi lớp chiều sâu chụp sẵn thành ảnh một lần (vẽ lại vector mỗi khung
+  /// tốn GPU điện thoại ~20 ms). Bản phủ bụi = cùng ảnh vẽ qua
+  /// [nemeaDustFilter], không giữ ảnh thứ hai. Trời và núi xa chụp thô hơn
+  /// (xa thì mềm — phối cảnh không khí) để bớt bộ nhớ.
   static final _layers = [
-    for (final l in NemeaLayer.values.skip(1))
+    for (final l in NemeaLayer.values)
       (
         l,
-        RasterLayer((c) => paintNemeaLayer(c, l)),
-        RasterLayer((c) => paintNemeaDustyLayer(c, l)),
+        RasterLayer(
+          (c) => paintNemeaLayer(c, l),
+          resolution: switch (l) {
+            NemeaLayer.sky => 0.6,
+            NemeaLayer.far => 0.8,
+            _ => 1,
+          },
+        ),
       ),
   ];
-  static final _dustySky = RasterLayer(
-    (c) => paintNemeaDustyLayer(c, NemeaLayer.sky),
-  );
 
-  static final _foreground = _record(paintNemeaForeground);
+  /// Tiền cảnh (cỏ, đá góc dưới) chụp sẵn: chỉ dải dưới sân khấu.
+  static final _foreground = RasterLayer(
+    paintNemeaForeground,
+    bounds: const Rect.fromLTRB(-40, 120, 440, 280),
+  );
 
   double _drift = 0;
 
@@ -72,7 +76,7 @@ class NemeaBossArt extends BossArt {
     // Tiền cảnh trôi ngược chiều, mạnh hơn các lớp xa (gần máy quay hơn).
     canvas.save();
     canvas.translate(-_drift * 0.6, 0);
-    canvas.drawPicture(_foreground);
+    _foreground.paint(canvas);
     canvas.restore();
   }
 
@@ -89,15 +93,17 @@ class NemeaBossArt extends BossArt {
     // Camera trôi chậm: lớp càng xa càng lệch so với nhân vật (2,5D).
     final drift = math.sin(time * 0.21) * 5 + math.sin(time * 0.083) * 3;
     _drift = drift;
-    // Bụi: mỗi tầng vẽ ảnh sạch rồi ảnh phủ bụi đè lên với độ trong suốt =
-    // lượng bụi (vẽ ảnh có alpha, không cần saveLayer).
+    // Bụi: mỗi tầng vẽ ảnh sạch, rồi vẽ lại chính ảnh đó qua bộ lọc mất
+    // màu với độ đục = lượng bụi, thêm sương/mạng nhện vẽ thẳng.
     final dust = StageQuality.dust && _dust > 0.01 ? _dust : 0.0;
-    if (dust > 0) _dustySky.paint(canvas, opacity: dust);
-    for (final (layer, clean, dusty) in _layers) {
+    for (final (layer, image) in _layers) {
       canvas.save();
       canvas.translate(drift * layer.parallax, 0);
-      clean.paint(canvas);
-      if (dust > 0) dusty.paint(canvas, opacity: dust);
+      image.paint(canvas);
+      if (dust > 0) {
+        image.paint(canvas, opacity: dust, colorFilter: nemeaDustFilter);
+        paintNemeaDustExtras(canvas, layer, opacity: dust);
+      }
       canvas.restore();
     }
     paintNemeaAmbient(canvas, time: time, dust: _dust);
