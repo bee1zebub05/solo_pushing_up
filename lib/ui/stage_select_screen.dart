@@ -6,6 +6,7 @@ import '../art/bosses/boss_registry.dart';
 import '../game/labors.dart';
 import '../game/progress.dart';
 import 'boss_portrait.dart';
+import 'greek_ui.dart';
 
 /// Chọn màn trong một kỳ công (1.1 … 1.10): màn đã thắng có dấu tích, màn
 /// kế tiếp sáng lên, màn chưa mở bị khoá. Màn cuối là boss.
@@ -29,7 +30,25 @@ class StageSelectScreen extends StatelessWidget {
     final stages = labor.allStages;
     final done = stages.where(progress.isStageDone).length;
     return Scaffold(
-      appBar: AppBar(title: Text('Kỳ công ${labor.number} — ${labor.title}')),
+      backgroundColor: GreekUi.background,
+      appBar: AppBar(
+        backgroundColor: GreekUi.background,
+        foregroundColor: GreekUi.ink,
+        title: Text('Kỳ công ${labor.number} — ${labor.title}'),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(8),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 6,
+              child: CustomPaint(
+                painter: MeanderPainter(color: GreekUi.goldDim),
+                size: Size.infinite,
+              ),
+            ),
+          ),
+        ),
+      ),
       // SafeArea: padding tự đặt làm ListView bỏ phần chừa thanh Home của
       // iPhone; nằm ngang thì chừa cả tai thỏ / Dynamic Island hai bên.
       body: SafeArea(
@@ -38,7 +57,11 @@ class StageSelectScreen extends StatelessWidget {
           children: [
             Text(labor.region, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            LinearProgressIndicator(value: done / stages.length),
+            LinearProgressIndicator(
+              value: done / stages.length,
+              color: GreekUi.gold,
+              backgroundColor: const Color(0xFF4A3C2C),
+            ),
             const SizedBox(height: 4),
             Text(
               '$done/${stages.length} màn',
@@ -99,14 +122,10 @@ class _StageTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final art = unlocked ? bossArtFor(stage.enemy) : null;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: boss
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFE8B83A), width: 2),
-            )
-          : null,
+    return GreekPanel(
+      padding: EdgeInsets.zero,
+      dimmed: !unlocked,
+      highlight: boss || (unlocked && !done),
       child: ListTile(
         enabled: unlocked,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -123,11 +142,12 @@ class _StageTile extends StatelessWidget {
               ),
         title: Text(
           '${stage.code}  ${stage.title}',
-          style: boss
-              ? theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                )
-              : null,
+          style:
+              (boss ? theme.textTheme.titleMedium : theme.textTheme.titleSmall)
+                  ?.copyWith(
+                    color: unlocked ? GreekUi.ink : GreekUi.inkDim,
+                    fontWeight: boss ? FontWeight.w800 : FontWeight.w600,
+                  ),
         ),
         subtitle: unlocked
             ? Column(
@@ -140,10 +160,14 @@ class _StageTile extends StatelessWidget {
                         stage.lore,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
+                          color: GreekUi.inkDim,
                         ),
                       ),
                     ),
-                  Text('🎯 ${stage.tip}'),
+                  Text(
+                    '🎯 ${stage.tip}',
+                    style: const TextStyle(color: GreekUi.ink),
+                  ),
                 ],
               )
             : const Text('Thắng màn trước để mở'),
