@@ -34,22 +34,10 @@ void paintNemeaMap(
 }) {
   final w = nemeaMapSize.width;
   final h = nemeaMapSize.height;
-  // Nền đất cỏ, sáng dần lên phía trên (xa) như phối cảnh không khí.
-  canvas.drawRect(
-    Offset.zero & nemeaMapSize,
-    Paint()
-      ..shader = Gradient.linear(
-        Offset.zero,
-        Offset(0, h),
-        const [Color(0xFFB9BD86), Color(0xFF8FA25E), Color(0xFF7C9150)],
-        const [0, 0.5, 1],
-      ),
-  );
-  _hills(canvas);
+  // Phần tĩnh chụp sẵn thành ảnh; mỗi khung chỉ vẽ sông, đường, các điểm.
+  _mapGround.paint(canvas);
   _river(canvas, time);
-  _forest(canvas);
-  _temple(canvas, const Offset(196, 128));
-  _cave(canvas, const Offset(356, 50));
+  _mapProps.paint(canvas);
   _path(canvas, states);
   for (var i = 0; i < nemeaMapNodes.length; i++) {
     _node(
@@ -77,6 +65,64 @@ void paintNemeaMap(
 
 Path _poly(List<Offset> pts) => Path()..addPolygon(pts, true);
 
+/// Nền đất, đồi, núi đá (dưới sông).
+final _mapGround = RasterLayer((canvas) {
+  // Nền đất cỏ, sáng dần lên phía trên (xa) như phối cảnh không khí.
+  canvas.drawRect(
+    Offset.zero & nemeaMapSize,
+    Paint()
+      ..shader = Gradient.linear(
+        Offset.zero,
+        Offset(0, nemeaMapSize.height),
+        const [Color(0xFFB9BD86), Color(0xFF8FA25E), Color(0xFF7C9150)],
+        const [0, 0.5, 1],
+      ),
+  );
+  _fieldSpecks(canvas);
+  _hills(canvas);
+}, bounds: Offset.zero & nemeaMapSize);
+
+/// Rừng, đền, hang (trên sông).
+final _mapProps = RasterLayer((canvas) {
+  _forest(canvas);
+  _temple(canvas, const Offset(196, 128));
+  _cave(canvas, const Offset(356, 50));
+}, bounds: Offset.zero & nemeaMapSize);
+
+/// Đốm cỏ và mảng đất trống rải trên đồng (chất liệu bản đồ vẽ tay).
+void _fieldSpecks(Canvas canvas) {
+  final rnd = math.Random(4);
+  for (var i = 0; i < 26; i++) {
+    final c = Offset(rnd.nextDouble() * 400, 20 + rnd.nextDouble() * 280);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: c,
+        width: 14 + rnd.nextDouble() * 26,
+        height: 5 + rnd.nextDouble() * 8,
+      ),
+      Paint()
+        ..color = (i.isEven
+            ? const Color(0x22F2E3A0)
+            : const Color(0x1A3E4A20)),
+    );
+  }
+  final tuft = Paint()..color = const Color(0x665E7034);
+  for (var i = 0; i < 140; i++) {
+    final p = Offset(rnd.nextDouble() * 400, rnd.nextDouble() * 300);
+    for (final a in const [-0.5, 0.0, 0.5]) {
+      canvas.drawPath(
+        taperedStroke(
+          [p, p + Offset(math.sin(a) * 2.2, -2.6 + a.abs())],
+          0.7,
+          peak: 0.1,
+          startWidth: 1,
+        ),
+        tuft,
+      );
+    }
+  }
+}
+
 void _hills(Canvas canvas) {
   // Các gò đồi: mặt đón nắng (trái-trên) sáng, mặt khuất tối.
   for (final (c, rx, ry) in [
@@ -91,6 +137,20 @@ void _hills(Canvas canvas) {
       r.shift(Offset(-rx * 0.12, -ry * 0.18)).deflate(ry * 0.2),
       Paint()..color = const Color(0xFFA9B577),
     );
+    // Đường đồng mức gạch bóng ở sườn khuất (phải – dưới), kiểu bản đồ.
+    canvas.save();
+    canvas.clipPath(Path()..addOval(r));
+    final contour = Paint()
+      ..color = const Color(0x553E4A22)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var k = 1; k <= 3; k++) {
+      final rr = r
+          .deflate(ry * 0.22 * k)
+          .shift(Offset(rx * 0.04 * k, ry * 0.05 * k));
+      canvas.drawArc(rr, -0.3, 2.0, false, contour);
+    }
+    canvas.restore();
   }
   // Núi đá sau hang.
   final cliff = _poly(const [
@@ -111,6 +171,42 @@ void _hills(Canvas canvas) {
     _poly(const [Offset(372, 92), Offset(400, 110), Offset(400, 40)]),
     Paint()..color = const Color(0xFF7E6A4C),
   );
+  // Chất đá: vân nghiêng đứt quãng và vệt mưa.
+  canvas.save();
+  canvas.clipPath(cliff);
+  final rnd = math.Random(8);
+  final seam = Paint()..color = const Color(0x665E4A30);
+  for (var i = 0; i < 14; i++) {
+    final x = 296 + rnd.nextDouble() * 100;
+    final y = 6 + rnd.nextDouble() * 96;
+    final len = 10 + rnd.nextDouble() * 18;
+    canvas.drawPath(
+      taperedStroke(
+        [
+          Offset(x, y),
+          Offset(x + len * 0.5, y - len * 0.12),
+          Offset(x + len, y - len * 0.1),
+        ],
+        1.2,
+        peak: 0.5,
+      ),
+      seam,
+    );
+  }
+  final streak = Paint()..color = const Color(0x445E4A30);
+  for (var i = 0; i < 12; i++) {
+    final x = 300 + rnd.nextDouble() * 96;
+    final y = rnd.nextDouble() * 60;
+    canvas.drawPath(
+      taperedStroke(
+        [Offset(x, y), Offset(x + 0.6, y + 10), Offset(x, y + 22)],
+        1.4,
+        peak: 0.2,
+      ),
+      streak,
+    );
+  }
+  canvas.restore();
 }
 
 void _river(Canvas canvas, double time) {
