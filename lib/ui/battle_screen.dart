@@ -262,41 +262,90 @@ class _BattleScreenState extends State<BattleScreen>
     final finished =
         _battle.status == BattleStatus.won ||
         _battle.status == BattleStatus.lost;
-    if (_stage case final stage?) return _buildStaged(stage, finished);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Camera mờ đi làm nền, để kẻ thù và thanh máu nổi bật.
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.55,
-                child: PoseSourceView(
-                  session: _session,
-                  onOpenSimulator: _openSimulator,
-                ),
-              ),
-            ),
-            Positioned(top: 8, left: 8, right: 8, child: _buildTopBar()),
-            Positioned(
-              // Trận Thuỷ Tinh có thêm thanh nước và đợt sóng ở trên.
-              top: widget.enemy.armor == BattleArmor.risingFlood ? 190 : 120,
-              left: 0,
-              right: 0,
-              child: _buildEnemy(),
-            ),
-            Positioned(left: 16, right: 16, bottom: 24, child: _buildStatus()),
-            Positioned(
-              right: 12,
-              top: 260,
-              bottom: 90,
-              child: DepthBar(snapshot: _session.snapshot),
-            ),
-            if (finished) Positioned.fill(child: _buildResult()),
-          ],
+    if (_stage case final stage?) {
+      return _guardExit(finished, _buildStaged(stage, finished));
+    }
+    return _guardExit(
+      finished,
+      Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, box) => _buildPlain(box, finished),
+          ),
         ),
       ),
+    );
+  }
+
+  /// Chặn thoát trận ngoài ý muốn: trên iPhone, vuốt từ mép trái là quay
+  /// lại — dễ chạm phải khi chỉnh máy giữa trận. Đang đánh thì tắt cử chỉ
+  /// vuốt; nút quay lại của Android hỏi lại trước khi rời. Nút ✕ vẫn rời ngay.
+  Widget _guardExit(bool finished, Widget child) {
+    return PopScope(
+      canPop: finished || _battle.status == BattleStatus.ready,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Rời trận?'),
+            content: const Text(
+              'Trận đang diễn ra. Rời bây giờ sẽ mất tiến độ của trận này.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Ở lại'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Rời trận'),
+              ),
+            ],
+          ),
+        );
+        if (leave == true && mounted) Navigator.of(context).pop();
+      },
+      child: child,
+    );
+  }
+
+  /// Bố cục không có sân khấu: camera mờ làm nền, kẻ thù và thanh máu đè lên.
+  Widget _buildPlain(BoxConstraints box, bool finished) {
+    // Màn ngang (iPhone nằm ngang chỉ còn ~350 pt chiều cao): kéo kẻ thù và
+    // thanh độ sâu lên cao, không để vị trí cố định cho màn dọc bị âm.
+    final landscape = box.maxWidth > box.maxHeight;
+    final flood = widget.enemy.armor == BattleArmor.risingFlood;
+    return Stack(
+      children: [
+        // Camera mờ đi làm nền, để kẻ thù và thanh máu nổi bật.
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.55,
+            child: PoseSourceView(
+              session: _session,
+              onOpenSimulator: _openSimulator,
+            ),
+          ),
+        ),
+        Positioned(top: 8, left: 8, right: 8, child: _buildTopBar()),
+        Positioned(
+          // Trận Thuỷ Tinh có thêm thanh nước và đợt sóng ở trên.
+          top: landscape ? (flood ? 150 : 96) : (flood ? 190 : 120),
+          left: 0,
+          right: 0,
+          child: _buildEnemy(),
+        ),
+        Positioned(left: 16, right: 16, bottom: 24, child: _buildStatus()),
+        Positioned(
+          right: 12,
+          top: landscape ? 96 : 260,
+          bottom: landscape ? 72 : 90,
+          child: DepthBar(snapshot: _session.snapshot),
+        ),
+        if (finished) Positioned.fill(child: _buildResult()),
+      ],
     );
   }
 
@@ -404,66 +453,80 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
-  /// Bố cục có sân khấu: trên là trận đấu hoạt hình, dưới là camera.
+  /// Bố cục có sân khấu. Dọc (mặc định trên iPhone): trên là trận đấu hoạt
+  /// hình, dưới là camera. Ngang: sân khấu bên trái, camera bên phải — cột
+  /// dọc sẽ tràn vì sân khấu 400:260 cao hơn cả màn hình khi nằm ngang.
   Widget _buildStaged(BattleStageGame stage, bool finished) {
+    final stageView = AspectRatio(
+      aspectRatio: 400 / 260,
+      child: Stack(
+        children: [
+          Positioned.fill(child: GameWidget(game: stage)),
+          Positioned(
+            top: 44,
+            left: 0,
+            right: 0,
+            child: Center(child: _buildEventLabel()),
+          ),
+        ],
+      ),
+    );
+    final cameraView = Stack(
+      children: [
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.8,
+            child: PoseSourceView(
+              session: _session,
+              onOpenSimulator: _openSimulator,
+            ),
+          ),
+        ),
+        Positioned(left: 16, right: 16, bottom: 16, child: _buildStatus()),
+        Positioned(
+          right: 12,
+          top: 12,
+          bottom: 72,
+          child: DepthBar(snapshot: _session.snapshot),
+        ),
+        // Kết quả chỉ che phần camera, để sân khấu vẫn thấy cảnh ăn mừng
+        // và khoác áo choàng.
+        if (finished) Positioned.fill(child: _buildResult()),
+      ],
+    );
+    final topBar = Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: _buildTopBar(),
+    );
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+        child: LayoutBuilder(
+          builder: (context, box) {
+            if (box.maxWidth > box.maxHeight) {
+              return Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        topBar,
+                        Expanded(child: Center(child: stageView)),
+                      ],
+                    ),
+                  ),
+                  Expanded(flex: 2, child: cameraView),
+                ],
+              );
+            }
+            return Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                  child: _buildTopBar(),
-                ),
-                AspectRatio(
-                  aspectRatio: 400 / 260,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: GameWidget(game: stage)),
-                      Positioned(
-                        top: 44,
-                        left: 0,
-                        right: 0,
-                        child: Center(child: _buildEventLabel()),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Opacity(
-                          opacity: 0.8,
-                          child: PoseSourceView(
-                            session: _session,
-                            onOpenSimulator: _openSimulator,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 16,
-                        right: 16,
-                        bottom: 16,
-                        child: _buildStatus(),
-                      ),
-                      Positioned(
-                        right: 12,
-                        top: 12,
-                        bottom: 72,
-                        child: DepthBar(snapshot: _session.snapshot),
-                      ),
-                      // Kết quả chỉ che phần camera, để sân khấu vẫn thấy
-                      // cảnh ăn mừng và khoác áo choàng.
-                      if (finished) Positioned.fill(child: _buildResult()),
-                    ],
-                  ),
-                ),
+                topBar,
+                stageView,
+                Expanded(child: cameraView),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

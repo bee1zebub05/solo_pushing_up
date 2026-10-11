@@ -430,7 +430,9 @@ class _CounterScreenState extends State<CounterScreen>
                 lines.join('\n'),
                 style: const TextStyle(
                   color: Colors.white70,
-                  fontFamily: 'monospace',
+                  // iOS không có font tên 'monospace': dùng chữ số đều
+                  // độ rộng của font hệ thống để các cột số thẳng hàng.
+                  fontFeatures: [FontFeature.tabularFigures()],
                   fontSize: 12,
                 ),
               ),

@@ -35,7 +35,7 @@ class PoseSourceView extends StatelessWidget {
             child: CustomPaint(
               painter: SkeletonPainter(
                 frame: session.frame,
-                mirror: session.poseCamera.isFrontCamera,
+                mirror: session.poseCamera.overlayNeedsMirror,
                 minConfidence: session.counter.config.minConfidence,
               ),
             ),

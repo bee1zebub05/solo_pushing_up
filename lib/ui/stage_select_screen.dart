@@ -30,44 +30,51 @@ class StageSelectScreen extends StatelessWidget {
     final done = stages.where(progress.isStageDone).length;
     return Scaffold(
       appBar: AppBar(title: Text('Kỳ công ${labor.number} — ${labor.title}')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(labor.region, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(value: done / stages.length),
-          const SizedBox(height: 4),
-          Text('$done/${stages.length} màn', style: theme.textTheme.bodySmall),
-          const SizedBox(height: 12),
-          if (stages.length == nemeaMapNodes.length) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: nemeaMapSize.width / nemeaMapSize.height,
-                child: _StageMap(
-                  states: [
-                    for (final s in stages)
-                      progress.isStageDone(s)
-                          ? MapNodeState.done
-                          : progress.isStageUnlocked(labor, s)
-                          ? MapNodeState.open
-                          : MapNodeState.locked,
-                  ],
-                  onTap: (i) => onPlay(stages[i]),
+      // SafeArea: padding tự đặt làm ListView bỏ phần chừa thanh Home của
+      // iPhone; nằm ngang thì chừa cả tai thỏ / Dynamic Island hai bên.
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(labor.region, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(value: done / stages.length),
+            const SizedBox(height: 4),
+            Text(
+              '$done/${stages.length} màn',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            if (stages.length == nemeaMapNodes.length) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AspectRatio(
+                  aspectRatio: nemeaMapSize.width / nemeaMapSize.height,
+                  child: _StageMap(
+                    states: [
+                      for (final s in stages)
+                        progress.isStageDone(s)
+                            ? MapNodeState.done
+                            : progress.isStageUnlocked(labor, s)
+                            ? MapNodeState.open
+                            : MapNodeState.locked,
+                    ],
+                    onTap: (i) => onPlay(stages[i]),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+            ],
+            for (final (i, stage) in stages.indexed)
+              _StageTile(
+                stage: stage,
+                boss: i == stages.length - 1,
+                done: progress.isStageDone(stage),
+                unlocked: progress.isStageUnlocked(labor, stage),
+                onTap: () => onPlay(stage),
+              ),
           ],
-          for (final (i, stage) in stages.indexed)
-            _StageTile(
-              stage: stage,
-              boss: i == stages.length - 1,
-              done: progress.isStageDone(stage),
-              unlocked: progress.isStageUnlocked(labor, stage),
-              onTap: () => onPlay(stage),
-            ),
-        ],
+        ),
       ),
     );
   }
