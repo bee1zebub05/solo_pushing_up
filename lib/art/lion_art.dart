@@ -382,10 +382,18 @@ void _leg(
   // Chân trước: khuỷu hơi lùi sau. Chân sau: cổ chân gập ngược rõ.
   final mid =
       Offset.lerp(hip, pawTop, front ? 0.55 : 0.6)! + n * (front ? -5 : -14);
-  shadedChain(canvas, [
-    (hip, mid, front ? 17 : 21, front ? 12 : 10),
-    (mid, pawTop, front ? 12 : 10, front ? 10 : 8),
-  ], color);
+  // Giải phẫu mèo lớn: chân trước có khối vai sau dày, khuỷu nhô, cẳng
+  // chân phồng phía trước; chân sau đùi + cơ đùi sau khổng lồ, cổ chân (hock)
+  // thon và gập ngược.
+  shadedLimb(
+    canvas,
+    [
+      (hip, mid, front ? _foreUpper : _hindUpper),
+      (mid, pawTop, front ? _foreLower : _hindLower),
+    ],
+    color,
+    shadow: 4,
+  );
   // Đường cơ bắp chân (sel-line), gân cổ chân.
   final line = Paint()
     ..color = darken(color, 0.3).withValues(alpha: 0.75)
@@ -410,6 +418,31 @@ void _leg(
   canvas.drawLine(t1, t2, line);
   _paw(canvas, paw, color, clawsOut: clawsOut);
 }
+
+// Profile cơ chân sư tử (t, nửa rộng phía trước/mặt, nửa rộng phía sau).
+const _foreUpper = <MuscleStop>[
+  (0.0, 17.0, 17.0),
+  (0.3, 15.0, 18.5), // khối cơ tam đầu sau vai
+  (0.75, 12.0, 12.5),
+  (1.0, 11.0, 12.0), // khuỷu
+];
+const _foreLower = <MuscleStop>[
+  (0.0, 11.0, 12.0),
+  (0.25, 12.5, 10.0), // cẳng chân trước phồng
+  (0.8, 9.0, 9.0),
+  (1.0, 10.0, 10.0), // cổ chân
+];
+const _hindUpper = <MuscleStop>[
+  (0.0, 21.0, 21.0),
+  (0.3, 21.5, 22.5), // đùi + cơ đùi sau
+  (0.65, 14.0, 14.5),
+  (1.0, 8.5, 9.5), // cổ chân sau (hock)
+];
+const _hindLower = <MuscleStop>[
+  (0.0, 8.5, 10.0),
+  (0.4, 8.0, 8.0),
+  (1.0, 8.5, 8.5),
+];
 
 void _paw(Canvas canvas, Offset paw, Color color, {required bool clawsOut}) {
   // Bàn chân vẽ thẳng (không cắt vùng) cho nhẹ: viền, nền, mảng bóng dưới.
