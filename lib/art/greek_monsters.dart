@@ -1212,7 +1212,7 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
   canvas.scale(1.7);
   // Hàm dưới.
   canvas.save();
-  canvas.rotate(-0.6 * open);
+  canvas.rotate(-0.75 * open);
   final jaw = Path()
     ..moveTo(4, 1)
     ..quadraticBezierTo(-6, 2.5, -14, 2)
@@ -1243,15 +1243,37 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
       _stroke(const Color(0xFFD0384A), 1),
     );
   }
-  // Sọ rắn: tam giác bo, má bạnh sau, mõm thuôn.
-  final head = Path()
-    ..moveTo(7, -4)
-    ..cubicTo(6, -10, -4, -10, -10, -6)
-    ..quadraticBezierTo(-16, -3, -16.5, 0)
-    ..quadraticBezierTo(-15, 2.5, -12, 2.2)
-    ..lineTo(4, 3)
-    ..quadraticBezierTo(9, 1, 7, -4)
-    ..close();
+  // Sừng cong vuốt ra sau (vẽ trước để sọ che gốc).
+  const horn = Color(0xFF2A3A26);
+  for (final (pts, w) in [
+    (const [Offset(-3, -7), Offset(4, -11.5), Offset(12, -13)], 2.6),
+    (const [Offset(2, -6.5), Offset(8, -9), Offset(15, -8.5)], 2.1),
+  ]) {
+    final h = taperedStroke(pts, w, peak: 0.1, startWidth: 1);
+    _shaded(canvas, h, horn, shadow: 0.8);
+    canvas.drawPath(
+      taperedStroke([pts[0], pts[1]], w * 0.35),
+      _fill(lighten(horn, 0.35)),
+    );
+  }
+  // Sọ rắn lục: má bạnh to phía sau (túi nọc), đỉnh đầu phẳng, mõm thuôn
+  // ngắn hơi hếch.
+  final head = smoothPath(
+    const [
+      Offset(-17, -0.8),
+      Offset(-15, -3.6),
+      Offset(-9, -6.4),
+      Offset(0, -7.6),
+      Offset(6.5, -6.4),
+      Offset(9.5, -2),
+      Offset(8, 2.6),
+      Offset(2, 3.6),
+      Offset(-12, 2.4),
+      Offset(-16.5, 1.2),
+    ],
+    closed: true,
+    tension: 0.1,
+  );
   _shaded(canvas, head, scale, shadow: 2);
   canvas.save();
   canvas.clipPath(head);
@@ -1265,53 +1287,68 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
       _stroke(darken(scale, 0.3), 0.6),
     );
   }
-  canvas.drawRect(
-    const Rect.fromLTRB(-17, 0.6, 5, 3),
+  canvas.drawPath(
+    taperedStroke(
+      const [Offset(-17, 1.2), Offset(-8, 2.4), Offset(2, 2.6), Offset(8, 1.4)],
+      2.4,
+      peak: 0.3,
+      startWidth: 0.6,
+    ),
     _fill(const Color(0xFFBFC27A)),
   );
   canvas.restore();
-  // Gờ mày gai nhọn (hai gai), lỗ mũi.
-  _shaded(
-    canvas,
-    _poly(const [Offset(-9, -7), Offset(-1, -13), Offset(-2, -7.5)]),
-    const Color(0xFF2E5A36),
-    shadow: 1,
-  );
-  _shaded(
-    canvas,
-    _poly(const [Offset(-2, -8), Offset(5, -12), Offset(4, -6)]),
-    const Color(0xFF2E5A36),
-    shadow: 1,
-  );
+  // Lỗ mũi, hố cảm nhiệt giữa mũi và mắt.
   canvas.drawOval(
-    const Rect.fromLTWH(-15.5, -2.2, 1.6, 1),
+    const Rect.fromLTWH(-16, -2.6, 1.6, 1),
     _fill(const Color(0xFF1A2A1C)),
   );
-  // Nanh rỉ nọc độc.
+  canvas.drawCircle(
+    const Offset(-11.5, -1.6),
+    0.7,
+    _fill(const Color(0xFF1A2A1C)),
+  );
+  // Nanh dài cong, rỉ nọc độc.
+  final fangLen = 5.5 + 3 * open;
   canvas.drawPath(
-    _poly([
-      const Offset(-12, 1.5),
-      const Offset(-10, 1.5),
-      Offset(-11, 5.5 + 2 * open),
-    ]),
+    taperedStroke(
+      [
+        const Offset(-11.5, 1.6),
+        Offset(-12.3, 1.6 + fangLen * 0.6),
+        Offset(-11.2, 1.6 + fangLen),
+      ],
+      1.6,
+      peak: 0.1,
+      startWidth: 1,
+    ),
     _fill(const Color(0xFFFFF6DE)),
   );
   final drip = (time * 0.8) % 1;
   canvas.drawCircle(
-    Offset(-11, 7.5 + 2 * open + 6 * drip),
+    Offset(-11.2, 2.6 + fangLen + 6 * drip),
     1.1,
     _fill(Color.fromRGBO(170, 255, 90, 1 - drip)),
   );
-  _glowEye(canvas, const Offset(-6, -4.5), 1.2, const Color(0xFFFFD21F));
-  // Con ngươi dọc.
+  // Mắt nhỏ, con ngươi dọc mảnh; vảy mày sụp che nửa trên → nhìn hằm hằm.
+  const eye = Offset(-6.5, -4.2);
+  _glowEye(canvas, eye, 1.15, const Color(0xFFD8F020));
   canvas.drawOval(
-    Rect.fromCenter(center: const Offset(-6, -4.5), width: 0.6, height: 2),
+    Rect.fromCenter(center: eye, width: 0.5, height: 2.1),
     _fill(_outline),
   );
-  canvas.drawLine(
-    const Offset(-9.5, -6.5),
-    const Offset(-2, -7.5),
-    _stroke(_outline, 1.4),
+  final brow = Path()
+    ..moveTo(-11.5, -4.4)
+    ..quadraticBezierTo(-7, -8.6, -1, -7.6)
+    ..lineTo(-2.2, -5.2)
+    ..quadraticBezierTo(-6.5, -5.6, -11.5, -4.4)
+    ..close();
+  _shaded(canvas, brow, const Color(0xFF2E5A36), shadow: 0.8);
+  canvas.drawPath(
+    taperedStroke(const [
+      Offset(-11.5, -4.4),
+      Offset(-6.5, -5.5),
+      Offset(-2.2, -5.2),
+    ], 0.9),
+    _fill(_outline),
   );
   canvas.restore();
 }
