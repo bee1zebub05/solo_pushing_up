@@ -26,6 +26,9 @@ class StageBattleState {
 
   /// Mức lạnh 0–1: tăng khi nghỉ lâu, chạm 1 là đòn sau bị đóng băng (Fafnir).
   double cold = 0;
+
+  /// Máu boss còn lại 0–1 (bụi Trì Trệ ở Nemea tan dần theo).
+  double bossHp = 1;
 }
 
 /// Thông số hoạt hình của boss tại một khung.
@@ -61,6 +64,11 @@ abstract class BossArt {
 
   /// Phần động của phông nền (mây, mưa, sóng xa…).
   void paintAmbient(Canvas canvas, double time);
+
+  /// Phông nền đổi theo diễn biến trận (ví dụ bụi Nemea tan theo máu
+  /// boss). Mặc định chỉ vẽ phần động.
+  void paintScene(Canvas canvas, double time, StageBattleState battle) =>
+      paintAmbient(canvas, time);
 
   /// Boss, vẽ theo toạ độ sân khấu.
   void paintBoss(Canvas canvas, BossFrame f);
@@ -112,7 +120,7 @@ class BattleStageGame extends FlameGame {
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
     world.addAll([
-      _SceneComponent(boss),
+      _SceneComponent(boss, battle),
       _boss,
       _hero,
       _ForegroundComponent(_boss),
@@ -138,6 +146,7 @@ class BattleStageGame extends FlameGame {
   void blocked() => _launch(critical: false, blocked: true);
 
   void victory() {
+    battle.bossHp = 0;
     _hero.victorious = true;
     _boss.defeated = true;
     if (horse) world.add(_HorseComponent());
@@ -265,9 +274,10 @@ class BattleStageGame extends FlameGame {
 }
 
 class _SceneComponent extends Component {
-  _SceneComponent(this.boss);
+  _SceneComponent(this.boss, this.battle);
 
   final BossArt boss;
+  final StageBattleState battle;
   double _time = 0;
 
   /// Phần tĩnh vẽ một lần, mỗi khung chỉ vẽ lại phần động.
@@ -283,7 +293,7 @@ class _SceneComponent extends Component {
   @override
   void render(Canvas canvas) {
     canvas.drawPicture(_backdrop);
-    boss.paintAmbient(canvas, _time);
+    boss.paintScene(canvas, _time, battle);
   }
 
   @override

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
+import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
 import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
@@ -32,14 +33,17 @@ double measureMsPerFrame(void Function(ui.Canvas canvas, int i) draw) {
 }
 
 void main() {
-  test('sân khấu Nemea vẽ dưới 2 ms/khung', () {
+  test('sân khấu Nemea (bụi Trì Trệ tan dần) vẽ dưới 2 ms/khung', () {
+    final art = NemeaBossArt();
     final recorder = ui.PictureRecorder();
     paintNemeaBackdrop(ui.Canvas(recorder));
     final backdrop = recorder.endRecording();
+    final battle = StageBattleState();
 
     final ms = measureMsPerFrame((c, i) {
+      battle.bossHp = 1 - (i % 100) / 100;
       c.drawPicture(backdrop);
-      paintNemeaAmbient(c, time: i / 30);
+      art.paintScene(c, i / 30, battle);
       paintHero(
         c,
         HeroPose.plank(80 + i % 90),

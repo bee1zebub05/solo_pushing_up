@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
@@ -77,6 +77,22 @@ void main() {
       'cloak_plank',
       (c) => scene(c, HeroPose.plank(100), cloak: true),
     );
+  });
+
+  testWidgets('phông Nemea: phủ bụi Trì Trệ, bụi tan một nửa, sạch', (
+    tester,
+  ) async {
+    for (final (name, dust) in [
+      ('nemea_dust_full', 0.85),
+      ('nemea_dust_half', 0.4),
+      ('nemea_clean', 0.0),
+    ]) {
+      await render(
+        tester,
+        name,
+        (c) => paintNemeaScene(c, time: 3, dust: dust),
+      );
+    }
   });
 
   testWidgets('đứng chờ, ăn mừng, sư tử gầm / trúng đòn / gục', (tester) async {

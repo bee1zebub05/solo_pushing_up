@@ -153,7 +153,8 @@ class _BattleScreenState extends State<BattleScreen>
       ..headsLeft = _battle.headsLeft
       ..totalHeads = widget.enemy.heads
       ..headHp = _battle.headHp / widget.enemy.headMaxHp
-      ..cold = _battle.coldAt(_descentStartMs ?? frame.timestampMs);
+      ..cold = _battle.coldAt(_descentStartMs ?? frame.timestampMs)
+      ..bossHp = _battle.hpFraction;
     _stage?.updatePlayer(
       elbowAngle: snapshot.phase == CounterPhase.searching
           ? null
