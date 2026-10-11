@@ -137,6 +137,20 @@ class BattleStageGame extends FlameGame {
   final battle = StageBattleState();
   final _random = math.Random();
 
+  /// Khựng hình (hitstop) còn lại, giây: thế giới gần như đứng yên vài
+  /// khung khi đòn trúng để cú đánh "nặng" (game feel, Vlambeer).
+  double _hitstop = 0;
+
+  @override
+  void update(double dt) {
+    if (_hitstop > 0) {
+      _hitstop -= dt;
+      super.update(dt * 0.08);
+      return;
+    }
+    super.update(dt);
+  }
+
   @override
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
@@ -264,18 +278,18 @@ class BattleStageGame extends FlameGame {
           ? const [Color(0xFFFF7043), Color(0xFFFFD54F), Color(0xFFFFFFFF)]
           : boss.hitColors,
     );
-    if (critical) {
-      camera.viewfinder.add(
-        MoveByEffect(
-          Vector2(5, 3),
-          EffectController(
-            duration: 0.04,
-            reverseDuration: 0.04,
-            repeatCount: 3,
-          ),
+    _hitstop = critical ? 0.09 : 0.05;
+    // Rung khung: đòn thường rung nhẹ một nhịp, chí mạng rung mạnh 3 nhịp.
+    camera.viewfinder.add(
+      MoveByEffect(
+        critical ? Vector2(5, 3) : Vector2(2, 1),
+        EffectController(
+          duration: 0.04,
+          reverseDuration: 0.04,
+          repeatCount: critical ? 3 : 1,
         ),
-      );
-    }
+      ),
+    );
   }
 
   /// Hạt toé ra từ [at] (hệ thống hạt của Flame).
