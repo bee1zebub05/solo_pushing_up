@@ -1142,17 +1142,83 @@ void _ground(Canvas canvas) {
       ..close(),
     Paint()..color = const Color(0x40FFF1D0),
   );
-  // Vết nứt đất.
-  final crack = Paint()
-    ..color = const Color(0x667A5530)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 0.8;
-  for (final pts in [
-    [const Offset(150, 246), const Offset(158, 242), const Offset(170, 244)],
-    [const Offset(250, 250), const Offset(256, 245), const Offset(266, 246)],
-    [const Offset(40, 240), const Offset(48, 236)],
-  ]) {
-    canvas.drawPath(Path()..addPolygon(pts, false), crack);
+  final soil = math.Random(41);
+  // Mảng đất sẫm/ẩm và mảng cát sáng loang lổ (đất không phẳng màu).
+  for (var i = 0; i < 18; i++) {
+    final c = Offset(
+      soil.nextDouble() * w,
+      stageGroundY + 4 + soil.nextDouble() * (h - stageGroundY),
+    );
+    final rw = 14 + soil.nextDouble() * 34;
+    canvas.drawOval(
+      Rect.fromCenter(center: c, width: rw, height: rw * 0.22),
+      Paint()
+        ..color = i.isEven ? const Color(0x22603E1C) : const Color(0x1EFFF1D0),
+    );
+  }
+  // Vết nứt đất khô: đường gãy khúc thon, rẽ nhánh, mép sáng phía trên.
+  final crackDark = Paint()..color = const Color(0x997A5530);
+  final crackLit = Paint()..color = const Color(0x55FFF1D0);
+  for (var i = 0; i < 9; i++) {
+    var p = Offset(
+      soil.nextDouble() * w,
+      stageGroundY + 8 + soil.nextDouble() * 30,
+    );
+    final pts = [p];
+    for (var k = 0; k < 4; k++) {
+      p += Offset(4 + soil.nextDouble() * 6, (soil.nextDouble() - 0.5) * 3);
+      pts.add(p);
+    }
+    canvas.drawPath(taperedStroke(pts, 1.1, peak: 0.4, samples: 10), crackDark);
+    canvas.drawPath(
+      taperedStroke(
+        [for (final q in pts) q - const Offset(0, 0.8)],
+        0.6,
+        peak: 0.4,
+        samples: 10,
+      ),
+      crackLit,
+    );
+    final fork = pts[2];
+    canvas.drawPath(
+      taperedStroke([fork, fork + Offset(3, 2.5 + soil.nextDouble() * 2)], 0.8),
+      crackDark,
+    );
+  }
+  // Dấu chân sư tử dẫn về hang: đệm gan bàn ba thuỳ + bốn ngón tròn,
+  // in lõm (đáy tối, mép sáng phía trên), nhỏ dần về xa.
+  for (var i = 0; i < 6; i++) {
+    final t = i / 5;
+    final c = Offset(170 + t * 150, 244 - t * 10 + (i.isEven ? 3 : -1));
+    final k = 1 - t * 0.35;
+    void dent(Offset o, double rx, double ry) {
+      final r = Rect.fromCenter(
+        center: c + o * k,
+        width: rx * k,
+        height: ry * k,
+      );
+      canvas.drawOval(r, Paint()..color = const Color(0x55603E1C));
+      canvas.drawArc(
+        r,
+        3.4,
+        2.6,
+        false,
+        Paint()
+          ..color = const Color(0x44FFF1D0)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
+
+    dent(Offset.zero, 6, 3);
+    for (final (dx, dy) in const [
+      (-3.2, -2.6),
+      (-1.0, -3.4),
+      (1.4, -3.4),
+      (3.4, -2.4),
+    ]) {
+      dent(Offset(dx, dy), 2, 1.2);
+    }
   }
   // Sỏi có bóng đổ.
   final rnd = math.Random(23);
