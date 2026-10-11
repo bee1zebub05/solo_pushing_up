@@ -5,6 +5,7 @@ import 'package:vector_anatomy/vector_anatomy.dart';
 
 export 'package:stage_raster/stage_raster.dart';
 export 'package:vector_anatomy/vector_anatomy.dart';
+export 'package:vector_texture/vector_texture.dart';
 
 /// Bộ công cụ phong cách "game vector": viền đậm mượt, đổ bóng hai tông
 /// (cel shading) phía khuất sáng, viền sáng phía có nắng. Ánh sáng chiếu từ

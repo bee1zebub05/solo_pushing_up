@@ -50,6 +50,9 @@ dependencies:
   # Ảnh chụp sẵn lớp tĩnh + ngân sách bộ nhớ GPU — thư viện riêng của dự án.
   stage_raster:
     path: packages/stage_raster
+  # Hoạ tiết chất liệu (lọn lông, vảy, lọn xoăn, lông vũ) — thư viện riêng.
+  vector_texture:
+    path: packages/vector_texture
 
 dev_dependencies:
   flutter_test:

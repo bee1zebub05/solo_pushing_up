@@ -1377,9 +1377,9 @@ final _hydraFrontCoil = RasterLayer(
   resolution: 2,
 );
 
-/// Một khúc thân rắn dọc đường [pts]: khối tô đổ bóng, các hàng vảy cong
-/// (mở về phía đầu) xếp so le theo thân, sống lưng sẫm; nếu [belly] thì
-/// dải vảy bụng sáng màu, chia đốt ngang ở mép dưới.
+/// Một khúc thân rắn dọc đường [pts] (`vector_texture.buildScaleBody`):
+/// khối tô đổ bóng, vảy chữ U so le, sống lưng sẫm; nếu [belly] thì dải
+/// vảy bụng sáng chia đốt ngang.
 void _serpentCoil(
   Canvas canvas,
   List<Offset> pts,
@@ -1389,115 +1389,28 @@ void _serpentCoil(
   required double endWidth,
   required bool belly,
 }) {
-  final body = taperedStroke(
+  final s = buildScaleBody(
     pts,
     width,
-    peak: 0.35,
     startWidth: startWidth,
     endWidth: endWidth,
-    samples: 40,
+    belly: belly,
   );
-  _shaded(canvas, body, color, shadow: 5);
-  final line = sampleSmooth(pts, 60);
-  double widthAt(double t) {
-    // Xấp xỉ biên dạng của taperedStroke.
-    const peak = 0.35;
-    return t <= peak
-        ? startWidth + (1 - startWidth) * math.sin(t / peak * math.pi / 2)
-        : endWidth +
-              (1 - endWidth) * math.cos((t - peak) / (1 - peak) * math.pi / 2);
-  }
-
+  _shaded(canvas, s.body, color, shadow: 5);
   canvas.save();
-  canvas.clipPath(body);
-  final scaleDark = _stroke(darken(color, 0.35).withValues(alpha: 0.8), 0.9);
-  final scaleLit = _stroke(lighten(color, 0.3).withValues(alpha: 0.7), 0.7);
-  for (var i = 1; i < line.length - 1; i++) {
-    final t = i / (line.length - 1);
-    final d = line[i + 1] - line[i - 1];
-    final dir = d / d.distance;
-    final n = Offset(-dir.dy, dir.dx);
-    final half = width * widthAt(t) / 2;
-    // Mặt dưới của khúc thân (pháp tuyến hướng xuống) là bụng.
-    final down = n.dy >= 0 ? n : -n;
-    for (var row = -2; row <= 2; row++) {
-      if (i.isOdd == row.isEven) continue;
-      final k = row / 2.6;
-      if (belly && k > 0.35 && down == n) continue;
-      final c = line[i] + n * (half * k);
-      final r = math.max(1.2, half * 0.24);
-      // Vảy hình chữ U mở về phía đầu (ngược chiều đường thân).
-      final a0 = math.atan2(dir.dy, dir.dx) - math.pi / 2;
-      canvas.drawArc(
-        Rect.fromCircle(center: c, radius: r),
-        a0,
-        math.pi,
-        false,
-        scaleDark,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: c - dir * 0.6 - down * 0.6, radius: r * 0.7),
-        a0 + 0.3,
-        math.pi * 0.6,
-        false,
-        scaleLit,
-      );
-    }
-  }
-  // Sống lưng sẫm chạy dọc mép trên.
-  final spine = [
-    for (var i = 0; i < line.length; i++)
-      () {
-        final t = i / (line.length - 1);
-        final d =
-            line[math.min(line.length - 1, i + 1)] - line[math.max(0, i - 1)];
-        final n = Offset(-d.dy, d.dx) / d.distance;
-        final up = n.dy <= 0 ? n : -n;
-        return line[i] + up * (width * widthAt(t) / 2 * 0.62);
-      }(),
-  ];
+  canvas.clipPath(s.body);
   canvas.drawPath(
-    taperedStroke(
-      spine,
-      width * 0.22,
-      peak: 0.35,
-      startWidth: 0.6,
-      endWidth: 0.1,
-    ),
-    _fill(darken(color, 0.3).withValues(alpha: 0.75)),
+    s.scaleDark,
+    _stroke(darken(color, 0.35).withValues(alpha: 0.8), 0.9),
   );
+  canvas.drawPath(
+    s.scaleLit,
+    _stroke(lighten(color, 0.3).withValues(alpha: 0.7), 0.7),
+  );
+  canvas.drawPath(s.spine, _fill(darken(color, 0.3).withValues(alpha: 0.75)));
   if (belly) {
-    // Vảy bụng: dải sáng sát mép dưới, chia đốt ngang.
-    final under = <Offset>[];
-    final widths = <double>[];
-    for (var i = 0; i < line.length; i++) {
-      final t = i / (line.length - 1);
-      final d =
-          line[math.min(line.length - 1, i + 1)] - line[math.max(0, i - 1)];
-      final n = Offset(-d.dy, d.dx) / d.distance;
-      final down = n.dy >= 0 ? n : -n;
-      final half = width * widthAt(t) / 2;
-      under.add(line[i] + down * (half * 0.72));
-      widths.add(half);
-    }
-    canvas.drawPath(
-      taperedStroke(
-        under,
-        width * 0.42,
-        peak: 0.35,
-        startWidth: 0.7,
-        endWidth: 0.1,
-        samples: 40,
-      ),
-      _fill(_hydraBelly),
-    );
-    final plate = _stroke(darken(_hydraBelly, 0.3), 0.9);
-    for (var i = 2; i < under.length - 6; i += 2) {
-      final d = under[i + 1] - under[i - 1];
-      final n = Offset(-d.dy, d.dx) / d.distance;
-      final h = widths[i] * 0.42;
-      canvas.drawLine(under[i] - n * h, under[i] + n * h, plate);
-    }
+    canvas.drawPath(s.belly, _fill(_hydraBelly));
+    canvas.drawPath(s.plates, _stroke(darken(_hydraBelly, 0.3), 0.9));
   }
   canvas.restore();
 }
