@@ -20,8 +20,6 @@ void paintHercules(
 }) {
   const skin = Color(0xFFC98B5A);
   const skinFar = Color(0xFFA9714A);
-  const cloth = Color(0xFFF2EBDD);
-  const gold = Color(0xFFE8B83A);
   final a = appear.clamp(0.0, 1.0);
   final breath = math.sin(time * 1.6);
   final gesture = math.sin(time * 3.2) * talk;
@@ -104,43 +102,9 @@ void paintHercules(
   canvas.translate(0, 30 * (1 - a));
   canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, a));
 
-  // Chuỳ gỗ ô liu chống đất, tay xa tì lên đầu chuỳ.
-  final club = Path()
-    ..moveTo(40, -132)
-    ..cubicTo(36, -90, 40, -50, 38, -6)
-    ..cubicTo(44, 2, 66, 2, 70, -8)
-    ..cubicTo(64, -50, 54, -96, 50, -134)
-    ..close();
-  shadedPath(canvas, club, const Color(0xFF7A5634), PartFrame.world, shadow: 5);
-  // Vân gỗ dọc chuỳ.
-  final grain = Paint()
-    ..color = const Color(0xFF4E3620)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 0.9
-    ..strokeCap = StrokeCap.round;
-  for (final (x0, x1) in [(44.0, 46.0), (48.0, 56.0), (52.0, 64.0)]) {
-    canvas.drawPath(
-      Path()
-        ..moveTo(x0, -124)
-        ..cubicTo(x0 - 2, -80, x1 - 4, -40, x1, -8),
-      grain,
-    );
-  }
-  // Mấu cành gãy chĩa ra (gỗ ô liu sần), mặt cắt sáng màu.
-  for (final (from, to) in [
-    (const Offset(56, -40), const Offset(66, -46)),
-    (const Offset(62, -20), const Offset(72, -22)),
-    (const Offset(44, -70), const Offset(36, -76)),
-    (const Offset(54, -88), const Offset(60, -96)),
-  ]) {
-    shadedChain(
-      canvas,
-      [(from, to, 3.4, 2.6)],
-      const Color(0xFF6A4A2C),
-      shadow: 1.5,
-    );
-    canvas.drawCircle(to, 2, Paint()..color = const Color(0xFFC9A577));
-  }
+  // Chuỳ gỗ ô liu dại (truyền thuyết: Hercules tự nhổ cây ô liu ở Nemea)
+  // chống đất, tay xa tì lên đầu chuỳ. Chụp sẵn.
+  _clubImage.paint(canvas);
   // Da sư tử Nemea vắt lên đầu chuỳ (như tượng Farnese Hercules).
   _peltOnClub(canvas, time);
 
@@ -220,31 +184,9 @@ void paintHercules(
     );
   }
 
-  // Khố chiton ngắn trắng, viền vàng (để lộ đùi và cơ bụng).
-  final skirt = Path()
-    ..moveTo(-26, -128)
-    ..lineTo(26, -128)
-    ..lineTo(32, -96)
-    ..quadraticBezierTo(0, -88, -32, -96)
-    ..close();
-  shadedPath(canvas, skirt, cloth, PartFrame.world, shadow: 5);
-  final pleat = Paint()
-    ..color = const Color(0xFFCFC3AE)
-    ..strokeWidth = 1.2;
-  for (var i = 0; i < 6; i++) {
-    canvas.drawLine(
-      Offset(-20 + i * 8.0, -124),
-      Offset(-24 + i * 10.0, -96),
-      pleat,
-    );
-  }
-  canvas.drawLine(
-    const Offset(-31, -97),
-    const Offset(31, -97),
-    Paint()
-      ..color = gold
-      ..strokeWidth = 2.4,
-  );
+  // Khố chiton ngắn: vải xếp nếp rủ từ thắt lưng, gấu so le, viền
+  // hoạ tiết meander vàng. Chụp sẵn.
+  _kiltImage.paint(canvas);
 
   _heroicTorso(canvas, skin, breath);
   // Thắt lưng da khoá vàng ở cạp khố (đè lên mép dưới thân).
@@ -415,6 +357,187 @@ void _curlRows(
         lit,
       );
     }
+  }
+  canvas.restore();
+}
+
+final _clubImage = RasterLayer(
+  _paintClub,
+  bounds: const Rect.fromLTRB(26, -140, 82, 6),
+  resolution: 1.6,
+);
+
+/// Chuỳ gỗ ô liu: thân phình dần xuống đầu nặng, thớ gỗ xoắn (ô liu xoắn
+/// theo năm tháng) có khe tối và sống sáng, mắt gỗ, mấu cành gãy có mặt
+/// cắt vòng năm, vỏ bong lộ lõi sáng; đầu chuỳ dưới đất sứt mẻ.
+void _paintClub(Canvas canvas) {
+  const wood = Color(0xFF7A5634);
+  final club = Path()
+    ..moveTo(40, -132)
+    ..cubicTo(36, -90, 40, -50, 38, -6)
+    ..cubicTo(44, 2, 66, 2, 70, -8)
+    ..cubicTo(64, -50, 54, -96, 50, -134)
+    ..close();
+  shadedPath(canvas, club, wood, PartFrame.world, shadow: 5);
+  canvas.save();
+  canvas.clipPath(club);
+  // Thớ xoắn: các dải lượn chéo dọc thân, khe tối + sống sáng.
+  for (var i = 0; i < 7; i++) {
+    final x0 = 38.0 + i * 5;
+    final pts = [
+      for (var k = 0; k <= 6; k++)
+        Offset(x0 + k * 2.2 - 6 + math.sin(k * 0.9 + i) * 2.2, -132.0 + k * 22),
+    ];
+    canvas.drawPath(
+      taperedStroke(pts, 1.4, peak: 0.5, samples: 20),
+      fillPaint(const Color(0xFF4A3220)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        [for (final p in pts) p + const Offset(-1.4, 0)],
+        0.9,
+        peak: 0.5,
+        samples: 20,
+      ),
+      fillPaint(const Color(0x88B08A5E)),
+    );
+  }
+  // Vỏ bong lộ lõi gỗ sáng.
+  for (final (c, w, h) in const [
+    (Offset(46, -60), 5.0, 9.0),
+    (Offset(58, -24), 6.0, 7.0),
+  ]) {
+    canvas.drawOval(
+      Rect.fromCenter(center: c, width: w, height: h),
+      fillPaint(const Color(0xFFB8925E)),
+    );
+    canvas.drawArc(
+      Rect.fromCenter(center: c, width: w, height: h),
+      3.4,
+      2.6,
+      false,
+      Paint()
+        ..color = const Color(0xFF4A3220)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+  }
+  // Mắt gỗ.
+  for (final c in const [Offset(50, -100), Offset(60, -44)]) {
+    canvas.drawPath(
+      taperedStroke(
+        [c - const Offset(3, -1), c, c + const Offset(3, 1)],
+        2.2,
+        peak: 0.5,
+      ),
+      fillPaint(const Color(0xFF3A2618)),
+    );
+  }
+  canvas.restore();
+  // Mấu cành gãy chĩa ra, mặt cắt sáng có vòng năm.
+  for (final (from, to) in const [
+    (Offset(56, -40), Offset(66, -46)),
+    (Offset(62, -20), Offset(72, -22)),
+    (Offset(44, -70), Offset(36, -76)),
+    (Offset(54, -88), Offset(60, -96)),
+  ]) {
+    shadedPath(
+      canvas,
+      taperedStroke(
+        [from, Offset.lerp(from, to, 0.5)!, to],
+        5.6,
+        peak: 0,
+        startWidth: 1,
+        endWidth: 0.75,
+      ),
+      const Color(0xFF6A4A2C),
+      PartFrame.world,
+      shadow: 1.5,
+      highlight: 0.6,
+      outlineWidth: 1.1,
+    );
+    canvas.drawCircle(to, 2.1, fillPaint(const Color(0xFFC9A577)));
+    canvas.drawCircle(
+      to,
+      1.2,
+      Paint()
+        ..color = const Color(0xFF8E6A40)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
+  }
+}
+
+final _kiltImage = RasterLayer(
+  _paintKilt,
+  bounds: const Rect.fromLTRB(-40, -134, 40, -84),
+  resolution: 1.6,
+);
+
+/// Khố chiton (perizoma) vải lanh trắng: nếp xếp toả từ thắt lưng xuống,
+/// gấu so le chữ V, bóng nếp sâu, viền meander vàng ở gấu.
+void _paintKilt(Canvas canvas) {
+  const cloth = Color(0xFFF3ECDC);
+  const gold = Color(0xFFE8B83A);
+  final hem = <Offset>[
+    for (var i = 0; i <= 8; i++)
+      Offset(
+        -32 + i * 8.0,
+        -96 + (i.isEven ? 0 : 3.5) + ((i - 4).abs() * -0.6),
+      ),
+  ];
+  final skirt = Path()
+    ..moveTo(-26, -128)
+    ..lineTo(26, -128);
+  for (final p in hem.reversed) {
+    skirt.lineTo(p.dx, p.dy);
+  }
+  skirt.close();
+  shadedPath(canvas, skirt, cloth, PartFrame.world, shadow: 5);
+  canvas.save();
+  canvas.clipPath(skirt);
+  // Nếp xếp: dải tối – sáng xen kẽ toả ra từ thắt lưng.
+  for (var i = 0; i < 8; i++) {
+    final top = Offset(-22 + i * 6.3, -127);
+    final bottom = hem[i] + const Offset(4, 0);
+    canvas.drawPath(
+      taperedStroke(
+        [top, Offset.lerp(top, bottom, 0.5)!, bottom],
+        3.2,
+        peak: 0.85,
+        startWidth: 0.2,
+      ),
+      fillPaint(const Color(0x55A89880)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        [top + const Offset(-2.6, 0), bottom + const Offset(-3, 0)],
+        1.4,
+        peak: 0.85,
+        startWidth: 0.2,
+      ),
+      fillPaint(const Color(0xAAFFFFFF)),
+    );
+  }
+  // Viền vàng hoạ tiết ở gấu.
+  final band = <Offset>[for (final p in hem) p + const Offset(0, -3)];
+  canvas.drawPath(
+    taperedStroke(
+      band,
+      3.4,
+      peak: 0.5,
+      startWidth: 1,
+      endWidth: 1,
+      samples: 24,
+    ),
+    fillPaint(gold),
+  );
+  for (var i = 0; i < band.length - 1; i++) {
+    final c = Offset.lerp(band[i], band[i + 1], 0.5)!;
+    canvas.drawRect(
+      Rect.fromCenter(center: c, width: 2.2, height: 1.6),
+      fillPaint(const Color(0xFF8A6418)),
+    );
   }
   canvas.restore();
 }
