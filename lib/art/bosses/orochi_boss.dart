@@ -502,15 +502,47 @@ class OrochiBossArt extends BossArt {
     );
   }
 
+  /// Gốc cổ bị chém: mặt cắt nghiêng (ellipse) có vành da vảy sẫm, lớp
+  /// thịt đỏ, đốt sống trắng ở giữa; máu sẫm rỉ xuống cổ.
   void _stump(Canvas canvas, Offset head) {
     final at = Offset.lerp(_base, head, 0.55)!;
+    final d = head - _base;
+    final angle = math.atan2(d.dy, d.dx);
+    canvas.save();
+    canvas.translate(at.dx, at.dy);
+    canvas.rotate(angle + math.pi / 2);
+    const cut = Rect.fromLTRB(-8.5, -4.5, 8.5, 4.5);
+    canvas.drawOval(cut.inflate(1.2), fillPaint(VectorStyle.outline));
+    canvas.drawOval(cut, fillPaint(darken(OrochiColors.body, 0.25)));
+    canvas.drawOval(cut.deflate(1.6), fillPaint(OrochiColors.stump));
     canvas.drawOval(
-      Rect.fromCenter(center: at, width: 15, height: 10),
-      fillPaint(VectorStyle.outline),
+      Rect.fromCenter(center: const Offset(-1.5, -1), width: 9, height: 3),
+      fillPaint(lighten(OrochiColors.stump, 0.25)),
     );
     canvas.drawOval(
-      Rect.fromCenter(center: at, width: 12, height: 7),
-      fillPaint(OrochiColors.stump),
+      Rect.fromCenter(center: const Offset(0.5, 0.3), width: 4.4, height: 2.6),
+      fillPaint(const Color(0xFFF2E6D0)),
+    );
+    canvas.drawCircle(
+      const Offset(0.5, 0.3),
+      0.9,
+      fillPaint(const Color(0xFF8E2A2A)),
+    );
+    canvas.restore();
+    // Máu rỉ xuống thân cổ (đường thon theo hướng về gốc).
+    final dir = (_base - at) / (_base - at).distance;
+    canvas.drawPath(
+      taperedStroke(
+        [
+          at + const Offset(2, 2),
+          at + dir * 8 + const Offset(3, 3),
+          at + dir * 14 + const Offset(2, 4),
+        ],
+        2.2,
+        peak: 0.15,
+        startWidth: 1,
+      ),
+      fillPaint(const Color(0xFF6E1A1A)),
     );
   }
 
