@@ -792,26 +792,77 @@ void paintHarpy(
       }
     }
     canvas.restore();
-    // Chân chim, móng quắp vươn ra khi vồ.
+    // Chân chim săn mồi: "quần" lông phủ đùi, cẳng vàng có đốt vảy, bốn
+    // ngón (ba trước, một sau) với vuốt đen cong dài, vươn ra khi vồ.
     for (final x in [-4.0, 4.0]) {
+      final knee = Offset(x - 2 * attack, 16);
       final foot = Offset(x - 8 * attack, 24 + 4 * attack);
-      canvas.drawLine(Offset(x, 12), foot, _stroke(_outline, 3.4));
-      canvas.drawLine(
-        Offset(x, 12),
-        foot,
-        _stroke(const Color(0xFFC9A85A), 1.8),
+      shadedPath(
+        canvas,
+        Path()..addOval(
+          Rect.fromCenter(center: Offset(x, 13), width: 7, height: 8),
+        ),
+        darken(feather, 0.1),
+        PartFrame.world,
+        shadow: 1.2,
+        highlight: 0.4,
+        outlineWidth: 1,
       );
-      for (final a in [2.2, 1.6, 1.0]) {
+      shadedPath(
+        canvas,
+        taperedStroke(
+          [knee, Offset.lerp(knee, foot, 0.5)!, foot],
+          2.8,
+          peak: 0,
+          startWidth: 1,
+          endWidth: 0.75,
+        ),
+        const Color(0xFFC9A85A),
+        PartFrame.world,
+        shadow: 0.8,
+        highlight: 0.4,
+        outlineWidth: 0.9,
+      );
+      for (var k = 1; k < 4; k++) {
+        final p = Offset.lerp(knee, foot, k / 4)!;
+        canvas.drawLine(
+          p - const Offset(1.4, 0),
+          p + const Offset(1.4, 0),
+          _stroke(const Color(0xFF7A6430), 0.5),
+        );
+      }
+      for (final (a, len) in const [
+        (2.6, 4.5),
+        (1.9, 5.5),
+        (1.2, 4.8),
+        (-0.6, 3.6),
+      ]) {
+        final mid = foot + Offset(math.cos(a), math.sin(a)) * len * 0.55;
+        final end = foot + Offset(math.cos(a), math.sin(a)) * len;
         canvas.drawPath(
-          Path()
-            ..moveTo(foot.dx, foot.dy)
-            ..quadraticBezierTo(
-              foot.dx + math.cos(a) * 4,
-              foot.dy + math.sin(a) * 4,
-              foot.dx + math.cos(a + 0.6) * 6,
-              foot.dy + math.sin(a + 0.6) * 6,
-            ),
-          _stroke(const Color(0xFF2B1D16), 1.4),
+          taperedStroke(
+            [foot, mid, end],
+            1.6,
+            peak: 0.1,
+            startWidth: 1,
+            endWidth: 0.7,
+          ),
+          _fill(const Color(0xFFC9A85A)),
+        );
+        final claw = end + Offset(math.cos(a + 1.1), math.sin(a + 1.1)) * 3;
+        canvas.drawPath(
+          taperedStroke(
+            [
+              end,
+              Offset.lerp(end, claw, 0.5)! +
+                  Offset(math.cos(a), math.sin(a)) * 0.8,
+              claw,
+            ],
+            1.3,
+            peak: 0.1,
+            startWidth: 1,
+          ),
+          _fill(const Color(0xFF1E1410)),
         );
       }
     }
