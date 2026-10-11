@@ -410,7 +410,7 @@ void shadedLimb(
     // Độ lệch tô sáng/tối tỉ lệ theo cỡ khối: khối to (ngực, đùi) cần mảng
     // bóng rộng mới đọc được thành khối.
     final k = (belly.getBounds().shortestSide * 0.14).clamp(1.4, 5.0);
-    canvas.drawPath(belly.shift(-light * k * 0.6), occlusion);
+    if (d >= 0.7) canvas.drawPath(belly.shift(-light * k * 0.6), occlusion);
     // Tự đổ bóng: phủ màu gốc rồi nửa khuất tối, nửa đón sáng sáng nhẹ.
     canvas.save();
     canvas.clipPath(belly);

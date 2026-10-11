@@ -113,6 +113,11 @@ void paintGreekSandal(
     highlight: 0.8,
     outlineWidth: 1.1,
   );
+  // Chân phía xa (bị che, tối): chỉ đế + bàn chân + hai quai, không chi tiết.
+  if (far) {
+    _farStraps(canvas, map, leather, k);
+    return;
+  }
   // Kẽ ngón chân + móng ngón cái.
   final toeLine = Paint()
     ..color = darken(footSkin, 0.32)
@@ -139,6 +144,7 @@ void paintGreekSandal(
       peak: 0.5,
       startWidth: 0.85,
       endWidth: 0.85,
+      samples: 6,
     );
     canvas.drawPath(band, Paint()..color = CostumeColors.leatherDark);
     canvas.drawPath(
@@ -171,6 +177,7 @@ void paintGreekSandal(
         peak: 0.5,
         startWidth: 0.6,
         endWidth: 0.6,
+        samples: 6,
       );
       canvas.drawPath(
         band,
@@ -335,4 +342,26 @@ void paintBelt(
       ..strokeWidth = 0.9,
   );
   glint(canvas, c + Offset(-r * 0.35, -r * 0.35), r * 0.45);
+}
+
+void _farStraps(
+  Canvas canvas,
+  Offset Function(Offset) map,
+  Color leather,
+  double k,
+) {
+  final paint = Paint()
+    ..color = leather
+    ..strokeWidth = 1.5 * k
+    ..strokeCap = StrokeCap.round;
+  canvas.drawLine(
+    map(const Offset(4.6, 1.2)),
+    map(const Offset(6.0, 5.6)),
+    paint,
+  );
+  canvas.drawLine(
+    map(const Offset(-2.7, -1.2)),
+    map(const Offset(1.9, -0.7)),
+    paint,
+  );
 }

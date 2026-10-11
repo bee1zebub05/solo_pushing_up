@@ -215,7 +215,7 @@ void paintHero(
     pose[HeroJoint.farElbow],
     pose[HeroJoint.farWrist],
     far: true,
-    onGround: ground - pose[HeroJoint.farWrist].dy < 6,
+    onGround: ground - pose[HeroJoint.farWrist].dy < 14,
   );
 
   if (cloak) {
@@ -267,7 +267,7 @@ void paintHero(
     shoulder,
     pose[HeroJoint.elbow],
     pose[HeroJoint.wrist],
-    onGround: ground - pose[HeroJoint.wrist].dy < 6,
+    onGround: ground - pose[HeroJoint.wrist].dy < 14,
   );
   canvas.restore();
   if (frost > 0.02) {
@@ -316,6 +316,18 @@ void _arm(
   // Giải phẫu (Loomis): cơ vai trùm đầu cánh tay, bắp tay sau dày phía sau,
   // bắp tay trước phồng giữa, khuỷu thắt; cẳng tay to ngay dưới khuỷu (cơ
   // cánh tay quay) rồi thon dần tới cổ tay. Nắm đấm là khối riêng.
+  if (far) {
+    // Tay phía xa gần như khuất sau thân: ống thuôn rẻ, không cơ, không
+    // vòng tay (giữ ngân sách hiệu năng).
+    shadedChain(
+      canvas,
+      [(shoulder, elbow, 6.4 * k, 5.0 * k), (elbow, wrist, 5.2 * k, 4.0 * k)],
+      skin,
+      highlight: 0,
+    );
+    if (onGround) _flatHand(canvas, wrist, skin, 0.95 * k);
+    return;
+  }
   shadedLimb(
     canvas,
     [
@@ -340,20 +352,7 @@ void _arm(
   // Chống đẩy: bàn tay úp phẳng trên sàn, ngón hướng về trước (phía đầu);
   // đứng: nắm tay buông xuôi.
   if (onGround) {
-    // Lòng bàn tay úp trên sàn: đáy bàn tay nằm ngang cổ tay (sàn ngay dưới
-    // cổ tay), gót bàn tay ở cổ tay, ngón duỗi về phía đầu.
-    final s = 0.95 * k;
-    shadedHand(
-      canvas,
-      buildHand(
-        wrist + Offset(-1.0 * s, -3.4 * s),
-        const Offset(1, 0),
-        pose: HandPose.flat,
-        facing: const Offset(0, -1),
-        scale: s,
-      ),
-      skin,
-    );
+    _flatHand(canvas, wrist, skin, 0.95 * k);
   } else {
     shadedHand(
       canvas,
@@ -361,6 +360,64 @@ void _arm(
       skin,
     );
   }
+}
+
+/// Bàn tay úp phẳng trên sàn nhìn ngang (chống đẩy): gót bàn tay ngay dưới
+/// cổ tay, ngón duỗi về phía đầu (+x), lòng bàn tay áp sàn; mu bàn tay hơi
+/// gồ, đốt ngón nhô nhẹ, ngón cái nằm dọc mép trên.
+void _flatHand(Canvas canvas, Offset wrist, Color skin, double s) {
+  final floor = wrist.dy + 2.2 * s;
+  Offset p(double x, double y) => Offset(wrist.dx + x * s, floor - y * s);
+  final hand = smoothPath(
+    [
+      p(-2.4, 0.2), // gót bàn tay
+      p(-2.6, 3.0),
+      p(0.6, 4.6), // mu bàn tay gồ
+      p(6.0, 4.0), // đốt ngón
+      p(9.6, 2.6),
+      p(13.0, 1.4), // đầu ngón giữa
+      p(13.4, 0.3),
+      p(6.0, 0.0),
+    ],
+    closed: true,
+    tension: 0.25,
+  );
+  shadedPath(
+    canvas,
+    hand,
+    skin,
+    PartFrame.world,
+    shadow: 1.6,
+    highlight: 0.9,
+    outlineWidth: 1.1,
+  );
+  final line = Paint()
+    ..color = darken(skin, 0.33)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.7 * s.clamp(0.8, 1.6)
+    ..strokeCap = StrokeCap.round;
+  // Kẽ ngón chồng lên nhau và nếp đốt ngón.
+  for (final y in [1.1, 2.0]) {
+    canvas.drawLine(p(6.6, y), p(12.4, y * 0.55), line);
+  }
+  for (final x in [7.6, 10.4]) {
+    canvas.drawLine(p(x, 0.6), p(x - 0.4, 2.6), line);
+  }
+  // Ngón cái dọc mép trên, hướng về trước.
+  final thumb = smoothPath(
+    [p(0.4, 3.6), p(5.2, 4.6), p(7.4, 4.0), p(5.0, 3.2)],
+    closed: true,
+    tension: 0.3,
+  );
+  shadedPath(
+    canvas,
+    thumb,
+    skin,
+    PartFrame.world,
+    shadow: 1,
+    highlight: 0.6,
+    outlineWidth: 0.9,
+  );
 }
 
 void _leg(
@@ -376,6 +433,23 @@ void _leg(
   Color shade(Color c) => far ? darken(c, 0.18) : c;
   // Đùi: cơ tứ đầu phồng phía trước ở 1/3 trên, thắt ở gối; cẳng chân: bắp
   // chân phồng phía sau ở 1/3 trên, ống chân phía trước thẳng, cổ chân thắt.
+  if (far) {
+    // Chân phía xa: ống thuôn rẻ + bàn chân/đế đơn giản.
+    shadedChain(
+      canvas,
+      [(hip, knee, 8.2 * k, 6.0 * k), (knee, ankle, 6.0 * k, 4.0 * k)],
+      shade(look.skin),
+      highlight: 0,
+    );
+    shadedChain(
+      canvas,
+      [(ankle, toe, 4.6, 3.8)],
+      shade(CostumeColors.sole),
+      shadow: 1,
+      highlight: 0,
+    );
+    return;
+  }
   shadedLimb(
     canvas,
     [
