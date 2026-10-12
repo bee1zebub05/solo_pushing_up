@@ -56,4 +56,10 @@ dataset/eval_frames/
 
 # Dữ liệu lớn (6,5 GB, giấy phép riêng) và video demo: không đưa vào git
 /dataset/
-/demo/
+/demo/*
+# Riêng video so sánh trước/sau của báo cáo đồ hoạ (mục 12) được đưa vào git để
+# báo cáo xem được khi clone; bản quay gốc, tiếng, clip lẻ chỉ giữ trên máy.
+!/demo/motion/
+/demo/motion/*
+!/demo/motion/compare_*.mp4
+!/demo/motion/compare_*.jpg
