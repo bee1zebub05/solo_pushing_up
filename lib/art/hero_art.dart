@@ -868,6 +868,21 @@ void _torso(
       );
     }
   }
+  // Nếp gom ở thắt lưng: vải bị thắt túm lại, các nếp ngắn toả lên trên.
+  final gather = Paint()
+    ..color = shadeOf(HeroColors.tunic).withValues(alpha: 0.7);
+  for (var i = 0; i < 5; i++) {
+    final x = -back + 2 + i * (back + hipFront - 4) / 4;
+    canvas.drawPath(
+      taperedStroke(
+        [Offset(x, -8), Offset(x + 0.6, -13), Offset(x + 1.6, -17)],
+        1.3,
+        peak: 0.2,
+        startWidth: 1,
+      ),
+      gather,
+    );
+  }
   // Bóng đổ của dây vai lên vải.
   canvas.drawLine(
     Offset(-shoulderBack + 1.5, -len + 5),
