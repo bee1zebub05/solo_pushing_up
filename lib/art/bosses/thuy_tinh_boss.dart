@@ -276,14 +276,63 @@ class ThuyTinhBossArt extends BossArt {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.6,
       );
-      for (var k = 0; k < 26; k++) {
-        final x = seedling.nextDouble() * (right - 6);
-        final yy = y + 3 + seedling.nextDouble() * 3 - x / right * 1.5;
-        canvas.drawLine(
-          Offset(x, yy),
-          Offset(x + 0.6, yy - 2),
+      // Bờ ruộng: má bờ đất sẫm dưới mép cỏ (bậc thang có độ cao).
+      canvas.drawPath(
+        Path()
+          ..moveTo(0, y + 7)
+          ..quadraticBezierTo(120, y + 3, right - 2, y + 7)
+          ..lineTo(right - 2, y + 8.6)
+          ..quadraticBezierTo(120, y + 4.6, 0, y + 8.6)
+          ..close(),
+        fillPaint(const Color(0xFF4A5A3A)),
+      );
+      // Mặt nước: dải phản chiếu mây sáng + gợn mưa (vòng tròn nhỏ).
+      canvas.drawPath(
+        Path()
+          ..moveTo(10, y + 2.4)
+          ..quadraticBezierTo(120, y - 1, right - 16, y + 3.6),
+        Paint()
+          ..color = const Color(0x66DCE6EA)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+      for (var k = 0; k < 5; k++) {
+        final x = 20 + seedling.nextDouble() * (right - 40);
+        final yy = y + 3.4 + seedling.nextDouble() * 2 - x / right * 1.5;
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset(x, yy), width: 4, height: 1.2),
           Paint()
-            ..color = const Color(0xFF7FB04A)
+            ..color = const Color(0x88E6EEF2)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.4,
+        );
+      }
+      // Mạ cấy thành khóm theo hàng: 3–4 lá cong + bóng phản chiếu.
+      for (
+        var x = 6.0 + i * 3;
+        x < right - 8;
+        x += 8 + seedling.nextDouble() * 2
+      ) {
+        final yy = y + 4.6 - x / right * 1.6;
+        for (final (dx, h, bend) in const [
+          (-0.6, 3.0, -0.8),
+          (0.0, 3.8, 0.2),
+          (0.6, 3.2, 0.9),
+        ]) {
+          canvas.drawLine(
+            Offset(x + dx, yy),
+            Offset(x + dx + bend, yy - h),
+            Paint()
+              ..color = const Color(0xFF7FB04A)
+              ..strokeWidth = 0.7
+              ..strokeCap = StrokeCap.round,
+          );
+        }
+        canvas.drawLine(
+          Offset(x, yy + 0.4),
+          Offset(x + 0.2, yy + 1.8),
+          Paint()
+            ..color = const Color(0x554A7A3A)
             ..strokeWidth = 0.8,
         );
       }
