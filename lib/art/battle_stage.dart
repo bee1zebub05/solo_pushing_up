@@ -54,6 +54,9 @@ enum StageCue {
 
   /// Boss sang pha cuối (máu < 40%): gầm lên.
   rage,
+
+  /// Boss gục.
+  defeat,
 }
 
 /// Thông số hoạt hình của boss tại một khung.
@@ -130,6 +133,9 @@ abstract class BossArt {
   /// `true` khi hình tự diễn đòn 3 pha (sư tử): sân khấu chỉ thêm thở và
   /// nảy khi trúng đòn, không ngả/lao thân thêm.
   bool get ownsAttackMotion => false;
+
+  /// `true` khi hình tự vẽ khói Trì Trệ rời xác lúc gục (sư tử).
+  bool get ownsDefeatSmoke => false;
 
   /// Sương Trì Trệ (shader GPU) sát mặt đất: màu (a = độ đậm tối đa) và hệ
   /// số mật độ. Sương tan theo máu boss — vùng đất được giải phóng dần.
@@ -316,6 +322,7 @@ class BattleStageGame extends FlameGame {
     _hero.victorious = true;
     _boss.defeated = true;
     _transition.victory();
+    onCue?.call(StageCue.defeat);
     if (horse) world.add(_HorseComponent());
     _burst(
       boss.target,
@@ -627,7 +634,49 @@ class _BossComponent extends PositionComponent {
       motion.apply(canvas, _anchor, breathe: 1 - _defeat);
       art.paintBoss(canvas, frame);
       canvas.restore();
+      if (_defeat > 0.3 && !art.ownsDefeatSmoke) {
+        _stagnationLeaving(
+          canvas,
+          // Bốc từ thân boss (không theo đầu/điểm trúng, có thể đã chìm).
+          _anchor.translate(0, -70),
+          _time,
+          ((_defeat - 0.3) / 0.7).clamp(0.0, 1.0),
+        );
+      }
     });
+  }
+}
+
+/// Gục ngã (chung mọi boss, cùng kiểu sư tử): làn khói Trì Trệ tím xám bốc
+/// lên rời khỏi xác — sức mạnh tà ác bị đánh bật — cuộn xoắn rồi tan.
+void _stagnationLeaving(Canvas canvas, Offset origin, double t, double a) {
+  for (var i = 0; i < 7; i++) {
+    final phase = (t * 0.35 + i / 7) % 1;
+    final x =
+        origin.dx - 54 + i * 18.0 + math.sin(t * 1.3 + i * 2) * 8 * phase;
+    final y = origin.dy + 20 - phase * 100;
+    final r = 6 + phase * 13;
+    canvas.drawCircle(
+      Offset(x, y),
+      r,
+      Paint()
+        ..shader = ui.Gradient.radial(Offset(x, y), r + 4, [
+          Color.fromRGBO(120, 100, 150, 0.68 * a * (1 - phase)),
+          const Color.fromRGBO(120, 100, 150, 0),
+        ]),
+    );
+    // Lõi xoắn tối hơn.
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(x, y), radius: r * 0.55),
+      t * 2 + i,
+      3.2,
+      false,
+      Paint()
+        ..color = Color.fromRGBO(70, 56, 92, 0.75 * a * (1 - phase))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round,
+    );
   }
 }
 

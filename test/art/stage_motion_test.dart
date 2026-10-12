@@ -89,6 +89,7 @@ void main() {
       await shot('rage');
 
       game.victory();
+      expect(cues.last, StageCue.defeat);
       await run(150);
       await shot('victory_flash');
       await run(1200);

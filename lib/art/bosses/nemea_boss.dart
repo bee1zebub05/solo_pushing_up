@@ -23,6 +23,9 @@ class NemeaBossArt extends BossArt {
   bool get ownsAttackMotion => true;
 
   @override
+  bool get ownsDefeatSmoke => true;
+
+  @override
   final Vector2 target = Vector2(
     lionX - 72 * lionScale,
     stageGroundY - 96 * lionScale,
