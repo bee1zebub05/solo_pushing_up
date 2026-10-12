@@ -1995,8 +1995,8 @@ void paintStoneSoldier(
       (const Offset(-12, -70), Offset(-18 - 4 * lunge, -62), 4.5, 4),
       (Offset(-18 - 4 * lunge, -62), hand, 4, 4),
     ], marble);
-    final back = hand + const Offset(26, -28);
-    final tip = hand + Offset(-26 - 8 * lunge, -2);
+    final back = hand + const Offset(28, -10);
+    final tip = hand + Offset(-28 - 8 * lunge, 2);
     canvas.drawLine(back, tip, _stroke(_outline, 3.4));
     canvas.drawLine(back, tip, _stroke(marbleDark, 1.8));
     final dir = (tip - back) / (tip - back).distance;
