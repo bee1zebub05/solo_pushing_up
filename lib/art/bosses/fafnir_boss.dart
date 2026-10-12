@@ -803,7 +803,51 @@ class FafnirBossArt extends BossArt {
         );
       }
     }
+    // Màng mỏng sát mép: ánh cực quang xanh lục xuyên qua (dải sáng trong
+    // mép, chỉ nửa trong lộ ra nhờ vùng cắt).
+    canvas.drawPath(
+      membrane,
+      Paint()
+        ..color = const Color(0x2E7CF2C0)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 9,
+    );
+    canvas.drawPath(
+      membrane,
+      Paint()
+        ..color = const Color(0x337CF2C0)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5,
+    );
     canvas.restore();
+    // Vết rách cũ ở mép màng (rồng già) + sương giá đọng dọc mép. Điểm
+    // giữa mép cong bậc hai = trung điểm + nửa độ lõm vào.
+    final notch = fillPaint(const Color(0xFF0F1828));
+    for (var i = 0; i < tips.length; i++) {
+      final b = i + 1 < tips.length ? tips[i + 1] : root;
+      final mid = Offset.lerp(tips[i], b, 0.5)!;
+      final edge = mid + (wrist - mid) * (i == tips.length - 1 ? 0.14 : 0.16);
+      if (i.isOdd) {
+        final d = (wrist - edge) / (wrist - edge).distance;
+        final n = Offset(-d.dy, d.dx);
+        canvas.drawPath(
+          Path()
+            ..moveTo(edge.dx - n.dx * 2.2, edge.dy - n.dy * 2.2)
+            ..lineTo(edge.dx + d.dx * 5, edge.dy + d.dy * 5)
+            ..lineTo(edge.dx + n.dx * 1.6, edge.dy + n.dy * 1.6)
+            ..close(),
+          notch,
+        );
+      }
+      final frost = fillPaint(FafnirColors.frost.withValues(alpha: 0.8));
+      for (final t in const [0.2, 0.45, 0.7]) {
+        canvas.drawCircle(
+          Offset.lerp(tips[i], edge, t)! + const Offset(0, -0.8),
+          0.9,
+          frost,
+        );
+      }
+    }
     // Xương: cánh tay + các ngón (thon dần), khớp nổi.
     final bone = darken(FafnirColors.wing, 0.42);
     shadedPath(
