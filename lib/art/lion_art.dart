@@ -345,30 +345,58 @@ void _paintBody(Canvas canvas) {
       ..cubicTo(60, -113, 84, -112, 96, -96),
     line(const Color(0xAAFFF0B0), 3, 1),
   );
-  // Nét lông ngắn theo hướng mọc (từ đầu về đuôi, xuôi xuống bụng).
-  final fur = Path();
+  // Trường lông ngắn theo hướng mọc: xuôi từ vai về đuôi, rủ dần xuống
+  // bụng, vòng theo vòm đùi sau; nét tối + nét sáng so le (chụp sẵn nên
+  // dày bao nhiêu cũng không tốn khung hình).
+  final furDark = Path();
+  final furLit = Path();
   final rnd = math.Random(9);
-  for (var i = 0; i < 34; i++) {
-    final p = Offset(
-      -60 + rnd.nextDouble() * 150,
-      -112 + rnd.nextDouble() * 58,
-    );
-    final len = 4 + rnd.nextDouble() * 4;
-    fur
-      ..moveTo(p.dx, p.dy)
-      ..quadraticBezierTo(
-        p.dx + len * 0.6,
-        p.dy + 1,
-        p.dx + len,
-        p.dy + len * 0.5,
-      );
+  for (var y = -116.0; y < -44; y += 4.2) {
+    for (var x = -70.0; x < 104; x += 5 + rnd.nextDouble() * 2) {
+      final p = Offset(x + rnd.nextDouble() * 2, y + rnd.nextDouble() * 2.4);
+      // Hướng: ra sau, xuống dần theo độ sâu thân; quanh đùi sau xoay
+      // theo tiếp tuyến vòm đùi.
+      var dir = Offset(1, 0.15 + (p.dy + 116) / 72 * 0.9);
+      final toHip = p - const Offset(78, -88);
+      final dh = toHip.distance;
+      if (dh < 30) {
+        final tangent = Offset(-toHip.dy, toHip.dx) / dh;
+        final k = 1 - dh / 30;
+        dir = dir * (1 - k) + (tangent.dy < 0 ? -tangent : tangent) * k;
+      }
+      final u = dir / dir.distance;
+      final len = 3.2 + rnd.nextDouble() * 2.6;
+      final n = Offset(-u.dy, u.dx);
+      furDark
+        ..moveTo(p.dx, p.dy)
+        ..quadraticBezierTo(
+          p.dx + u.dx * len * 0.5 + n.dx * 0.6,
+          p.dy + u.dy * len * 0.5 + n.dy * 0.6,
+          p.dx + u.dx * len,
+          p.dy + u.dy * len,
+        );
+      if (rnd.nextDouble() < 0.45) {
+        final q = p - n * 1.2;
+        furLit
+          ..moveTo(q.dx, q.dy)
+          ..lineTo(q.dx + u.dx * len * 0.6, q.dy + u.dy * len * 0.6);
+      }
+    }
   }
   canvas.drawPath(
-    fur,
+    furDark,
     Paint()
-      ..color = LionColors.bodyShade.withValues(alpha: 0.55)
+      ..color = LionColors.bodyShade.withValues(alpha: 0.4)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9
+      ..strokeWidth = 0.7
+      ..strokeCap = StrokeCap.round,
+  );
+  canvas.drawPath(
+    furLit,
+    Paint()
+      ..color = lit.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6
       ..strokeCap = StrokeCap.round,
   );
   // Sẹo cũ trên hông: dấu những kẻ đã thử và thất bại.
