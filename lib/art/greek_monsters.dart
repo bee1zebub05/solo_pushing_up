@@ -361,6 +361,17 @@ void _wing(Canvas canvas, Offset root, double flap, {bool far = false}) {
     final tip = Offset(math.cos(a) * len + 6, math.sin(a) * len);
     _blade(canvas, Offset(i * 2.0 - 1, -1), tip, 2.2, far: far);
   }
+  // Lông bao cánh (coverts): hai hàng lông đồng ngắn phủ gốc lông bay,
+  // hàng trong ngắn hơn — cánh có cấu trúc như cánh chim thật.
+  for (var row = 1; row >= 0; row--) {
+    for (var i = 4; i >= 0; i--) {
+      final a = -math.pi / 2 - 0.42 + i * 0.26;
+      final root = Offset(i * 2.2 - 1, -1);
+      final len = (row == 0 ? 7.0 : 11.0) - i * 0.5;
+      final tip = root + Offset(math.cos(a) * len + 2, math.sin(a) * len);
+      _blade(canvas, root, tip, row == 0 ? 1.8 : 2, far: far || row == 1);
+    }
+  }
   canvas.restore();
 }
 
