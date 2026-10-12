@@ -425,10 +425,6 @@ void paintSpartoi(
   double hurt = 0,
   double rise = 1,
 }) {
-  const bone = Color(0xFFD9D2B8);
-  const bronze = Color(0xFFB98A3E);
-  final sway = math.sin(time * 1.8) * 1.2;
-  final lunge = attack;
 
   // Bóng tiếp đất, đậm dần khi trồi lên.
   canvas.drawOval(
@@ -439,241 +435,31 @@ void paintSpartoi(
   // Phần dưới đất bị che bằng vùng cắt.
   canvas.clipRect(const Rect.fromLTRB(-80, -140, 80, 1));
   canvas.translate(0, 78 * (1 - rise));
-  _withHurt(canvas, hurt, () {
-    // Chân xương: xương đùi đầu khớp phình, cẳng chân hai xương (chày +
-    // mác), bàn chân xương nhỏ.
-    for (final (hip, knee, ankle, c) in [
-      (
-        const Offset(6, -34),
-        const Offset(10, -16),
-        const Offset(12, -2),
-        darken(bone, 0.15),
-      ),
-      (
-        const Offset(-4, -34),
-        const Offset(-10, -16),
-        const Offset(-12, -2),
-        bone,
-      ),
-    ]) {
-      _shaded(
-        canvas,
-        _bonePath(
-          knee + const Offset(1.2, 1),
-          ankle + const Offset(1.4, 0),
-          2.2,
-        ),
-        darken(c, 0.2),
-        shadow: 0.8,
-      );
-      _shaded(canvas, _bonePath(hip, knee, 4.2), c, shadow: 1.2);
-      _shaded(canvas, _bonePath(knee, ankle, 3.6), c, shadow: 1.2);
-      _shaded(
-        canvas,
-        Path()..addRRect(
-          RRect.fromLTRBR(
-            ankle.dx - 6,
-            ankle.dy - 1.5,
-            ankle.dx + 2.5,
-            ankle.dy + 2,
-            const Radius.circular(1.6),
-          ),
-        ),
-        c,
-        shadow: 0.8,
-      );
-    }
-    // Váy giáp da (pteruges).
-    final skirt = Path();
-    for (var i = 0; i < 5; i++) {
-      skirt.addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(-11 + i * 4.6, -38, 4.4, 11),
-          const Radius.circular(1.5),
-        ),
-      );
-    }
-    _shaded(canvas, skirt, const Color(0xFF7A3B2A), shadow: 1.5);
-    // Tay cầm khiên (xa, sau thân) và khiên tròn hoplon có hình răng rồng.
-    shadedChain(canvas, [
-      (const Offset(10, -60), const Offset(14, -46), 3, 2.5),
-    ], darken(bone, 0.15));
-    // Khiên aspis: vành đồng rộng có gờ, mặt sơn đỏ bạc màu, hình răng
-    // rồng trắng ngà (Spartoi mọc từ răng rồng), vết chém và đồng xỉn.
-    final sc = Offset(8 + sway * 0.3, -46);
-    final shield = Path()..addOval(Rect.fromCircle(center: sc, radius: 17));
-    _shaded(canvas, shield, bronze, shadow: 4);
-    final face = Path()..addOval(Rect.fromCircle(center: sc, radius: 13.4));
-    _shaded(canvas, face, const Color(0xFF8E2A1E), shadow: 3);
-    canvas.save();
-    canvas.clipPath(face);
-    canvas.drawCircle(
-      sc + const Offset(5, 5),
-      9,
-      _fill(const Color(0x33000000)),
-    );
-    final tooth = Path()
-      ..moveTo(sc.dx - 4, sc.dy - 8)
-      ..quadraticBezierTo(sc.dx, sc.dy - 10, sc.dx + 4, sc.dy - 8)
-      ..quadraticBezierTo(sc.dx + 2.6, sc.dy + 2, sc.dx + 0.4, sc.dy + 9)
-      ..quadraticBezierTo(sc.dx - 2, sc.dy + 2, sc.dx - 4, sc.dy - 8)
-      ..close();
-    canvas.drawPath(tooth, _fill(const Color(0xFFE8DCC0)));
-    canvas.drawLine(
-      sc + const Offset(-1, -7),
-      sc + const Offset(0.2, 6),
-      _stroke(const Color(0xFFB8A888), 0.8),
-    );
-    canvas.drawLine(
-      sc + const Offset(-10, 2),
-      sc + const Offset(-4, 8),
-      _stroke(const Color(0xFF4A160E), 1),
-    );
-    canvas.restore();
-    canvas.drawCircle(sc, 15.2, _stroke(darken(bronze, 0.35), 0.8));
-    for (final (o, r) in const [(Offset(-11, -9), 1.6), (Offset(12, 6), 2.0)]) {
-      canvas.drawCircle(sc + o, r, _fill(const Color(0x664FA088)));
-    }
-
-    // Cột sống từng đốt + xương sườn cong thon lộ ra dưới giáp vỡ, khoang
-    // ngực tối phía sau.
-    canvas.drawPath(
-      Path()
-        ..moveTo(-11, -56)
-        ..quadraticBezierTo(0, -60, 11, -56)
-        ..quadraticBezierTo(8, -42, 0, -40)
-        ..quadraticBezierTo(-8, -42, -11, -56)
-        ..close(),
-      _fill(const Color(0xFF1E1410)),
-    );
-    for (var i = 0; i < 6; i++) {
-      final y = -60.0 + i * 3.8;
-      _shaded(
-        canvas,
-        Path()..addRRect(
-          RRect.fromLTRBR(-2.2, y, 2.2, y + 3, const Radius.circular(1.2)),
-        ),
-        bone,
-        shadow: 0.6,
-      );
-    }
-    final ribs = Path();
-    for (var i = 0; i < 4; i++) {
-      final y = -56.0 + i * 4.2;
-      final w = 11.5 - i * 1.6;
-      for (final side in [-1.0, 1.0]) {
-        ribs.addPath(
-          taperedStroke(
-            [
-              Offset(side * 1.5, y),
-              Offset(side * w * 0.8, y - 1.2),
-              Offset(side * w, y + 2.5),
-              Offset(side * (w - 2.5), y + 5.5),
-            ],
-            2.1,
-            peak: 0.3,
-            startWidth: 0.9,
-            endWidth: 0.3,
-          ),
-          Offset.zero,
-        );
-      }
-    }
-    _shaded(canvas, ribs, bone, shadow: 0.6);
-    // Hai cánh xương chậu nhô trên váy giáp.
-    for (final side in [-1.0, 1.0]) {
-      _shaded(
-        canvas,
-        Path()
-          ..moveTo(side * 1.5, -37)
-          ..quadraticBezierTo(side * 4, -42, side * 8.5, -40.5)
-          ..quadraticBezierTo(side * 7, -37, side * 1.5, -36)
-          ..close(),
-        darken(bone, 0.18),
-        shadow: 0.8,
-      );
-    }
-    // Giáp ngực đồng vỡ: chỉ còn nửa trên, mép dưới lởm chởm.
-    final chest = Path()
-      ..moveTo(-14, -62)
-      ..quadraticBezierTo(0, -68, 14, -62)
-      ..lineTo(13, -54)
-      ..lineTo(9, -51)
-      ..lineTo(6, -55)
-      ..lineTo(1, -50)
-      ..lineTo(-4, -54)
-      ..lineTo(-9, -50)
-      ..lineTo(-13, -54)
-      ..close();
-    _shaded(canvas, chest, bronze, shadow: 3);
-    canvas.drawPath(
-      Path()
-        ..moveTo(4, -64)
-        ..lineTo(1, -58)
-        ..lineTo(5, -54),
-      _stroke(_outline, 1.1),
-    );
-    // Đầu sọ trong mũ Corinth có mào lông đỏ.
-    final headC = Offset(-1 + sway * 0.4 - 4 * lunge, -76);
-    canvas.save();
-    canvas.translate(headC.dx, headC.dy);
-    _corinthianHelmet.paint(canvas);
-    // Hai đốm lửa ma quái trong khe mắt (nhấp nháy theo thời gian).
-    final flicker = 0.85 + 0.15 * math.sin(time * 9);
-    _glowEye(
-      canvas,
-      const Offset(-6.2, -2.2),
-      1.1 * flicker,
-      const Color(0xFF7CFF6B),
-    );
-    canvas.restore();
-
-    // Tay cầm giáo (gần): đâm tới khi tấn công.
-    final hand = Offset(-14 - 14 * lunge, -52 + 4 * lunge);
-    final elbow = Offset(-14 - 6 * lunge, -52);
-    _shaded(
-      canvas,
-      _bonePath(const Offset(-10, -60), elbow, 3.2),
-      bone,
-      shadow: 1,
-    );
-    _shaded(canvas, _bonePath(elbow, hand, 2.8), bone, shadow: 1);
-    // Giáo dory cầm thấp chĩa về người chơi: cán gỗ, mũi đồng hình lá có
-    // gân giữa, chuôi nhọn (sauroter) ở đuôi.
-    final spearBack = hand + const Offset(30, -12);
-    final spearTip = hand + Offset(-30 - 10 * lunge, 2);
-    canvas.drawLine(spearBack, spearTip, _stroke(_outline, 3.4));
-    canvas.drawLine(spearBack, spearTip, _stroke(const Color(0xFF7A5232), 1.8));
-    final dir = (spearTip - spearBack) / (spearTip - spearBack).distance;
-    final n = Offset(-dir.dy, dir.dx);
-    final leaf = Path()
-      ..moveTo(spearTip.dx, spearTip.dy)
-      ..quadraticBezierTo(
-        spearTip.dx + dir.dx * 4 + n.dx * 3.6,
-        spearTip.dy + dir.dy * 4 + n.dy * 3.6,
-        spearTip.dx + dir.dx * 12,
-        spearTip.dy + dir.dy * 12,
-      )
-      ..quadraticBezierTo(
-        spearTip.dx + dir.dx * 4 - n.dx * 3.6,
-        spearTip.dy + dir.dy * 4 - n.dy * 3.6,
-        spearTip.dx,
-        spearTip.dy,
-      )
-      ..close();
-    _shaded(canvas, leaf, bronze, shadow: 1);
-    canvas.drawLine(
-      spearTip,
-      spearTip + dir * 10,
-      _stroke(darken(bronze, 0.35), 0.6),
-    );
-    _shaded(
-      canvas,
-      _poly([spearBack + n * 1.4, spearBack - dir * 6, spearBack - n * 1.4]),
-      bronze,
-      shadow: 0.6,
-    );
-  });
+  // Thân chụp sẵn theo 24 pha lắc × 9 mức đâm giáo (đo trên máy thật:
+  // vẽ vector mỗi khung tốn ~4 ms CPU); mắt lửa nhấp nháy vẽ riêng.
+  canvas.translate(6 * hurt, 0);
+  const period = 2 * math.pi / 1.8;
+  final phase = (time / period * 24).floor() % 24;
+  final lq = (attack.clamp(0.0, 1.0) * 8).round();
+  final qSway = math.sin(phase / 24 * period * 1.8) * 1.2;
+  _spartoiFrames.paint(
+    canvas,
+    (phase, lq),
+    (c) => _spartoiBody(c, qSway, lq / 8),
+    colorFilter: _hurtFilter(hurt),
+  );
+  final headC = Offset(-1 + qSway * 0.4 - 4 * lq / 8, -76);
+  canvas.save();
+  canvas.translate(headC.dx, headC.dy);
+  // Hai đốm lửa ma quái trong khe mắt (nhấp nháy theo thời gian).
+  final flicker = 0.85 + 0.15 * math.sin(time * 9);
+  _glowEye(
+    canvas,
+    const Offset(-6.2, -2.2),
+    1.1 * flicker,
+    const Color(0xFF7CFF6B),
+  );
+  canvas.restore();
   canvas.restore();
 
   // Đất bung lên khi đang trồi.
@@ -689,6 +475,235 @@ void paintSpartoi(
       );
     }
   }
+}
+
+final _spartoiFrames = _FrameCache(
+  const Rect.fromLTRB(-96, -116, 52, 8),
+  resolution: 1.35,
+);
+
+/// Thân Spartoi (không bóng đất, không trồi, không loé trúng đòn, không
+/// mắt lửa) — phần được chụp thành ảnh.
+void _spartoiBody(Canvas canvas, double sway, double lunge) {
+  const bone = Color(0xFFD9D2B8);
+  const bronze = Color(0xFFB98A3E);
+  // Chân xương: xương đùi đầu khớp phình, cẳng chân hai xương (chày +
+  // mác), bàn chân xương nhỏ.
+  for (final (hip, knee, ankle, c) in [
+    (
+      const Offset(6, -34),
+      const Offset(10, -16),
+      const Offset(12, -2),
+      darken(bone, 0.15),
+    ),
+    (
+      const Offset(-4, -34),
+      const Offset(-10, -16),
+      const Offset(-12, -2),
+      bone,
+    ),
+  ]) {
+    _shaded(
+      canvas,
+      _bonePath(knee + const Offset(1.2, 1), ankle + const Offset(1.4, 0), 2.2),
+      darken(c, 0.2),
+      shadow: 0.8,
+    );
+    _shaded(canvas, _bonePath(hip, knee, 4.2), c, shadow: 1.2);
+    _shaded(canvas, _bonePath(knee, ankle, 3.6), c, shadow: 1.2);
+    _shaded(
+      canvas,
+      Path()..addRRect(
+        RRect.fromLTRBR(
+          ankle.dx - 6,
+          ankle.dy - 1.5,
+          ankle.dx + 2.5,
+          ankle.dy + 2,
+          const Radius.circular(1.6),
+        ),
+      ),
+      c,
+      shadow: 0.8,
+    );
+  }
+  // Váy giáp da (pteruges).
+  final skirt = Path();
+  for (var i = 0; i < 5; i++) {
+    skirt.addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-11 + i * 4.6, -38, 4.4, 11),
+        const Radius.circular(1.5),
+      ),
+    );
+  }
+  _shaded(canvas, skirt, const Color(0xFF7A3B2A), shadow: 1.5);
+  // Tay cầm khiên (xa, sau thân) và khiên tròn hoplon có hình răng rồng.
+  shadedChain(canvas, [
+    (const Offset(10, -60), const Offset(14, -46), 3, 2.5),
+  ], darken(bone, 0.15));
+  // Khiên aspis: vành đồng rộng có gờ, mặt sơn đỏ bạc màu, hình răng
+  // rồng trắng ngà (Spartoi mọc từ răng rồng), vết chém và đồng xỉn.
+  final sc = Offset(8 + sway * 0.3, -46);
+  final shield = Path()..addOval(Rect.fromCircle(center: sc, radius: 17));
+  _shaded(canvas, shield, bronze, shadow: 4);
+  final face = Path()..addOval(Rect.fromCircle(center: sc, radius: 13.4));
+  _shaded(canvas, face, const Color(0xFF8E2A1E), shadow: 3);
+  canvas.save();
+  canvas.clipPath(face);
+  canvas.drawCircle(sc + const Offset(5, 5), 9, _fill(const Color(0x33000000)));
+  final tooth = Path()
+    ..moveTo(sc.dx - 4, sc.dy - 8)
+    ..quadraticBezierTo(sc.dx, sc.dy - 10, sc.dx + 4, sc.dy - 8)
+    ..quadraticBezierTo(sc.dx + 2.6, sc.dy + 2, sc.dx + 0.4, sc.dy + 9)
+    ..quadraticBezierTo(sc.dx - 2, sc.dy + 2, sc.dx - 4, sc.dy - 8)
+    ..close();
+  canvas.drawPath(tooth, _fill(const Color(0xFFE8DCC0)));
+  canvas.drawLine(
+    sc + const Offset(-1, -7),
+    sc + const Offset(0.2, 6),
+    _stroke(const Color(0xFFB8A888), 0.8),
+  );
+  canvas.drawLine(
+    sc + const Offset(-10, 2),
+    sc + const Offset(-4, 8),
+    _stroke(const Color(0xFF4A160E), 1),
+  );
+  canvas.restore();
+  canvas.drawCircle(sc, 15.2, _stroke(darken(bronze, 0.35), 0.8));
+  for (final (o, r) in const [(Offset(-11, -9), 1.6), (Offset(12, 6), 2.0)]) {
+    canvas.drawCircle(sc + o, r, _fill(const Color(0x664FA088)));
+  }
+
+  // Cột sống từng đốt + xương sườn cong thon lộ ra dưới giáp vỡ, khoang
+  // ngực tối phía sau.
+  canvas.drawPath(
+    Path()
+      ..moveTo(-11, -56)
+      ..quadraticBezierTo(0, -60, 11, -56)
+      ..quadraticBezierTo(8, -42, 0, -40)
+      ..quadraticBezierTo(-8, -42, -11, -56)
+      ..close(),
+    _fill(const Color(0xFF1E1410)),
+  );
+  for (var i = 0; i < 6; i++) {
+    final y = -60.0 + i * 3.8;
+    _shaded(
+      canvas,
+      Path()..addRRect(
+        RRect.fromLTRBR(-2.2, y, 2.2, y + 3, const Radius.circular(1.2)),
+      ),
+      bone,
+      shadow: 0.6,
+    );
+  }
+  final ribs = Path();
+  for (var i = 0; i < 4; i++) {
+    final y = -56.0 + i * 4.2;
+    final w = 11.5 - i * 1.6;
+    for (final side in [-1.0, 1.0]) {
+      ribs.addPath(
+        taperedStroke(
+          [
+            Offset(side * 1.5, y),
+            Offset(side * w * 0.8, y - 1.2),
+            Offset(side * w, y + 2.5),
+            Offset(side * (w - 2.5), y + 5.5),
+          ],
+          2.1,
+          peak: 0.3,
+          startWidth: 0.9,
+          endWidth: 0.3,
+        ),
+        Offset.zero,
+      );
+    }
+  }
+  _shaded(canvas, ribs, bone, shadow: 0.6);
+  // Hai cánh xương chậu nhô trên váy giáp.
+  for (final side in [-1.0, 1.0]) {
+    _shaded(
+      canvas,
+      Path()
+        ..moveTo(side * 1.5, -37)
+        ..quadraticBezierTo(side * 4, -42, side * 8.5, -40.5)
+        ..quadraticBezierTo(side * 7, -37, side * 1.5, -36)
+        ..close(),
+      darken(bone, 0.18),
+      shadow: 0.8,
+    );
+  }
+  // Giáp ngực đồng vỡ: chỉ còn nửa trên, mép dưới lởm chởm.
+  final chest = Path()
+    ..moveTo(-14, -62)
+    ..quadraticBezierTo(0, -68, 14, -62)
+    ..lineTo(13, -54)
+    ..lineTo(9, -51)
+    ..lineTo(6, -55)
+    ..lineTo(1, -50)
+    ..lineTo(-4, -54)
+    ..lineTo(-9, -50)
+    ..lineTo(-13, -54)
+    ..close();
+  _shaded(canvas, chest, bronze, shadow: 3);
+  canvas.drawPath(
+    Path()
+      ..moveTo(4, -64)
+      ..lineTo(1, -58)
+      ..lineTo(5, -54),
+    _stroke(_outline, 1.1),
+  );
+  // Đầu sọ trong mũ Corinth có mào lông đỏ.
+  final headC = Offset(-1 + sway * 0.4 - 4 * lunge, -76);
+  canvas.save();
+  canvas.translate(headC.dx, headC.dy);
+  _corinthianHelmet.paint(canvas);
+  canvas.restore();
+
+  // Tay cầm giáo (gần): đâm tới khi tấn công.
+  final hand = Offset(-14 - 14 * lunge, -52 + 4 * lunge);
+  final elbow = Offset(-14 - 6 * lunge, -52);
+  _shaded(
+    canvas,
+    _bonePath(const Offset(-10, -60), elbow, 3.2),
+    bone,
+    shadow: 1,
+  );
+  _shaded(canvas, _bonePath(elbow, hand, 2.8), bone, shadow: 1);
+  // Giáo dory cầm thấp chĩa về người chơi: cán gỗ, mũi đồng hình lá có
+  // gân giữa, chuôi nhọn (sauroter) ở đuôi.
+  final spearBack = hand + const Offset(30, -12);
+  final spearTip = hand + Offset(-30 - 10 * lunge, 2);
+  canvas.drawLine(spearBack, spearTip, _stroke(_outline, 3.4));
+  canvas.drawLine(spearBack, spearTip, _stroke(const Color(0xFF7A5232), 1.8));
+  final dir = (spearTip - spearBack) / (spearTip - spearBack).distance;
+  final n = Offset(-dir.dy, dir.dx);
+  final leaf = Path()
+    ..moveTo(spearTip.dx, spearTip.dy)
+    ..quadraticBezierTo(
+      spearTip.dx + dir.dx * 4 + n.dx * 3.6,
+      spearTip.dy + dir.dy * 4 + n.dy * 3.6,
+      spearTip.dx + dir.dx * 12,
+      spearTip.dy + dir.dy * 12,
+    )
+    ..quadraticBezierTo(
+      spearTip.dx + dir.dx * 4 - n.dx * 3.6,
+      spearTip.dy + dir.dy * 4 - n.dy * 3.6,
+      spearTip.dx,
+      spearTip.dy,
+    )
+    ..close();
+  _shaded(canvas, leaf, bronze, shadow: 1);
+  canvas.drawLine(
+    spearTip,
+    spearTip + dir * 10,
+    _stroke(darken(bronze, 0.35), 0.6),
+  );
+  _shaded(
+    canvas,
+    _poly([spearBack + n * 1.4, spearBack - dir * 6, spearBack - n * 1.4]),
+    bronze,
+    shadow: 0.6,
+  );
 }
 
 /// Một xương dài: thân mảnh thắt giữa, hai đầu khớp phình hai núm (lồi
