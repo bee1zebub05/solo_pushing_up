@@ -751,28 +751,45 @@ class OrochiBossArt extends BossArt {
     );
     canvas.save();
     canvas.clipPath(skull);
-    // Vảy sọ: hai hàng cung nhỏ + môi sáng dọc hàm.
+    // Vảy sọ: tấm sừng dọc sống mũi (mặt trên sáng, viền sau tối), vảy
+    // má nhỏ xếp ngói dưới mắt, sọc tối sau mắt xuống góc hàm + môi sáng.
     final plates = Paint()
       ..color = darken(OrochiColors.body, 0.35)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-    for (var i = 0; i < 6; i++) {
-      canvas.drawArc(
-        Rect.fromCircle(center: Offset(8 - i * 4.0, -8 + i * 0.6), radius: 2.4),
-        0.2,
-        2.6,
-        false,
-        plates,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(6 - i * 4.0, -3.5 + i * 0.4),
-          radius: 2.2,
-        ),
-        0.2,
-        2.6,
-        false,
-        plates,
+      ..strokeWidth = 0.7;
+    final plateLit = fillPaint(lighten(OrochiColors.body, 0.15));
+    for (final (c, w) in const [
+      (Offset(-21, -6), 3.6),
+      (Offset(-15.5, -8.4), 4.2),
+      (Offset(-9.5, -11.2), 4.4),
+      (Offset(-3, -12), 4.8),
+      (Offset(3.5, -11.4), 4.6),
+      (Offset(9, -8.4), 4),
+    ]) {
+      final p = Path()
+        ..moveTo(c.dx - w / 2, c.dy + 0.8)
+        ..lineTo(c.dx - w / 2 + 0.8, c.dy - 1)
+        ..lineTo(c.dx + w / 2 - 0.4, c.dy - 1.1)
+        ..lineTo(c.dx + w / 2, c.dy + 1)
+        ..close();
+      canvas.drawPath(p, plateLit);
+      canvas.drawPath(p, plates);
+    }
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(-4, -4.4), Offset(4, -2.4), Offset(12, -0.4)],
+        2.4,
+        peak: 0.4,
+        startWidth: 0.5,
+      ),
+      fillPaint(darken(OrochiColors.body, 0.4).withValues(alpha: 0.7)),
+    );
+    final scale = fillPaint(darken(OrochiColors.body, 0.3));
+    for (var k = 0; k < 12; k++) {
+      canvas.drawCircle(
+        Offset(-14 + (k % 6) * 2.6 + (k ~/ 6) * 1.3, -1.2 + (k ~/ 6) * 2),
+        0.5,
+        scale,
       );
     }
     canvas.drawPath(
