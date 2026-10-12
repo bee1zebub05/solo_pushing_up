@@ -197,7 +197,8 @@ class _BenchScreenState extends State<_BenchScreen>
     final cache = RasterBudget.shared;
     _log(
       '[$name] raster-cache ${(cache.bytes / 1048576).toStringAsFixed(1)} MB '
-      'in ${cache.liveCount} images, scale '
+      'in ${cache.liveCount} images, hero renders $debugHeroImageRenders, '
+      'scale '
       '${cache.effectiveScale.toStringAsFixed(2)}',
     );
   }
