@@ -254,9 +254,17 @@ figcaption{font-size:12.5px;color:var(--mut);margin-top:4px}.wide{grid-column:1/
 <li>Chân dung mọi màn quái đều hiện đàn chim (khoá bộ đệm theo lớp) → <code>BossArt.artKey</code> + test.</li>
 <li>Thanh máu trận biến mất sau khi đổi kiểu (CustomPaint thiếu bề rộng) — chỉ phát hiện khi chụp trên máy.</li>
 </ul>
+<h3>Phần cuối phiên (08:10–09:30): màn quái, CPU boss, chi tiết</h3>
+<ul>
+<li><b>Màn quái chưa từng được đo</b> → thêm 7 màn quái vào bench. Phát hiện: <b>đàn chim chỉ ~28 fps</b> (CPU 26,8 ms + GPU 26,4 ms/khung), <b>Harpy ~40 fps</b>. Chụp ảnh chim và Harpy theo 12 pha đập cánh × 7 mức ra đòn → <b>đàn chim 57 fps</b> (CPU 2,6 ms, GPU 13 ms), <b>Harpy 56 fps</b>. Spartoi cũng chụp theo pha (CPU 4,1 → 0,6 ms).</li>
+<li><b>Vấn đề "còn mở" về CPU đã giải:</b> đo từng phần (<code>StageProfile</code>, in <code>cpu-parts</code>) cho thấy nhân vật chỉ 0,1–0,3 ms — giả thuyết cũ sai; chỗ tốn là chính hình boss vẽ lại mỗi khung. Ghi sẵn cổ Orochi (theo vị trí đầu), mặt Thuỷ Tinh và đầu Fafnir (theo độ há), sóng ngai Thuỷ Tinh (48 pha): CPU vẽ boss Orochi 5,3 → 2,6 ms, Fafnir 3,9 → 1,5, Thuỷ Tinh 5,35 → 1,1.</li>
+<li><b>Số cuối trên CPH2159:</b> 12 cấu hình (Nemea dọc/ngang, 3 boss, 7 màn quái) đều 56,5–59,5 fps; GPU tô 10–14,5 ms/khung.</li>
+<li><b>Chi tiết hình:</b> hang sư tử có lòng hang sâu, nhũ đá; núi xa có vân đá + rừng thông; đền có tường cella + cửa tối; mây khối súp lơ; chim Stymphalia đầu chim săn mồi + lông bao cánh; Harpy cổ áo lông xù + tóc bạc; đầu Hydra vảy tấm + sọc sau mắt; lợn rừng chân có khớp gối/hock; lính đá có cánh tay cầm giáo; Fafnir hông phủ vảy, khúc đuôi cuộn, chân trước giải phẫu, cánh mỏng xuyên sáng cực quang, đầu có vảy sọ; Orochi torii có dây shimenawa + giấy shide, đầu có vảy sọ; núi Tản Viên rừng tán chồng lớp.</li>
+<li><b>Lỗi "hàng vảy cung dưới mắt trông như miệng cười"</b> ở đầu Hydra, Fafnir, Orochi đã sửa và ghi thành mục tự chấm trong skill vẽ.</li>
+<li><b>Giao diện:</b> kỳ công khoá hiện chân dung boss xám tối + khoá đồng; gợi ý màn dùng Icon thay emoji (đồng nhất iPhone/Android).</li>
+</ul>
 <h3>Còn mở</h3>
 <ul>
-<li>Bật bộ đệm ảnh nhân vật làm phần vẽ boss của Orochi/Fafnir/Thuỷ Tinh tốn thêm ~3 ms CPU trên máy (Nemea không bị); khung hình vẫn nhanh hơn vì GPU là bên chậm hơn. Cần điều tra thêm.</li>
 <li>Chưa thử trên iPhone thật (cần Mac).</li>
 <li>Chưa push: commit <code>2d37f0d</code> chứa file .dill 47 MB; lệnh viết lại lịch sử bị hệ thống quyền chặn.</li>
 </ul>
