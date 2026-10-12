@@ -1459,16 +1459,48 @@ class FafnirBossArt extends BossArt {
       ..color = darken(FafnirColors.body, 0.35)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
-    for (var i = 0; i < 7; i++) {
-      canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(10 - i * 4.4, -9 + i * 0.7),
-          radius: 2.5,
-        ),
-        0.2,
-        2.6,
-        false,
-        plate,
+    // Tấm vảy sọ dọc sống mũi (mặt trên đón sáng, mép sau tối).
+    final plateLit = fillPaint(lighten(FafnirColors.body, 0.16));
+    for (final (c, w) in const [
+      (Offset(-26, -6.2), 3.6),
+      (Offset(-21, -8), 4.2),
+      (Offset(-15.5, -10.4), 4.6),
+      (Offset(-4, -13), 5),
+      (Offset(3, -13), 5),
+      (Offset(9.5, -10.4), 4.4),
+    ]) {
+      final p = Path()
+        ..moveTo(c.dx - w / 2, c.dy + 0.8)
+        ..lineTo(c.dx - w / 2 + 0.8, c.dy - 1)
+        ..lineTo(c.dx + w / 2 - 0.4, c.dy - 1.1)
+        ..lineTo(c.dx + w / 2, c.dy + 1)
+        ..close();
+      canvas.drawPath(p, plateLit);
+      canvas.drawPath(p, plate);
+    }
+    // Gờ má xương: khối cơ hàm dưới mắt (bóng dưới gờ), vảy nhỏ li ti.
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(-16, -2.4), Offset(-6, -1.6), Offset(6, -3.4)],
+        3.2,
+        peak: 0.5,
+      ),
+      fillPaint(darken(FafnirColors.body, 0.28).withValues(alpha: 0.6)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(-15, -3.8), Offset(-5, -3.2), Offset(6, -5)],
+        1,
+        peak: 0.5,
+      ),
+      fillPaint(lighten(FafnirColors.body, 0.3).withValues(alpha: 0.7)),
+    );
+    final dot = fillPaint(darken(FafnirColors.body, 0.32));
+    for (var k = 0; k < 14; k++) {
+      canvas.drawCircle(
+        Offset(-2 + (k % 7) * 2.4 + (k ~/ 7) * 1.2, -1 + (k ~/ 7) * 2.2),
+        0.55,
+        dot,
       );
     }
     canvas.drawPath(
