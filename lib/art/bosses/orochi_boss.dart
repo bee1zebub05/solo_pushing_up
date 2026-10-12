@@ -368,6 +368,97 @@ class OrochiBossArt extends BossArt {
       highlight: 0.8,
       outlineWidth: 1.3,
     );
+    // Viền nắng chiều (bên phải) trên mép cột + bóng xà đổ xuống cột.
+    final rim = Paint()
+      ..color = const Color(0xAAFFC27A)
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.round;
+    for (final x in [24.0, 78.0]) {
+      canvas.drawLine(Offset(x + 6, 136), Offset(x + 6.9, 206), rim);
+      canvas.drawRect(
+        Rect.fromLTWH(x - 0.4, 134, 7, 6),
+        fillPaint(const Color(0x55301018)),
+      );
+      // Vân gỗ sơn bong: vài vệt dọc sẫm.
+      for (final (dx, y0, len) in const [
+        (1.6, 150.0, 18.0),
+        (3.8, 172.0, 22.0),
+      ]) {
+        canvas.drawLine(
+          Offset(x + dx, y0),
+          Offset(x + dx + 0.2, y0 + len),
+          Paint()
+            ..color = const Color(0x55601A14)
+            ..strokeWidth = 0.6,
+        );
+      }
+    }
+    canvas.drawLine(
+      const Offset(15, 114.5),
+      const Offset(91, 114.5),
+      rim..color = const Color(0x88FFC27A),
+    );
+    // Shimenawa: dây thừng rơm xoắn võng giữa hai cột dưới nuki, giấy
+    // shide gấp zigzag trắng rủ xuống.
+    final rope = Path()
+      ..moveTo(31, 140)
+      ..quadraticBezierTo(53, 152, 78, 140);
+    canvas.drawPath(
+      rope,
+      Paint()
+        ..color = VectorStyle.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4.6
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawPath(
+      rope,
+      Paint()
+        ..color = const Color(0xFFC9A75E)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+    // Thớ xoắn của dây.
+    for (var k = 0; k < 12; k++) {
+      final t = (k + 0.5) / 12;
+      final x = 31 + 47 * t;
+      final y = 140 + 24 * t * (1 - t);
+      canvas.drawLine(
+        Offset(x - 1, y - 1.2),
+        Offset(x + 0.8, y + 1.2),
+        Paint()
+          ..color = const Color(0xFF8C6E36)
+          ..strokeWidth = 0.6,
+      );
+    }
+    for (final t in const [0.25, 0.5, 0.75]) {
+      final x = 31 + 47 * t;
+      final y = 140 + 24 * t * (1 - t) + 1.5;
+      final shide = Path()
+        ..moveTo(x - 1.6, y)
+        ..lineTo(x + 1.6, y)
+        ..lineTo(x + 1.6, y + 3.4)
+        ..lineTo(x - 0.4, y + 3.4)
+        ..lineTo(x - 0.4, y + 6.8)
+        ..lineTo(x + 1.6, y + 6.8)
+        ..lineTo(x + 1.6, y + 10.2)
+        ..lineTo(x - 1.6, y + 10.2)
+        ..lineTo(x - 1.6, y + 7.4)
+        ..lineTo(x + 0.4, y + 7.4)
+        ..lineTo(x + 0.4, y + 4)
+        ..lineTo(x - 1.6, y + 4)
+        ..close();
+      canvas.drawPath(
+        shide,
+        Paint()
+          ..color = VectorStyle.outline
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8
+          ..strokeJoin = StrokeJoin.round,
+      );
+      canvas.drawPath(shide, fillPaint(const Color(0xFFF4EEE2)));
+    }
   }
 
   @override
