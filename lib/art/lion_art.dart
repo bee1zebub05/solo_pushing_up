@@ -150,6 +150,7 @@ void paintLion(Canvas canvas, LionState s) {
     );
   }
 
+  _legsStatic = windup == 0 && strike == 0 && fall == 0;
   // Thân hạ thấp khi lấy đà, gục thì nằm rạp.
   final drop = 6 * windup + 34 * fall;
   final lift = breath * 1.5;
@@ -402,7 +403,53 @@ void _hideSheen(Canvas canvas, double t) {
 }
 
 /// Chân ba khúc (vai/hông, khuỷu/cổ chân, bàn) bằng chuỗi viên thuốc.
+/// Chân đứng yên (sư tử rình, không lấy đà/vồ/gục) chụp thành ảnh: bó cơ
+/// của chân tốn GPU nhiều (mỗi bó một lần clip) mà tư thế không đổi.
+final _legImages = <(Offset, Offset, int, bool, bool), RasterLayer>{};
+
+/// Sư tử đang đứng yên: chân có thể dùng ảnh chụp sẵn.
+bool _legsStatic = false;
+
 void _leg(
+  Canvas canvas, {
+  required Offset hip,
+  required Offset paw,
+  required Color color,
+  required bool front,
+  bool clawsOut = false,
+}) {
+  if (!_legsStatic) {
+    _legVector(
+      canvas,
+      hip: hip,
+      paw: paw,
+      color: color,
+      front: front,
+      clawsOut: clawsOut,
+    );
+    return;
+  }
+  final key = (hip, paw, color.toARGB32(), front, clawsOut);
+  _legImages
+      .putIfAbsent(
+        key,
+        () => RasterLayer(
+          (c) => _legVector(
+            c,
+            hip: hip,
+            paw: paw,
+            color: color,
+            front: front,
+            clawsOut: clawsOut,
+          ),
+          bounds: Rect.fromPoints(hip, paw).inflate(34),
+          resolution: 0.8,
+        ),
+      )
+      .paint(canvas);
+}
+
+void _legVector(
   Canvas canvas, {
   required Offset hip,
   required Offset paw,
