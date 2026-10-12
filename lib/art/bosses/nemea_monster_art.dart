@@ -210,7 +210,7 @@ class NemeaMonsterArt extends NemeaBossArt {
       canvas.save();
       canvas.translate(at.dx + 6 * f.hurt, at.dy);
       canvas.scale(i == 0 ? 1.15 : 0.9 - i * 0.04);
-      paintStymphalianBird(
+      paintStymphalianBirdFast(
         canvas,
         time: f.time + i * 0.37,
         attack: i == 0 ? f.attack : f.attack * 0.4,
