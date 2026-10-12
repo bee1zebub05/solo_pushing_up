@@ -1307,6 +1307,24 @@ class FafnirBossArt extends BossArt {
     canvas.save();
     canvas.translate(head.dx, head.dy);
     canvas.scale(1.25);
+    // Đầu chỉ phụ thuộc độ há hàm → ghi sẵn theo 9 mức (đo trên máy thật:
+    // dựng đầu mỗi khung tốn ~3 ms CPU); hơi lạnh ở mũi vẽ riêng.
+    final aq = (f.attack.clamp(0.0, 1.0) * 8).round();
+    _headCache.draw(canvas, aq, (c) => _paintHead(c, aq / 8));
+    final puff = (f.time * 0.9) % 1;
+    canvas.drawCircle(
+      Offset(-36 - 8 * puff, -6 - 6 * puff),
+      2 + 4 * puff,
+      fillPaint(FafnirColors.snow.withValues(alpha: 0.5 * (1 - puff))),
+    );
+    canvas.restore();
+  }
+
+  static final _headCache = PictureCache<int>(maxEntries: 9);
+
+  /// Đầu Fafnir trong hệ toạ độ đầu (đã dời + phóng 1,25): sừng, hàm dưới
+  /// há theo [attack], sọ, nanh, lỗ mũi, mắt.
+  void _paintHead(Canvas canvas, double attack) {
     // Sừng cong vuốt ra sau, diềm gai sau má.
     for (final (pts, w) in const [
       ([Offset(4, -9), Offset(14, -18), Offset(27, -17)], 4.0),
@@ -1338,7 +1356,7 @@ class FafnirBossArt extends BossArt {
     }
     // Hàm dưới mở khi phun băng.
     canvas.save();
-    canvas.rotate(-0.45 * f.attack);
+    canvas.rotate(-0.45 * attack);
     shadedPath(
       canvas,
       Path()
@@ -1352,7 +1370,7 @@ class FafnirBossArt extends BossArt {
       highlight: 0.6,
       outlineWidth: 1.4,
     );
-    if (f.attack > 0.1) {
+    if (attack > 0.1) {
       for (final x in [-24.0, -16.0, -8.0]) {
         canvas.drawPath(
           Path()
@@ -1440,12 +1458,6 @@ class FafnirBossArt extends BossArt {
       const Rect.fromLTWH(-31, -4.4, 2.6, 1.4),
       fillPaint(VectorStyle.outline),
     );
-    final puff = (f.time * 0.9) % 1;
-    canvas.drawCircle(
-      Offset(-36 - 8 * puff, -6 - 6 * puff),
-      2 + 4 * puff,
-      fillPaint(FafnirColors.snow.withValues(alpha: 0.5 * (1 - puff))),
-    );
     // Mắt xanh lạnh phát sáng (gradient, không blur), gờ mày sụp.
     const eye = Offset(-9, -7);
     canvas.drawCircle(
@@ -1479,7 +1491,6 @@ class FafnirBossArt extends BossArt {
       highlight: 0.6,
       outlineWidth: 1,
     );
-    canvas.restore();
   }
 
   void _frostBreath(Canvas canvas, BossFrame f) {

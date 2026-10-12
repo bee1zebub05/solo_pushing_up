@@ -39,6 +39,8 @@ class OrochiBossArt extends BossArt {
     return (a, len);
   }
 
+  static final _neckCache = PictureCache<(int, int, bool)>(maxEntries: 400);
+
   Offset _headAt(int i, double time) {
     final (a, len) = _neck(i);
     final sway = math.sin(time * 1.3 + i * 0.9) * 5;
@@ -424,7 +426,15 @@ class OrochiBossArt extends BossArt {
       final head = _headAt(i, f.time) + Offset(0, f.defeat * 30 * (i % 3));
       final severed = i < _severed || f.defeat > 0.5;
       final current = i == _severed && f.defeat == 0;
-      _neckPath(canvas, head, severed: severed);
+      // Cổ chỉ phụ thuộc vị trí đầu (lắc ngang ±5): ghi sẵn theo vị trí
+      // làm tròn 0,5 — đầu vẽ đè lên che chỗ lệch nhỏ ở đỉnh cổ. Đo trên
+      // máy thật: dựng 8 cổ mỗi khung tốn ~3 ms CPU.
+      final qx = (head.dx * 2).round(), qy = (head.dy * 2).round();
+      _neckCache.draw(canvas, (
+        qx,
+        qy,
+        severed,
+      ), (c) => _neckPath(c, Offset(qx / 2, qy / 2), severed: severed));
       if (severed) {
         _stump(canvas, head);
       } else {

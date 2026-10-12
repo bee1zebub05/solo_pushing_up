@@ -123,6 +123,7 @@ class _BenchScreenState extends State<_BenchScreen>
     Future<void>.delayed(const Duration(milliseconds: 500), () async {
       _recordStages();
       SchedulerBinding.instance.addTimingsCallback(_onTimings);
+      StageProfile.enabled = true;
       _ticker.start();
       // Đo cấu hình đầy đủ ở cả hai hướng máy: ảnh chụp sẵn phụ thuộc độ
       // phân giải màn hình nên bộ nhớ/thời gian tô khác hẳn khi nằm ngang.
@@ -180,6 +181,7 @@ class _BenchScreenState extends State<_BenchScreen>
         setState(() => _status = 'Đo cấu hình $name…');
         await Future<void>.delayed(const Duration(seconds: 2));
         _timings.clear();
+        StageProfile.reset();
         _log('phase $name');
         await Future<void>.delayed(const Duration(seconds: 6));
         _report(name);
@@ -230,6 +232,10 @@ class _BenchScreenState extends State<_BenchScreen>
     );
     _log('[$name] build  ${stats(build)} ms');
     _log('[$name] raster ${stats(raster)} ms');
+    final f = math.max(1, StageProfile.frames);
+    _log(
+      '[$name] cpu-parts ${[for (final e in StageProfile.micros.entries) '${e.key} ${(e.value / f / 1000).toStringAsFixed(2)}'].join(' · ')} ms',
+    );
     final cache = RasterBudget.shared;
     _log(
       '[$name] raster-cache ${(cache.bytes / 1048576).toStringAsFixed(1)} MB '
