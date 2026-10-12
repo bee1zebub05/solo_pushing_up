@@ -372,6 +372,9 @@ class BattleStageGame extends FlameGame {
     );
   }
 
+  /// Cho boss ra đòn ngay (demo/quay video có kịch bản, test).
+  void triggerAttack() => _boss.triggerAttack();
+
   void reset() {
     _raging = false;
     _hero.victorious = false;
@@ -579,6 +582,10 @@ class _BossComponent extends PositionComponent {
   double _attackAge = _attackLength;
   static const _attackLength = 1.2;
   final _random = math.Random();
+
+  void triggerAttack() {
+    if (!defeated) _nextAttack = 0;
+  }
 
   BossFrame get frame => BossFrame(
     time: _time,
