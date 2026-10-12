@@ -93,7 +93,154 @@ const _headScale = 1.12;
 /// [shield]: Khiên vảy rồng sau lưng (phần thưởng Kỳ công 2).
 /// [sword]: Kiếm Kusanagi giắt thắt lưng (phần thưởng Kỳ công 5).
 /// [frost] 0–1: lạnh cóng (Fafnir): ngả xanh, mọc tinh thể băng khi gần 1.
+///
+/// [cacheKey]: tư thế đã làm tròn (ví dụ góc khuỷu theo bước 2°) — khi
+/// có, cả người được chụp thành ảnh theo khoá này và các khung sau chỉ vẽ
+/// ảnh. Đo trên máy thật: vẽ vector nhân vật tốn ~6,6 ms GPU/khung (mỗi
+/// mảng đổ bóng dùng 2 lần clip + nhiều lớp phủ), ảnh chỉ ~0,3 ms. Để null
+/// khi tư thế đang chuyển liên tục (khoá không lặp lại).
 void paintHero(
+  Canvas canvas,
+  HeroPose pose, {
+  HeroLook look = const HeroLook(),
+  bool cloak = false,
+  double glow = 0,
+  double effort = 0,
+  double joy = 0,
+  double frost = 0,
+  bool shield = false,
+  bool sword = false,
+  double time = 0,
+  Object? cacheKey,
+}) {
+  // Lớp lạnh cóng đổi theo thời gian → không chụp ảnh. Áo choàng chụp với
+  // dáng vạt cố định (time = 0): mất chút phấp phới, đổi lại rẻ hơn nhiều.
+  if (cacheKey == null || frost > 0.02) {
+    _paintHeroVector(
+      canvas,
+      pose,
+      look: look,
+      cloak: cloak,
+      glow: glow,
+      effort: effort,
+      joy: joy,
+      frost: frost,
+      shield: shield,
+      sword: sword,
+      time: time,
+    );
+    return;
+  }
+  final e = (effort.clamp(0.0, 1.0) * 4).round();
+  final key = (cacheKey, _lookKey(look), cloak, shield, sword, e, joy > 0.5);
+  var layer = _heroImages.remove(key);
+  if (layer == null) {
+    final q = _quantize(pose);
+    final toe = q[HeroJoint.toe];
+    Offset scaled(Offset p) => toe + (p - toe) * look.height;
+    final xs = [for (final p in q.joints.values) scaled(p).dx];
+    final ys = [for (final p in q.joints.values) scaled(p).dy];
+    // Khung sát người (đầu/tóc/áo choàng chừa thêm phía trên–sau).
+    final bounds = Rect.fromLTRB(
+      xs.reduce(math.min) - 26,
+      ys.reduce(math.min) - 30,
+      xs.reduce(math.max) + 22,
+      ys.reduce(math.max) + 8,
+    );
+    layer = RasterLayer(
+      (c) => _paintHeroVector(
+        c,
+        pose,
+        look: look,
+        cloak: cloak,
+        effort: effort,
+        joy: joy,
+        shield: shield,
+        sword: sword,
+      ),
+      bounds: bounds,
+      // 0,9: ảnh hơi mềm không nhận ra ở cỡ điện thoại, bớt ~20 % bộ nhớ.
+      resolution: 0.9,
+    );
+    while (_heroImages.length >= 120) {
+      final old = _heroImages.remove(_heroImages.keys.first);
+      _evictedRenders += old?.renders ?? 0;
+      old?.dispose();
+    }
+  }
+  _heroImages[key] = layer;
+  if (glow > 0) {
+    final q = _quantize(pose);
+    final toe = q[HeroJoint.toe];
+    canvas.save();
+    canvas.translate(toe.dx, toe.dy);
+    canvas.scale(look.height);
+    canvas.translate(-toe.dx, -toe.dy);
+    _heroGlow(canvas, q, q[HeroJoint.hip], q[HeroJoint.shoulder], glow);
+    canvas.restore();
+  }
+  layer.paint(canvas);
+}
+
+/// Ảnh nhân vật đã chụp theo tư thế (LRU 120; bộ nhớ ảnh còn chịu
+/// [RasterBudget] chung).
+final _heroImages = <Object, RasterLayer>{};
+
+/// Số lần đã chụp ảnh nhân vật (đo hiệu năng: tăng đều = đang chụp lại liên
+/// tục, bộ đệm không có tác dụng).
+int get debugHeroImageRenders =>
+    _heroImages.values.fold(0, (sum, l) => sum + l.renders) + _evictedRenders;
+int _evictedRenders = 0;
+
+/// Hào quang vàng + vệt năng lượng sau mỗi rep (vẽ ngoài ảnh chụp sẵn vì
+/// đổi theo từng khung).
+void _heroGlow(
+  Canvas canvas,
+  HeroPose pose,
+  Offset hip,
+  Offset shoulder,
+  double glow,
+) {
+  // Hào quang: viền vàng nhiều lớp mờ dần (giả blur, không dùng
+  // MaskFilter.blur mỗi khung — rất đắt trên GPU điện thoại).
+  final auraShape = capsulePath(hip, shoulder, 22, 24)
+    ..addPath(capsulePath(shoulder, pose[HeroJoint.wrist], 10, 8), Offset.zero);
+  for (final (w, a) in const [(14.0, 0.2), (8.0, 0.3), (3.0, 0.5)]) {
+    canvas.drawPath(
+      auraShape,
+      Paint()
+        ..color = HeroColors.gold.withValues(alpha: a * glow)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * (0.6 + glow * 0.4)
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+  // Vệt năng lượng bốc lên từ lưng (tụ lực sau mỗi rep), cao dần rồi tắt.
+  final rise = 1 - glow;
+  for (var i = 0; i < 3; i++) {
+    final base = Offset.lerp(hip, shoulder, 0.2 + i * 0.3)!;
+    final from = base + Offset(0, -14 - 10 * rise);
+    final to = base + Offset(i * 2.0 - 2, -30 - 26 * rise);
+    canvas.drawLine(
+      from,
+      to,
+      Paint()
+        ..color = Color.fromRGBO(255, 190, 60, 0.35 * glow)
+        ..strokeWidth = 7
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(
+      from,
+      to,
+      Paint()
+        ..color = Color.fromRGBO(255, 248, 210, glow)
+        ..strokeWidth = 1.8
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+}
+
+void _paintHeroVector(
   Canvas canvas,
   HeroPose pose, {
   HeroLook look = const HeroLook(),
@@ -192,48 +339,7 @@ void paintHero(
   final torsoLen = bodyUp.distance;
   final up = bodyUp / torsoLen;
 
-  if (glow > 0) {
-    // Hào quang: viền vàng nhiều lớp mờ dần (giả blur, không dùng
-    // MaskFilter.blur mỗi khung — rất đắt trên GPU điện thoại).
-    final auraShape = capsulePath(hip, shoulder, 22, 24)
-      ..addPath(
-        capsulePath(shoulder, pose[HeroJoint.wrist], 10, 8),
-        Offset.zero,
-      );
-    for (final (w, a) in const [(14.0, 0.2), (8.0, 0.3), (3.0, 0.5)]) {
-      canvas.drawPath(
-        auraShape,
-        Paint()
-          ..color = HeroColors.gold.withValues(alpha: a * glow)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = w * (0.6 + glow * 0.4)
-          ..strokeJoin = StrokeJoin.round,
-      );
-    }
-    // Vệt năng lượng bốc lên từ lưng (tụ lực sau mỗi rep), cao dần rồi tắt.
-    final rise = 1 - glow;
-    for (var i = 0; i < 3; i++) {
-      final base = Offset.lerp(hip, shoulder, 0.2 + i * 0.3)!;
-      final from = base + Offset(0, -14 - 10 * rise);
-      final to = base + Offset(i * 2.0 - 2, -30 - 26 * rise);
-      canvas.drawLine(
-        from,
-        to,
-        Paint()
-          ..color = Color.fromRGBO(255, 190, 60, 0.35 * glow)
-          ..strokeWidth = 7
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawLine(
-        from,
-        to,
-        Paint()
-          ..color = Color.fromRGBO(255, 248, 210, glow)
-          ..strokeWidth = 1.8
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-  }
+  if (glow > 0) _heroGlow(canvas, pose, hip, shoulder, glow);
 
   final poseKey = _poseKey(pose);
   final lookKey = _lookKey(look);

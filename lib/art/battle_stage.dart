@@ -458,7 +458,9 @@ class _BossComponent extends PositionComponent {
   }
 
   @override
-  void render(Canvas canvas) => art.paintBoss(canvas, frame);
+  void render(Canvas canvas) {
+    if (StageQuality.boss) art.paintBoss(canvas, frame);
+  }
 }
 
 class _ForegroundComponent extends Component {
@@ -513,6 +515,7 @@ class _HeroComponent extends Component {
   HeroPose _shown = HeroPose.standing();
   HeroPose? _from;
   double _blend = 1;
+  Object? _poseKey;
 
   /// Ngực nhân vật: điểm xuất phát của đòn đánh, điểm khoác áo.
   Vector2 get chest {
@@ -545,10 +548,20 @@ class _HeroComponent extends Component {
       _blend = 0;
     }
 
+    // Tư thế làm tròn (góc khuỷu bước 2°; thở / ăn mừng 16–20 pha) để
+    // ảnh chụp sẵn của nhân vật được dùng lại qua các rep.
+    final qAngle = (_angle / 2).round() * 2.0;
+    final breath = ((_time / 3) % 1 * 12).floor();
+    final pump = ((_time / 1.2) % 1 * 16).floor();
     final pose = switch (_mode) {
-      _HeroMode.standing => HeroPose.standing(breath: _time / 3),
-      _HeroMode.plank => HeroPose.plank(_angle, onKnees: onKnees),
-      _HeroMode.victory => HeroPose.victory(pump: _time / 1.2),
+      _HeroMode.standing => HeroPose.standing(breath: breath / 12),
+      _HeroMode.plank => HeroPose.plank(qAngle, onKnees: onKnees),
+      _HeroMode.victory => HeroPose.victory(pump: pump / 16),
+    };
+    _poseKey = switch (_mode) {
+      _HeroMode.standing => ('s', breath),
+      _HeroMode.plank => ('p', qAngle, onKnees),
+      _HeroMode.victory => ('v', pump),
     };
     final from = _from;
     if (from != null && _blend < 1) {
@@ -571,7 +584,11 @@ class _HeroComponent extends Component {
   }
 
   @override
-  void render(Canvas canvas) => paintHero(
+  void render(Canvas canvas) {
+    if (StageQuality.hero) _paint(canvas);
+  }
+
+  void _paint(Canvas canvas) => paintHero(
     canvas,
     _shown,
     look: look,
@@ -586,6 +603,8 @@ class _HeroComponent extends Component {
     shield: shield,
     sword: sword,
     time: _time,
+    // Đang chuyển tư thế thì tư thế không lặp lại: vẽ vector.
+    cacheKey: _blend >= 1 ? _poseKey : null,
   );
 }
 
