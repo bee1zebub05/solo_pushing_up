@@ -408,6 +408,7 @@ class _BattleScreenState extends State<BattleScreen>
               duration: const Duration(milliseconds: 300),
               builder: (context, value, _) => SizedBox(
                 height: 18,
+                width: double.infinity,
                 child: CustomPaint(painter: _HpBarPainter(value)),
               ),
             ),
