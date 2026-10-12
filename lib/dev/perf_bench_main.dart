@@ -11,6 +11,7 @@ import 'package:stage_raster/stage_raster.dart';
 import '../art/battle_stage.dart';
 import '../art/bosses/fafnir_boss.dart';
 import '../art/bosses/nemea_boss.dart';
+import '../art/bosses/nemea_monster_art.dart';
 import '../art/bosses/orochi_boss.dart';
 import '../art/bosses/thuy_tinh_boss.dart';
 import '../art/hero_art.dart';
@@ -136,6 +137,21 @@ class _BenchScreenState extends State<_BenchScreen>
             ('orochi', DeviceOrientation.portraitUp, OrochiBossArt()),
             ('fafnir', DeviceOrientation.portraitUp, FafnirBossArt()),
             ('thuy_tinh', DeviceOrientation.portraitUp, ThuyTinhBossArt()),
+            (
+              'swarm',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.swarm),
+            ),
+            (
+              'hydra',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.hydra),
+            ),
+            (
+              'harpy',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.harpy),
+            ),
           ]) {
         await SystemChrome.setPreferredOrientations([orientation]);
         if (boss != null) {
