@@ -199,7 +199,10 @@ class _BenchScreenState extends State<_BenchScreen>
     // Hít đất giả lập: chu kỳ 1,6 s, góc khuỷu 70–175°.
     final angle = 122 + 52 * math.cos(_t * 2 * math.pi / 1.6);
     _game.updatePlayer(elbowAngle: angle);
-    _game.battle.bossHp = 0.7;
+    _game.battle
+      ..bossHp = 0.7
+      // Nước dâng 30–80% (Thuỷ Tinh): đo cả lớp nước + vân khúc xạ shader.
+      ..water = 55 + 25 * math.sin(_t * 0.5);
     final rep = (_t / 1.6).floor();
     if (rep > _lastHit) {
       _lastHit = rep;

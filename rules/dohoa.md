@@ -101,3 +101,35 @@ Nguồn đọc thêm (tóm tắt thứ cấp, nên đọc sách gốc khi có th
 **Việc nên làm tiếp (theo nghiên cứu):** boss sư tử 2–3 pha; điều chỉnh độ khó động
 khi người chơi hụt mục tiêu; kiểm tra bóng đen/thang xám trong test xem trước;
 1–2 câu thoại thần thoại trước mỗi màn; quái có "điểm yếu" theo biến thể hít đất.
+
+## 6. Chuyển động, shader, âm thanh (12/10/2026 chiều)
+
+Hướng nâng cấp sau khi thêm chi tiết tĩnh không còn đáng (người chơi nhìn
+máy cách 50–80 cm): **chuyển động đọc được từ xa tốt hơn chi tiết**.
+
+**Chuẩn boss (mọi boss mới phải có, dùng chung qua `BossArt`/sân khấu):**
+1. Đòn 3 pha theo `AttackPose` (`lib/art/motion.dart`): lấy đà 0–0,5 (≥ 0,6 s
+   với đòn 1,2 s) → ra đòn 0,5–0,65 → thu về; chạm người chơi ở mốc 0,55.
+   Hình đặc trưng của đòn (hơi băng, sóng…) chỉ hiện từ pha ra đòn; pha lấy
+   đà chỉ là dáng báo trước. Boss tự diễn đòn (sư tử) đặt `ownsAttackMotion`.
+2. Thở + ngả/lao thân + nảy khi trúng đòn: `BossBodyMotion` (lò xo), tự áp
+   cho mọi boss quanh `bodyAnchor`. Không dùng `MoveByEffect` cứng cho boss.
+3. Sương Trì Trệ (shader) sát đất, tan theo máu boss: `mistColor`, `mistAmount`.
+4. Pha cuối (máu < 40%): một khoảnh khắc chuyển pha (gầm, phồng, rung, loé
+   đỏ) + viền đỏ đập nhịp tim; `rageColor`.
+5. Âm `soundKey`: `boss_<key>_tell.wav` (báo đòn — người chơi nhìn sàn phải
+   nghe được) và `boss_<key>_hit.wav`; tạo bằng `tool/gen_boss_sounds.py`.
+
+**Shader (`lib/art/stage_shaders.dart`, `shaders/*.frag`):**
+- Luôn vẽ vào ảnh nhỏ cố định (`ShaderLayer`, ~200×60–130) rồi phóng lên sân
+  khấu, cập nhật ~30 lần/giây. Lý do: toạ độ `FlutterFragCoord` không phụ
+  thuộc camera/saveLayer, và GPU chỉ tô vài chục nghìn điểm ảnh.
+- Hiệu ứng mềm (sương, cực quang, vân nước) hợp độ phân giải thấp; không dùng
+  cách này cho nét sắc.
+- Phải có đường lui: `ShaderLayer.ready == false` thì vẽ bản vector hoặc bỏ qua.
+- Không chờ lại `Future` nạp shader của lần vào trận trước (test treo / màn đen).
+- Không chép shader Shadertoy (giấy phép mặc định CC BY-NC-SA); tự viết.
+
+**Chuyển động trên nhân vật:** nhân vật được chụp ảnh theo tư thế làm tròn,
+nên chuyển động phụ (đuôi băng, tóc) vẽ riêng sẽ phá bộ đệm. Chỉ áp biến đổi
+toàn thân (lò xo giật lùi khi bị đòn) lên ảnh chụp sẵn.
