@@ -1974,7 +1974,7 @@ void _cloud(Canvas canvas, Offset at, double s) {
 /// Mây chụp sẵn thành ảnh (vẽ vector 3 đám mỗi khung tốn tô hình).
 final _cloudImage = RasterLayer(
   (c) => c.drawPicture(_cloudPicture),
-  bounds: const Rect.fromLTRB(-20, -28, 60, 8),
+  bounds: const Rect.fromLTRB(-36, -28, 60, 8),
   resolution: 1.2,
 );
 
@@ -2013,6 +2013,35 @@ final Picture _cloudPicture = () {
       Paint()..color = const Color(0xFFFFF4DA),
     );
   }
+  // Mỗi thuỳ có lưỡi liềm bóng tím nhạt ở mép dưới-phải (khối tròn
+  // chồng lên nhau như súp lơ), thuỳ phía trước che thuỳ sau.
+  for (final (o, r) in lobes) {
+    final c = o + const Offset(-1.5, -3);
+    canvas.drawPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addOval(Rect.fromCircle(center: c, radius: r)),
+        Path()..addOval(
+          Rect.fromCircle(center: c + Offset(-r * 0.12, -r * 0.16), radius: r),
+        ),
+      ),
+      Paint()..color = const Color(0x33B9B4D2),
+    );
+  }
+  // Viền nắng mảnh trên đỉnh các thuỳ cao.
+  for (final (o, r) in lobes.take(5)) {
+    canvas.drawArc(
+      Rect.fromCircle(center: o + const Offset(-1.5, -3), radius: r - 0.6),
+      math.pi * 1.1,
+      math.pi * 0.55,
+      false,
+      Paint()
+        ..color = const Color(0xCCFFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9
+        ..strokeCap = StrokeCap.round,
+    );
+  }
   canvas.restore();
   // Đáy phẳng: dải tím đậm hơn, chỉ trong thân mây.
   canvas.clipPath(body);
@@ -2021,6 +2050,21 @@ final Picture _cloudPicture = () {
     Paint()..color = const Color(0xFFB2ADC9),
   );
   canvas.restore();
+  // Dải mây mỏng kéo theo gió phía sau (trái), mờ dần.
+  for (final (y, x0, len, w) in const [
+    (-1.0, -12.0, 16.0, 2.4),
+    (3.0, -8.0, 12.0, 1.8),
+  ]) {
+    canvas.drawPath(
+      taperedStroke(
+        [Offset(x0, y), Offset(x0 - len * 0.5, y + 0.6), Offset(x0 - len, y)],
+        w,
+        peak: 0.1,
+        startWidth: 1,
+      ),
+      Paint()..color = const Color(0x99E6E2EE),
+    );
+  }
   return recorder.endRecording();
 }();
 
