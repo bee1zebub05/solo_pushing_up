@@ -84,6 +84,12 @@ class BossBodyMotion {
     _squash.kick(critical ? -2.4 : -1.4);
   }
 
+  /// Boss nổi giận (sang pha cuối): phồng người rồi nảy.
+  void enrage() {
+    _squash.kick(3.2);
+    _sway.kick(-120);
+  }
+
   void update(double dt, {required double attackPhase, bool defeated = false}) {
     _time += dt;
     pose = defeated ? AttackPose.none : AttackPose.at(attackPhase);

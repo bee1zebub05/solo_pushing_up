@@ -51,6 +51,9 @@ enum StageCue {
 
   /// Đòn của người chơi trúng boss.
   hit,
+
+  /// Boss sang pha cuối (máu < 40%): gầm lên.
+  rage,
 }
 
 /// Thông số hoạt hình của boss tại một khung.
@@ -201,7 +204,19 @@ class BattleStageGame extends FlameGame {
     boss,
     battle,
     onAttackStart: () => onCue?.call(StageCue.tell),
+    onStrike: _struck,
   );
+
+  /// Đòn của boss chạm tới: nhân vật giật lùi (lò xo) + rung khung nhẹ.
+  void _struck() {
+    _hero.struck();
+    camera.viewfinder.add(
+      MoveByEffect(
+        Vector2(-3, 2),
+        EffectController(duration: 0.05, reverseDuration: 0.07),
+      ),
+    );
+  }
 
   /// Nhận tín hiệu âm thanh (báo đòn, trúng đòn) để màn trận phát tiếng.
   void Function(StageCue cue)? onCue;
@@ -247,8 +262,14 @@ class BattleStageGame extends FlameGame {
     super.onRemove();
   }
 
+  /// Đã vào pha nổi giận (máu < 40%) — chỉ diễn khoảnh khắc chuyển pha một lần.
+  bool _raging = false;
+
   @override
   void update(double dt) {
+    final raging = battle.bossHp < 0.4 && battle.bossHp > 0 && !_boss.defeated;
+    if (raging && !_raging) _enrage();
+    _raging = raging;
     if (_hitstop > 0) {
       _hitstop -= dt;
       super.update(dt * 0.08);
@@ -330,7 +351,22 @@ class BattleStageGame extends FlameGame {
     );
   }
 
+  /// Khoảnh khắc chuyển pha: boss gầm, thân phồng lên, khung rung mạnh, màn
+  /// loé đỏ — người chơi biết trận đã sang hồi cuối.
+  void _enrage() {
+    onCue?.call(StageCue.rage);
+    _boss.motion.enrage();
+    _transition.rage();
+    camera.viewfinder.add(
+      MoveByEffect(
+        Vector2(4, 2),
+        EffectController(duration: 0.05, reverseDuration: 0.05, repeatCount: 5),
+      ),
+    );
+  }
+
   void reset() {
+    _raging = false;
     _hero.victorious = false;
     _boss.defeated = false;
   }
@@ -505,9 +541,18 @@ class _SceneComponent extends Component {
 }
 
 class _BossComponent extends PositionComponent {
-  _BossComponent(this.art, this.battle, {this.onAttackStart});
+  _BossComponent(
+    this.art,
+    this.battle, {
+    this.onAttackStart,
+    this.onStrike,
+  });
 
   final void Function()? onAttackStart;
+
+  /// Mốc trúng của đòn (tiến độ 0–1): sư tử và [AttackPose] đều chạm ở ~0,55.
+  static const strikePhase = 0.55;
+  final void Function()? onStrike;
 
   final BossArt art;
   final StageBattleState battle;
@@ -553,7 +598,12 @@ class _BossComponent extends PositionComponent {
         : math.max(0, _defeat - dt / 0.5);
 
     _nextAttack -= dt;
+    final before = _attackAge / _attackLength;
     _attackAge += dt;
+    final after = _attackAge / _attackLength;
+    if (!defeated && before < strikePhase && after >= strikePhase) {
+      onStrike?.call();
+    }
     if (_nextAttack <= 0 && !defeated) {
       _nextAttack = 7 + _random.nextDouble() * 5;
       _attackAge = 0;
@@ -679,8 +729,10 @@ class _TransitionComponent extends Component {
   static const _introLength = 0.9;
   double _intro = 0;
   double _victory = -1;
+  double _rage = -1;
 
   void victory() => _victory = 0;
+  void rage() => _rage = 0;
 
   @override
   void update(double dt) {
@@ -688,6 +740,10 @@ class _TransitionComponent extends Component {
     if (_victory >= 0) {
       _victory += dt / 0.6;
       if (_victory > 1) _victory = -1;
+    }
+    if (_rage >= 0) {
+      _rage += dt / 0.5;
+      if (_rage > 1) _rage = -1;
     }
   }
 
@@ -710,6 +766,12 @@ class _TransitionComponent extends Component {
             ],
             const [0, 0.7, 1],
           ),
+      );
+    }
+    if (_rage >= 0) {
+      canvas.drawRect(
+        rect,
+        Paint()..color = Color.fromRGBO(200, 30, 20, 0.35 * (1 - _rage)),
       );
     }
     if (_victory >= 0) {
@@ -744,6 +806,11 @@ class _HeroComponent extends Component {
   double glow = 0;
   double cold = 0;
 
+  /// Giật lùi khi bị boss đánh trúng (lò xo: lùi rồi nảy về).
+  final _recoil = Spring(stiffness: 170, damping: 11);
+
+  void struck() => _recoil.kick(-150);
+
   double _time = 0;
   double _angle = 175;
   _HeroMode _mode = _HeroMode.standing;
@@ -766,6 +833,7 @@ class _HeroComponent extends Component {
   void update(double dt) {
     _time += dt;
     glow = math.max(0, glow - dt / 0.4);
+    _recoil.update(0, dt);
     final target = elbowAngle;
     if (target != null) {
       // Làm mượt vì camera chỉ ~20 khung hình/giây.
@@ -820,7 +888,20 @@ class _HeroComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    if (StageQuality.hero) StageProfile.run('hero', () => _paint(canvas));
+    if (!StageQuality.hero) return;
+    StageProfile.run('hero', () {
+      // Biến đổi đặt lên ảnh chụp sẵn của nhân vật: không phá bộ đệm tư thế.
+      final r = _recoil.value;
+      if (r.abs() < 0.05) return _paint(canvas);
+      canvas
+        ..save()
+        ..translate(r, 0)
+        ..translate(90, 220)
+        ..rotate(r * 0.004)
+        ..translate(-90, -220);
+      _paint(canvas);
+      canvas.restore();
+    });
   }
 
   void _paint(Canvas canvas) => paintHero(
