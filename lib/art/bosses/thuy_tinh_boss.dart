@@ -78,6 +78,19 @@ class ThuyTinhBossArt extends BossArt {
       );
     }
 
+    // Dãy núi xa mờ sau Tản Viên (phối cảnh không khí, chìm trong mưa).
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, 150)
+        ..quadraticBezierTo(20, 112, 44, 106)
+        ..quadraticBezierTo(70, 112, 96, 104)
+        ..quadraticBezierTo(150, 82, 196, 92)
+        ..quadraticBezierTo(240, 100, 290, 128)
+        ..lineTo(290, 175)
+        ..lineTo(0, 175)
+        ..close(),
+      fillPaint(const Color(0xFF657F84)),
+    );
     // Núi Tản Viên ba đỉnh (phe Sơn Tinh) phía sau người chơi.
     final far = Path()
       ..moveTo(0, 175)
@@ -101,25 +114,49 @@ class ThuyTinhBossArt extends BossArt {
         ..close(),
       fillPaint(const Color(0xFF3F5B57)),
     );
-    // Rừng phủ sườn Tản Viên: tán tròn li ti, sáng phía trái.
+    // Rừng phủ sườn Tản Viên: hàng tán cây chồng lớp theo sườn (hàng dưới
+    // gần hơn, đè lên hàng trên), mặt đón sáng (trái) xanh tươi, mặt khuất
+    // xanh sẫm; khe xói tối toả xuống từ ba đỉnh.
     canvas.save();
     canvas.clipPath(far);
     final forest = math.Random(8);
-    for (var i = 0; i < 320; i++) {
-      final x = forest.nextDouble() * 262;
-      final y = 80 + forest.nextDouble() * 95;
-      final r = 1.3 + forest.nextDouble() * 1.4;
-      final shaded = x > 150 + (y - 66) * 0.5;
-      canvas.drawCircle(
-        Offset(x, y),
-        r,
-        fillPaint(shaded ? const Color(0xFF42605B) : const Color(0xFF557566)),
-      );
-      canvas.drawCircle(
-        Offset(x - r * 0.3, y - r * 0.3),
-        r * 0.5,
-        fillPaint(shaded ? const Color(0xFF4A6963) : const Color(0xFF628473)),
-      );
+    // Khe xói vẽ trước (tán cây phủ lên mép khe).
+    final gully = fillPaint(const Color(0x55263C38));
+    for (final (peak, spreads) in const [
+      (Offset(55, 92), [-0.7, 0.5]),
+      (Offset(135, 66), [-0.9, -0.2, 0.6]),
+      (Offset(215, 100), [-0.5, 0.7]),
+    ]) {
+      for (final k in spreads) {
+        final h = 175 - peak.dy;
+        canvas.drawPath(
+          taperedStroke(
+            [
+              peak + const Offset(0, 2),
+              peak + Offset(k * h * 0.18 + 4 * k.sign, h * 0.35),
+              peak + Offset(k * h * 0.5, h * 0.9),
+            ],
+            7,
+            peak: 0.45,
+            startWidth: 0.2,
+          ),
+          gully,
+        );
+      }
+    }
+    for (var row = 0; row < 30; row++) {
+      final y = 68.0 + row * 3.6;
+      for (var x = -4.0; x < 266; x += 3 + forest.nextDouble() * 3.4) {
+        if (forest.nextDouble() < 0.18) continue; // khoảng thưa
+        final r = 1.6 + forest.nextDouble() * 1.3;
+        final c = Offset(x, y + forest.nextDouble() * 3);
+        final shaded = c.dx > 150 + (c.dy - 66) * 0.5;
+        canvas.drawCircle(
+          c,
+          r,
+          fillPaint(shaded ? const Color(0x553F5E58) : const Color(0x885E8170)),
+        );
+      }
     }
     canvas.restore();
     // Đền thờ Sơn Tinh trên đỉnh giữa: mái cong đầu đao.
