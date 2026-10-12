@@ -185,6 +185,84 @@ class FafnirBossArt extends BossArt {
         fillPaint(const Color(0x668FAAC4)),
       );
     }
+    // Luống tuyết gió thổi có khối: sườn đón trăng sáng, mép sau sắc tối
+    // (sastrugi), xếp so le theo chiều sâu.
+    final drift = math.Random(21);
+    for (var i = 0; i < 9; i++) {
+      final x = drift.nextDouble() * (w + 40) - 20;
+      final y =
+          stageGroundY + 10 + drift.nextDouble() * (h - stageGroundY - 14);
+      final depth = (y - stageGroundY) / (h - stageGroundY);
+      final len = 26 + depth * 40;
+      final hh = 2 + depth * 3;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, y)
+          ..quadraticBezierTo(x + len * 0.55, y - hh * 1.6, x + len, y)
+          ..quadraticBezierTo(x + len * 0.7, y + hh * 0.4, x, y)
+          ..close(),
+        fillPaint(const Color(0xFFF4F9FF)),
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(x + len * 0.55, y - hh * 0.8)
+          ..quadraticBezierTo(x + len * 0.8, y - hh * 0.4, x + len, y)
+          ..quadraticBezierTo(
+            x + len * 0.75,
+            y + hh * 0.5,
+            x + len * 0.5,
+            y + 0.4,
+          )
+          ..close(),
+        fillPaint(const Color(0x887E9CBA)),
+      );
+    }
+    // Đá đen nhô khỏi tuyết, mũ tuyết trên đỉnh.
+    for (final (c, rw) in const [
+      (Offset(40, 248.0), 10.0),
+      (Offset(176, 238.0), 7.0),
+      (Offset(236, 256.0), 12.0),
+    ]) {
+      final rock = Path()
+        ..moveTo(c.dx - rw, c.dy)
+        ..lineTo(c.dx - rw * 0.6, c.dy - rw * 0.55)
+        ..lineTo(c.dx + rw * 0.2, c.dy - rw * 0.7)
+        ..lineTo(c.dx + rw, c.dy - rw * 0.2)
+        ..lineTo(c.dx + rw * 0.9, c.dy)
+        ..close();
+      canvas.drawPath(rock, fillPaint(const Color(0xFF3A4656)));
+      canvas.drawPath(
+        Path()
+          ..moveTo(c.dx + rw * 0.2, c.dy - rw * 0.7)
+          ..lineTo(c.dx + rw, c.dy - rw * 0.2)
+          ..lineTo(c.dx + rw * 0.9, c.dy)
+          ..lineTo(c.dx + rw * 0.1, c.dy)
+          ..close(),
+        fillPaint(const Color(0xFF283240)),
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(c.dx - rw * 0.7, c.dy - rw * 0.5)
+          ..lineTo(c.dx + rw * 0.2, c.dy - rw * 0.75)
+          ..lineTo(c.dx + rw * 0.8, c.dy - rw * 0.3)
+          ..quadraticBezierTo(
+            c.dx + rw * 0.1,
+            c.dy - rw * 0.35,
+            c.dx - rw * 0.7,
+            c.dy - rw * 0.5,
+          )
+          ..close(),
+        fillPaint(const Color(0xFFF4F9FF)),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + Offset(rw * 0.4, 1),
+          width: rw * 2.4,
+          height: 3,
+        ),
+        fillPaint(const Color(0x557E9CBA)),
+      );
+    }
     final sparkle = math.Random(13);
     for (var i = 0; i < 40; i++) {
       canvas.drawCircle(
