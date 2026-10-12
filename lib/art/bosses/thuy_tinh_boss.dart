@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../battle_stage.dart';
+import '../stage_shaders.dart';
 import '../nemea_scene.dart' show stageGroundY, stageSize;
 import '../vector_style.dart';
 
@@ -1366,6 +1367,12 @@ class ThuyTinhBossArt extends BossArt {
   }
 
   // ------------------------------------------------------- nước dâng
+  /// Vân khúc xạ bằng shader GPU; không nạp được thì vẽ bản vector.
+  final _caustics = ShaderLayer(StageShaders.caustics, width: 200, height: 60);
+
+  @override
+  void dispose() => _caustics.dispose();
+
   @override
   void paintForeground(Canvas canvas, BossFrame f) {
     final level = f.battle.water.clamp(0.0, 100.0);
@@ -1410,7 +1417,17 @@ class ThuyTinhBossArt extends BossArt {
     // trôi chậm, dày ở gần mặt nước, nhạt dần xuống sâu.
     canvas.save();
     canvas.clipPath(path);
-    for (var row = 0; row < 5; row++) {
+    if (_caustics.ready) {
+      // Bản shader: mạng vân sáng động thật (stage_shaders.dart).
+      _caustics.paint(
+        canvas,
+        Rect.fromLTRB(0, surface - 4, w, h),
+        time: t,
+        blendMode: BlendMode.plus,
+        uniforms: (s) => s.setFloat(3, danger ? 0.7 : 1),
+      );
+    }
+    for (var row = 0; row < (_caustics.ready ? 0 : 5); row++) {
       final y0 = surface + 10 + row * 14;
       if (y0 > h) break;
       final a = 0.22 * (1 - row / 5);
