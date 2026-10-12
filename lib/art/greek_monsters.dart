@@ -425,7 +425,6 @@ void paintSpartoi(
   double hurt = 0,
   double rise = 1,
 }) {
-
   // Bóng tiếp đất, đậm dần khi trồi lên.
   canvas.drawOval(
     Rect.fromCenter(center: const Offset(6, 1), width: 52, height: 8),
@@ -2265,12 +2264,26 @@ void paintStoneSoldier(
     _glowEye(canvas, const Offset(-6.2, -2.2), 1.05, stagnation);
     canvas.restore();
 
-    // Tay đá cầm giáo, đâm tới khi tấn công.
+    // Tay đá cầm giáo: vai tròn, bắp tay, khuỷu gập ra sau sát hông,
+    // cẳng tay đưa giáo ra trước; duỗi thẳng khi đâm.
     final hand = Offset(-16 - 14 * lunge, -58);
+    final elbow = Offset(-5 - 8 * lunge, -55 + 1 * lunge);
     shadedChain(canvas, [
-      (const Offset(-12, -70), Offset(-18 - 4 * lunge, -62), 4.5, 4),
-      (Offset(-18 - 4 * lunge, -62), hand, 4, 4),
+      (const Offset(-12, -68), elbow, 6.4, 5.2),
+      (elbow, hand, 5, 4.2),
     ], marble);
+    // Rãnh cơ nhị đầu + nếp khuỷu tạc trên đá.
+    canvas.drawPath(
+      taperedStroke(
+        [
+          const Offset(-12, -66),
+          Offset.lerp(const Offset(-12, -68), elbow, 0.7)!,
+        ],
+        0.9,
+        peak: 0.5,
+      ),
+      _fill(marbleDark.withValues(alpha: 0.7)),
+    );
     final back = hand + const Offset(28, -10);
     final tip = hand + Offset(-28 - 8 * lunge, 2);
     canvas.drawLine(back, tip, _stroke(_outline, 3.4));
@@ -2283,6 +2296,25 @@ void paintStoneSoldier(
       marbleDark,
       shadow: 1,
     );
+    // Nắm tay đá quanh cán giáo (vẽ sau giáo để ngón đè lên cán).
+    _shaded(
+      canvas,
+      Path()..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: hand, width: 5.6, height: 5.2),
+          const Radius.circular(2.6),
+        ),
+      ),
+      marble,
+      shadow: 1,
+    );
+    for (var k = 0; k < 3; k++) {
+      canvas.drawLine(
+        hand + Offset(-1.8 + k * 1.5, -2),
+        hand + Offset(-2.1 + k * 1.5, 0.5),
+        _stroke(marbleDark, 0.6),
+      );
+    }
     // Báo trước cú đâm: mũi giáo loé sao tím (màu Trì Trệ) lúc lấy đà.
     if (attack > 0.02 && attack < 0.6) {
       final k = math.sin(attack / 0.6 * math.pi);
