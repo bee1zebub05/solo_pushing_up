@@ -222,19 +222,106 @@ class OrochiBossArt extends BossArt {
           const [Color(0xFF5A4636), Color(0xFF3A2C24)],
         ),
     );
+    // Mép bờ ẩm sát nước: dải sẫm + viền hắt ánh hoàng hôn.
+    canvas.drawRect(
+      Rect.fromLTRB(0, stageGroundY - 4, w, stageGroundY + 2),
+      fillPaint(const Color(0xFF2E221C)),
+    );
+    canvas.drawLine(
+      Offset(0, stageGroundY - 3.6),
+      Offset(w, stageGroundY - 3.6),
+      Paint()
+        ..color = const Color(0x88F2A65A)
+        ..strokeWidth = 0.8,
+    );
+    // Vệt trườn của Orochi: dải lõm rộng uốn lượn, in vảy hình cung.
+    final trail = <Offset>[
+      for (var x = 160.0; x <= w + 10; x += 20)
+        Offset(x, stageGroundY + 22 + math.sin(x * 0.035) * 6),
+    ];
+    canvas.drawPath(
+      taperedStroke(trail, 14, peak: 1, startWidth: 0.2, endWidth: 1),
+      fillPaint(const Color(0x55241A14)),
+    );
+    final scaleMark = Paint()
+      ..color = const Color(0x44181010)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    for (var k = 1; k < trail.length - 1; k++) {
+      final p = trail[k];
+      final width = 10.0 * ((k / trail.length) * 0.8 + 0.2);
+      for (var r = -1; r <= 1; r++) {
+        canvas.drawArc(
+          Rect.fromCenter(
+            center: p + Offset(r.isEven ? 0 : 5, r * width * 0.3),
+            width: 5,
+            height: 4,
+          ),
+          -math.pi / 2,
+          math.pi,
+          false,
+          scaleMark,
+        );
+      }
+    }
+    // Đá cuội có khối: bóng đổ dưới, thân đá, viền sáng ấm phía trên.
     final pebbles = math.Random(12);
-    for (var i = 0; i < 30; i++) {
+    for (var i = 0; i < 34; i++) {
       final c = Offset(
         pebbles.nextDouble() * w,
-        stageGroundY + 4 + pebbles.nextDouble() * (h - stageGroundY - 6),
+        stageGroundY + 5 + pebbles.nextDouble() * (h - stageGroundY - 7),
       );
+      final depth = (c.dy - stageGroundY) / (h - stageGroundY);
+      final pw = (3 + pebbles.nextDouble() * 4) * (0.7 + depth * 0.8);
+      final ph = (1.6 + pebbles.nextDouble() * 1.4) * (0.7 + depth * 0.8);
+      final rect = Rect.fromCenter(center: c, width: pw, height: ph);
       canvas.drawOval(
-        Rect.fromCenter(
-          center: c,
-          width: 3 + pebbles.nextDouble() * 4,
-          height: 1.6 + pebbles.nextDouble() * 1.4,
-        ),
-        fillPaint(const Color(0xFF6E5A48)),
+        rect.shift(Offset(0.6, ph * 0.35)),
+        fillPaint(const Color(0x66181010)),
+      );
+      canvas.drawOval(rect, fillPaint(const Color(0xFF6E5A48)));
+      canvas.drawArc(
+        rect.deflate(0.3),
+        math.pi * 1.05,
+        math.pi * 0.8,
+        false,
+        Paint()
+          ..color = const Color(0xAAF2A65A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
+    // Cỏ lau ven bờ (ngược sáng, mép cam) và mảng rêu.
+    final reed = Paint()
+      ..color = const Color(0xFF2A2A1C)
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round;
+    final reedLit = Paint()
+      ..color = const Color(0x99F2A65A)
+      ..strokeWidth = 0.5
+      ..strokeCap = StrokeCap.round;
+    for (final x0 in const [6.0, 128.0, 210.0]) {
+      for (var k = 0; k < 7; k++) {
+        final x = x0 + k * 2.6 + pebbles.nextDouble() * 1.5;
+        final hh = 7 + pebbles.nextDouble() * 9;
+        final lean = (pebbles.nextDouble() - 0.4) * 4;
+        final base = Offset(x, stageGroundY + 1);
+        final top = base + Offset(lean, -hh);
+        canvas.drawLine(base, top, reed);
+        canvas.drawLine(
+          base + const Offset(0.5, -1),
+          top + const Offset(0.4, 1),
+          reedLit,
+        );
+      }
+    }
+    for (final (c, rw) in const [
+      (Offset(60, 236.0), 18.0),
+      (Offset(290, 242.0), 24.0),
+    ]) {
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: rw, height: 4),
+        fillPaint(const Color(0x664A5A2E)),
       );
     }
     _torii(canvas);
