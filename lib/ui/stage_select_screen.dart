@@ -164,8 +164,25 @@ class _StageTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Text(
-                    '🎯 ${stage.tip}',
+                  // Biểu tượng vẽ bằng Icon thay emoji: emoji mỗi hệ điều
+                  // hành một kiểu (iPhone khác Android), lạc tông vàng đồng.
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        const WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(
+                              Icons.track_changes,
+                              size: 15,
+                              color: GreekUi.gold,
+                            ),
+                          ),
+                        ),
+                        TextSpan(text: stage.tip),
+                      ],
+                    ),
                     style: const TextStyle(color: GreekUi.ink),
                   ),
                 ],
