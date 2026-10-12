@@ -624,6 +624,50 @@ class ThuyTinhBossArt extends BossArt {
       highlight: 1,
       outlineWidth: 1.4,
     );
+    // Ngạnh móc ngược ở ba mũi (đinh ba đâm cá), gân sáng dọc mũi giữa.
+    for (final (base, dir) in [
+      (top + const Offset(-14.6, -5), -1.0),
+      (top + const Offset(14.6, -5), 1.0),
+      (top + const Offset(0, -16), -1.0),
+    ]) {
+      final barb = Path()
+        ..moveTo(base.dx, base.dy)
+        ..lineTo(base.dx - dir * 3.4, base.dy + 3.6)
+        ..lineTo(base.dx - dir * 0.4, base.dy + 2.4)
+        ..close();
+      canvas.drawPath(
+        barb,
+        Paint()
+          ..color = VectorStyle.outline
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..strokeJoin = StrokeJoin.round,
+      );
+      canvas.drawPath(barb, fillPaint(darken(ThuyTinhColors.gold, 0.12)));
+    }
+    canvas.drawLine(
+      top + const Offset(-0.6, -20),
+      top + const Offset(-0.6, 8),
+      Paint()
+        ..color = const Color(0xCCFFF6C8)
+        ..strokeWidth = 0.7,
+    );
+    // Đai cổ đinh ba: vòng vàng chạm sóng + ngọc lam.
+    final collar = Rect.fromCenter(
+      center: top + const Offset(0.4, 20),
+      width: 9,
+      height: 5,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(collar.inflate(1), const Radius.circular(2)),
+      fillPaint(VectorStyle.outline),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(collar, const Radius.circular(1.6)),
+      fillPaint(ThuyTinhColors.gold),
+    );
+    canvas.drawCircle(collar.center, 1.5, fillPaint(const Color(0xFF2FB6A6)));
+    glint(canvas, collar.center + const Offset(-0.5, -0.5), 0.6, alpha: 0.9);
     // Ánh nước toả ra khi đe doạ.
     if (attack > 0.05) {
       final r = 18 + 14 * attack;
