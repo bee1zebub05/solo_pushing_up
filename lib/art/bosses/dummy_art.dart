@@ -189,6 +189,32 @@ class TrainingDummyArt extends BossArt {
     for (var x = -22.0; x < 22; x += 3) {
       canvas.drawLine(b + Offset(x, -120), b + Offset(x + 1, -56), weave);
     }
+    // Nếp nhăn bao bố: túm lại ở dây cổ và eo (nếp toả từ chỗ buộc),
+    // phình giữa thân do nhồi rơm; mỗi nếp một vệt tối + vệt sáng kề.
+    final crease = fillPaint(const Color(0x557A5A32));
+    final creaseLit = fillPaint(const Color(0x55F2E2BC));
+    for (final (from, to) in const [
+      (Offset(-12, -110), Offset(-17, -100)),
+      (Offset(-4, -109), Offset(-6, -101)),
+      (Offset(8, -110), Offset(13, -101)),
+      (Offset(-11, -64), Offset(-16, -74)),
+      (Offset(-2, -63), Offset(-3, -71)),
+      (Offset(9, -64), Offset(15, -73)),
+    ]) {
+      canvas.drawPath(
+        taperedStroke([b + from, b + to], 2, peak: 0.2, startWidth: 1),
+        crease,
+      );
+      canvas.drawPath(
+        taperedStroke(
+          [b + from + const Offset(-1.6, 0), b + to + const Offset(-1.6, 0)],
+          1.2,
+          peak: 0.2,
+          startWidth: 1,
+        ),
+        creaseLit,
+      );
+    }
     // Bia hồng tâm sơn đỏ trắng trên ngực, sơn tróc.
     final center = b + const Offset(-4, -92);
     for (final (r, c) in const [
@@ -232,6 +258,51 @@ class TrainingDummyArt extends BossArt {
           peak: 0.5,
           startWidth: 0.9,
           endWidth: 0.9,
+        ),
+        fillPaint(rope),
+      );
+    }
+    // Thớ xoắn của dây + nút buộc ở eo với hai đầu dây thòng.
+    final twist = Paint()
+      ..color = const Color(0xFF5A4022)
+      ..strokeWidth = 0.6;
+    for (final y in const [-112.0, -62.0]) {
+      final w = y < -100 ? 15.0 : 13.0;
+      for (var x = -w + 2; x < w - 1; x += 2.6) {
+        final t = (x + w) / (2 * w);
+        final yy = y + 1 + 1.4 * 4 * t * (1 - t);
+        canvas.drawLine(
+          b + Offset(x - 0.6, yy - 0.9),
+          b + Offset(x + 0.6, yy + 0.9),
+          twist,
+        );
+      }
+    }
+    final knot = b + const Offset(7, -61);
+    canvas.drawCircle(knot, 2.2, fillPaint(rope));
+    canvas.drawCircle(
+      knot,
+      2.2,
+      Paint()
+        ..color = const Color(0xFF3A2A1A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7,
+    );
+    for (final (end, w) in const [
+      (Offset(9, -50), 1.8),
+      (Offset(5, -52), 1.6),
+    ]) {
+      canvas.drawPath(
+        taperedStroke(
+          [
+            knot,
+            Offset.lerp(knot, b + end, 0.5)! + const Offset(1, 0),
+            b + end,
+          ],
+          w,
+          peak: 0.1,
+          startWidth: 1,
+          endWidth: 0.7,
         ),
         fillPaint(rope),
       );
