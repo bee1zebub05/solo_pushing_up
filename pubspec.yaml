@@ -83,6 +83,7 @@ flutter:
   shaders:
     - shaders/stagnation_mist.frag
     - shaders/aurora.frag
+    - shaders/caustics.frag
 
   # To add assets to your application, add an assets section, like this:
   # assets:

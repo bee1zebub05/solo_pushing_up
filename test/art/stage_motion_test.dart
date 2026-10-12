@@ -66,6 +66,7 @@ void main() {
       await run(300);
       await shot('intro');
       game.updatePlayer(elbowAngle: 160);
+      game.battle.water = 60;
       // Đòn đầu của boss đến ở giây 1,5: giữa pha lấy đà và lúc ra đòn.
       await run(1500);
       await shot('windup');

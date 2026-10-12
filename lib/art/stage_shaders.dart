@@ -12,6 +12,7 @@ import 'package:flutter/painting.dart';
 abstract final class StageShaders {
   static const mist = 'shaders/stagnation_mist.frag';
   static const aurora = 'shaders/aurora.frag';
+  static const caustics = 'shaders/caustics.frag';
 
   static final _programs = <String, ui.FragmentProgram>{};
   static final _failed = <String>{};
@@ -19,7 +20,7 @@ abstract final class StageShaders {
   /// Nạp mọi shader một lần cho cả app (gọi lúc vào trận). Đã nạp (hoặc đã
   /// hỏng) thì bỏ qua, không chờ lại Future cũ của lần vào trận trước.
   static Future<void> load() async {
-    for (final asset in const [mist, aurora]) {
+    for (final asset in const [mist, aurora, caustics]) {
       if (_programs.containsKey(asset) || _failed.contains(asset)) continue;
       try {
         _programs[asset] = await ui.FragmentProgram.fromAsset(asset);
