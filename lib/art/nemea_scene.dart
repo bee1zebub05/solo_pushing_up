@@ -333,6 +333,7 @@ void _farMountains(Canvas canvas) {
     const Color(0xFF86A79A),
     const Color(0xFF6A8784),
     floor: 185,
+    forest: true,
   );
 }
 
@@ -346,6 +347,7 @@ void _ridge(
   Color lit,
   Color shade, {
   required double floor,
+  bool forest = false,
 }) {
   final rnd = math.Random(peaks.length * 31 + floor.toInt());
   // Chèn điểm gồ ghề giữa các đỉnh.
@@ -406,6 +408,50 @@ void _ridge(
       );
     }
   }
+  // Vân đá nằm ngang mờ trên sườn (lớp trầm tích), đứt quãng.
+  final strata = Paint()
+    ..color = shade.withValues(alpha: 0.4)
+    ..strokeWidth = 0.6;
+  for (var k = 0; k < 14; k++) {
+    final x = rnd.nextDouble() * 400;
+    final y =
+        _ridgeY(line, x) +
+        6 +
+        rnd.nextDouble() * (floor - 20 - _ridgeY(line, x));
+    final len = 8 + rnd.nextDouble() * 18;
+    canvas.drawLine(Offset(x, y), Offset(x + len, y + len * 0.08), strata);
+  }
+  // Rừng thông xa: chòm chấm tối dọc khe xói và chân sườn.
+  if (forest) {
+    final tree = Paint()..color = darken(shade, 0.22).withValues(alpha: 0.8);
+    final treeLit = Paint()..color = lit.withValues(alpha: 0.7);
+    for (var c = 0; c < 22; c++) {
+      final cx = rnd.nextDouble() * 410 - 5;
+      final ridgeY = _ridgeY(line, cx);
+      final cy = ridgeY + 6 + rnd.nextDouble() * (floor - ridgeY - 6) * 0.9;
+      final n = 3 + rnd.nextInt(5);
+      for (var t = 0; t < n; t++) {
+        final p = Offset(
+          cx + (rnd.nextDouble() - 0.5) * 9,
+          cy + (rnd.nextDouble() - 0.5) * 4,
+        );
+        if (p.dy < _ridgeY(line, p.dx) + 3) continue;
+        canvas.drawPath(
+          _poly([
+            p + const Offset(0, -3.2),
+            p + const Offset(1.3, 0.8),
+            p + const Offset(-1.3, 0.8),
+          ]),
+          tree,
+        );
+        canvas.drawLine(
+          p + const Offset(-0.2, -2.8),
+          p + const Offset(-0.9, 0.4),
+          treeLit..strokeWidth = 0.4,
+        );
+      }
+    }
+  }
   // Sương chân núi.
   final top = peaks.map((p) => p.dy).reduce(math.min);
   canvas.drawRect(
@@ -425,6 +471,18 @@ void _ridge(
     if (b.dy >= a.dy) continue; // chỉ đoạn đi lên (sườn trái đón nắng)
     canvas.drawPath(taperedStroke([a, b], 1.1, peak: 0.6), rim);
   }
+}
+
+/// Độ cao sống núi tại [x] (nội suy tuyến tính theo đường gồ ghề).
+double _ridgeY(List<Offset> line, double x) {
+  for (var i = 1; i < line.length; i++) {
+    final a = line[i - 1], b = line[i];
+    if (x <= b.dx) {
+      final t = ((x - a.dx) / (b.dx - a.dx)).clamp(0.0, 1.0);
+      return a.dy + (b.dy - a.dy) * t;
+    }
+  }
+  return line.last.dy;
 }
 
 void _midHills(Canvas canvas) {
