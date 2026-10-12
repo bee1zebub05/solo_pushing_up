@@ -183,3 +183,13 @@ Tay chân phía xa (khuất, tối) đặt `definition: 0` để tiết kiệm h
 - Impeller tính "raster" gồm cả chia tam giác đường cong vector: mọi thứ
   vector vẽ mỗi khung (mây, tiền cảnh…) đều tốn; tĩnh thì chụp sẵn.
 - Đo: `bash tool/bench_device.sh` (dọc + ngang, bộ nhớ ảnh, log BENCH).
+- **`PictureCache` chỉ tiết kiệm CPU; GPU vẫn tô lại mọi đường cong mỗi
+  khung.** Mỗi `shadedPath` = 2 lần `clipPath` + nhiều lớp phủ → rất đắt trên
+  Impeller. Nhân vật chính tốn ~6,6 ms GPU/khung cho tới khi chụp thành ảnh
+  theo tư thế làm tròn (`paintHero(cacheKey:)`, góc khuỷu bước 2°).
+- Mẫu chung cho vật động lặp lại: làm tròn đầu vào (góc, pha thở) thành
+  khoá → `RasterLayer` theo khoá (LRU) → phần thay đổi liên tục (hào quang,
+  hạt) vẽ riêng ngoài ảnh; lúc chuyển trạng thái thì vẽ vector.
+- Đo bóc tách: `StageQuality.hero/boss/grade/dust` tắt từng phần trong bench.
+- Sau mỗi thay đổi giao diện trận: chụp màn hình trên máy thật (test không
+  có màn trận vì cần camera) — từng làm mất thanh máu mà test không bắt.
