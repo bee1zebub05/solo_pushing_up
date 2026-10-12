@@ -102,6 +102,11 @@ giữa nhân vật và boss.
 - [ ] Hướng sáng thống nhất: trên–trái (`VectorStyle.lightWorld`)?
 - [ ] Tỉ lệ đúng Loomis (≥ 5,5 đầu)? Đủ 6 vùng sáng–tối? Bóng ngả nhiệt độ ngược ánh sáng?
 - [ ] Hoạt hình có lấy đà, co–giãn, chuyển động theo sau?
+- [ ] Mặt quái/rồng không có hàng vảy cung nằm ngang dưới mắt? (ở cỡ điện
+      thoại nó đọc thành **miệng mỉm cười** — dùng tấm vảy sọ dọc sống mũi,
+      sọc tối sau mắt, vảy li ti ở má).
+- [ ] Chi có khớp (khuỷu, gối, hock) chứ không phải "cột thẳng"? Tay cầm vũ
+      khí nhìn thấy được từ vai tới nắm tay?
 
 ## 4. Công cụ sẵn có (`lib/art/vector_style.dart`)
 
@@ -193,3 +198,20 @@ Tay chân phía xa (khuất, tối) đặt `definition: 0` để tiết kiệm h
 - Đo bóc tách: `StageQuality.hero/boss/grade/dust` tắt từng phần trong bench.
 - Sau mỗi thay đổi giao diện trận: chụp màn hình trên máy thật (test không
   có màn trận vì cần camera) — từng làm mất thanh máu mà test không bắt.
+
+## 11. Quái động và CPU dựng khung (đo trên máy thật, đêm 12/10/2026)
+
+- Màn quái phải có trong bench (`tool/bench_device.sh` đo đủ 7 màn quái):
+  đàn chim từng chỉ ~28 fps (CPU 26 ms + GPU 26 ms) vì 5 con vẽ vector mỗi
+  khung; Harpy ~40 fps.
+- Mẫu `_FrameCache` (greek_monsters.dart): ảnh theo **pha chuyển động lặp**
+  (12–24 pha) × mức ra đòn (7–9 mức). Muốn vòng pha liền mạch thì mọi
+  chuyển động phụ (tóc, đuôi, lông cổ, sóng) phải **cùng tần số** (hoặc bội
+  số) với chuyển động chính. Loé trúng đòn = `colorFilter` trên ảnh, không
+  cần lớp.
+- Phần chỉ phụ thuộc một tham số nhỏ (độ há hàm, vị trí đầu làm tròn 0,5)
+  → `PictureCache` theo khoá: mặt Thuỷ Tinh, đầu Fafnir, cổ Orochi. CPU
+  paintBoss giảm 3–5 lần.
+- Tìm chỗ tốn CPU bằng `StageProfile` (battle_stage.dart): bench in
+  `cpu-parts` (nền / cảnh / boss / nhân vật / tiền cảnh / tổng render) mỗi
+  pha. Bọc tạm `StageProfile.run('tên', ...)` quanh hàm con để bóc tách.
