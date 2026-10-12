@@ -732,7 +732,6 @@ class ThuyTinhBossArt extends BossArt {
   }
 
   void _head(Canvas canvas, BossFrame f) {
-    const c = Offset(318, 68);
     // Râu nước chảy xuống ngực, đung đưa quanh cằm.
     const chin = Offset(316, 76);
     canvas.save();
@@ -741,6 +740,17 @@ class ThuyTinhBossArt extends BossArt {
     canvas.translate(-chin.dx, -chin.dy);
     _beardImage.paint(canvas);
     canvas.restore();
+    // Mặt chỉ phụ thuộc độ há miệng → ghi sẵn theo 9 mức (đo trên máy
+    // thật: dựng mặt mỗi khung tốn ~3,4 ms CPU).
+    final aq = (f.attack.clamp(0.0, 1.0) * 8).round();
+    _faceCache.draw(canvas, aq, (c) => _face(c, aq / 8));
+  }
+
+  static final _faceCache = PictureCache<int>(maxEntries: 9);
+
+  /// Mặt, mắt, ria, miệng (há theo [attack]) — không gồm râu đung đưa.
+  void _face(Canvas canvas, double attack) {
+    const c = Offset(318, 68);
     // Mặt (quay sang trái về phía người chơi).
     // Mặt nghiêng quay trái: trán, gờ mày dô, sống mũi thẳng kiểu tượng,
     // gò má, hàm vuông.
@@ -880,7 +890,7 @@ class ThuyTinhBossArt extends BossArt {
       fillPaint(VectorStyle.outline),
     );
     // Miệng: há ra khi đe doạ.
-    final open = 2 + 6 * f.attack;
+    final open = 2 + 6 * attack;
     final mouth = Path()
       ..moveTo(296, 74)
       ..quadraticBezierTo(303, 74 + open, 310, 73)
@@ -1060,9 +1070,21 @@ class ThuyTinhBossArt extends BossArt {
   }
 
   void _waveThrone(Canvas canvas, BossFrame f) {
+    // Mọi chuyển động của sóng cùng chu kỳ π giây → ghi sẵn 48 pha × 9 mức
+    // dâng (đo trên máy thật: dựng sóng mỗi khung tốn ~2 ms CPU).
+    final phase = (f.time / math.pi * 48).floor() % 48;
+    final sq = (f.attack.clamp(0.0, 1.0) * 8).round();
+    _waveCache.draw(canvas, (
+      phase,
+      sq,
+    ), (c) => _paintWaveThrone(c, phase / 48 * math.pi, sq / 8));
+  }
+
+  static final _waveCache = PictureCache<(int, int)>(maxEntries: 140);
+
+  void _paintWaveThrone(Canvas canvas, double t, double attack) {
     // Con sóng cuộn ôm lấy thân dưới; dâng cao khi đe doạ.
-    final surge = 10 * f.attack;
-    final t = f.time;
+    final surge = 10 * attack;
     final wave = Path()
       ..moveTo(246, 240)
       ..cubicTo(250, 210 - surge, 262, 182 - surge, 290, 170 - surge)
@@ -1123,7 +1145,7 @@ class ThuyTinhBossArt extends BossArt {
         for (var k = 0; k < 6; k++)
           Offset(
             272 + i * 6 + k * 24.0,
-            y + math.sin(t * 1.4 + k * 1.3 + i) * 2.5,
+            y + math.sin(t * 2 + k * 1.3 + i) * 2.5,
           ),
       ];
       canvas.drawPath(taperedStroke(pts, 1.6, peak: 0.5, samples: 12), lace);

@@ -31,5 +31,5 @@ for phase in full full-landscape orochi fafnir thuy_tinh swarm hydra harpy boar 
   $A shell dumpsys meminfo $PKG | grep -E "^ +(Native Heap|Graphics|GL mtrack|EGL mtrack|TOTAL PSS|TOTAL:)" | sed 's/^ */  /'
 done
 wait_for 'BENCH .pack. raster'
-$A logcat -d | grep 'BENCH' | grep -E "record|\] (frames|build|raster)" | sed 's/.*BENCH/BENCH/'
+$A logcat -d | grep 'BENCH' | grep -E "record|\] (frames|build|raster|cpu-parts)" | sed 's/.*BENCH/BENCH/'
 $A shell am force-stop $PKG

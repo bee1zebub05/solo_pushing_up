@@ -116,6 +116,28 @@ abstract class BossArt {
 
 /// Sân khấu chiến đấu chạy bằng Flame: người kế nhiệm hít đất theo góc tay
 /// thật của người chơi, mỗi rep phóng một luồng sức mạnh vào boss.
+/// Đo thời gian ghi lệnh vẽ (CPU) từng phần sân khấu — chỉ bật trong bench
+/// máy thật (lib/dev/perf_bench_main.dart) để tìm phần nào tốn.
+abstract final class StageProfile {
+  static bool enabled = false;
+  static final micros = <String, int>{};
+  static int frames = 0;
+  static final _sw = Stopwatch();
+
+  static void run(String part, void Function() draw) {
+    if (!enabled) return draw();
+    final start = _sw.elapsedMicroseconds;
+    _sw.start();
+    draw();
+    micros[part] = (micros[part] ?? 0) + _sw.elapsedMicroseconds - start;
+  }
+
+  static void reset() {
+    micros.clear();
+    frames = 0;
+  }
+}
+
 class BattleStageGame extends FlameGame {
   BattleStageGame({
     required this.boss,
@@ -155,6 +177,11 @@ class BattleStageGame extends FlameGame {
 
   @override
   void render(Canvas canvas) {
+    StageProfile.frames++;
+    StageProfile.run('render', () => _render(canvas));
+  }
+
+  void _render(Canvas canvas) {
     if (!StageQuality.saturationLayer) {
       super.render(canvas);
       return;
@@ -393,8 +420,10 @@ class _SceneComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    if (boss.hasStageBackdrop) _backdrop.paint(canvas);
-    boss.paintScene(canvas, _time, battle);
+    StageProfile.run('backdrop', () {
+      if (boss.hasStageBackdrop) _backdrop.paint(canvas);
+    });
+    StageProfile.run('scene', () => boss.paintScene(canvas, _time, battle));
   }
 
   @override
@@ -459,7 +488,9 @@ class _BossComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    if (StageQuality.boss) art.paintBoss(canvas, frame);
+    if (StageQuality.boss) {
+      StageProfile.run('boss', () => art.paintBoss(canvas, frame));
+    }
   }
 }
 
@@ -483,7 +514,10 @@ class _ForegroundComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    boss.art.paintForeground(canvas, boss.frame);
+    StageProfile.run(
+      'foreground',
+      () => boss.art.paintForeground(canvas, boss.frame),
+    );
     if (!StageQuality.grade) return;
     _grade.paint(canvas);
   }
@@ -585,7 +619,7 @@ class _HeroComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    if (StageQuality.hero) _paint(canvas);
+    if (StageQuality.hero) StageProfile.run('hero', () => _paint(canvas));
   }
 
   void _paint(Canvas canvas) => paintHero(
