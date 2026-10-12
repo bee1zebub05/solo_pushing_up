@@ -152,6 +152,26 @@ class _BenchScreenState extends State<_BenchScreen>
               DeviceOrientation.portraitUp,
               NemeaMonsterArt(NemeaMonster.harpy),
             ),
+            (
+              'boar',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.boar),
+            ),
+            (
+              'spartoi',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.spartoi),
+            ),
+            (
+              'stone',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.stone),
+            ),
+            (
+              'pack',
+              DeviceOrientation.portraitUp,
+              NemeaMonsterArt(NemeaMonster.pack),
+            ),
           ]) {
         await SystemChrome.setPreferredOrientations([orientation]);
         if (boss != null) {
