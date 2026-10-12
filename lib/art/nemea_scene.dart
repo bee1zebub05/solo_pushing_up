@@ -981,6 +981,103 @@ void _cliff(Canvas canvas) {
         Color(0xFF3A2A1A),
       ]),
   );
+  // Chiều sâu trong hang: vách phải đón nắng xiên (ánh sáng từ trái), lòng
+  // hang thu hẹp thành một vòm thứ hai tối hơn, nền đất dốc vào trong.
+  canvas.save();
+  canvas.clipPath(mouth);
+  canvas.drawPath(
+    Path()
+      ..moveTo(398, stageGroundY)
+      ..cubicTo(396, 168, 384, 148, 366, 141)
+      ..cubicTo(378, 156, 382, 176, 376, stageGroundY - 6)
+      ..close(),
+    Paint()
+      ..shader = Gradient.linear(
+        const Offset(398, 0),
+        const Offset(372, 0),
+        const [Color(0xFF6A5236), Color(0xFF3A2A1A)],
+      ),
+  );
+  // Lòng hang khuất sâu: đá lởm chởm (không phải vòm đều), lệch phải theo
+  // phối cảnh, tối dần từ mép vào tâm.
+  final tunnel = _poly(const [
+    Offset(314, stageGroundY - 3),
+    Offset(316, 192),
+    Offset(322, 178),
+    Offset(330, 170),
+    Offset(337, 163),
+    Offset(346, 162),
+    Offset(352, 158),
+    Offset(361, 164),
+    Offset(367, 174),
+    Offset(372, 186),
+    Offset(371, 200),
+    Offset(374, stageGroundY - 5),
+  ]);
+  canvas.drawPath(
+    tunnel,
+    Paint()
+      ..shader = Gradient.radial(
+        const Offset(348, 200),
+        34,
+        const [Color(0xFF050302), Color(0xFF0E0906), Color(0xFF241910)],
+        const [0, 0.6, 1],
+      ),
+  );
+  // Nền đất dốc vào hang: sáng ở miệng, tắt dần vào trong.
+  canvas.drawPath(
+    Path()
+      ..moveTo(292, stageGroundY)
+      ..lineTo(318, stageGroundY - 4)
+      ..lineTo(372, stageGroundY - 6)
+      ..lineTo(398, stageGroundY)
+      ..close(),
+    Paint()
+      ..shader = Gradient.linear(
+        Offset(0, stageGroundY),
+        Offset(0, stageGroundY - 6),
+        const [Color(0xFF7A5C3A), Color(0xFF2A1E14)],
+      ),
+  );
+  // Nhũ đá rủ từ trần: tam giác hẹp, cạnh trái nhận chút sáng.
+  final drip = Paint()..color = const Color(0xFF4A3826);
+  final dripLit = Paint()..color = const Color(0xFF7A6248);
+  for (final (x, len) in const [
+    (318.0, 12.0),
+    (328.0, 7.0),
+    (340.0, 9.0),
+    (356.0, 14.0),
+    (365.0, 7.0),
+    (378.0, 11.0),
+  ]) {
+    final top = 140 + (x - 345).abs() * 0.5;
+    canvas.drawPath(
+      Path()
+        ..moveTo(x - 3.2, top)
+        ..lineTo(x + 0.3, top + len)
+        ..lineTo(x + 3.2, top)
+        ..close(),
+      drip,
+    );
+    canvas.drawLine(
+      Offset(x - 2.2, top),
+      Offset(x - 1, top + len * 0.5),
+      dripLit..strokeWidth = 1,
+    );
+  }
+  // Xương mờ trong bóng tối sâu: hang có chủ.
+  final dimBone = Paint()
+    ..color = const Color(0xFF5E5242)
+    ..strokeWidth = 1.4
+    ..strokeCap = StrokeCap.round;
+  canvas.drawLine(
+    Offset(334, stageGroundY - 8),
+    Offset(346, stageGroundY - 10),
+    dimBone,
+  );
+  canvas.drawCircle(Offset(333, stageGroundY - 8), 1.3, dimBone);
+  canvas.drawCircle(Offset(347, stageGroundY - 10), 1.3, dimBone);
+  canvas.restore();
   // Đá vòm xếp quanh miệng hang: mặt trái/trên đón nắng.
   const arch = Offset(345, 182);
   for (var i = 0; i < 7; i++) {
