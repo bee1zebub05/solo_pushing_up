@@ -983,6 +983,56 @@ void paintHarpy(
         );
       }
     }
+    // Cánh gần vẽ trước cổ áo và đầu để tóc + lông cổ đè lên gốc cánh.
+    _harpyWing(canvas, const Offset(-2, -16), flap, feather);
+    // Cổ gầy da nhăn + cổ áo lông xù tả tơi (ranh giới người – chim):
+    // lông nhọn toả xuống hai lớp, lớp trong tối, lớp ngoài có sống sáng.
+    _shaded(
+      canvas,
+      taperedStroke(
+        const [Offset(-3.5, -24), Offset(-2.5, -20), Offset(-1, -16)],
+        5,
+        peak: 0.5,
+        startWidth: 0.8,
+        endWidth: 1,
+      ),
+      const Color(0xFFA39C8A),
+      shadow: 1.2,
+    );
+    for (final (layer, r, w) in const [(0, 11.0, 3.4), (1, 8.5, 2.8)]) {
+      final ruff = Path();
+      final ruffLit = Path();
+      for (var i = 0; i < 9; i++) {
+        final a = 0.25 + i * (math.pi - 0.5) / 8 + layer * 0.17;
+        final root =
+            const Offset(-1, -18) +
+            Offset(math.cos(a) * 5.5, math.sin(a) * 1.6 - 1);
+        final len = r + ((i * 5 + layer * 3) % 4) * 1.1;
+        final tip =
+            root +
+            Offset(math.cos(a) * len * 0.75, math.sin(a) * len * 0.55 + 2.5) +
+            Offset(math.sin(time * 5 + i) * 0.6, 0);
+        final pts = [
+          root,
+          Offset.lerp(root, tip, 0.5)! + const Offset(0.6, 0.4),
+          tip,
+        ];
+        ruff.addPath(
+          taperedStroke(pts, w, peak: 0.25, startWidth: 0.9),
+          Offset.zero,
+        );
+        if (layer == 1) {
+          ruffLit.addPath(taperedStroke(pts.sublist(0, 2), 0.6), Offset.zero);
+        }
+      }
+      _shaded(
+        canvas,
+        ruff,
+        layer == 0 ? darken(feather, 0.3) : lighten(feather, 0.05),
+        shadow: 1.2,
+      );
+      canvas.drawPath(ruffLit, _fill(lighten(feather, 0.4)));
+    }
     // Đầu: mặt hốc hác, tóc rối bay.
     const face = Offset(-2, -26);
     // Tóc rối bết từng lọn dài bay ra sau, lượn theo gió cánh.
@@ -991,7 +1041,7 @@ void paintHarpy(
     for (var i = 0; i < 9; i++) {
       final a = -math.pi * 0.9 + i * 0.26;
       final root = face + Offset(math.cos(a) * 5.5 + 1.5, math.sin(a) * 6);
-      final len = 15 + (i * 7 % 5) * 1.6;
+      final len = 20 + (i * 7 % 5) * 2.0;
       final wave = math.sin(time * 4 + i * 0.9) * 2.2;
       final pts = [
         root,
@@ -1005,8 +1055,8 @@ void paintHarpy(
       );
       hairLit.addPath(taperedStroke(pts.sublist(0, 3), 0.9), Offset.zero);
     }
-    _shaded(canvas, hair, const Color(0xFF2C2433), shadow: 2);
-    canvas.drawPath(hairLit, _fill(const Color(0x997A6A88)));
+    _shaded(canvas, hair, const Color(0xFF6E6878), shadow: 2);
+    canvas.drawPath(hairLit, _fill(const Color(0xAAC9C2D2)));
     // Mặt mụ hốc hác nhìn nghiêng: trán dô, gờ mày sâu, mũi khoằm, má hóp,
     // cằm nhọn chìa ra.
     final head = smoothPath(
@@ -1095,7 +1145,6 @@ void paintHarpy(
       );
     }
     canvas.restore();
-    _harpyWing(canvas, const Offset(-2, -16), flap, feather);
     if (stealing) _goldPouch(canvas, time);
     // Tiếng rít: vòng sóng âm toả ra từ miệng khi vồ.
     if (attack > 0.3) {
