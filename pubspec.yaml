@@ -79,6 +79,10 @@ flutter:
   assets:
     - assets/sounds/
 
+  # Shader GPU cho hiệu ứng sân khấu (lib/art/stage_shaders.dart).
+  shaders:
+    - shaders/stagnation_mist.frag
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

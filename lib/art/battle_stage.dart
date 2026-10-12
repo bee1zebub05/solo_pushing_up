@@ -12,7 +12,9 @@ import 'package:flutter/painting.dart';
 import 'hero_art.dart';
 import 'hero_pose.dart';
 import 'horse_art.dart';
+import 'motion.dart';
 import 'nemea_scene.dart';
+import 'stage_shaders.dart';
 import 'vector_style.dart';
 
 /// Trạng thái trận truyền từ logic (lib/game/battle.dart) sang hình mỗi khung,
@@ -109,6 +111,21 @@ abstract class BossArt {
 
   /// Ánh sáng chủ đạo của cảnh, phủ lên toàn sân khấu để thống nhất tông.
   Color get gradeLight => const Color(0xFFFFE3C0);
+
+  /// Điểm chân boss: tâm co–giãn khi thở/lấy đà/vồ ([BossBodyMotion]).
+  Offset get bodyAnchor => Offset(target.x, 236);
+
+  /// `true` khi hình tự diễn đòn 3 pha (sư tử): sân khấu chỉ thêm thở và
+  /// nảy khi trúng đòn, không ngả/lao thân thêm.
+  bool get ownsAttackMotion => false;
+
+  /// Sương Trì Trệ (shader GPU) sát mặt đất: màu (a = độ đậm tối đa) và hệ
+  /// số mật độ. Sương tan theo máu boss — vùng đất được giải phóng dần.
+  Color get mistColor => const Color(0xA86A4C8C);
+  double get mistAmount => 1;
+
+  /// Màu viền cảnh khi boss sắp gục và nổi giận (pha cuối, máu < 40%).
+  Color get rageColor => const Color(0xFFC62828);
 
   /// Màu hạt toé ra khi trúng đòn.
   List<Color> get hitColors => const [Color(0xFFFFE082), Color(0xFFFFFFFF)];
@@ -219,14 +236,18 @@ class BattleStageGame extends FlameGame {
 
   @override
   Future<void> onLoad() async {
+    await StagnationMist.load();
     camera.viewfinder.anchor = Anchor.topLeft;
     world.addAll([
       _SceneComponent(boss, battle),
       _boss,
       _hero,
       _ForegroundComponent(_boss),
+      _transition,
     ]);
   }
+
+  late final _transition = _TransitionComponent();
 
   /// Cập nhật theo bộ đếm mỗi khung hình. [elbowAngle] null = đang đứng
   /// (chưa vào tư thế); có giá trị = đang chống đẩy với góc đó.
@@ -250,6 +271,7 @@ class BattleStageGame extends FlameGame {
     battle.bossHp = 0;
     _hero.victorious = true;
     _boss.defeated = true;
+    _transition.victory();
     if (horse) world.add(_HorseComponent());
     _burst(
       boss.target,
@@ -320,6 +342,13 @@ class BattleStageGame extends FlameGame {
     }
     _boss.hurt = 1;
     world.add(_ImpactFlash(critical: critical)..position = boss.target.clone());
+    // Ánh sáng động: đòn trúng soi sáng thân boss và nền quanh đó.
+    world.add(
+      _ImpactLight(
+        critical: critical,
+        color: critical ? const Color(0xFFFF8A50) : boss.hitColors.first,
+      )..position = boss.target.clone(),
+    );
     // Hạt sức mạnh bay ngược về người chơi (cảm giác mạnh lên sau mỗi rep).
     for (var i = 0; i < (critical ? 6 : 3); i++) {
       world.add(
@@ -331,12 +360,8 @@ class BattleStageGame extends FlameGame {
         ),
       );
     }
-    _boss.add(
-      MoveByEffect(
-        Vector2(critical ? 10 : 6, 0),
-        EffectController(duration: 0.06, reverseDuration: 0.12),
-      ),
-    );
+    // Giật lùi bằng lò xo (nảy rồi về chỗ) thay cho dời cứng.
+    _boss.motion.hit(critical: critical);
     _burst(
       boss.target,
       count: critical ? 36 : 16,
@@ -410,8 +435,27 @@ class _SceneComponent extends Component {
     bounds: Offset.zero & stageSize,
   );
 
+  final _mist = StagnationMist();
+
+  /// Mật độ sương hiện tại: đuổi theo máu boss trong ~1 giây (tan mượt).
+  double _mistDensity = -1;
+
   @override
-  void update(double dt) => _time += dt;
+  void update(double dt) {
+    _time += dt;
+    final target = battle.bossHp.clamp(0.0, 1.0) * boss.mistAmount;
+    _mistDensity = _mistDensity < 0
+        ? target
+        : _mistDensity + (target - _mistDensity) * math.min(1, dt * 2.5);
+    if (StageQuality.mist) {
+      _mist.update(
+        dt,
+        time: _time,
+        density: _mistDensity,
+        color: boss.mistColor,
+      );
+    }
+  }
 
   @override
   void render(Canvas canvas) {
@@ -419,10 +463,17 @@ class _SceneComponent extends Component {
       if (boss.hasStageBackdrop) _backdrop.paint(canvas);
     });
     StageProfile.run('scene', () => boss.paintScene(canvas, _time, battle));
+    if (StageQuality.mist && _mistDensity > 0.01) {
+      StageProfile.run(
+        'mist',
+        () => _mist.paint(canvas, Offset.zero & stageSize),
+      );
+    }
   }
 
   @override
   void onRemove() {
+    _mist.dispose();
     _backdrop.dispose();
     super.onRemove();
   }
@@ -439,6 +490,10 @@ class _BossComponent extends PositionComponent {
   double _attack = 0;
   double _defeat = 0;
   bool defeated = false;
+
+  /// Thở, lấy đà ngả thân, vồ tới, nảy khi trúng đòn — chung mọi boss.
+  final motion = BossBodyMotion();
+  late final Offset _anchor = art.bodyAnchor;
 
   /// Đếm ngược tới lần đe doạ tiếp theo; [_attackAge] là thời gian đã diễn.
   double _nextAttack = 1.5;
@@ -479,13 +534,22 @@ class _BossComponent extends PositionComponent {
     _attack = !defeated && _attackAge < _attackLength
         ? math.sin(math.pi * _attackAge / _attackLength)
         : 0;
+    motion.update(
+      dt,
+      attackPhase: art.ownsAttackMotion ? -1 : frame.attackPhase,
+      defeated: defeated,
+    );
   }
 
   @override
   void render(Canvas canvas) {
-    if (StageQuality.boss) {
-      StageProfile.run('boss', () => art.paintBoss(canvas, frame));
-    }
+    if (!StageQuality.boss) return;
+    StageProfile.run('boss', () {
+      canvas.save();
+      motion.apply(canvas, _anchor, breathe: 1 - _defeat);
+      art.paintBoss(canvas, frame);
+      canvas.restore();
+    });
   }
 }
 
@@ -513,8 +577,122 @@ class _ForegroundComponent extends Component {
       'foreground',
       () => boss.art.paintForeground(canvas, boss.frame),
     );
+    _paintRage(canvas);
     if (!StageQuality.grade) return;
     _grade.paint(canvas);
+  }
+
+  double _time = 0;
+
+  @override
+  void update(double dt) => _time += dt;
+
+  /// Pha cuối của boss (máu < 40%): viền cảnh đỏ đập theo nhịp tim, mạnh dần
+  /// khi máu cạn — người chơi biết sắp thắng mà không cần nhìn thanh máu.
+  void _paintRage(Canvas canvas) {
+    final hp = boss.battle.bossHp;
+    if (hp >= 0.4 || boss.defeated) return;
+    final k = ((0.4 - hp) / 0.3).clamp(0.0, 1.0);
+    // Nhịp tim đôi (thịch–thịch) ~1,1 giây.
+    final beat = math.pow(math.sin(_time * math.pi / 0.55).abs(), 6);
+    final a = (0.22 + 0.26 * beat) * k;
+    final rect = Offset.zero & stageSize;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          rect.center,
+          rect.width * 0.62,
+          [const Color(0x00000000), boss.art.rageColor.withValues(alpha: a)],
+          const [0.4, 1.0],
+        ),
+    );
+  }
+}
+
+/// Ánh sáng động khi đòn trúng: quầng sáng cộng màu (BlendMode.plus) toả từ
+/// điểm trúng, tắt trong ~0,3 giây.
+class _ImpactLight extends PositionComponent {
+  _ImpactLight({required this.critical, required this.color});
+
+  final bool critical;
+  final Color color;
+  static const _life = 0.3;
+  double _age = 0;
+
+  @override
+  void update(double dt) {
+    _age += dt;
+    if (_age >= _life) removeFromParent();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final t = (_age / _life).clamp(0.0, 1.0);
+    final fade = (1 - t) * (1 - t);
+    final r = (critical ? 150.0 : 105.0) * (0.75 + 0.25 * t);
+    canvas.drawCircle(
+      Offset.zero,
+      r,
+      Paint()
+        ..blendMode = BlendMode.plus
+        ..shader = ui.Gradient.radial(Offset.zero, r, [
+          color.withValues(alpha: (critical ? 0.55 : 0.38) * fade),
+          color.withValues(alpha: 0.12 * fade),
+          const Color(0x00000000),
+        ], const [0, 0.45, 1]),
+    );
+  }
+}
+
+/// Chuyển cảnh: vào trận thì vòng sáng mở từ giữa sân khấu ra (iris); thắng
+/// thì loé ấm một nhịp rồi tắt.
+class _TransitionComponent extends Component {
+  static const _introLength = 0.9;
+  double _intro = 0;
+  double _victory = -1;
+
+  void victory() => _victory = 0;
+
+  @override
+  void update(double dt) {
+    if (_intro < 1) _intro = math.min(1, _intro + dt / _introLength);
+    if (_victory >= 0) {
+      _victory += dt / 0.6;
+      if (_victory > 1) _victory = -1;
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final rect = Offset.zero & stageSize;
+    if (_intro < 1) {
+      final e = Curves.easeOutCubic.transform(_intro);
+      final r = 8 + e * rect.width * 0.75;
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = ui.Gradient.radial(
+            rect.center,
+            r,
+            [
+              const Color(0x00000000),
+              const Color(0x00000000),
+              Color.fromRGBO(6, 4, 10, 1 - e * e),
+            ],
+            const [0, 0.7, 1],
+          ),
+      );
+    }
+    if (_victory >= 0) {
+      final a = _victory < 0.15
+          ? _victory / 0.15
+          : 1 - (_victory - 0.15) / 0.85;
+      canvas.drawRect(
+        rect,
+        Paint()..color = Color.fromRGBO(255, 236, 190, 0.55 * a),
+      );
+    }
   }
 }
 
