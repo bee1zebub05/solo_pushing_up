@@ -1558,19 +1558,41 @@ void paintErymanthianBoar(
       Rect.fromCenter(center: const Offset(0, 1), width: 110, height: 10),
       _fill(const Color(0x55301C10)),
     );
-    // Chân ngắn, móng guốc.
-    for (final (x, far) in [
-      (-26.0, true),
-      (34.0, true),
-      (-36.0, false),
-      (26.0, false),
+    // Chân ngắn, móng guốc. Chân trước: cánh tay → khuỷu sát thân → cẳng
+    // thẳng → cổ tay → cổ chân ngắn. Chân sau: đùi bắp to → gối → cẳng
+    // chéo ra sau → khớp cổ chân (hock) gập → cổ chân dốc về trước.
+    for (final (x, far, hind) in [
+      (-26.0, true, false),
+      (34.0, true, true),
+      (-36.0, false, false),
+      (26.0, false, true),
     ]) {
       final c = far ? darken(hide, 0.3) : hide;
-      // Bắp đùi dày nối vào thân, cẳng thon, gót guốc; móng chẻ đôi nhỏ.
-      shadedChain(canvas, [
-        (Offset(x, -40), Offset(x - 1, -17), 11, 6),
-        (Offset(x - 1, -17), Offset(x - 2.5, -6), 5, 3.6),
-      ], c);
+      if (hind) {
+        shadedChain(canvas, [
+          (Offset(x - 2, -44), Offset(x + 2, -26), 15, 9),
+          (Offset(x + 2, -26), Offset(x + 6, -13), 8, 4.6),
+          (Offset(x + 6, -13), Offset(x - 2.5, -6), 4.6, 3.6),
+        ], c);
+        // Gân gót (Achilles) sáng mảnh sau cẳng.
+        canvas.drawLine(
+          Offset(x + 6, -24),
+          Offset(x + 7.6, -14),
+          _stroke(lighten(c, 0.18).withValues(alpha: 0.7), 0.9),
+        );
+      } else {
+        shadedChain(canvas, [
+          (Offset(x + 1, -44), Offset(x + 2, -26), 13, 7.5),
+          (Offset(x + 2, -26), Offset(x - 0.5, -12), 6.5, 4.6),
+          (Offset(x - 0.5, -12), Offset(x - 2.5, -6), 4.6, 3.6),
+        ], c);
+        // Mặt sau cẳng trước: rãnh gân.
+        canvas.drawLine(
+          Offset(x + 3.4, -24),
+          Offset(x + 1.6, -13),
+          _stroke(darken(c, 0.3), 0.8),
+        );
+      }
       const hoof = Color(0xFF241812);
       canvas.drawPath(
         _poly([
@@ -1612,10 +1634,12 @@ void paintErymanthianBoar(
           final x =
               -46 + col * 6.4 + (row.isOdd ? 3.2 : 0) + rnd.nextDouble() * 2;
           final y = -74 + row * 6.6 + rnd.nextDouble() * 2;
-          // Hướng lông: ra sau, càng xuống bụng càng rủ.
-          final dir = Offset(1, 0.25 + row * 0.08);
+          // Hướng lông: ra sau, càng xuống bụng càng rủ; quanh mông lông
+          // vòng xuống theo khối đùi sau.
+          final ham = ((x - 14) / 30).clamp(0.0, 1.0);
+          final dir = Offset(1 - ham * 0.6, 0.25 + row * 0.08 + ham * 0.9);
           final u = dir / dir.distance;
-          final len = 5.5 + rnd.nextDouble() * 2.5;
+          final len = 5 + rnd.nextDouble() * 5 + (row < 3 ? 2 : 0);
           final p = Offset(x, y);
           dark.addPath(
             taperedStroke(
