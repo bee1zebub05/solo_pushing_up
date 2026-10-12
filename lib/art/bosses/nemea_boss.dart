@@ -15,6 +15,9 @@ const lionScale = 0.72;
 
 /// Kỳ công 1 — Sư tử Nemea ở thung lũng Nemea.
 class NemeaBossArt extends BossArt {
+  @override
+  String get soundKey => 'nemea';
+
   /// Sư tử tự diễn đòn vồ 3 pha (lion_art.dart).
   @override
   bool get ownsAttackMotion => true;

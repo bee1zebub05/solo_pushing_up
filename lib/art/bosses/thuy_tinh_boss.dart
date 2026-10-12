@@ -23,6 +23,9 @@ abstract final class ThuyTinhColors {
 /// Nước dâng vẽ phía trước nhân vật, cao đúng theo mực nước của trận.
 class ThuyTinhBossArt extends BossArt {
   @override
+  String get soundKey => 'thuy_tinh';
+
+  @override
   final Vector2 target = Vector2(318, 112);
 
   @override

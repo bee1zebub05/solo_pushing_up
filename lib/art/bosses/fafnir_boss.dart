@@ -27,6 +27,9 @@ final _neckCache = PictureCache<(int, int)>(maxEntries: 40);
 
 class FafnirBossArt extends BossArt {
   @override
+  String get soundKey => 'fafnir';
+
+  @override
   final Vector2 target = Vector2(292, 108);
 
   @override
