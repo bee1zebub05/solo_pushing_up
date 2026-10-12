@@ -1913,14 +1913,14 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
   // ngắn hơi hếch.
   final head = smoothPath(
     const [
-      Offset(-17, -0.8),
-      Offset(-15, -3.6),
-      Offset(-9, -6.4),
-      Offset(0, -7.6),
-      Offset(6.5, -6.4),
-      Offset(9.5, -2),
-      Offset(8, 2.6),
-      Offset(2, 3.6),
+      Offset(-17, -0.6),
+      Offset(-15.4, -3.2),
+      Offset(-9, -5.8),
+      Offset(0, -7.8),
+      Offset(7.5, -7.4),
+      Offset(11, -2.6),
+      Offset(9.5, 2.8),
+      Offset(3, 4),
       Offset(-12, 2.4),
       Offset(-16.5, 1.2),
     ],
@@ -1930,14 +1930,43 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
   _shaded(canvas, head, scale, shadow: 2);
   canvas.save();
   canvas.clipPath(head);
-  // Vảy đầu xếp lớp + môi sáng.
-  for (var i = 0; i < 4; i++) {
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(2 - i * 3.5, -5 + i * 0.6), radius: 2.2),
-      0.2,
-      2.6,
-      false,
-      _stroke(darken(scale, 0.3), 0.6),
+  // Vảy lớn trên đỉnh đầu (tấm sừng xếp như ngói, mép sau tối, mặt
+  // trên đón sáng) — mặt trên phẳng đặc trưng của rắn lục.
+  final plateDark = _stroke(darken(scale, 0.35), 0.5);
+  final plateLit = _fill(lighten(scale, 0.18));
+  for (final (c, w) in const [
+    (Offset(-12.5, -4.6), 3.0),
+    (Offset(-8.5, -6.2), 3.6),
+    (Offset(-4, -7.2), 4.0),
+    (Offset(1, -7.6), 4.2),
+    (Offset(6, -7.2), 3.8),
+  ]) {
+    final plate = _poly([
+      c + Offset(-w / 2, 0.9),
+      c + Offset(-w / 2 + 0.6, -0.7),
+      c + Offset(w / 2 - 0.4, -0.9),
+      c + Offset(w / 2, 1.1),
+    ]);
+    canvas.drawPath(plate, plateLit);
+    canvas.drawPath(plate, plateDark);
+  }
+  // Sọc tối sau mắt chạy xuống góc hàm (vằn rắn lục).
+  canvas.drawPath(
+    taperedStroke(
+      const [Offset(-5.5, -3.6), Offset(1, -1.6), Offset(9, 0.6)],
+      2.2,
+      peak: 0.45,
+      startWidth: 0.6,
+    ),
+    _fill(darken(scale, 0.42).withValues(alpha: 0.75)),
+  );
+  // Vảy hàm trên (labial): vạch ngắn đều dọc môi.
+  for (var k = 0; k < 7; k++) {
+    final x = -14.5 + k * 3.2;
+    canvas.drawLine(
+      Offset(x, 0.4 + k * 0.12),
+      Offset(x + 0.5, 2.4 + k * 0.1),
+      _stroke(darken(scale, 0.3), 0.5),
     );
   }
   canvas.drawPath(
@@ -1983,9 +2012,9 @@ void _hydraHead(Canvas canvas, Offset at, double open, double time) {
   );
   // Mắt nhỏ, con ngươi dọc mảnh; vảy mày sụp che nửa trên → nhìn hằm hằm.
   const eye = Offset(-6.5, -4.2);
-  _glowEye(canvas, eye, 1.15, const Color(0xFFD8F020));
+  _glowEye(canvas, eye, 1.4, const Color(0xFFD8F020));
   canvas.drawOval(
-    Rect.fromCenter(center: eye, width: 0.5, height: 2.1),
+    Rect.fromCenter(center: eye, width: 0.55, height: 2.5),
     _fill(_outline),
   );
   final brow = Path()
