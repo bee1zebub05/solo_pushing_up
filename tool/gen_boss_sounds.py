@@ -200,6 +200,24 @@ def thuy_tinh_hit() -> np.ndarray:
     return mix(splash, bubbles, thud)
 
 
+def defeat() -> np.ndarray:
+    # Boss gục (chung): nổ trầm 70→28 Hz ngân dài + tiếng rít khói tan dần lên
+    # cao + chuông sáng nhẹ báo chiến thắng.
+    sec = 1.6
+    n = int(RATE * sec)
+    t = t_axis(sec)
+    boom = sweep(70, 28, sec) * env(n, 0.004, 0.45)
+    rumble = low(noise(sec), 160) * env(n, 0.01, 0.5) * 2.0
+    hiss = glide(
+        noise(sec), [lambda x, lo=600 + 500 * i: band(x, lo, lo * 1.8) for i in range(6)]
+    ) * swell(n, 0.35) * 0.35
+    bell = sum(
+        np.sin(2 * np.pi * f * t) * np.exp(-np.maximum(t - 0.35, 0) / 0.5) * np.clip((t - 0.35) / 0.01, 0, 1) * a
+        for f, a in ((880, 0.18), (1320, 0.12), (1760, 0.06))
+    )
+    return mix(boom, rumble, hiss, bell)
+
+
 SOUNDS = {
     "nemea_tell": nemea_tell,
     "nemea_hit": nemea_hit,
@@ -210,6 +228,8 @@ SOUNDS = {
     "thuy_tinh_tell": thuy_tinh_tell,
     "thuy_tinh_hit": thuy_tinh_hit,
 }
+
+SOUNDS["defeat"] = defeat
 
 if __name__ == "__main__":
     for name, make in SOUNDS.items():
