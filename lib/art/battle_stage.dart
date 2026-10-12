@@ -44,6 +44,15 @@ class StageBattleState {
   int goldStolen = 0;
 }
 
+/// Tín hiệu âm thanh sân khấu gửi ra màn trận ([BattleStageGame.onCue]).
+enum StageCue {
+  /// Boss bắt đầu lấy đà: người chơi đang nhìn sàn phải nghe được đòn tới.
+  tell,
+
+  /// Đòn của người chơi trúng boss.
+  hit,
+}
+
 /// Thông số hoạt hình của boss tại một khung.
 class BossFrame {
   const BossFrame({
@@ -127,6 +136,10 @@ abstract class BossArt {
   /// Màu viền cảnh khi boss sắp gục và nổi giận (pha cuối, máu < 40%).
   Color get rageColor => const Color(0xFFC62828);
 
+  /// Tên bộ âm riêng của boss (`assets/sounds/boss_<key>_tell|hit.wav`,
+  /// tạo bằng tool/gen_boss_sounds.py); null = không có.
+  String? get soundKey => null;
+
   /// Màu hạt toé ra khi trúng đòn.
   List<Color> get hitColors => const [Color(0xFFFFE082), Color(0xFFFFFFFF)];
 }
@@ -181,7 +194,14 @@ class BattleStageGame extends FlameGame {
   /// Đã có Ngựa chín hồng mao: phi vào đứng cạnh nhân vật khi thắng.
   bool horse;
   final _HeroComponent _hero;
-  late final _BossComponent _boss = _BossComponent(boss, battle);
+  late final _BossComponent _boss = _BossComponent(
+    boss,
+    battle,
+    onAttackStart: () => onCue?.call(StageCue.tell),
+  );
+
+  /// Nhận tín hiệu âm thanh (báo đòn, trúng đòn) để màn trận phát tiếng.
+  void Function(StageCue cue)? onCue;
   final battle = StageBattleState();
   final _random = math.Random();
 
@@ -341,6 +361,7 @@ class BattleStageGame extends FlameGame {
       return;
     }
     _boss.hurt = 1;
+    onCue?.call(StageCue.hit);
     world.add(_ImpactFlash(critical: critical)..position = boss.target.clone());
     // Ánh sáng động: đòn trúng soi sáng thân boss và nền quanh đó.
     world.add(
@@ -480,7 +501,9 @@ class _SceneComponent extends Component {
 }
 
 class _BossComponent extends PositionComponent {
-  _BossComponent(this.art, this.battle);
+  _BossComponent(this.art, this.battle, {this.onAttackStart});
+
+  final void Function()? onAttackStart;
 
   final BossArt art;
   final StageBattleState battle;
@@ -530,6 +553,7 @@ class _BossComponent extends PositionComponent {
     if (_nextAttack <= 0 && !defeated) {
       _nextAttack = 7 + _random.nextDouble() * 5;
       _attackAge = 0;
+      onAttackStart?.call();
     }
     _attack = !defeated && _attackAge < _attackLength
         ? math.sin(math.pi * _attackAge / _attackLength)

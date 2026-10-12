@@ -25,6 +25,9 @@ abstract final class OrochiColors {
 /// sáng viền và có vòng máu; đầu đã chém còn gốc cổ cụt; đứt combo thì đầu
 /// mọc lại có hiệu ứng.
 class OrochiBossArt extends BossArt {
+  @override
+  String get soundKey => 'orochi';
+
   static const _heads = 8;
   static const _base = Offset(330, 196);
 

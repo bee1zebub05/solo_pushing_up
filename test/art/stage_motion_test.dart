@@ -24,6 +24,8 @@ void main() {
   for (final MapEntry(key: name, value: make) in bosses.entries) {
     testWidgets('chuyển động sân khấu: $name', (tester) async {
       final game = BattleStageGame(boss: make());
+      final cues = <StageCue>[];
+      game.onCue = cues.add;
       final key = GlobalKey();
       await tester.pumpWidget(
         Directionality(
@@ -71,8 +73,11 @@ void main() {
       await shot('strike');
       await run(600);
 
+      // Boss lấy đà ở giây 1,5 → đã phát tiếng báo đòn.
+      expect(cues, contains(StageCue.tell));
       game.hit(critical: true);
       await run(300);
+      expect(cues.last, StageCue.hit);
       await shot('impact_light');
       await run(400);
 

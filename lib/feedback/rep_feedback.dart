@@ -25,6 +25,9 @@ class RepFeedback {
   bool vibrationOn = true;
 
   final Map<_Cue, AudioPool> _pools = {};
+
+  /// Âm riêng của boss trận này: `<key>_tell`, `<key>_hit`.
+  final Map<String, AudioPool> _bossPools = {};
   final FlutterTts _tts = FlutterTts();
   bool _voiceReady = false;
   CounterPhase? _lastPhase;
@@ -127,6 +130,28 @@ class RepFeedback {
 
   void reset() => _lastPhase = null;
 
+  /// Nạp bộ âm của boss (`assets/sounds/boss_<key>_tell|hit.wav`).
+  Future<void> loadBossSounds(String key) async {
+    for (final cue in ['tell', 'hit']) {
+      try {
+        _bossPools['${key}_$cue'] = await AudioPool.createFromAsset(
+          path: 'sounds/boss_${key}_$cue.wav',
+          maxPlayers: 2,
+          playerMode: PlayerMode.lowLatency,
+        );
+      } on Object catch (error) {
+        debugPrint('Không tải được âm boss ${key}_$cue: $error');
+      }
+    }
+  }
+
+  /// Phát âm boss: `tell` = báo đòn (to, để nghe khi đang nhìn sàn), `hit` =
+  /// đòn trúng (nhỏ hơn, nằm dưới tiếng đếm rep).
+  void playBoss(String key, String cue) {
+    if (soundMode == SoundMode.off) return;
+    _bossPools['${key}_$cue']?.start(volume: cue == 'tell' ? 1.0 : 0.6);
+  }
+
   /// Đọc một thông báo của trận (ví dụ đợt sóng mới); không có giọng thì rung.
   void announce(String text) {
     if (!_speak(text)) _vibrate(HapticFeedback.mediumImpact);
@@ -137,6 +162,10 @@ class RepFeedback {
       await pool.dispose();
     }
     _pools.clear();
+    for (final pool in _bossPools.values) {
+      await pool.dispose();
+    }
+    _bossPools.clear();
     await _tts.stop();
   }
 
