@@ -272,12 +272,37 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListTile(
         enabled: unlocked,
         contentPadding: const EdgeInsets.all(16),
-        leading: switch (unlocked ? bossArtFor(labor.enemy) : null) {
-          final art? => BossPortrait(art: art),
-          null => Text(
-            unlocked ? labor.emoji : '🔒',
+        // Kỳ công khoá: chân dung boss xám tối + khoá đồng — lộ trước
+        // đối thủ để gợi tò mò (thay emoji ổ khoá mỗi máy một kiểu).
+        leading: switch (bossArtFor(labor.enemy)) {
+          final art? when unlocked => BossPortrait(art: art),
+          final art? => Stack(
+            children: [
+              ColorFiltered(
+                colorFilter: const ColorFilter.matrix(_lockedPortrait),
+                child: BossPortrait(art: art),
+              ),
+              const Positioned(
+                right: 0,
+                bottom: 0,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: GreekUi.panel,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(3),
+                    child: Icon(Icons.lock, size: 16, color: GreekUi.gold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          null when unlocked => Text(
+            labor.emoji,
             style: const TextStyle(fontSize: 40),
           ),
+          null => const Icon(Icons.lock, size: 36, color: GreekUi.inkDim),
         },
         title: Text(
           'Kỳ công ${labor.number} — ${labor.title}',
@@ -559,3 +584,11 @@ class _BannerPainter extends CustomPainter {
   bool shouldRepaint(_BannerPainter old) =>
       old.look != look || old.cloak != cloak || old.dust != dust;
 }
+
+/// Xám hoá + tối ~45 % cho chân dung boss chưa mở.
+const _lockedPortrait = <double>[
+  0.17, 0.33, 0.06, 0, 0, //
+  0.17, 0.33, 0.06, 0, 0, //
+  0.17, 0.33, 0.06, 0, 0, //
+  0, 0, 0, 1, 0, //
+];
