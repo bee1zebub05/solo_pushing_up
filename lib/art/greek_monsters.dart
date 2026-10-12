@@ -126,30 +126,102 @@ void paintStymphalianBird(
     canvas.drawPath(breast.lit, _fill(_bronzeLight));
     canvas.restore();
 
-    // Đầu, mào gai, mỏ đồng dài và cong.
-    final head = Path()
-      ..addOval(Rect.fromCircle(center: const Offset(-14, -9), radius: 6));
-    _shaded(canvas, head, const Color(0xFF4A3A33), shadow: 2);
-    final crest = Path();
-    for (var i = 0; i < 3; i++) {
-      crest.addPath(
-        _poly([
-          Offset(-12 + i * 3.0, -14),
-          Offset(-6 + i * 4.0, -21 + i * 2.0),
-          Offset(-9 + i * 3.0, -13),
-        ]),
-        Offset.zero,
+    // Đầu chim săn mồi: sọ thuôn về trước liền với mỏ, gờ mày nhô che
+    // mắt (ánh nhìn dữ), mào lông đỏ vuốt ngược ra sau, mỏ đồng hai hàm
+    // (hàm dưới há khi lao mổ) với mấu móc ở chóp, da gốc mỏ và lỗ mũi.
+    final crest = Paint()..color = const Color(0xFFB3261E);
+    final crestDark = Paint()..color = const Color(0xFF6E140F);
+    for (var i = 3; i >= 0; i--) {
+      final base = Offset(-15 + i * 2.4, -14.2 + i * 0.9);
+      final tip = base + Offset(11 + i * 1.5, -8 + i * 1.8);
+      final blade = taperedStroke(
+        [base, Offset.lerp(base, tip, 0.5)! + const Offset(0, -1.2), tip],
+        3 - i * 0.3,
+        peak: 0.2,
+        startWidth: 0.8,
       );
+      canvas.drawPath(blade, _stroke(_outline, 1.2));
+      canvas.drawPath(blade, i.isOdd ? crestDark : crest);
     }
-    _shaded(canvas, crest, const Color(0xFFB3261E), shadow: 1);
-    final beak = Path()
-      ..moveTo(-18, -11)
-      ..quadraticBezierTo(-30 - 4 * attack, -11, -34 - 4 * attack, -4)
-      ..quadraticBezierTo(-28, -7, -18, -6)
+    final head = Path()
+      ..moveTo(-7, -5)
+      ..cubicTo(-7, -12, -10, -15.5, -15, -15.2)
+      ..cubicTo(-17.5, -15, -19.5, -13.6, -20.5, -12)
+      ..lineTo(-20.5, -6.5)
+      ..cubicTo(-18, -4, -12, -2, -7, -5)
       ..close();
-    _shaded(canvas, beak, _bronze, shadow: 1.2);
-    glint(canvas, const Offset(-25, -10), 1.6);
-    _glowEye(canvas, const Offset(-15, -10), 1.6, const Color(0xFFFF3B1F));
+    _shaded(canvas, head, const Color(0xFF4A3A33), shadow: 2);
+    // Gò má sáng nhẹ dưới mắt.
+    canvas.drawPath(
+      Path()
+        ..moveTo(-19, -8)
+        ..quadraticBezierTo(-15, -6.5, -11, -8)
+        ..quadraticBezierTo(-15, -5, -19, -6.6)
+        ..close(),
+      _fill(const Color(0x55A07A50)),
+    );
+    final gape = 3.5 * attack;
+    final upper = Path()
+      ..moveTo(-19.5, -13)
+      ..quadraticBezierTo(-30 - 4 * attack, -13.4, -35 - 4 * attack, -6.2)
+      ..quadraticBezierTo(-33.5 - 4 * attack, -7.6, -31 - 4 * attack, -8.2)
+      ..quadraticBezierTo(-25, -8.4, -19.5, -8)
+      ..close();
+    final lower = Path()
+      ..moveTo(-19.5, -8)
+      ..quadraticBezierTo(-25, -8 + gape * 0.4, -29.5 - 3 * attack, -7.6 + gape)
+      ..quadraticBezierTo(-25, -5 + gape * 0.5, -19.5, -5.8)
+      ..close();
+    _shaded(canvas, lower, darken(_bronze, 0.15), shadow: 0.8);
+    _shaded(canvas, upper, _bronze, shadow: 1.2);
+    // Đường sống mỏ sáng + da gốc mỏ (cere) + lỗ mũi.
+    canvas.drawPath(
+      taperedStroke(
+        [
+          const Offset(-21, -12.6),
+          Offset(-28 - 2 * attack, -12.2),
+          Offset(-33 - 4 * attack, -7.8),
+        ],
+        0.9,
+        peak: 0.3,
+      ),
+      _fill(const Color(0xCCFFF0C8)),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(-19.5, -13)
+        ..quadraticBezierTo(-22.5, -12.8, -23, -10.4)
+        ..quadraticBezierTo(-22, -8.4, -19.5, -8.2)
+        ..close(),
+      _fill(const Color(0xFFD9A441)),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(-22, -11), width: 1.6, height: 0.8),
+      _fill(const Color(0xFF2A1A0E)),
+    );
+    _glowEye(canvas, const Offset(-15.5, -10.3), 1.5, const Color(0xFFFF3B1F));
+    // Gờ mày: nét tối dày đè lên nửa trên con mắt, hất lên phía sau.
+    canvas.drawPath(
+      taperedStroke(
+        const [
+          Offset(-19.2, -11.2),
+          Offset(-15.5, -12.2),
+          Offset(-11.5, -13.4),
+        ],
+        2.2,
+        peak: 0.35,
+        startWidth: 0.4,
+      ),
+      _fill(const Color(0xFF1E1512)),
+    );
+    canvas.drawPath(
+      taperedStroke(
+        const [Offset(-18.6, -12.6), Offset(-15.5, -13.8), Offset(-12, -14.6)],
+        0.6,
+        peak: 0.4,
+      ),
+      _fill(const Color(0x99A07A50)),
+    );
 
     // Chân chim: cẳng có đốt vảy, ba ngón quặp có vuốt đồng.
     for (final x in [-4.0, 2.0]) {
