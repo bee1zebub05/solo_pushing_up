@@ -178,22 +178,17 @@ class BattleStageGame extends FlameGame {
   @override
   void render(Canvas canvas) {
     StageProfile.frames++;
-    StageProfile.run('render', () => _render(canvas));
-  }
-
-  void _render(Canvas canvas) {
-    if (!StageQuality.saturationLayer) {
-      super.render(canvas);
-      return;
-    }
+    final layer = StageQuality.saturationLayer;
     // Khoanh lớp đúng vùng sân khấu: `null` để engine tự tính giới hạn, có
     // thể thành cả màn hình (đo trên máy: tốn thêm 2–4 ms/khung).
-    canvas.saveLayer(
-      Offset.zero & canvasSize.toSize(),
-      Paint()..colorFilter = saturationFilter(saturation),
-    );
-    super.render(canvas);
-    canvas.restore();
+    if (layer) {
+      canvas.saveLayer(
+        Offset.zero & canvasSize.toSize(),
+        Paint()..colorFilter = saturationFilter(saturation),
+      );
+    }
+    StageProfile.run('render', () => super.render(canvas));
+    if (layer) canvas.restore();
   }
 
   @override
