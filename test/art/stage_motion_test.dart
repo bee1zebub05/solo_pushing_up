@@ -83,6 +83,8 @@ void main() {
 
       game.battle.bossHp = 0.15;
       await run(500);
+      // Sang pha cuối: boss gầm đúng một lần.
+      expect(cues.where((c) => c == StageCue.rage), hasLength(1));
       await shot('rage');
 
       game.victory();

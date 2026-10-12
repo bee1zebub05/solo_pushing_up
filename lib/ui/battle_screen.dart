@@ -130,7 +130,10 @@ class _BattleScreenState extends State<BattleScreen>
     // Âm riêng của boss: báo đòn khi boss lấy đà, tiếng trúng theo chất liệu.
     if ((_stage, _stage?.boss.soundKey) case (final stage?, final key?)) {
       _session.feedback.loadBossSounds(key);
-      stage.onCue = (cue) => _session.feedback.playBoss(key, cue.name);
+      stage.onCue = (cue) => _session.feedback.playBoss(
+        key,
+        cue == StageCue.hit ? 'hit' : 'tell',
+      );
     }
   }
 
