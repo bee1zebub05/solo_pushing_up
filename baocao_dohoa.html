@@ -234,6 +234,34 @@ figcaption{font-size:12.5px;color:var(--mut);margin-top:4px}.wide{grid-column:1/
 </ul>
 <!--ch1-device-end-->
 
+<!--night-1012-start-->
+<h2>11. Đêm 12/10: thư viện tối ưu, boss các chương sau, giao diện</h2>
+<p class="s">02:31–10:30, máy thật OPPO CPH2159 cắm suốt phiên. Mỗi hạng mục một commit trên master (chưa push), kiểm tra bằng <code>bash tool/check.sh</code> (analyze + 166 test app + test 3 thư viện). Trang so sánh trước/sau: <a href="https://claude.ai/artifact/ULxMt9sHSM4FZVE3A5Bbkd">Nemea phiên đêm</a>.</p>
+<div class="box">
+<b>Tóm tắt:</b>
+<ul>
+<li><b>Hiệu năng (GPU tô / khung):</b> Nemea dọc 15,4 → ~11–12 ms, ngang 18,1 → ~12,5 ms; Orochi, Fafnir, Thuỷ Tinh 9,3–11 ms. Nguyên nhân lớn nhất tìm được bằng đo bóc tách: nhân vật vẽ vector tốn ~6,6 ms GPU (mỗi mảng đổ bóng 2 lần clip) → chụp ảnh theo tư thế làm tròn.</li>
+<li><b>Thư viện mới:</b> <code>packages/stage_raster</code> (ảnh chụp sẵn có ngân sách bộ nhớ LRU, PictureCache) và <code>packages/vector_texture</code> (lọn lông, lọn xoăn, thân có vảy, lông vũ). Không dùng C++: chỗ tốn là GPU, không phải CPU Dart.</li>
+<li><b>Boss chương sau:</b> Orochi, Fafnir, Thuỷ Tinh vẽ lại thân, đầu, phông nền theo thần thoại; nước dâng có vân khúc xạ.</li>
+<li><b>Chương 1:</b> cây ô liu, đền, đất có dấu chân sư tử; sư tử tai/chân; quái (Harpy, lợn rừng, Hydra, Spartoi, lính đá, chim) chi tiết hơn; bù nhìn tập luyện có hình.</li>
+<li><b>Nhân vật / Hercules / ngựa:</b> mặt, tóc, áo, kiếm, áo choàng; ngựa vẽ lại theo giải phẫu.</li>
+<li><b>Giao diện:</b> phong cách đền cổ cho màn chính, chọn màn, kết quả trận, thanh máu, thẻ trạng thái.</li>
+</ul>
+</div>
+<h3>Lỗi tự gây ra trong phiên và đã sửa</h3>
+<ul>
+<li>Commit Orochi không biên dịch (thừa ngoặc) lọt qua vì <code>| tail</code> che mã lỗi → thêm <code>tool/check.sh</code>.</li>
+<li>Chân dung mọi màn quái đều hiện đàn chim (khoá bộ đệm theo lớp) → <code>BossArt.artKey</code> + test.</li>
+<li>Thanh máu trận biến mất sau khi đổi kiểu (CustomPaint thiếu bề rộng) — chỉ phát hiện khi chụp trên máy.</li>
+</ul>
+<h3>Còn mở</h3>
+<ul>
+<li>Bật bộ đệm ảnh nhân vật làm phần vẽ boss của Orochi/Fafnir/Thuỷ Tinh tốn thêm ~3 ms CPU trên máy (Nemea không bị); khung hình vẫn nhanh hơn vì GPU là bên chậm hơn. Cần điều tra thêm.</li>
+<li>Chưa thử trên iPhone thật (cần Mac).</li>
+<li>Chưa push: commit <code>2d37f0d</code> chứa file .dill 47 MB; lệnh viết lại lịch sử bị hệ thống quyền chặn.</li>
+</ul>
+<!--night-1012-end-->
+
 </body></html>
 
 
