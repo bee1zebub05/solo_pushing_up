@@ -352,20 +352,42 @@ void paintSpartoi(
     shadedChain(canvas, [
       (const Offset(10, -60), const Offset(14, -46), 3, 2.5),
     ], darken(bone, 0.15));
-    final shield = Path()
-      ..addOval(
-        Rect.fromCircle(center: Offset(8 + sway * 0.3, -46), radius: 17),
-      );
-    _shaded(canvas, shield, const Color(0xFF8E2A1E), shadow: 4);
-    canvas.drawCircle(Offset(8 + sway * 0.3, -46), 17, _stroke(bronze, 2.4));
-    canvas.drawPath(
-      _poly([
-        Offset(4 + sway * 0.3, -54),
-        Offset(12 + sway * 0.3, -54),
-        Offset(8 + sway * 0.3, -36),
-      ]),
-      _fill(bone),
+    // Khiên aspis: vành đồng rộng có gờ, mặt sơn đỏ bạc màu, hình răng
+    // rồng trắng ngà (Spartoi mọc từ răng rồng), vết chém và đồng xỉn.
+    final sc = Offset(8 + sway * 0.3, -46);
+    final shield = Path()..addOval(Rect.fromCircle(center: sc, radius: 17));
+    _shaded(canvas, shield, bronze, shadow: 4);
+    final face = Path()..addOval(Rect.fromCircle(center: sc, radius: 13.4));
+    _shaded(canvas, face, const Color(0xFF8E2A1E), shadow: 3);
+    canvas.save();
+    canvas.clipPath(face);
+    canvas.drawCircle(
+      sc + const Offset(5, 5),
+      9,
+      _fill(const Color(0x33000000)),
     );
+    final tooth = Path()
+      ..moveTo(sc.dx - 4, sc.dy - 8)
+      ..quadraticBezierTo(sc.dx, sc.dy - 10, sc.dx + 4, sc.dy - 8)
+      ..quadraticBezierTo(sc.dx + 2.6, sc.dy + 2, sc.dx + 0.4, sc.dy + 9)
+      ..quadraticBezierTo(sc.dx - 2, sc.dy + 2, sc.dx - 4, sc.dy - 8)
+      ..close();
+    canvas.drawPath(tooth, _fill(const Color(0xFFE8DCC0)));
+    canvas.drawLine(
+      sc + const Offset(-1, -7),
+      sc + const Offset(0.2, 6),
+      _stroke(const Color(0xFFB8A888), 0.8),
+    );
+    canvas.drawLine(
+      sc + const Offset(-10, 2),
+      sc + const Offset(-4, 8),
+      _stroke(const Color(0xFF4A160E), 1),
+    );
+    canvas.restore();
+    canvas.drawCircle(sc, 15.2, _stroke(darken(bronze, 0.35), 0.8));
+    for (final (o, r) in const [(Offset(-11, -9), 1.6), (Offset(12, 6), 2.0)]) {
+      canvas.drawCircle(sc + o, r, _fill(const Color(0x664FA088)));
+    }
 
     // Cột sống từng đốt + xương sườn cong thon lộ ra dưới giáp vỡ, khoang
     // ngực tối phía sau.
@@ -470,18 +492,41 @@ void paintSpartoi(
       shadow: 1,
     );
     _shaded(canvas, _bonePath(elbow, hand, 2.8), bone, shadow: 1);
-    final spearBack = hand + const Offset(30, -30);
-    final spearTip = hand + Offset(-30 - 10 * lunge, 30 * 0 - 6);
+    // Giáo dory cầm thấp chĩa về người chơi: cán gỗ, mũi đồng hình lá có
+    // gân giữa, chuôi nhọn (sauroter) ở đuôi.
+    final spearBack = hand + const Offset(30, -12);
+    final spearTip = hand + Offset(-30 - 10 * lunge, 2);
     canvas.drawLine(spearBack, spearTip, _stroke(_outline, 3.4));
     canvas.drawLine(spearBack, spearTip, _stroke(const Color(0xFF7A5232), 1.8));
     final dir = (spearTip - spearBack) / (spearTip - spearBack).distance;
     final n = Offset(-dir.dy, dir.dx);
-    final head = _poly([
-      spearTip - n * 3,
+    final leaf = Path()
+      ..moveTo(spearTip.dx, spearTip.dy)
+      ..quadraticBezierTo(
+        spearTip.dx + dir.dx * 4 + n.dx * 3.6,
+        spearTip.dy + dir.dy * 4 + n.dy * 3.6,
+        spearTip.dx + dir.dx * 12,
+        spearTip.dy + dir.dy * 12,
+      )
+      ..quadraticBezierTo(
+        spearTip.dx + dir.dx * 4 - n.dx * 3.6,
+        spearTip.dy + dir.dy * 4 - n.dy * 3.6,
+        spearTip.dx,
+        spearTip.dy,
+      )
+      ..close();
+    _shaded(canvas, leaf, bronze, shadow: 1);
+    canvas.drawLine(
+      spearTip,
       spearTip + dir * 10,
-      spearTip + n * 3,
-    ]);
-    _shaded(canvas, head, const Color(0xFFCFC6B0), shadow: 1);
+      _stroke(darken(bronze, 0.35), 0.6),
+    );
+    _shaded(
+      canvas,
+      _poly([spearBack + n * 1.4, spearBack - dir * 6, spearBack - n * 1.4]),
+      bronze,
+      shadow: 0.6,
+    );
   });
   canvas.restore();
 
