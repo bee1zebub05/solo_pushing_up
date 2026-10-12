@@ -676,6 +676,64 @@ void _temple(Canvas canvas, Offset base, double s) {
     const Rect.fromLTRB(-30, -40, 30, -34),
     Paint()..color = const Color(0xFF5E524C),
   );
+  // Tường cella: hàng đá xây so le, cửa lớn tối với bóng tượng thần
+  // Zeus mờ trong lòng (đền Zeus ở Nemea), ánh nắng hắt một vệt trên nền.
+  final course = Paint()
+    ..color = const Color(0x445E524C)
+    ..strokeWidth = 0.35;
+  for (var r = 0; r < 6; r++) {
+    final y = -33.0 + r * 4.2;
+    canvas.drawLine(Offset(-30, y), Offset(30, y), course);
+    for (var x = -30.0 + (r.isEven ? 0 : 3); x < 30; x += 6) {
+      canvas.drawLine(Offset(x, y), Offset(x, y + 4.2), course);
+    }
+  }
+  const door = Rect.fromLTRB(-7, -31, 7, -8);
+  canvas.drawRect(door, Paint()..color = const Color(0xFF3E3430));
+  canvas.drawRect(
+    door,
+    Paint()
+      ..color = const Color(0xFF9C8C7C)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9,
+  );
+  final statue = Paint()..color = const Color(0xFF5A4C44);
+  canvas.drawCircle(const Offset(0, -24), 1.8, statue);
+  canvas.drawPath(
+    _poly(const [
+      Offset(-3.2, -21.5),
+      Offset(3.2, -21.5),
+      Offset(4, -13),
+      Offset(4.6, -8),
+      Offset(-4.6, -8),
+      Offset(-4, -13),
+    ]),
+    statue,
+  );
+  canvas.drawLine(
+    const Offset(4.4, -27),
+    const Offset(4.4, -8),
+    statue..strokeWidth = 0.6,
+  );
+  canvas.drawPath(
+    _poly(const [
+      Offset(-7, -8),
+      Offset(-2, -8),
+      Offset(-6, -12),
+      Offset(-7, -12),
+    ]),
+    Paint()..color = const Color(0x33FFF3D6),
+  );
+  // Bóng mái đổ xuống tường trong.
+  canvas.drawRect(
+    const Rect.fromLTRB(-30, -34, 30, -24),
+    Paint()
+      ..shader = Gradient.linear(
+        const Offset(0, -34),
+        const Offset(0, -24),
+        const [Color(0x553A302A), Color(0x003A302A)],
+      ),
+  );
 
   // Hàng cột có rãnh, bóng phía phải mỗi cột.
   const cols = 7;
