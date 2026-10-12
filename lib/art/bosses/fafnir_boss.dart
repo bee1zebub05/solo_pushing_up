@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../battle_stage.dart';
+import '../motion.dart' show AttackPose;
 import '../nemea_scene.dart' show stageGroundY, stageSize;
 import '../vector_style.dart';
 
@@ -602,7 +603,10 @@ class FafnirBossArt extends BossArt {
     _neckAndHead(canvas, f, breathe);
     canvas.restore();
     if (tint != null) canvas.restore();
-    if (f.attack > 0.05 && f.defeat == 0) _frostBreath(canvas, f);
+    // Hơi băng chỉ phun lúc ra đòn; pha lấy đà chỉ ngóc đầu (báo trước).
+    final striking =
+        f.attackPhase < 0 || f.attackPhase >= AttackPose.windupEnd;
+    if (f.attack > 0.05 && f.defeat == 0 && striking) _frostBreath(canvas, f);
   }
 
   // Phần tĩnh chụp sẵn: kho vàng, thân + chân trước, cánh (xoay quanh vai).

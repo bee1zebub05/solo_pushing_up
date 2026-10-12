@@ -499,6 +499,9 @@ abstract final class StageQuality {
   /// Phủ bụi Trì Trệ (Nemea).
   static bool dust = true;
 
+  /// Sương Trì Trệ bằng shader GPU (lib/art/stage_shaders.dart).
+  static bool mist = true;
+
   /// Vẽ nhân vật / boss (chỉ để đo hiệu năng từng phần).
   static bool hero = true;
   static bool boss = true;

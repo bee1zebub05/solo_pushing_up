@@ -15,6 +15,10 @@ const lionScale = 0.72;
 
 /// Kỳ công 1 — Sư tử Nemea ở thung lũng Nemea.
 class NemeaBossArt extends BossArt {
+  /// Sư tử tự diễn đòn vồ 3 pha (lion_art.dart).
+  @override
+  bool get ownsAttackMotion => true;
+
   @override
   final Vector2 target = Vector2(
     lionX - 72 * lionScale,
