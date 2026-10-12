@@ -695,18 +695,52 @@ class ThuyTinhBossArt extends BossArt {
         ..close(),
       fillPaint(coreShadeOf(skin).withValues(alpha: 0.35)),
     );
-    // Chuỗi ngọc trai vắt chéo ngực.
-    for (var i = 0; i < 9; i++) {
-      final t = i / 8;
-      final p = Offset(296 + 58 * t, 100 + 28 * t + math.sin(t * math.pi) * 5);
+    // Chuỗi ngọc trai vắt chéo ngực: dây vàng xâu qua, hạt to dần về
+    // giữa, mỗi hạt có bóng lõi dưới–phải, ánh xà cừ hồng–lam ở mép và
+    // điểm loá; bóng đổ lên da.
+    Offset at(double t) =>
+        Offset(296 + 58 * t, 100 + 28 * t + math.sin(t * math.pi) * 5);
+    canvas.drawPath(
+      Path()
+        ..moveTo(at(0).dx, at(0).dy)
+        ..quadraticBezierTo(at(0.5).dx - 3, at(0.5).dy + 3, at(1).dx, at(1).dy),
+      Paint()
+        ..color = const Color(0xFFB88A2E)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+    for (var i = 0; i < 11; i++) {
+      final t = i / 10;
+      final p = at(t);
+      final r = 2.2 + math.sin(t * math.pi) * 1.1;
       canvas.drawCircle(
-        p + const Offset(0.6, 1.2),
-        3,
-        fillPaint(coreShadeOf(skin).withValues(alpha: 0.4)),
+        p + const Offset(0.8, 1.4),
+        r,
+        fillPaint(coreShadeOf(skin).withValues(alpha: 0.45)),
       );
-      canvas.drawCircle(p, 3.2, fillPaint(VectorStyle.outline));
-      canvas.drawCircle(p, 2.4, fillPaint(const Color(0xFFFFFAF0)));
-      glint(canvas, p + const Offset(-0.8, -0.8), 1, alpha: 0.9);
+      canvas.drawCircle(p, r + 0.7, fillPaint(VectorStyle.outline));
+      canvas.drawCircle(
+        p,
+        r,
+        Paint()
+          ..shader = Gradient.radial(
+            p + Offset(-r * 0.35, -r * 0.35),
+            r * 1.4,
+            const [Color(0xFFFFFDF6), Color(0xFFE6DCCB), Color(0xFFB9B4C4)],
+            const [0, 0.6, 1],
+          ),
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: p, radius: r - 0.5),
+        0.2,
+        1.4,
+        false,
+        Paint()
+          ..color = const Color(0x88F2B8C8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+      glint(canvas, p + Offset(-r * 0.35, -r * 0.4), r * 0.4, alpha: 0.95);
     }
     // Giáp vai san hô trên vai xa: các nhánh thon mọc hướng lên, phân
     // nhánh, đầu nhánh tròn; lỗ san hô lấm tấm.
