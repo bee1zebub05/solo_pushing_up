@@ -350,7 +350,9 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
-  Widget _buildTopBar() {
+  /// [compact]: màn ngang (chiều cao ít) — chữ nhỏ hơn, bỏ dòng số HP
+  /// (thanh máu đã đủ đọc).
+  Widget _buildTopBar({bool compact = false}) {
     final remaining = _battle.remainingMs(_nowMs);
     return Column(
       children: [
@@ -365,12 +367,12 @@ class _BattleScreenState extends State<BattleScreen>
             Expanded(
               child: Text(
                 widget.enemy.name,
-                style: const TextStyle(
+                style: TextStyle(
                   color: GreekUi.ink,
-                  fontSize: 22,
+                  fontSize: compact ? 17 : 22,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.6,
-                  shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4)],
+                  shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4)],
                 ),
               ),
             ),
@@ -418,15 +420,16 @@ class _BattleScreenState extends State<BattleScreen>
           const SizedBox(height: 6),
           _buildFlood(wave),
         ],
-        const SizedBox(height: 4),
-        Text(
-          widget.enemy.heads > 1
-              ? 'Đầu ${math.min(widget.enemy.heads, widget.enemy.heads - _battle.headsLeft + 1)}'
-                    '/${widget.enemy.heads} · '
-                    'HP đầu ${_battle.headHp}/${widget.enemy.headMaxHp}'
-              : 'HP ${_battle.hp}/${widget.enemy.maxHp}',
-          style: const TextStyle(color: Colors.white70),
-        ),
+        if (!compact || widget.enemy.heads > 1) const SizedBox(height: 4),
+        if (!compact || widget.enemy.heads > 1)
+          Text(
+            widget.enemy.heads > 1
+                ? 'Đầu ${math.min(widget.enemy.heads, widget.enemy.heads - _battle.headsLeft + 1)}'
+                      '/${widget.enemy.heads} · '
+                      'HP đầu ${_battle.headHp}/${widget.enemy.headMaxHp}'
+                : 'HP ${_battle.hp}/${widget.enemy.maxHp}',
+            style: const TextStyle(color: Colors.white70),
+          ),
       ],
     );
   }
@@ -511,9 +514,9 @@ class _BattleScreenState extends State<BattleScreen>
         if (finished) Positioned.fill(child: _buildResult()),
       ],
     );
-    final topBar = Padding(
+    Widget topBar({bool compact = false}) => Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-      child: _buildTopBar(),
+      child: _buildTopBar(compact: compact),
     );
     return Scaffold(
       backgroundColor: GreekUi.background,
@@ -527,7 +530,7 @@ class _BattleScreenState extends State<BattleScreen>
                     flex: 3,
                     child: Column(
                       children: [
-                        topBar,
+                        topBar(compact: true),
                         Expanded(child: Center(child: stageView)),
                       ],
                     ),
@@ -538,7 +541,7 @@ class _BattleScreenState extends State<BattleScreen>
             }
             return Column(
               children: [
-                topBar,
+                topBar(),
                 stageView,
                 Expanded(child: cameraView),
               ],
