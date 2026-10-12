@@ -1785,6 +1785,17 @@ void paintYoungHydra(
       );
       necks.add((base, tip));
     }
+    // Bóng tiếp giáp nơi cổ mọc ra từ thân (cổ chìm vào khối thân).
+    for (final (base, _) in necks) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: base + const Offset(0, 2),
+          width: 20,
+          height: 7,
+        ),
+        _fill(const Color(0x66142014)),
+      );
+    }
     for (final (base, tip) in necks) {
       final mid = Offset.lerp(base, tip, 0.5)! + const Offset(10, 0);
       shadedChain(canvas, [(base, mid, 8, 6), (mid, tip, 6, 5)], scale);
@@ -1852,22 +1863,68 @@ const _hydraScale = Color(0xFF3F7A4A);
 const _hydraBelly = Color(0xFFD8C978);
 
 final _hydraBackCoil = RasterLayer(
-  (c) => _serpentCoil(
-    c,
-    const [
-      Offset(-26, -12),
-      Offset(-20, -30),
-      Offset(2, -40),
-      Offset(28, -36),
-      Offset(42, -20),
-      Offset(30, -8),
-    ],
-    22,
-    darken(_hydraScale, 0.1),
-    startWidth: 0.85,
-    endWidth: 0.85,
-    belly: false,
-  ),
+  (c) {
+    _serpentCoil(
+      c,
+      const [
+        Offset(-26, -12),
+        Offset(-20, -30),
+        Offset(2, -40),
+        Offset(28, -36),
+        Offset(42, -20),
+        Offset(30, -8),
+      ],
+      22,
+      darken(_hydraScale, 0.1),
+      startWidth: 0.85,
+      endWidth: 0.85,
+      belly: false,
+    );
+    // Khối thân chung giữa vòng cuộn — nơi các cổ mọc ra (không để cổ cắm
+    // xuống một lỗ trống): bướu thân tròn phủ vảy, ngực sáng ở giữa.
+    final trunk = Path()
+      ..moveTo(-24, -6)
+      ..cubicTo(-26, -24, -14, -38, 2, -38)
+      ..cubicTo(20, -38, 32, -26, 30, -6)
+      ..close();
+    shadedPath(
+      c,
+      trunk,
+      _hydraScale,
+      PartFrame.world,
+      shadow: 4,
+      highlight: 1.2,
+    );
+    c.save();
+    c.clipPath(trunk);
+    final cell = Paint()
+      ..color = darken(_hydraScale, 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    for (var r = 0; r < 9; r++) {
+      for (var k = 0; k < 14; k++) {
+        final x = -26 + k * 4.4 + (r.isOdd ? 2.2 : 0);
+        final y = -38 + r * 3.8;
+        c.drawArc(
+          Rect.fromCenter(center: Offset(x, y), width: 4.4, height: 3.8),
+          0.2,
+          math.pi - 0.4,
+          false,
+          cell,
+        );
+      }
+    }
+    c.drawRect(
+      const Rect.fromLTRB(-30, -40, 34, -4),
+      Paint()
+        ..shader = Gradient.linear(
+          const Offset(0, -20),
+          const Offset(0, -4),
+          const [Color(0x00142014), Color(0x99142014)],
+        ),
+    );
+    c.restore();
+  },
   bounds: const Rect.fromLTRB(-46, -60, 62, 8),
   resolution: 2,
 );
