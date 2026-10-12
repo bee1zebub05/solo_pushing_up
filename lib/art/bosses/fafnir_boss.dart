@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 
 import '../battle_stage.dart';
 import '../motion.dart' show AttackPose;
+import '../stage_shaders.dart';
 import '../nemea_scene.dart' show stageGroundY, stageSize;
 import '../vector_style.dart';
 
@@ -523,10 +524,31 @@ class FafnirBossArt extends BossArt {
     );
   }
 
+  /// Cực quang bằng shader GPU (rèm tia sáng chuyển động); máy không nạp
+  /// được shader thì vẽ bản vector bên dưới.
+  final _aurora = ShaderLayer(StageShaders.aurora, width: 200, height: 70);
+
+  @override
+  void dispose() => _aurora.dispose();
+
   @override
   void paintAmbient(Canvas canvas, double time) {
-    // Cực quang uốn lượn: rèm sáng dọc (tia rủ xuống) mờ dần ở mép trên và
-    // dưới bằng gradient — không blur mỗi khung (rất đắt trên GPU).
+    if (_aurora.ready) {
+      _aurora.paint(
+        canvas,
+        const Rect.fromLTWH(0, 0, 400, 140),
+        time: time,
+        blendMode: BlendMode.plus,
+      );
+    } else {
+      _vectorAurora(canvas, time);
+    }
+    _snow(canvas, time);
+  }
+
+  /// Cực quang vector (dự phòng): rèm sáng dọc mờ dần ở mép trên và dưới
+  /// bằng gradient — không blur mỗi khung (rất đắt trên GPU).
+  void _vectorAurora(Canvas canvas, double time) {
     for (final (y, color, speed) in [
       (40.0, const Color(0xFF34F5B0), 0.4),
       (58.0, const Color(0xFFA06BFF), 0.3),
@@ -568,7 +590,9 @@ class FafnirBossArt extends BossArt {
         );
       }
     }
-    // Tuyết rơi.
+  }
+
+  void _snow(Canvas canvas, double time) {
     final flake = fillPaint(const Color(0xDDFFFFFF));
     final rnd = math.Random(9);
     for (var i = 0; i < 40; i++) {

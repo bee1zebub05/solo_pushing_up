@@ -136,6 +136,9 @@ abstract class BossArt {
   /// Màu viền cảnh khi boss sắp gục và nổi giận (pha cuối, máu < 40%).
   Color get rageColor => const Color(0xFFC62828);
 
+  /// Trả tài nguyên GPU riêng của hình (lớp shader…) khi rời trận.
+  void dispose() {}
+
   /// Tên bộ âm riêng của boss (`assets/sounds/boss_<key>_tell|hit.wav`,
   /// tạo bằng tool/gen_boss_sounds.py); null = không có.
   String? get soundKey => null;
@@ -256,7 +259,7 @@ class BattleStageGame extends FlameGame {
 
   @override
   Future<void> onLoad() async {
-    await StagnationMist.load();
+    await StageShaders.load();
     camera.viewfinder.anchor = Anchor.topLeft;
     world.addAll([
       _SceneComponent(boss, battle),
@@ -456,7 +459,7 @@ class _SceneComponent extends Component {
     bounds: Offset.zero & stageSize,
   );
 
-  final _mist = StagnationMist();
+  final _mist = ShaderLayer(StageShaders.mist, width: 200, height: 130);
 
   /// Mật độ sương hiện tại: đuổi theo máu boss trong ~1 giây (tan mượt).
   double _mistDensity = -1;
@@ -468,14 +471,6 @@ class _SceneComponent extends Component {
     _mistDensity = _mistDensity < 0
         ? target
         : _mistDensity + (target - _mistDensity) * math.min(1, dt * 2.5);
-    if (StageQuality.mist) {
-      _mist.update(
-        dt,
-        time: _time,
-        density: _mistDensity,
-        color: boss.mistColor,
-      );
-    }
   }
 
   @override
@@ -487,7 +482,15 @@ class _SceneComponent extends Component {
     if (StageQuality.mist && _mistDensity > 0.01) {
       StageProfile.run(
         'mist',
-        () => _mist.paint(canvas, Offset.zero & stageSize),
+        () => _mist.paint(
+          canvas,
+          Offset.zero & stageSize,
+          time: _time,
+          uniforms: (s) {
+            s.setFloat(3, _mistDensity);
+            setColorUniform(s, 4, boss.mistColor);
+          },
+        ),
       );
     }
   }
@@ -495,6 +498,7 @@ class _SceneComponent extends Component {
   @override
   void onRemove() {
     _mist.dispose();
+    boss.dispose();
     _backdrop.dispose();
     super.onRemove();
   }

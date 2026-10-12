@@ -82,6 +82,7 @@ flutter:
   # Shader GPU cho hiệu ứng sân khấu (lib/art/stage_shaders.dart).
   shaders:
     - shaders/stagnation_mist.frag
+    - shaders/aurora.frag
 
   # To add assets to your application, add an assets section, like this:
   # assets:
