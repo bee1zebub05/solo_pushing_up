@@ -24,12 +24,12 @@ wait_for() {
   done
   echo "Hết giờ chờ: $1"
 }
-for phase in full full-landscape orochi fafnir thuy_tinh swarm hydra harpy; do
+for phase in full full-landscape orochi fafnir thuy_tinh swarm hydra harpy boar spartoi stone pack; do
   wait_for "BENCH phase $phase\$"
   sleep 3
   echo "MEM $phase:"
   $A shell dumpsys meminfo $PKG | grep -E "^ +(Native Heap|Graphics|GL mtrack|EGL mtrack|TOTAL PSS|TOTAL:)" | sed 's/^ */  /'
 done
-wait_for 'BENCH .harpy. raster'
+wait_for 'BENCH .pack. raster'
 $A logcat -d | grep 'BENCH' | grep -E "record|\] (frames|build|raster)" | sed 's/.*BENCH/BENCH/'
 $A shell am force-stop $PKG
