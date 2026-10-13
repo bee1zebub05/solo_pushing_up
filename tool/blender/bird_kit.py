@@ -16,23 +16,37 @@ import bpy
 from mathutils import Euler, Matrix, Vector
 
 from boss_kit import add_object
-from human_kit import raw_tube, tapered_world
+from human_kit import raw_tube
 
 
 def _feathers(name, specs, mat, mirror):
-    """[specs]: (gốc, hướng, dài, nửa rộng, độ cao lớp, độ cong) → một lưới."""
-    strands = []
+    """[specs]: (gốc, hướng, dài, nửa rộng, độ cao lớp, độ cong) → một lưới.
+    Mỗi chiếc là phiến lông dẹt (nằm trong mặt cánh) có sống lông gồ giữa:
+    rộng gần đều từ gốc, ngọn thuôn nhọn như lưỡi dao, phiến ngoài hẹp hơn
+    phiến trong, cong xuống theo [độ cong]."""
+    verts, faces = [], []
+    up = Vector((0, 0, 1))
+    steps = 9
     for root, d, length, half_w, lift, bend in specs:
-        root = Vector(root) + Vector((0, 0, lift))
+        root = Vector(root) + up * lift
         d = Vector(d).normalized()
-        tip = root + d * length
-        mid = root + d * length * 0.5 + Vector((0, 0, -bend * length))
-        rad = half_w / 2.6
-        strands.append((root, mid, tip - Vector((0, 0, bend * length * 0.6)), rad))
+        w = up.cross(d).normalized()
+        base = len(verts)
+        for i in range(steps + 1):
+            t = i / steps
+            c = root + d * length * t - up * bend * length * math.sin(math.pi * t * 0.9) * 0.8
+            prof = min(1.0, 0.3 + t * 5) * (1.0 if t < 0.62 else math.cos((t - 0.62) / 0.38 * math.pi / 2) ** 0.8)
+            hw = half_w * prof
+            verts += [c - w * hw * 0.7, c + up * half_w * 0.12 * (1 - t), c + w * hw]
+        for i in range(steps):
+            o = base + i * 3
+            faces += [(o, o + 1, o + 4, o + 3), (o + 1, o + 2, o + 5, o + 4)]
     if mirror:
-        strands = [(Vector((a.x, -a.y, a.z)), Vector((b.x, -b.y, b.z)), Vector((c.x, -c.y, c.z)), r)
-                   for a, b, c, r in strands]
-    return add_object(name, tapered_world(name, strands, sides=8, steps=8, flat=2.6, taper=0.55), [mat])
+        verts = [Vector((v.x, -v.y, v.z)) for v in verts]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    return add_object(name, mesh, [mat])
 
 
 class Wing:
@@ -92,8 +106,8 @@ class Wing:
         ]
         # Xương cánh bọc lông nhỏ (mép trước).
         bones = [raw_tube(f"{name}Bone{k}", [Vector((0, 0, 0)), Vector((0, self.sgn * L, 0))], [r0, r1], sides=12)
-                 for k, (L, r0, r1) in enumerate(((l1, 0.04 * s, 0.03 * s), (l2, 0.03 * s, 0.02 * s),
-                                                  (l3, 0.02 * s, 0.01 * s)))]
+                 for k, (L, r0, r1) in enumerate(((l1, 0.026 * s, 0.018 * s), (l2, 0.018 * s, 0.012 * s),
+                                                  (l3, 0.012 * s, 0.006 * s)))]
         for k, (joint, part) in enumerate(zip(self.joints, self.parts)):
             if mir is False:
                 pass

@@ -142,6 +142,9 @@ khấu Flame ("cách 1": game Flutter giữ nguyên). Phong cách fantasy realis
 
 - Script: `tool/blender/boss_kit.py` (dùng chung) + mỗi boss một file
   (`lion_nemea.py`, `fafnir_boss.py`, `orochi_boss.py`, `thuy_tinh_boss.py`).
+  Quái chương 1: `hoplite.py` (lính đá, `--spartoi`), `stymphalia.py` (chim
+  Stymphalia: lông thân xếp ngói rải trên lưới, cánh `bird_kit.py` từng phiến
+  lông có sống lông). Nhân vật: `hero.py` (`--female`).
   Chạy `bash tool/blender/render.sh <tên> --still`. File mở bằng Blender để
   chỉnh tay: `art_src/blender/*.blend`.
 - Toạ độ viết theo đơn vị sân khấu 400×260, gốc ở chân boss; tư thế theo
