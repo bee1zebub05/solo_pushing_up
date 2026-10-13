@@ -63,3 +63,9 @@ dataset/eval_frames/
 /demo/motion/*
 !/demo/motion/compare_*.mp4
 !/demo/motion/compare_*.jpg
+
+# Bản sao lưu tự động của Blender
+*.blend1
+# File .blend do script tool/blender/ sinh lại được
+/art_src/blender/*.blend
+__pycache__/

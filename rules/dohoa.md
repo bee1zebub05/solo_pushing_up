@@ -133,3 +133,34 @@ máy cách 50–80 cm): **chuyển động đọc được từ xa tốt hơn ch
 **Chuyển động trên nhân vật:** nhân vật được chụp ảnh theo tư thế làm tròn,
 nên chuyển động phụ (đuôi băng, tóc) vẽ riêng sẽ phá bộ đệm. Chỉ áp biến đổi
 toàn thân (lò xo giật lùi khi bị đòn) lên ảnh chụp sẵn.
+
+## 7. Chuyển sang Blender, phong cách fantasy realism (13/10/2026)
+
+Quyết định: đồ hoạ boss dựng 3D trong Blender, render thành sprite cho sân
+khấu Flame ("cách 1": game Flutter giữ nguyên). Phong cách fantasy realism
+(lông/vảy/kim loại/nước thật, ánh sáng điện ảnh), bỏ cartoon vector có viền.
+
+- Script: `tool/blender/boss_kit.py` (dùng chung) + mỗi boss một file
+  (`lion_nemea.py`, `fafnir_boss.py`, `orochi_boss.py`, `thuy_tinh_boss.py`).
+  Chạy `bash tool/blender/render.sh <tên> --still`. File mở bằng Blender để
+  chỉnh tay: `art_src/blender/*.blend`.
+- Toạ độ viết theo đơn vị sân khấu 400×260, gốc ở chân boss; tư thế theo
+  `AttackPose` (lấy đà 0–0,5, ra đòn 0,5–0,65) để khớp nhịp đòn của game.
+- Bẫy Blender 5.2: sợi (lông, tóc) do geometry nodes sinh trên object lưới
+  KHÔNG render — đặt trên object Curves riêng (`with_fur`).
+- Giới hạn đã thấy: khối ghép từ ellipsoid/metaball cho rồng, rắn, thần nước
+  ổn; thú có lông (sư tử) và mặt người chưa đạt tả thực — cần mô hình nặn.
+
+**Tranh tham khảo** (chỉ học hình tượng, không chép; đều dùng thương mại được):
+
+| Boss | Tranh | Giấy phép |
+|---|---|---|
+| Fafnir | Delitz, "Siegfried and the dragon" (Victrola book of the opera, 1917) — [Commons](https://commons.wikimedia.org/wiki/File:Wagner_-_Siegfried_-_Siegfried_and_the_dragon_-_From_the_painting_by_Delitz_-_The_Victrola_book_of_the_opera.jpg) | No restrictions |
+| Fafnir | Arthur Rackham, Siegfried and the Twilight of the Gods (1911) — [Ring45](https://commons.wikimedia.org/wiki/File:Ring45.jpg), [p162](https://commons.wikimedia.org/wiki/File:Siegfried_and_the_Twilight_of_the_Gods_p_162.jpg) | Public domain |
+| Orochi | Tsukioka Yoshitoshi (1887) — [Commons](https://commons.wikimedia.org/wiki/File:Susanoo-no-Mikoto-slays-Yamata-no-Orochi-in-Izumo-By-Tsukioka-Yoshitoshi.png) | Public domain |
+| Orochi | Tranh bộ ba khoảng 1870 — [Commons](https://commons.wikimedia.org/wiki/File:YamataNoOrochi.jpg); Torii Kiyomasu II (1748) — [Commons](https://commons.wikimedia.org/wiki/File:Susano-o_no_Mikoto_Killing_the_Eight-headed_Dragon.jpg) | Public domain; CC0 |
+| Thuỷ Tinh | Tranh thờ Tản Viên Sơn Thánh, sách Nhất thành khả cách chân kinh — [Commons](https://commons.wikimedia.org/wiki/File:Tranh_v%E1%BA%BD_T%E1%BA%A3n_Vi%C3%AAn_S%C6%A1n_Th%C3%A1nh_trong_quy%E1%BB%83n_Nh%E1%BA%A5t_th%C3%A0nh_kh%E1%BA%A3_c%C3%A1ch_ch%C3%A2n_kinh_%E4%B8%80%E8%AA%A0%E5%8F%AF%E6%A0%BC%E7%9C%9F%E7%B6%93.jpg) | Public domain |
+
+Không dùng: ảnh chụp đá khắc Hylestad (CC BY-SA, buộc chia sẻ lại cùng giấy
+phép), tranh Rackham 1924 trên Heritage Images (bản quyền thương mại), mẫu
+sư tử RenderHub "editorial only".
