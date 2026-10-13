@@ -7,6 +7,7 @@ import 'package:solo_pushing_up/art/greek_monsters.dart';
 import 'package:solo_pushing_up/art/hercules_art.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
+import 'package:solo_pushing_up/art/hero_sprite.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_map_art.dart';
@@ -522,6 +523,49 @@ void main() {
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
+    }
+    art.dispose();
+  });
+
+  testWidgets('nhân vật bằng sprite Blender tách lớp (da, áo, tóc)', (
+    tester,
+  ) async {
+    final art = NemeaBossArt();
+    await tester.runAsync(art.preload);
+    final looks = [
+      const HeroLook(),
+      HeroLook(skin: skinTones[0], hair: hairColors[3]),
+      HeroLook(skin: skinTones[5], hair: hairColors[0], height: 1.08),
+    ];
+    for (final look in looks) {
+      await tester.runAsync(() => HeroSprites.load(look));
+      expect(HeroSprites.ready(look), isTrue, reason: '${look.sex}');
+    }
+    final battle = StageBattleState()..bossHp = 0.0;
+    final frame = BossFrame(
+      time: 2.5,
+      attack: 0,
+      hurt: 0,
+      glint: -1,
+      defeat: 0,
+      battle: battle,
+    );
+    for (final (i, look) in looks.indexed) {
+      for (final (tag, f) in [
+        ('top', HeroSpriteFrame.plank(178)),
+        ('mid', HeroSpriteFrame.plank(120)),
+        ('bottom', HeroSpriteFrame.plank(72)),
+        ('knees', HeroSpriteFrame.plank(90, onKnees: true)),
+        ('stand', const HeroSpriteFrame('stand', 0)),
+        ('victory', const HeroSpriteFrame('victory', 0)),
+      ]) {
+        await render(tester, 'hero_sprite_${i}_$tag', (c) {
+          art.paintStageBackdrop(c);
+          art.paintScene(c, 2.5, battle);
+          HeroSprites.paint(c, look, f);
+          art.paintForeground(c, frame);
+        });
+      }
     }
     art.dispose();
   });

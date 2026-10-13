@@ -25,7 +25,7 @@ BACKDROPS = os.path.join(ROOT, "build", "blender", "backdrops")
 BACKDROP_OUT = os.path.join(ROOT, "assets", "backdrops")
 # Phông nền phủ cả màn hình, không phóng to như sprite: q85 đủ, nhẹ hơn.
 BACKDROP_QUALITY = 85
-BACKDROP_LAYERS = ("sky", "far", "mid", "near", "fg")
+BACKDROP_LAYERS = ("sky", "far", "mid", "near", "fg", "map")
 
 
 def convert(png):
@@ -56,7 +56,7 @@ def backdrops():
         if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(png):
             continue
         img = Image.open(png).convert("RGBA")
-        if base.endswith("_sky"):
+        if base.endswith(("_sky", "_map")):
             img = img.convert("RGB")
         img.save(dst, "WEBP", quality=BACKDROP_QUALITY, alpha_quality=90, method=6)
         print(f"{base}: {os.path.getsize(png) // 1024} KB PNG -> {os.path.getsize(dst) // 1024} KB WebP")

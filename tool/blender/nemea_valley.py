@@ -941,4 +941,5 @@ def main():
     save_blend("nemea_valley")
 
 
-main()
+if __name__ == "__main__":
+    main()

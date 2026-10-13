@@ -211,11 +211,29 @@ class NemeaBossArt extends BossArt {
       290 + math.cos(a) * (40 + i * 8),
       58 + i * 12 + math.sin(a) * 14,
     );
+    final size = 0.55 + (i % 2) * 0.1;
+    final sprite = SpriteAtlas.get(birdSprite);
+    if (sprite != null) {
+      // Chim Blender (cùng atlas quái 1.1): sprite tính theo con đầu đàn ×1,15.
+      final s = size / 1.15;
+      canvas.save();
+      canvas.translate(at.dx, at.dy + 120 * fall * fall);
+      if (fall > 0) canvas.rotate(fall * 7);
+      canvas.scale(-math.sin(a) > 0 ? -s : s, s);
+      if (fall > 0 && sprite.has('defeat')) {
+        sprite.draw(canvas, 'defeat', fall, opacity: 1 - fall);
+      } else {
+        final period = sprite.metaDouble('idlePeriod', 0.7);
+        sprite.draw(canvas, 'idle', (time + i * 0.3) / period, loop: true);
+      }
+      canvas.restore();
+      return;
+    }
     paintBirdSprite(
       canvas,
       at,
       time + i * 0.3,
-      size: 0.55 + (i % 2) * 0.1,
+      size: size,
       facingRight: -math.sin(a) > 0,
       fall: fall,
     );
@@ -227,16 +245,21 @@ class NemeaBossArt extends BossArt {
   Future<void> preload() async {
     await NemeaBackdrop.load();
     await SpriteAtlas.load(lionSprite);
+    await SpriteAtlas.load(birdSprite);
   }
 
   @override
   void dispose() {
     SpriteAtlas.evict(lionSprite);
+    SpriteAtlas.evict(birdSprite);
     NemeaBackdrop.evict();
     super.dispose();
   }
 
   static const lionSprite = 'nemea_lion';
+
+  /// Đàn chim Stymphalia canh hang (cùng atlas quái màn 1.1).
+  static const birdSprite = 'stymphalian_bird';
 
   @override
   void paintBoss(Canvas canvas, BossFrame f) {

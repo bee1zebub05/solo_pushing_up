@@ -566,6 +566,7 @@ def show_layer(layers, visible, hair_style=None, floor=None):
             for o in objs:
                 o.hide_render = True
     if floor is not None:
+        # Bóng đổ chỉ nằm ở lớp trang phục (không nhân màu, không bóng kép).
         floor.hide_render = floor not in visible
 
 
@@ -612,13 +613,13 @@ def main():
     }
     cam = camera(scene, 0.9 * K, 0.95 * K, 2.6 * K, 2.1 * K, 3.0 * upm, yaw=-10, pitch=7)
     meta = {"elbowFrom": 178, "elbowTo": 70, "anchorX": 40}
-    show_layer(layers, layers["skin"])
+    show_layer(layers, layers["skin"], floor=floor)
     export_sprites(scene, cam, f"hero_{tag}_skin", anims, Vector(), upm, extra=meta)
     show_layer(layers, layers["cloth"] + [floor], floor=floor)
     export_sprites(scene, cam, f"hero_{tag}_cloth", anims, Vector(), upm, extra=meta)
     scene.cycles.samples = 64
     for style, objs in layers["hair"].items():
-        show_layer(layers, objs + layers["brows"], hair_style=style)
+        show_layer(layers, objs + layers["brows"], hair_style=style, floor=floor)
         export_sprites(scene, cam, f"hero_{tag}_hair_{style}", anims, Vector(), upm, extra=meta)
     from boss_kit import save_blend
     save_blend(f"hero_{tag}")

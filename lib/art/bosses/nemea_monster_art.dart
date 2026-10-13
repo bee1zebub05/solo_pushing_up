@@ -34,6 +34,7 @@ class NemeaMonsterArt extends NemeaBossArt {
   @override
   Future<void> preload() async {
     await NemeaBackdrop.load();
+    await SpriteAtlas.load(NemeaBossArt.birdSprite);
     for (final name in _spritesOf(kind)) {
       await SpriteAtlas.load(name);
     }

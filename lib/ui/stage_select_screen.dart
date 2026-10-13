@@ -222,6 +222,7 @@ class _StageMapState extends State<_StageMap>
   void initState() {
     super.initState();
     _ticker.start();
+    NemeaMapImage.load();
   }
 
   @override
