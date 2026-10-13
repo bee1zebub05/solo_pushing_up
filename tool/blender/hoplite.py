@@ -27,6 +27,7 @@ from boss_kit import (ARGS, ROOT, STILL, add_object, add_sun, attack_pose, fur_m
                       glow_material, parent_to_bone, render_to, reset_scene, save_blend, smooth)
 from greek_kit import (aspis, bronze_material, clay_material, corinthian_helmet, cuirass, dory,  # noqa: E402
                        greaves, helmet_crest, holder, make_fist, marble_material, pteruges, wood_material)
+from sprite_kit import export_sprites  # noqa: E402
 from human_kit import (arm_ik, camera, group_center, make_human, raw_ellipsoid, rest_coords,  # noqa: E402
                        shadow_catcher)
 
@@ -35,6 +36,8 @@ K = 1.12 if not SPARTOI else 1.05
 FRONT = Vector((-1, 0, 0))
 UP = Vector((0, 0, 1))
 NEAR = Vector((0, -1, 0))
+# Đơn vị sân khấu cho 1 m: Spartoi cao ~130, lính đá ~145 như bản vector (×1,35).
+UNITS_PER_M = 66
 
 
 def build():
@@ -166,7 +169,17 @@ def main():
         poser.pose()
         save_blend(f"{tag}_soldier")
         return
-    raise SystemExit("Chưa có chế độ atlas: chạy với --still")
+    # Hoạt hình: thở (lặp), ra đòn theo tiến độ, Spartoi trồi lên từ đất.
+    scene.cycles.samples = 64
+    cam = camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 200)
+    anims = {
+        "idle": [lambda k=k: poser.pose(t=k / 6) for k in range(6)],
+        "attack": [lambda k=k: poser.pose(t=0.2, attack=k / 7) for k in range(8)],
+    }
+    if SPARTOI:
+        anims["rise"] = [lambda k=k: poser.pose(t=0, rise=k / 5) for k in range(6)]
+    export_sprites(scene, cam, "spartoi" if SPARTOI else "stone_soldier", anims, (0, 0, 0), UNITS_PER_M,
+                   extra={"idlePeriod": 2.6})
 
 
 main()

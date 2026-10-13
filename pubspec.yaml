@@ -78,6 +78,7 @@ flutter:
 
   assets:
     - assets/sounds/
+    - assets/sprites/
 
   # Shader GPU cho hiệu ứng sân khấu (lib/art/stage_shaders.dart).
   shaders:

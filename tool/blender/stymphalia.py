@@ -22,68 +22,14 @@ from mathutils import Euler, Matrix, Vector
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import (ROOT, STILL, _nodes, add_object, add_point, add_sun, attack_pose, ellipsoids_mesh,  # noqa: E402
                       glow_material, render_to, reset_scene, save_blend, smooth, srgb)
-from bird_kit import Wing, flap_cycle  # noqa: E402
+from bird_kit import E, Wing, blade, feather_material, flap_cycle, plumage  # noqa: E402
 from greek_kit import bronze_material  # noqa: E402
+from sprite_kit import export_sprites  # noqa: E402
 from human_kit import camera, raw_ellipsoid, raw_tube, store_point_attr  # noqa: E402
 
-U = 50  # mét → đơn vị vẽ (ellipsoids_mesh nhận đơn vị vẽ)
-
-
-def E(c, r, rot=0.0):
-    """Ellipsoid theo mét (x tới sau, y sâu, z lên) → đối số ellipsoids_mesh.
-    [rot] độ: ngóc lên (dương = đầu trước ngóc lên)."""
-    return ((c[0] * U, -c[2] * U, c[1] * U), (r[0] * U, r[2] * U, r[1] * U), rot)
-
-
+# Đơn vị sân khấu cho 1 m: thân chim (mỏ → đuôi ~1,1 m) dài cỡ bản vector.
+UNITS_PER_M = 32
 # ---------------------------------------------------------------- vật liệu
-
-
-def feather_material(name, dark, light, sheen="#E8B060", metallic=0.65, rough=0.32):
-    """Lông vũ ánh kim: màu theo thuộc tính `feather_t` (0 = tối/lưng, 1 =
-    sáng/ức) cộng sai khác từng chiếc (Random Per Island); ánh đồng loang
-    theo hướng nhìn (mép lông bắt sáng)."""
-    mat = bpy.data.materials.new(name)
-    nt, out = _nodes(mat)
-    N, L = nt.nodes, nt.links.new
-    bsdf = N.new("ShaderNodeBsdfPrincipled")
-    geo = N.new("ShaderNodeNewGeometry")
-    attr = N.new("ShaderNodeAttribute")
-    attr.attribute_type = "GEOMETRY"
-    attr.attribute_name = "feather_t"
-    mix_t = N.new("ShaderNodeMath")
-    mix_t.operation = "MULTIPLY_ADD"
-    L(geo.outputs["Random Per Island"], mix_t.inputs[0])
-    mix_t.inputs[1].default_value = 0.14
-    L(attr.outputs["Fac"], mix_t.inputs[2])
-    ramp = N.new("ShaderNodeValToRGB")
-    els = ramp.color_ramp.elements
-    els[0].position, els[0].color = 0.0, srgb(dark)
-    els[1].position, els[1].color = 1.0, srgb(light)
-    L(mix_t.outputs[0], ramp.inputs["Fac"])
-    # Ánh kim ở mép (Fresnel) — lông đồng loé khi nghiêng.
-    fres = N.new("ShaderNodeLayerWeight")
-    fres.inputs["Blend"].default_value = 0.35
-    sh = N.new("ShaderNodeMix")
-    sh.data_type = "RGBA"
-    L(fres.outputs["Facing"], sh.inputs["Factor"])
-    L(ramp.outputs["Color"], sh.inputs[6])
-    sh.inputs[7].default_value = srgb(sheen)
-    L(sh.outputs[2], bsdf.inputs["Base Color"])
-    bsdf.inputs["Metallic"].default_value = metallic
-    bsdf.inputs["Roughness"].default_value = rough
-    bsdf.inputs["Anisotropic"].default_value = 0.6
-    # Vân lông (barbs) chạy chéo.
-    wave = N.new("ShaderNodeTexWave")
-    wave.inputs["Scale"].default_value = 180
-    wave.inputs["Distortion"].default_value = 2
-    tc = N.new("ShaderNodeTexCoord")
-    L(tc.outputs["Object"], wave.inputs["Vector"])
-    bump = N.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.18
-    L(wave.outputs["Fac"], bump.inputs["Height"])
-    L(bump.outputs[0], bsdf.inputs["Normal"])
-    L(bsdf.outputs[0], out.inputs["Surface"])
-    return mat
 
 
 def eye_material():
@@ -112,80 +58,6 @@ def eye_material():
     bsdf.inputs["Emission Strength"].default_value = 0.6
     L(bsdf.outputs[0], out.inputs["Surface"])
     return mat
-
-
-# ---------------------------------------------------------------- lông phủ thân
-
-
-def plumage(name, body, mat, density=0.0105, length=(0.04, 0.058), width=0.0125, small_front=-0.27,
-            seed=3, avoid=()):
-    """Lông xếp ngói phủ kín lưới [body]: mỗi chiếc là dải cong dẹt nằm sát da,
-    ngọn chĩa về sau–xuống, ngọn cao hơn gốc để che gốc chiếc phía sau. Lông
-    trước [small_front] (đầu, cổ) nhỏ dần. `feather_t` 0 = lưng, 1 = ức."""
-    rnd = random.Random(seed)
-    mesh = body.data
-    pts = [(v.co.copy(), v.normal.copy()) for v in mesh.vertices]
-    rnd.shuffle(pts)
-    taken = {}
-    cell = density
-    verts, faces, ft = [], [], []
-    back = Vector((1, 0, -0.25)).normalized()
-    for p, n in pts:
-        k = (int(p.x // cell), int(p.y // cell), int(p.z // cell))
-        if any((p - e).length < 0.024 for e in avoid):
-            continue
-        if any(taken.get((k[0] + a, k[1] + b, k[2] + c)) for a in (-1, 0, 1) for b in (-1, 0, 1) for c in (-1, 0, 1)):
-            continue
-        taken[k] = True
-        d = back - n * n.dot(back)
-        if d.length < 0.2:
-            d = Vector((0, 0, -1)) - n * n.z
-        d.normalize()
-        w = n.cross(d).normalized()
-        f = 1.0 if p.x > small_front else max(0.35, 1 - (small_front - p.x) * 6)
-        L = rnd.uniform(*length) * f
-        W = width * f * rnd.uniform(0.85, 1.1)
-        tone = min(1.0, max(0.0, 0.5 - n.z * 0.9 + (0.25 if p.x < -0.05 and p.z < 0 else 0)))
-        base = len(verts)
-        steps = 5
-        for i in range(steps + 1):
-            t = i / steps
-            c = p + d * L * t + n * (0.0015 + 0.006 * t)
-            hw = W * math.sin(math.pi * (0.12 + 0.8 * t)) ** 0.7 * (1 - 0.35 * t * t)
-            verts += [c - w * hw, c + n * 0.0012, c + w * hw]
-            ft += [tone] * 3
-        for i in range(steps):
-            o = base + i * 3
-            faces += [(o, o + 1, o + 4, o + 3), (o + 1, o + 2, o + 5, o + 4)]
-    m = bpy.data.meshes.new(name)
-    m.from_pydata(verts, [], faces)
-    m.update()
-    obj = add_object(name, m, [mat])
-    store_point_attr(obj, "feather_t", ft)
-    return obj
-
-
-def blade(name, root, d, up, length, half_w, mat, curve=0.08, tone=0.6):
-    """Lông dao (đuôi, mào): dải dẹt nhọn ngọn, cong theo [up], có sống giữa."""
-    d = Vector(d).normalized()
-    up = Vector(up).normalized()
-    w = up.cross(d).normalized()
-    verts, faces = [], []
-    steps = 10
-    for i in range(steps + 1):
-        t = i / steps
-        c = Vector(root) + d * length * t + up * curve * length * math.sin(math.pi * t * 0.8)
-        hw = half_w * (math.sin(math.pi * min(1.0, 0.1 + t * 0.95)) ** 0.5) * (1 - t ** 3)
-        verts += [c - w * hw, c + up * half_w * 0.18, c + w * hw]
-    for i in range(steps):
-        o = i * 3
-        faces += [(o, o + 1, o + 4, o + 3), (o + 1, o + 2, o + 5, o + 4)]
-    m = bpy.data.meshes.new(name)
-    m.from_pydata(verts, [], faces)
-    m.update()
-    obj = add_object(name, m, [mat])
-    store_point_attr(obj, "feather_t", [tone] * len(verts))
-    return obj
 
 
 # ---------------------------------------------------------------- dựng chim
@@ -336,7 +208,14 @@ def main():
         bird.pose()
         save_blend("stymphalian_bird")
         return
-    raise SystemExit("Chưa có chế độ atlas: chạy với --still")
+    # Hoạt hình: 12 pha đập cánh (lặp), 8 khung ra đòn theo tiến độ, 3 khung gục.
+    scene.cycles.samples = 64
+    cam = camera(scene, 0.05, 0.22, 2.1, 1.95, 130, yaw=-22, pitch=14)
+    flap = [lambda k=k: bird.pose(phase=k / 12) for k in range(12)]
+    attack = [lambda k=k: bird.pose(phase=0.0, attack=k / 7) for k in range(8)]
+    defeat = [lambda k=k: bird.pose(phase=0.5, defeat=(k + 1) / 3) for k in range(3)]
+    export_sprites(scene, cam, "stymphalian_bird", {"idle": flap, "attack": attack, "defeat": defeat},
+                   (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 0.7})
 
 
 main()

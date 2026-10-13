@@ -144,7 +144,17 @@ khấu Flame ("cách 1": game Flutter giữ nguyên). Phong cách fantasy realis
   (`lion_nemea.py`, `fafnir_boss.py`, `orochi_boss.py`, `thuy_tinh_boss.py`).
   Quái chương 1: `hoplite.py` (lính đá, `--spartoi`), `stymphalia.py` (chim
   Stymphalia: lông thân xếp ngói rải trên lưới, cánh `bird_kit.py` từng phiến
-  lông có sống lông). Nhân vật: `hero.py` (`--female`).
+  lông có sống lông), `harpy.py` (MPFB bỏ tay/chân + thân chim), `boar.py`,
+  `hydra.py` (biến thể theo số đầu còn sống). Nhân vật: `hero.py` (`--female`).
+- **Sprite vào game**: chạy script không có `--still` → `sprite_kit.py` render
+  các chuỗi (`idle` lặp, `attack` theo tiến độ đòn 0–1, `rise`, `defeat`…),
+  cắt sát, xếp vào trang 2048×2048 → `assets/sprites/<tên>_<trang>.png` + json
+  (toạ độ khung theo đơn vị sân khấu quanh điểm neo). Flutter đọc bằng
+  `lib/art/sprite_atlas.dart`, hoà hai khung kề nhau cho mượt; chưa nạp xong
+  thì vẽ bản vector. Quái chương 1 đã nối trong `nemea_monster_art.dart`.
+- Ngân sách: ~3 px/đơn vị sân khấu (máy ~6 px/đơn vị nên ảnh hơi mềm), 6 quái
+  chương 1 = 22 MB PNG, ~11 trang 2048² (~180 MB nếu giải nén hết cùng lúc —
+  mỗi màn chỉ nạp 1–2 quái). Chưa đo trên máy thật.
   Chạy `bash tool/blender/render.sh <tên> --still`. File mở bằng Blender để
   chỉnh tay: `art_src/blender/*.blend`.
 - Toạ độ viết theo đơn vị sân khấu 400×260, gốc ở chân boss; tư thế theo

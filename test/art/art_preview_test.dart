@@ -446,6 +446,37 @@ void main() {
     }
   });
 
+  testWidgets('màn quái Kỳ công 1 bằng sprite Blender', (tester) async {
+    await tester.runAsync(NemeaMonsterArt.preloadSprites);
+    for (final (i, kind) in NemeaMonster.values.indexed) {
+      final art = NemeaMonsterArt(kind);
+      final battle = StageBattleState()
+        ..bossHp = 0.7
+        ..totalHeads = 3
+        ..headsLeft = 3
+        ..charge = kind == NemeaMonster.boar ? 0.7 : 0;
+      for (final (tag, phase) in [('idle', -1.0), ('strike', 0.58)]) {
+        final frame = BossFrame(
+          time: 2.5,
+          attack: phase < 0 ? 0 : 0.9,
+          hurt: 0,
+          glint: -1,
+          defeat: 0,
+          battle: battle,
+          attackPhase: phase,
+        );
+        await render(tester, 'sprite_1_${i + 1}_$tag', (c) {
+          art.paintStageBackdrop(c);
+          art.paintScene(c, 2.5, battle);
+          art.paintBoss(c, frame);
+          paintHero(c, HeroPose.plank(120), effort: 0.5);
+          art.paintForeground(c, frame);
+          paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+        });
+      }
+    }
+  });
+
   testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {
     await render(tester, 'nemea_map', (c) {
       c.scale(400 / nemeaMapSize.width, 260 / nemeaMapSize.height);

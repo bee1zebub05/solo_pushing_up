@@ -145,6 +145,10 @@ abstract class BossArt {
   /// Màu viền cảnh khi boss sắp gục và nổi giận (pha cuối, máu < 40%).
   Color get rageColor => const Color(0xFFC62828);
 
+  /// Nạp tài nguyên trước khi vào trận (sprite Blender…); sân khấu chờ
+  /// xong rồi mới dựng cảnh, để không loé bản vector rồi mới đổi hình.
+  Future<void> preload() async {}
+
   /// Trả tài nguyên GPU riêng của hình (lớp shader…) khi rời trận.
   void dispose() {}
 
@@ -287,6 +291,7 @@ class BattleStageGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await StageShaders.load();
+    await boss.preload();
     camera.viewfinder.anchor = Anchor.topLeft;
     world.addAll([
       _SceneComponent(boss, battle),
@@ -551,12 +556,7 @@ class _SceneComponent extends Component {
 }
 
 class _BossComponent extends PositionComponent {
-  _BossComponent(
-    this.art,
-    this.battle, {
-    this.onAttackStart,
-    this.onStrike,
-  });
+  _BossComponent(this.art, this.battle, {this.onAttackStart, this.onStrike});
 
   final void Function()? onAttackStart;
 
@@ -659,8 +659,7 @@ class _BossComponent extends PositionComponent {
 void _stagnationLeaving(Canvas canvas, Offset origin, double t, double a) {
   for (var i = 0; i < 7; i++) {
     final phase = (t * 0.35 + i / 7) % 1;
-    final x =
-        origin.dx - 54 + i * 18.0 + math.sin(t * 1.3 + i * 2) * 8 * phase;
+    final x = origin.dx - 54 + i * 18.0 + math.sin(t * 1.3 + i * 2) * 8 * phase;
     final y = origin.dy + 20 - phase * 100;
     final r = 6 + phase * 13;
     canvas.drawCircle(
@@ -770,11 +769,16 @@ class _ImpactLight extends PositionComponent {
       r,
       Paint()
         ..blendMode = BlendMode.plus
-        ..shader = ui.Gradient.radial(Offset.zero, r, [
-          color.withValues(alpha: (critical ? 0.55 : 0.38) * fade),
-          color.withValues(alpha: 0.12 * fade),
-          const Color(0x00000000),
-        ], const [0, 0.45, 1]),
+        ..shader = ui.Gradient.radial(
+          Offset.zero,
+          r,
+          [
+            color.withValues(alpha: (critical ? 0.55 : 0.38) * fade),
+            color.withValues(alpha: 0.12 * fade),
+            const Color(0x00000000),
+          ],
+          const [0, 0.45, 1],
+        ),
     );
   }
 }
