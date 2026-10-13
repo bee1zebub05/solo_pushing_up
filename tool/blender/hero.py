@@ -11,6 +11,13 @@ tựa sao cho vai cách cổ tay đúng tầm với của góc khuỷu [elbow] (
 
     bash tool/blender/render.sh hero --still               # nam
     bash tool/blender/render.sh hero --still --female      # nữ
+    bash tool/blender/render.sh hero [--female]            # sprite tách lớp
+
+Sprite TÁCH LỚP cho phép đổi ngoại hình như màn tạo nhân vật mà không render
+mọi tổ hợp: `hero_<giới>_skin` (da render trắng trung tính, Flutter nhân màu
+da đã chọn), `hero_<giới>_cloth` (áo, đai, sandal, mắt, bóng đổ — giữ màu),
+`hero_<giới>_hair_<kiểu>` (tóc + lông mày render xám, nhân màu tóc). Lớp khác
+chỉ "đục lỗ" (holdout): che khuất đúng nhưng không hiện trong ảnh.
 
 Nhân vật quay mặt sang phải; tay/chân phải ở phía gần máy quay.
 """
@@ -32,8 +39,10 @@ from human_kit import (camera, group_center, make_human, raw_ellipsoid, rest_coo
 
 FEMALE = "--female" in ARGS
 K = 1.0  # tỉ lệ người (1 = người thật ~1,75 m); quy đổi sang đơn vị sân khấu lúc ghép atlas
-SKIN = "#D9A27A"
-HAIR = "#2A1A10"
+# Ảnh duyệt: màu thật. Sprite: trắng/xám trung tính để Flutter nhân màu.
+SKIN = "#D9A27A" if STILL else "#F4ECE6"
+HAIR = "#2A1A10" if STILL else "#CFCBC6"
+HAIR_STYLES = ("curly", "buzz", "bun", "ponytail", "long")
 
 
 # ---------------------------------------------------------------- thân người
@@ -239,6 +248,8 @@ def tunic_group(body, rig, co):
 
 
 def build(fat=0.35):
+    """Thân + trang phục + tóc. Trả (thân, xương, {lớp: các object}) — lớp
+    dùng cho sprite tách lớp (xem đầu file)."""
     body, rig = build_human(fat)
     body.data.materials.clear()
     body.data.materials.append(human_skin())
@@ -292,22 +303,86 @@ def build(fat=0.35):
                         [skin_material("BrowHair", HAIR, rough=0.6)])
         parent_to_bone(br, rig, "head")
 
-    # ---- tóc xoăn ngắn: sợi thật mọc trên da đầu
-    # Khối tóc: vỏ phồng trên da đầu, gợn thành búi xoăn (dịch theo nhiễu
-    # mây), rồi phủ sợi ngắn rối nằm sát theo khối.
-    mass = shell_copy(body, "HairMass", "scalp", 0.011, 0.0, [hair_mass_material()])
-    tex = bpy.data.textures.new("Curls", "VORONOI")
-    tex.noise_scale = 0.012
-    clump = mass.modifiers.new("Curls", "DISPLACE")
-    clump.texture = tex
-    clump.texture_coords = "LOCAL"
-    clump.strength = 0.007
-    mass.modifiers.move(mass.modifiers.find("Curls"), 2)
+    layers = {"skin": [body], "cloth": [o for o in bpy.data.objects
+                                        if o.type in ("MESH", "CURVES") and o is not body
+                                        and not o.name.startswith(("Brow", "Floor"))],
+              "brows": [o for o in bpy.data.objects if o.name.startswith("Brow")], "hair": {}}
+    styles = HAIR_STYLES if not STILL else ("ponytail" if FEMALE else "curly",)
+    for style in styles:
+        layers["hair"][style] = build_hair(body, rig, co, style)
+    return body, rig, layers
+
+
+def build_hair(body, rig, co, style):
+    """Tóc kiểu [style] (HairStyle trong lib/art/hero_art.dart): khối tóc ôm
+    da đầu + sợi thật. Sợi dài (đuôi ngựa, tóc dài) rủ theo trọng lực thật nên
+    khi chống đẩy tóc buông xuống sàn."""
+    if STILL:
+        stops = [(0.0, "#5A3A24"), (0.5, HAIR), (1.0, "#120A06")]
+    else:
+        stops = [(0.0, "#F2EEEA"), (0.5, HAIR), (1.0, "#6A6662")]
+    hair = fur_material("Hair_" + style, stops, sheen=0.08)
+    out = []
+    bl = rig.data.bones
+    head_c = rig.matrix_world @ bl["head"].head_local.lerp(bl["head"].tail_local, 0.55)
+    if style == "curly":
+        # Khối tóc: vỏ phồng trên da đầu, gợn thành búi xoăn (dịch theo nhiễu
+        # mây), rồi phủ sợi ngắn rối nằm sát theo khối.
+        mass = shell_copy(body, "HairMass_curly", "scalp", 0.011, 0.0, [hair_mass_material()])
+        tex = bpy.data.textures.new("Curls", "VORONOI")
+        tex.noise_scale = 0.012
+        clump = mass.modifiers.new("Curls", "DISPLACE")
+        clump.texture = tex
+        clump.texture_coords = "LOCAL"
+        clump.strength = 0.007
+        mass.modifiers.move(mass.modifiers.find("Curls"), 2)
+        mass.add_rest_position_attribute = True
+        out.append(mass)
+        out.append(with_fur(mass, hair, density=45000 / K ** 2, length=(0.012 * K, 0.026 * K),
+                            radius=0.0009 * K, comb=(0, 0, -0.3), lift=0.35, gravity=0.004 * K, jitter=1.2,
+                            seed=7, resolution=5))
+        return out
+    if style == "buzz":
+        mass = shell_copy(body, "HairMass_buzz", "scalp", 0.003, 0.0, [hair_mass_material()])
+        mass.add_rest_position_attribute = True
+        out.append(mass)
+        out.append(with_fur(mass, hair, density=70000 / K ** 2, length=(0.004 * K, 0.008 * K),
+                            radius=0.0006 * K, comb=(0, 0.3, 0), lift=0.6, gravity=0.0, jitter=0.4, seed=8,
+                            resolution=3))
+        return out
+    # Tóc chải mượt ra sau, buộc lại (búi / đuôi ngựa) hoặc xoã (dài).
+    mass = shell_copy(body, "HairMass_" + style, "scalp", 0.007, 0.0, [hair_mass_material()])
     mass.add_rest_position_attribute = True
-    hair = fur_material("Hair", [(0.0, "#5A3A24"), (0.5, HAIR), (1.0, "#120A06")], sheen=0.08)
-    with_fur(mass, hair, density=45000 / K ** 2, length=(0.012 * K, 0.026 * K), radius=0.0009 * K,
-             comb=(0, 0, -0.3), lift=0.35, gravity=0.004 * K, jitter=1.2, seed=7, resolution=5)
-    return body, rig
+    out.append(mass)
+    out.append(with_fur(mass, hair, density=50000 / K ** 2, length=(0.014 * K, 0.026 * K), radius=0.0008 * K,
+                        comb=(0, 1.0, -0.4), lift=0.05, gravity=0.002 * K, jitter=0.15, seed=9, resolution=5))
+    if style == "long":
+        # Sợi dài mọc ở nửa sau da đầu (không xoã che mặt), rủ theo trọng lực.
+        front = [1.0 if (body.matrix_world @ c).y < head_c.y + 0.01 * K else 0.0 for c in co]
+        store_point_attr(mass, "scar", front)
+        out.append(with_fur(mass, hair, density=26000 / K ** 2, length=(0.2 * K, 0.3 * K), radius=0.0011 * K,
+                            comb=(0, 0.6, -1.0), lift=0.2, gravity=0.09 * K, jitter=0.25, seed=10,
+                            resolution=8))
+        return out
+    if style == "bun":
+        at = head_c + Vector((0, 0.085, 0.055)) * K
+        knot = add_object("Bun", raw_ellipsoid("Bun", at, (0.04 * K, 0.035 * K, 0.035 * K)),
+                          [hair_mass_material()])
+    else:  # ponytail
+        at = head_c + Vector((0, 0.088, 0.02)) * K
+        knot = add_object("Tie", raw_ellipsoid("Tie", at, (0.022 * K, 0.02 * K, 0.022 * K)),
+                          [hair_mass_material()])
+    parent_to_bone(knot, rig, "head")
+    knot.add_rest_position_attribute = True
+    out.append(knot)
+    if style == "bun":
+        out.append(with_fur(knot, hair, density=60000 / K ** 2, length=(0.01 * K, 0.02 * K), radius=0.0008 * K,
+                            comb=(1, 0, 0), lift=0.1, gravity=0.0, jitter=0.6, seed=11, resolution=4))
+    else:
+        out.append(with_fur(knot, hair, density=90000 / K ** 2, length=(0.16 * K, 0.26 * K), radius=0.0012 * K,
+                            comb=(0, 1.0, -0.6), lift=0.4, gravity=0.08 * K, jitter=0.2, seed=12,
+                            resolution=8))
+    return out
 
 
 # ---------------------------------------------------------------- tư thế
@@ -471,12 +546,35 @@ def lights(scene):
 
 
 
+def stage_units_per_m(rig):
+    """Đơn vị sân khấu mỗi mét: cổ chân → vai dài bằng cẳng chân + đùi + thân
+    của HeroBody (lib/art/hero_pose.dart: 42 + 44 + 62)."""
+    bl = rig.data.bones
+    ankle = rig.matrix_world @ bl["foot_r"].head_local
+    shoulder = rig.matrix_world @ bl["upperarm_r"].head_local
+    return 148.0 / (shoulder - ankle).length
+
+
+def show_layer(layers, visible, hair_style=None, floor=None):
+    """Chỉ lớp [visible] hiện; lớp khác đục lỗ (holdout); kiểu tóc khác ẩn hẳn."""
+    hair = layers["hair"]
+    for o in layers["skin"] + layers["cloth"] + layers["brows"] + [x for v in hair.values() for x in v]:
+        o.hide_render = False
+        o.is_holdout = o not in visible
+    for style, objs in hair.items():
+        if style != hair_style:
+            for o in objs:
+                o.hide_render = True
+    if floor is not None:
+        floor.hide_render = floor not in visible
+
+
 def main():
     scene = reset_scene(samples=128, world_hex="#9DB6D2", world_strength=0.55, keep_prefs=True)
-    body, rig = build()
+    body, rig, layers = build()
     poser = Poser(rig)
     lights(scene)
-    shadow_catcher()
+    floor = shadow_catcher()
     tag = "female" if FEMALE else "male"
     out = os.path.join(ROOT, "build", "blender", "hero")
     os.makedirs(out, exist_ok=True)
@@ -496,7 +594,34 @@ def main():
         from boss_kit import save_blend
         save_blend(f"hero_{tag}")
         return
-    raise SystemExit("Chưa có chế độ atlas cho nhân vật: chạy với --still")
+
+    from sprite_kit import export_sprites
+    upm = stage_units_per_m(rig)
+    print(f"HERO units/m = {upm:.1f}")
+    # Gốc toạ độ sprite = mũi chân trên sàn lúc chống đẩy, ứng với điểm
+    # (40, 220) của sân khấu; chống gối đặt đầu gối, đứng đặt mũi chân như
+    # HeroPose (đầu gối x = 76, mũi chân đứng x = 123).
+    knee_x = (76 - 40) / upm
+    stand_x = (123 - 40) / upm + 0.12 * K
+    elbows = [178 - 108 * k / 8 for k in range(9)]  # 178° → 70°
+    anims = {
+        "plank": [lambda e=e: poser.plank(e) for e in elbows],
+        "knees": [lambda e=e: poser.plank(e, knees=True, x0=knee_x) for e in elbows],
+        "stand": [lambda: poser.standing(stand_x)],
+        "victory": [lambda: poser.standing(stand_x, victory=1)],
+    }
+    cam = camera(scene, 0.9 * K, 0.95 * K, 2.6 * K, 2.1 * K, 3.0 * upm, yaw=-10, pitch=7)
+    meta = {"elbowFrom": 178, "elbowTo": 70, "anchorX": 40}
+    show_layer(layers, layers["skin"])
+    export_sprites(scene, cam, f"hero_{tag}_skin", anims, Vector(), upm, extra=meta)
+    show_layer(layers, layers["cloth"] + [floor], floor=floor)
+    export_sprites(scene, cam, f"hero_{tag}_cloth", anims, Vector(), upm, extra=meta)
+    scene.cycles.samples = 64
+    for style, objs in layers["hair"].items():
+        show_layer(layers, objs + layers["brows"], hair_style=style)
+        export_sprites(scene, cam, f"hero_{tag}_hair_{style}", anims, Vector(), upm, extra=meta)
+    from boss_kit import save_blend
+    save_blend(f"hero_{tag}")
 
 
 main()

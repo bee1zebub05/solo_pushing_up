@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui show Gradient;
 import 'dart:ui' show PlatformDispatcher;
@@ -11,6 +12,7 @@ import 'package:flutter/painting.dart';
 
 import 'hero_art.dart';
 import 'hero_pose.dart';
+import 'hero_sprite.dart';
 import 'horse_art.dart';
 import 'motion.dart';
 import 'nemea_scene.dart';
@@ -296,6 +298,8 @@ class BattleStageGame extends FlameGame {
   Future<void> onLoad() async {
     await StageShaders.load();
     await boss.preload();
+    // Không chờ: chưa nạp xong thì nhân vật vẽ bản vector vài khung đầu.
+    unawaited(HeroSprites.load(_hero.look));
     camera.viewfinder.anchor = Anchor.topLeft;
     world.addAll([
       _SceneComponent(boss, battle),
@@ -882,6 +886,14 @@ class _HeroComponent extends Component {
   HeroPose? _from;
   double _blend = 1;
   Object? _poseKey;
+  HeroSpriteFrame _sprite = const HeroSpriteFrame('stand', 0);
+  HeroSpriteFrame? _spriteFrom;
+
+  @override
+  void onRemove() {
+    HeroSprites.evict(look);
+    super.onRemove();
+  }
 
   /// Ngực nhân vật: điểm xuất phát của đòn đánh, điểm khoác áo.
   Vector2 get chest {
@@ -912,6 +924,7 @@ class _HeroComponent extends Component {
     if (mode != _mode) {
       _mode = mode;
       _from = _shown;
+      _spriteFrom = _sprite;
       _blend = 0;
     }
 
@@ -929,6 +942,11 @@ class _HeroComponent extends Component {
       _HeroMode.standing => ('s', breath),
       _HeroMode.plank => ('p', qAngle, onKnees),
       _HeroMode.victory => ('v', pump),
+    };
+    final sprite = switch (_mode) {
+      _HeroMode.standing => const HeroSpriteFrame('stand', 0),
+      _HeroMode.plank => HeroSpriteFrame.plank(_angle, onKnees: onKnees),
+      _HeroMode.victory => const HeroSpriteFrame('victory', 0),
     };
     final from = _from;
     if (from != null && _blend < 1) {
@@ -948,7 +966,15 @@ class _HeroComponent extends Component {
     } else {
       _shown = pose;
     }
+    _sprite = sprite.blendFrom(
+      _spriteFrom,
+      Curves.easeInOut.transform(_blend.clamp(0.0, 1.0)),
+    );
   }
+
+  /// Sprite Blender chưa có lớp cho trang bị phần thưởng và lớp băng giá:
+  /// khi đó vẽ bản vector.
+  bool get _spriteOk => !cloak && !shield && !sword && cold < 0.02;
 
   @override
   void render(Canvas canvas) {
@@ -968,7 +994,23 @@ class _HeroComponent extends Component {
     });
   }
 
-  void _paint(Canvas canvas) => paintHero(
+  void _paint(Canvas canvas) {
+    if (_spriteOk && HeroSprites.ready(look)) {
+      paintHeroGlow(canvas, _shown, look: look, glow: glow);
+      // Ăn mừng: nảy theo nhịp nắm tay giơ lên.
+      final bob = _mode == _HeroMode.victory
+          ? -(math.sin(_time / 1.2 * 2 * math.pi)).abs() * 3
+          : 0.0;
+      canvas.save();
+      canvas.translate(0, bob);
+      HeroSprites.paint(canvas, look, _sprite);
+      canvas.restore();
+      return;
+    }
+    _paintVector(canvas);
+  }
+
+  void _paintVector(Canvas canvas) => paintHero(
     canvas,
     _shown,
     look: look,

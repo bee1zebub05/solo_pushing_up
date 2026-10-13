@@ -12,7 +12,7 @@ if grep -q "^# blender: user-prefs" "tool/blender/$name.py"; then
 else
   "$BLENDER" -b --factory-startup -P "tool/blender/$name.py" -- "$@"
 fi
-# Trang atlas mới (chế độ sprite) → nén WebP vào assets/sprites/.
-if [ -d build/blender/sprites/pages ]; then
+# Trang atlas / tầng phông nền mới → nén WebP vào assets/.
+if [ -d build/blender/sprites/pages ] || [ -d build/blender/backdrops ]; then
   python -I tool/sprites_webp.py
 fi

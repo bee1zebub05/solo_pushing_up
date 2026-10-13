@@ -16,11 +16,15 @@ import math
 import os
 import sys
 
+import bmesh
 import bpy
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
+from sprite_kit import export_sprites  # noqa: E402
+
+LION_SCALE = 0.72  # lionScale trong lib/art/bosses/nemea_boss.dart
 
 HEAD = (-74, -104)
 NEAR, FAR = -24, 24  # chiều sâu chân gần / xa máy quay
@@ -69,13 +73,11 @@ def same_side(bone, p):
 
 # Sẹo: vết vuốt, vết giáo của những kẻ từng thử giết nó (phía gần máy quay).
 BODY_SCARS = [
-    ([(6, -108), (14, -92), (26, -72)], 4.0),  # ba vết vuốt chéo ở hông
-    ([(17, -110), (25, -94), (37, -74)], 4.0),
-    ([(28, -111), (36, -96), (48, -77)], 3.6),
-    ([(-44, -116), (-34, -100), (-22, -90)], 3.4),  # vai
-    ([(-58, -78), (-52, -58)], 3.0),  # cẳng chân trước
-    ([(56, -108), (70, -99), (86, -93)], 3.4),  # mông
-    ([(42, -72), (56, -66)], 2.6),
+    # Ba vết vuốt chéo ở hông, một vết giáo ở mông: vệt da trụi mảnh.
+    ([(6, -108), (14, -92), (26, -72)], 2.6),
+    ([(17, -110), (25, -94), (37, -74)], 2.6),
+    ([(28, -111), (36, -96), (48, -77)], 2.4),
+    ([(56, -108), (70, -99), (86, -93)], 2.2),
 ]
 HEAD_SCARS = [
     ([H(-27, -24)[:2], H(-21, -9)[:2], H(-15, 9)[:2]], 2.8),  # vết rạch dọc xuyên mắt
@@ -85,21 +87,27 @@ HEAD_SCARS = [
 
 
 def build():
-    hide = skin_material("Hide", "#6E4420", scar="#A0625A")
-    nose_mat = skin_material("Nose", "#20120E", rough=0.35)
+    # Da dưới lớp lông cùng tông lông (khe giữa sợi không lộ mảng sẫm); sẹo
+    # là vệt da trụi hồng xám, không phải vết nứt đỏ.
+    hide = skin_material("Hide", "#9C6E38", rough=0.9, scar="#7A5C52", noise_scale=24)
+    nose_mat = skin_material("Nose", "#2A1612", rough=0.42, noise_scale=60)
+    lip_mat = skin_material("Lip", "#1A0E0A", rough=0.45)
     mouth_mat = skin_material("Mouth", "#3E0A0E", rough=0.4, sss=0.3)
-    gum_mat = skin_material("Gum", "#1C0E0C", rough=0.4)
+    gum_mat = skin_material("Gum", "#4A1A1C", rough=0.4, sss=0.2)
     tongue_mat = skin_material("Tongue", "#9A2A30", rough=0.35, sss=0.4)
-    fang_mat = skin_material("Fang", "#EDE2C2", rough=0.28)
+    fang_mat = skin_material("Fang", "#E6D9B6", rough=0.28)
     claw_mat = skin_material("Claw", "#CFC2A6", rough=0.3)
-    eye_mat = glow_material("Eye", "#FF6A00", strength=1.1, base="#E85400")
-    pupil_mat = skin_material("Pupil", "#050302", rough=0.1)
+    # Mắt hổ phách thật (không loá): tròng ướt, ánh sáng nhẹ đủ đọc từ xa.
+    eye_mat = glow_material("Eye", "#C86A10", strength=0.35, base="#B8781C")
+    pupil_mat = skin_material("Pupil", "#050302", rough=0.05)
     rim_mat = skin_material("EyeRim", "#120A06", rough=0.5)
+    white_mat = skin_material("Blaze", "#E8DCC4", rough=0.8)
 
     # Lông vàng sẫm ánh kim (da thần thoại), bụng sáng → lưng sẫm; bờm vàng gần
     # mặt → nâu đen phía sau; chùm đuôi đen.
-    coat = fur_material("Coat", [(0.0, "#E8C27E"), (0.35, "#C98E3E"), (0.75, "#9A6224"), (1.0, "#5E3814")], sheen=-0.1)
-    mane = fur_material("ManeFur", [(0.0, "#C8822E"), (0.3, "#8A3E14"), (0.6, "#4A1C0A"), (1.0, "#160805")])
+    coat = fur_material("Coat", [(0.0, "#E2C690"), (0.4, "#B07C3A"), (0.75, "#7A4C1C"), (1.0, "#46290E")], sheen=-0.1)
+    pale = fur_material("PaleFur", [(0.0, "#F4ECDA"), (1.0, "#C8B494")])
+    mane = fur_material("ManeFur", [(0.0, "#D2913A"), (0.25, "#9A4C1A"), (0.55, "#4E200C"), (1.0, "#160805")])
     tuft = fur_material("TuftFur", [(0.0, "#2A140A"), (1.0, "#0C0604")])
 
     rig = Rig("LionRig", BONES)
@@ -110,94 +118,111 @@ def build():
     els = [
         ball(-40, -86, 0, 42, sx=1.15, sy=1.1, sz=0.8),  # ngực, vai
         ball(-30, -110, 0, 22, sx=1.5, sy=0.7, sz=0.9),  # u vai
-        ball(12, -84, 0, 36, sx=1.7, sy=0.92, sz=0.72),  # thân giữa
-        ball(14, -64, 0, 24, sx=1.8, sy=0.55, sz=0.66),  # bụng thóp
-        ball(66, -86, 0, 40, sx=1.05, sy=1.05, sz=0.82),  # mông, đùi sau
+        ball(12, -86, 0, 37, sx=1.75, sy=0.95, sz=0.74),  # thân giữa
+        ball(10, -64, 0, 27, sx=1.8, sy=0.72, sz=0.7),  # bụng sâu
+        ball(40, -66, 0, 22, sx=1.2, sy=0.7, sz=0.68),  # hạ sườn
+        ball(64, -84, 0, 37, sx=1.08, sy=0.98, sz=0.8),  # mông, đùi sau (lưng gần thẳng, không gù hông)
         ball(-52, -64, 0, 26, sx=0.85, sy=1.0, sz=0.75),  # ức
     ]
     for sd in (NEAR, FAR):
         s = 1 if sd > 0 else -1
         els += [
-            ball(-36, -112, 15 * s, 14, sx=1.4, sy=0.8, sz=0.6, stiff=3.5),  # bả vai
-            ball(-50, -92, 17 * s, 13, sx=0.9, sy=1.2, sz=0.6, stiff=3.5),  # cơ delta
-            ball(-36, -72, 18 * s, 12, sx=0.9, sy=1.3, sz=0.6, stiff=3.5),  # tam đầu
-            ball(70, -94, 18 * s, 18, sx=1.1, sy=1.0, sz=0.6, stiff=3.5),  # mông
-            ball(56, -70, 19 * s, 14, sx=0.9, sy=1.2, sz=0.6, stiff=3.5),  # đùi trước
-            ball(90, -72, 18 * s, 13, sx=0.9, sy=1.2, sz=0.6, stiff=3.5),  # khoeo
+            ball(-36, -112, 15 * s, 14, sx=1.4, sy=0.8, sz=0.6, stiff=2.4),  # bả vai
+            ball(-50, -92, 17 * s, 13, sx=0.9, sy=1.2, sz=0.6, stiff=2.4),  # cơ delta
+            ball(-36, -72, 18 * s, 12, sx=0.9, sy=1.3, sz=0.6, stiff=2.4),  # tam đầu
+            ball(56, -70, 19 * s, 14, sx=0.9, sy=1.2, sz=0.6, stiff=2.4),  # đùi trước
+            ball(90, -72, 18 * s, 13, sx=0.9, sy=1.2, sz=0.6, stiff=2.4),  # khoeo
         ]
     for leg, j in LEGS.items():
         front = leg.startswith("f")
-        r1, r2, r3 = (22, 17, 13) if front else (26, 15, 11)
-        els.append(ball(*j[0], r1 + 10, sx=1, sy=1.25, sz=0.6))
+        r1, r2, r3 = (25, 20, 15) if front else (27, 16, 12)
+        # Khối vai/hông chân: chân sau nhỏ hơn để lưng không gù ở hông.
+        els.append(ball(*j[0], r1 + (10 if front else 3), sx=1, sy=1.25 if front else 1.0, sz=0.6))
         els.append(capsule(j[0], j[1], r1))
         els.append(capsule(j[1], j[2], r2))
         els.append(capsule(j[2], lerp(j[2], j[3], 0.7), r3))  # cổ chân (bàn dựng riêng)
         if front:  # cơ cẳng tay cuồn cuộn, khuỷu nhô
-            els.append(ball(*lerp(j[1], j[2], 0.3), 15, sx=0.9, sy=1.25, sz=0.8, stiff=3.5))
-            els.append(ball(j[1][0] + 8, j[1][1] + 2, j[1][2], 8, stiff=3.5))
+            els.append(ball(*lerp(j[1], j[2], 0.3), 15, sx=0.9, sy=1.25, sz=0.8, stiff=2.4))
+            els.append(ball(j[1][0] + 8, j[1][1] + 2, j[1][2], 8, stiff=2.4))
         else:  # bắp chân, gót xương nhô
-            els.append(ball(*lerp(j[1], j[2], 0.3), 13, sx=1.0, sy=1.1, sz=0.8, stiff=3.5))
-            els.append(ball(j[2][0] + 4, j[2][1] - 2, j[2][2], 6, stiff=4))
+            els.append(ball(*lerp(j[1], j[2], 0.3), 13, sx=1.0, sy=1.1, sz=0.8, stiff=2.4))
+            els.append(ball(j[2][0] + 4, j[2][1] - 2, j[2][2], 6, stiff=2.6))
     for a, b in zip(TAIL, TAIL[1:]):
         els.append(capsule(a, b, 7.5 if a == TAIL[0] else 6, stiff=2.5))
     body = add_object("LionBody", subdivided(metaball_mesh("LionBody", els)), [hide])
     paint_scars(body, BODY_SCARS)
     rig.skin(body, [n for n in BONES if n != "jaw"], near_filter=same_side)
     # Lông thân ngắn (cơ lộ ra), chải ra sau và xuống.
-    with_fur(body, coat, density=30000, length=(0.035, 0.06), radius=0.0034,
-             comb=(0.9, 0, -0.6), lift=0.25, gravity=0.004, jitter=0.18, seed=1)
+    with_fur(body, coat, density=46000, length=(0.08, 0.13), radius=0.0055,
+             comb=(0.9, 0, -0.6), lift=0.18, gravity=0.01, jitter=0.2, seed=1)
     parts.append(body)
 
-    # ---- đầu: sọ, gò má, mõm vuông, gờ mày nặng xếch xuống, nếp nhăn mũi
-    # (gầm gừ), tai cụp ra sau.
+    # ---- đầu (tỉ lệ sư tử thật, nhìn nghiêng): sọ thấp, trán dốc nhẹ xuống
+    # sống mũi dài phẳng, mõm sâu vuông, đệm ria phồng, gò má rộng, gờ mày
+    # nặng che mắt; tai tròn nhỏ gần như chìm trong bờm.
     head = ellipsoids_mesh("Head", [
-        (H(-2, -2), R(25, 21, 20)),
-        (H(-14, 6, -7), R(17, 13, 13)), (H(-14, 6, 7), R(17, 13, 13)),
-        (H(-32, 4), R(19, 12, 14)), (H(-42, 8), R(10, 10, 13)),
-        (H(-38, 13, -7), R(9, 6.5, 5)), (H(-38, 13, 7), R(9, 6.5, 5)),  # đệm ria
-        (H(-18, -12.5, -7), R(14, 5.2, 7), 18), (H(-18, -12.5, 7), R(14, 5.2, 7), 18),
-        (H(-32, -4), R(13, 4, 6), -8),
-        (H(-27, -6.5), R(1.4, 1.6, 6.5)), (H(-31, -5.8), R(1.4, 1.6, 6.5)), (H(-35, -5), R(1.4, 1.5, 6)),
-        (H(-35, 11, -8), R(8, 6, 4.5)), (H(-35, 11, 8), R(8, 6, 4.5)),
-        (H(8, -19, -13), R(8, 6, 4), 35), (H(8, -19, 13), R(8, 6, 4), 35),
-    ], voxel=0.014)
+        (H(6, -5), R(23, 19, 19)),  # sọ
+        (H(-12, -10), R(17, 9.5, 16)),  # gờ trán
+        (H(-31, -7), R(21, 8, 11.5), -4),  # sống mũi dài phẳng
+        (H(-34, 4), R(16, 12, 12.5)),  # khối mõm
+        (H(-45, 3), R(8, 10.5, 11)),  # mõm trước vuông
+        (H(-41, 10, -7), R(10, 7.5, 7)), (H(-41, 10, 7), R(10, 7.5, 7)),  # đệm ria
+        (H(-6, 6, -9), R(13, 11, 8)), (H(-6, 6, 9), R(13, 11, 8)),  # gò má (chìm trong bờm)
+        (H(-21, -12.5, -10), R(10, 4, 6), 14), (H(-21, -12.5, 10), R(10, 4, 6), 14),  # gờ mày
+        (H(-36, -9.5), R(1.3, 1.5, 7)), (H(-40, -8.6), R(1.3, 1.4, 6.5)),  # nếp nhăn mũi (gầm gừ)
+        (H(12, -21, -12), R(6, 7, 3), 30), (H(12, -21, 12), R(6, 7, 3), 30),  # tai
+    ], voxel=0.012)
     head = subdivided(head)
     h = add_object("Head", head, [hide], "head")
     paint_scars(h, HEAD_SCARS)
-    with_fur(h, coat, density=24000, length=(0.02, 0.035), radius=0.0026,
-             comb=(1.0, 0, 0.1), lift=0.45, gravity=0.0, jitter=0.22, seed=2)
+    with_fur(h, coat, density=36000, length=(0.025, 0.045), radius=0.004,
+             comb=(1.0, 0, 0.15), lift=0.4, gravity=0.0, jitter=0.2, seed=2)
     parts.append(h)
-    jaw = ellipsoids_mesh("Jaw", [(H(-24, 22), R(16, 6, 12)), (H(-12, 20), R(12, 7, 12))])
+    # Lông trắng kem ở môi trên và cằm — dấu hiệu nhận ra sư tử thật từ xa.
+    muzzle = add_object("Muzzle", ellipsoids_mesh("Muzzle", [
+        (H(-43, 12, -6.5), R(8, 4.5, 5.5)), (H(-43, 12, 6.5), R(8, 4.5, 5.5)),
+    ], voxel=0.008), [white_mat], "head")
+    with_fur(muzzle, pale, density=30000, length=(0.012, 0.022), radius=0.0022,
+             comb=(-0.2, 0, -1.0), lift=0.6, gravity=0.0, jitter=0.2, seed=6)
+    parts.append(muzzle)
+    # Môi đen viền miệng (sư tử có môi sẫm rõ khi gầm).
+    lips = [(H(-46, 12.5, d), H(-36, 15, d * 1.2), H(-24, 15.5, d * 1.4), 1.6 * K) for d in (-8, 8)]
+    parts.append(add_object("Lips", tapered_tubes("Lips", lips, 8, 8, taper=0.4), [lip_mat], "head"))
+    jaw = ellipsoids_mesh("Jaw", [(H(-30, 20), R(16, 5.5, 10.5)), (H(-15, 18), R(13, 7, 11.5)),
+                                  (H(-42, 19), R(6, 5.5, 8))])
     jo = add_object("Jaw", jaw, [hide], "jaw")
-    with_fur(jo, coat, density=24000, length=(0.02, 0.035), radius=0.0026,
-             comb=(0.6, 0, -1.0), lift=0.4, gravity=0.0, jitter=0.22, seed=3)
+    with_fur(jo, pale, density=30000, length=(0.02, 0.04), radius=0.0024,
+             comb=(0.4, 0, -1.0), lift=0.4, gravity=0.002, jitter=0.22, seed=3)
     parts.append(jo)
-    # Mũi da dẹt rộng hình tam giác, phủ đầu mõm (không phải hòn bi).
-    nose = ellipsoids_mesh("Nose", [(H(-50, 0), R(4.5, 6, 10), -20), (H(-48, 6), R(3.6, 3.4, 6), -25)],
-                           voxel=0.006, smooth_iter=2)
+    # Mũi da hình chữ T: đệm mũi rộng phủ đầu mõm, sống dọc xuống môi trên.
+    nose = ellipsoids_mesh("Nose", [
+        (H(-50.5, -1.5), R(2.2, 4.4, 8), -22),
+        (H(-50.5, 4.5), R(1.6, 3.6, 2), -10),
+        (H(-51.5, 1.5, -4.2), R(1.2, 1.4, 2.2)), (H(-51.5, 1.5, 4.2), R(1.2, 1.4, 2.2)),
+    ], voxel=0.005, smooth_iter=2)
     parts.append(add_object("Nose", nose, [nose_mat], "head"))
-    parts.append(add_object("MouthIn", uv_ellipsoid("MouthIn", H(-28, 16), R(15, 6.5, 10)), [mouth_mat], "head"))
-    parts.append(add_object("Gum", uv_ellipsoid("Gum", H(-30, 13.5), R(14, 2.4, 10.5)), [gum_mat], "head"))
-    parts.append(add_object("Tongue", uv_ellipsoid("Tongue", H(-26, 20), R(11, 3, 7)), [tongue_mat], "jaw"))
+    parts.append(add_object("MouthIn", uv_ellipsoid("MouthIn", H(-30, 16), R(15, 6, 9)), [mouth_mat], "head"))
+    parts.append(add_object("Gum", uv_ellipsoid("Gum", H(-32, 13.5), R(14, 2.2, 9.5)), [gum_mat], "head"))
+    parts.append(add_object("Tongue", uv_ellipsoid("Tongue", H(-28, 20), R(11, 3, 6.5)), [tongue_mat], "jaw"))
     # Nanh dài cong, răng cửa nhỏ.
     fangs_up, fangs_lo = [], []
-    for d in (-7.5, 7.5):
-        fangs_up.append((H(-38, 12, d), H(-38.5, 19, d), H(-37, 26, d * 0.95), 2.8 * K))
-        fangs_lo.append((H(-33, 21, d * 0.9), H(-33.5, 16, d * 0.9), H(-35, 11, d * 0.85), 2.3 * K))
+    for d in (-6.8, 6.8):
+        fangs_up.append((H(-42, 12, d), H(-42.5, 19, d), H(-41, 26, d * 0.95), 2.8 * K))
+        fangs_lo.append((H(-37, 21, d * 0.9), H(-37.5, 16, d * 0.9), H(-39, 11, d * 0.85), 2.3 * K))
         for k in range(3):
             dd = d * 0.35 * (k - 1)
-            fangs_up.append((H(-41 + k * 0.6, 12.5, dd), H(-41, 14.5, dd), H(-41, 16, dd), 0.9 * K))
-        fangs_up.append((H(-26, 13, d), H(-26, 16, d), H(-26.5, 18.5, d), 1.6 * K))
+            fangs_up.append((H(-45 + k * 0.6, 12.5, dd), H(-45, 14.5, dd), H(-45, 16, dd), 0.9 * K))
+        fangs_up.append((H(-28, 13, d), H(-28, 16, d), H(-28.5, 18.5, d), 1.6 * K))
     parts.append(add_object("FangsUp", tapered_tubes("FangsUp", fangs_up, 8, 6, taper=1.15), [fang_mat], "head"))
     parts.append(add_object("FangsLo", tapered_tubes("FangsLo", fangs_lo, 8, 6, taper=1.15), [fang_mat], "jaw"))
-    # Mắt: hạnh nhân hẹp xếch, viền đen, mí trên sụp (lườm), đồng tử khe, ánh
-    # hổ phách cam đỏ sáng nhẹ (không loá trắng).
-    for d in (-16.5, 14.5):
+    # Mắt nhỏ, hướng trước, nằm sâu dưới gờ mày: hạnh nhân viền đen, tròng
+    # hổ phách, đồng tử TRÒN (sư tử không có đồng tử khe).
+    for d in (-10.4, 10.4):
         side = 1 if d < 0 else -1
-        parts.append(add_object("EyeRim", ellipsoids_mesh("EyeRim", [(H(-21, -7.5, d), R(7.2, 3.4, 2.8), 16)], voxel=0.006, smooth_iter=2), [rim_mat], "head"))
-        parts.append(add_object("Eye", ellipsoids_mesh("Eye", [(H(-22, -7.5, d - 0.7 * side), R(5.8, 2.4, 2.6), 16)], voxel=0.005, smooth_iter=2), [eye_mat], "head"))
-        parts.append(add_object("Pupil", uv_ellipsoid("Pupil", H(-24.2, -7.6, d - 2.2 * side), R(0.8, 2.2, 1.0), 12, 8), [pupil_mat], "head"))
-        parts.append(add_object("Lid", ellipsoids_mesh("Lid", [(H(-21, -10.4, d - 0.9 * side), R(7.4, 2.2, 3.2), 20)], voxel=0.006, smooth_iter=2), [rim_mat], "head"))
+        parts.append(add_object("EyeRim", ellipsoids_mesh("EyeRim", [(H(-22, -7, d), R(5.4, 2.8, 2.2), 12)], voxel=0.005, smooth_iter=2), [rim_mat], "head"))
+        parts.append(add_object("Eye", ellipsoids_mesh("Eye", [(H(-22.6, -7, d - 0.6 * side), R(4.2, 2.1, 2.0), 12)], voxel=0.004, smooth_iter=2), [eye_mat], "head"))
+        parts.append(add_object("Pupil", uv_ellipsoid("Pupil", H(-23.6, -7, d - 1.6 * side), R(1.1, 1.1, 0.8), 12, 8), [pupil_mat], "head"))
+        parts.append(add_object("Lid", ellipsoids_mesh("Lid", [(H(-22, -9.4, d - 0.5 * side), R(5.8, 1.8, 2.6), 16)], voxel=0.005, smooth_iter=2), [hide], "head"))
 
     # ---- bàn chân: đệm gan bàn, 4 ngón tách rời, móng vuốt cong sắc
     for leg, j in LEGS.items():
@@ -216,14 +241,23 @@ def build():
         parts.append(add_object(leg + "Claws", tapered_tubes(leg + "Claws", claws, 8, 7, taper=1.1),
                                 [claw_mat], leg + "_3"))
 
-    # ---- bờm dài, chải ra sau – rủ xuống
-    cx, cy = HEAD[0] + 20, HEAD[1] + 8
-    # Bờm vừa phải so với thân (không trùm quá nửa người).
-    core = ellipsoids_mesh("ManeCore", [((cx, cy - 1, 0), (27, 32, 22)), ((cx + 4, cy + 25, 0), (19, 20, 17))])
-    mc = add_object("ManeCore", core, [skin_material("ManeSkin", "#2A1206")], "neck")
-    with_fur(mc, mane, density=11000, length=(0.33, 0.62), radius=0.0055,
-             comb=(0.9, 0, -0.45), lift=0.7, gravity=0.12, jitter=0.35, seed=4,
-             dark_from=((cx - 30) * S, (cx + 24) * S))
+    # ---- bờm: vành lông ôm quanh mặt (gắn đầu) + khối bờm cổ – vai – ngực
+    # (gắn cổ). Gần mặt vàng cháy, ra sau sẫm dần tới nâu đen; sợi dài rủ.
+    ring = ellipsoids_mesh("ManeRing", [(H(8, 0), R(18, 25, 22)), (H(0, 18), R(16, 12, 17))])
+    mr = add_object("ManeRing", ring, [skin_material("ManeSkin", "#3A1A08")], "head")
+    with_fur(mr, mane, density=14000, length=(0.22, 0.4), radius=0.005,
+             comb=(1.0, 0, 0.05), lift=0.9, gravity=0.05, jitter=0.35, seed=7,
+             dark_from=((HEAD[0] - 6) * S, (HEAD[0] + 60) * S))
+    parts.append(mr)
+    core = ellipsoids_mesh("ManeCore", [
+        ((-44, -104, 0), (28, 30, 24)),  # gáy
+        ((-30, -116, 0), (22, 18, 20)),  # u vai
+        ((-50, -76, 0), (22, 26, 21)),  # ngực
+    ])
+    mc = add_object("ManeCore", core, [skin_material("ManeSkin2", "#2A1206")], "neck")
+    with_fur(mc, mane, density=11000, length=(0.4, 0.72), radius=0.0058,
+             comb=(0.8, 0, -0.55), lift=0.75, gravity=0.14, jitter=0.38, seed=4,
+             dark_from=((HEAD[0] - 6) * S, (HEAD[0] + 70) * S))
     parts.append(mc)
 
     tx, ty, _ = TAIL[-1]
@@ -318,20 +352,31 @@ FRAME_Y = (-220, 18)
 
 
 def lights(scene):
-    # Nắng chiều gắt trên-trái (đổ bóng sâu vào rãnh cơ), viền cam rực sau lưng.
-    add_sun(scene, "Key", (0.85, 0.35, -0.4), 6.0, "#FFD6A0", angle=1.0)
-    add_sun(scene, "Rim", (-0.6, -0.9, -0.35), 7.0, "#FF8A3A", angle=1.5)
+    # Nắng chiều ấm trên-trái (cùng hướng các quái chương 1), viền cam sau
+    # lưng tách bờm khỏi nền, ánh hắt đất nâu dưới bụng.
+    add_sun(scene, "Key", (0.55, 0.6, -0.6), 5.0, "#FFDDB0", angle=2.5)
+    add_sun(scene, "Rim", (0.7, -0.4, -0.35), 5.0, "#FFB070", angle=4)
+    add_sun(scene, "Bounce", (-0.1, 0.3, 0.9), 0.6, "#C8A880", angle=30)
+
+
+def shadow_floor():
+    bm = bmesh.new()
+    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=12)
+    mesh = bpy.data.meshes.new("Floor")
+    bm.to_mesh(mesh)
+    bm.free()
+    floor = add_object("Floor", mesh, [], smooth_shade=False)
+    floor.is_shadow_catcher = True
 
 
 def main():
-    scene = reset_scene(samples=64, world_hex="#3A4258", world_strength=0.16)
+    scene = reset_scene(samples=64, world_hex="#9DB6D2", world_strength=0.5)
     rig = build()
     lights(scene)
-    cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=1.6, yaw=-14, pitch=6)
-    anchor, ppu = anchor_info(scene, cam)
-    print(f"LION anchor={tuple(round(c, 1) for c in anchor)} ppu={ppu:.3f}")
-    out = os.path.join(ROOT, "build", "blender", "lion")
+    shadow_floor()
     if STILL:
+        out = os.path.join(ROOT, "build", "blender", "lion")
+        setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=2.6, yaw=-14, pitch=6)
         render_stills(scene, out, [
             ("idle", lambda: pose(rig, 0)),
             ("windup", lambda: pose(rig, 0.25, attack=0.38)),
@@ -341,15 +386,14 @@ def main():
         pose(rig, 0)
         save_blend("nemea_lion")
         return
+    # Sân khấu vẽ sư tử ×lionScale (0,72): ~3 px/đơn vị sân khấu như quái khác.
+    cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=2.2, yaw=-14, pitch=6)
     anims = {
-        "idle": [lambda k=k: pose(rig, k / 16) for k in range(16)],
-        "attack": [lambda k=k: pose(rig, 0.25, attack=k / 15) for k in range(16)],
-        "defeat": [lambda k=k: pose(rig, 0.25, defeat=k / 9) for k in range(10)],
+        "idle": [lambda k=k: pose(rig, k / 8) for k in range(8)],
+        "attack": [lambda k=k: pose(rig, 0.25, attack=k / 11) for k in range(12)],
+        "defeat": [lambda k=k: pose(rig, 0.25, defeat=k / 6) for k in range(7)],
     }
-    files = render_anims(scene, out, anims, keyframe=rig.keyframe)
-    sprites = os.path.join(ROOT, "assets", "sprites")
-    os.makedirs(sprites, exist_ok=True)
-    pack_atlas(files, anchor, ppu, os.path.join(sprites, "nemea_lion.png"), os.path.join(sprites, "nemea_lion.json"))
+    export_sprites(scene, cam, "nemea_lion", anims, P(0, 0), 50 * LION_SCALE, extra={"idlePeriod": 3.0})
     pose(rig, 0)
     save_blend("nemea_lion")
 

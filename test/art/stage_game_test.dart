@@ -108,6 +108,10 @@ void main() {
 class _DisposeProbeArt extends NemeaBossArt {
   bool disposed = false;
 
+  /// Không nạp phông/sprite thật (tải tài nguyên không chạy trong fake async).
+  @override
+  Future<void> preload() async {}
+
   @override
   void dispose() {
     disposed = true;

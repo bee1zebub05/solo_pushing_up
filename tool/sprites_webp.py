@@ -1,5 +1,7 @@
 """Nén trang atlas PNG (bản gốc không mất dữ liệu do tool/blender/sprite_kit.py
-xuất vào build/blender/sprites/pages/) thành WebP trong assets/sprites/.
+xuất vào build/blender/sprites/pages/) thành WebP trong assets/sprites/, và
+các tầng phông nền (tool/blender/nemea_valley.py → build/blender/backdrops/
+<vùng>_<tầng>.png) thành assets/backdrops/.
 
     python tool/sprites_webp.py              # trang mới hơn bản WebP
     python tool/sprites_webp.py harpy boar   # chỉ các quái này (nén lại hết)
@@ -19,6 +21,11 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PAGES = os.path.join(ROOT, "build", "blender", "sprites", "pages")
 OUT = os.path.join(ROOT, "assets", "sprites")
 QUALITY = 90
+BACKDROPS = os.path.join(ROOT, "build", "blender", "backdrops")
+BACKDROP_OUT = os.path.join(ROOT, "assets", "backdrops")
+# Phông nền phủ cả màn hình, không phóng to như sprite: q85 đủ, nhẹ hơn.
+BACKDROP_QUALITY = 85
+BACKDROP_LAYERS = ("sky", "far", "mid", "near", "fg")
 
 
 def convert(png):
@@ -39,10 +46,27 @@ def _stale(png):
     return not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(png)
 
 
+def backdrops():
+    os.makedirs(BACKDROP_OUT, exist_ok=True)
+    for png in sorted(glob.glob(os.path.join(BACKDROPS, "*.png"))):
+        base = os.path.splitext(os.path.basename(png))[0]
+        if base.rsplit("_", 1)[-1] not in BACKDROP_LAYERS:
+            continue  # ảnh xem nhanh (--still)
+        dst = os.path.join(BACKDROP_OUT, base + ".webp")
+        if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(png):
+            continue
+        img = Image.open(png).convert("RGBA")
+        if base.endswith("_sky"):
+            img = img.convert("RGB")
+        img.save(dst, "WEBP", quality=BACKDROP_QUALITY, alpha_quality=90, method=6)
+        print(f"{base}: {os.path.getsize(png) // 1024} KB PNG -> {os.path.getsize(dst) // 1024} KB WebP")
+
+
 def main(names):
+    backdrops()
     pngs = sorted(glob.glob(os.path.join(PAGES, "*.png")))
     if not pngs:
-        sys.exit(f"Không có trang PNG nào trong {PAGES}")
+        return
     todo = [p for p in pngs if _sprite(p) in names] if names else [p for p in pngs if _stale(p)]
     os.makedirs(OUT, exist_ok=True)
     # Số trang có thể giảm sau khi render lại: bỏ trang WebP thừa của quái đó.

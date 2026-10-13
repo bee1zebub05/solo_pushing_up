@@ -6,7 +6,9 @@ import 'package:flame/components.dart';
 import '../battle_stage.dart';
 import '../greek_monsters.dart';
 import '../lion_art.dart';
+import '../nemea_backdrop.dart';
 import '../nemea_scene.dart';
+import '../sprite_atlas.dart';
 import '../vector_style.dart' show RasterLayer, StageQuality;
 
 /// Vị trí và tỉ lệ Sư tử Nemea trên sân khấu 400×260.
@@ -44,7 +46,7 @@ class NemeaBossArt extends BossArt {
 
   @override
   void paintAmbient(Canvas canvas, double time) =>
-      paintNemeaAmbient(canvas, time: time);
+      paintNemeaAmbient(canvas, time: time, realistic: NemeaBackdrop.ready);
 
   /// Bụi Trì Trệ: đậm nhất khi sư tử còn đầy máu, tan dần mỗi đòn trúng.
   static const maxDust = 0.85;
@@ -86,9 +88,15 @@ class NemeaBossArt extends BossArt {
     // Tiền cảnh trôi ngược chiều, mạnh hơn các lớp xa (gần máy quay hơn).
     canvas.save();
     canvas.translate(-_drift * 0.6, 0);
-    _foreground.paint(canvas);
+    if (NemeaBackdrop.ready) {
+      NemeaBackdrop.paintForeground(canvas, filter: _dustFilter);
+    } else {
+      _foreground.paint(canvas);
+    }
     canvas.restore();
   }
+
+  ColorFilter? _dustFilter;
 
   double _dust = maxDust;
   double _lastTime = 0;
@@ -106,6 +114,26 @@ class NemeaBossArt extends BossArt {
     // Bụi: mỗi tầng vẽ ảnh sạch MỘT lần qua bộ lọc mất màu nội suy theo
     // lượng bụi, thêm sương/mạng nhện vẽ thẳng.
     final dust = StageQuality.dust && _dust > 0.01 ? _dust : 0.0;
+    if (NemeaBackdrop.ready) {
+      // Phông Blender: ảnh từng tầng qua bộ lọc bụi; phần bụi vẽ thêm chỉ
+      // còn màn sương (mạng nhện, đống bụi khớp hình bản vector).
+      final filter = dust > 0 ? nemeaDustFilterAt(dust) : null;
+      _dustFilter = filter;
+      for (final layer in NemeaLayer.values) {
+        canvas.save();
+        canvas.translate(drift * layer.parallax, 0);
+        NemeaBackdrop.paintLayer(canvas, layer, filter: filter);
+        if (dust > 0 && layer == NemeaLayer.mid) {
+          paintNemeaDustMist(canvas, opacity: dust);
+        }
+        canvas.restore();
+      }
+      paintNemeaAmbient(canvas, time: time, dust: _dust, realistic: true);
+      _paintCleansing(canvas, time);
+      _paintFlock(canvas, time, battle.bossHp);
+      return;
+    }
+    _dustFilter = null;
     for (final (layer, image) in _layers) {
       canvas.save();
       canvas.translate(drift * layer.parallax, 0);
@@ -193,23 +221,43 @@ class NemeaBossArt extends BossArt {
     );
   }
 
+  /// Sprite Blender chỉ nạp khi vào trận (chân dung ở màn chọn vẫn vẽ
+  /// vector), trả lại khi rời trận.
+  @override
+  Future<void> preload() async {
+    await NemeaBackdrop.load();
+    await SpriteAtlas.load(lionSprite);
+  }
+
+  @override
+  void dispose() {
+    SpriteAtlas.evict(lionSprite);
+    NemeaBackdrop.evict();
+    super.dispose();
+  }
+
+  static const lionSprite = 'nemea_lion';
+
   @override
   void paintBoss(Canvas canvas, BossFrame f) {
     canvas.save();
     canvas.translate(lionX, stageGroundY);
     canvas.scale(lionScale);
-    paintLion(
-      canvas,
-      LionState(
-        time: f.time,
-        attackPhase: f.attackPhase,
-        // Không có đòn vồ (chân dung, xem trước): attack chỉ là há miệng gầm.
-        mouth: f.attackPhase < 0 ? f.attack : 0,
-        hurt: f.hurt,
-        glint: f.glint,
-        defeat: f.defeat,
-      ),
+    final state = LionState(
+      time: f.time,
+      attackPhase: f.attackPhase,
+      // Không có đòn vồ (chân dung, xem trước): attack chỉ là há miệng gầm.
+      mouth: f.attackPhase < 0 ? f.attack : 0,
+      hurt: f.hurt,
+      glint: f.glint,
+      defeat: f.defeat,
     );
+    final sprite = SpriteAtlas.get(lionSprite);
+    if (sprite != null) {
+      paintLionSprite(canvas, state, sprite);
+    } else {
+      paintLion(canvas, state);
+    }
     canvas.restore();
   }
 }

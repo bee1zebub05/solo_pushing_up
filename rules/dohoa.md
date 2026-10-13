@@ -164,6 +164,41 @@ khấu Flame ("cách 1": game Flutter giữ nguyên). Phong cách fantasy realis
 - Giới hạn đã thấy: khối ghép từ ellipsoid/metaball cho rồng, rắn, thần nước
   ổn; thú có lông (sư tử) và mặt người chưa đạt tả thực — cần mô hình nặn.
 
+### Đêm 13–14/10: chương 1 đồng bộ một phong cách
+
+Ảnh xem trước cho thấy quái Blender đứng trên phông vector cartoon và cạnh
+nhân vật vector: lệch phong cách rõ. Hướng xử lý: dựng nốt phông, boss, nhân
+vật bằng Blender.
+
+- **Phông Thung lũng Nemea** (`tool/blender/nemea_valley.py`): cảnh 3D thật
+  (đất cỏ khô, vách đá vôi xếp tầng có hang sư tử, ô liu già lá thật rải bằng
+  geometry nodes, rừng ô liu trên đồi, đền Doric, núi xa trong sương). Máy
+  quay phối cảnh khớp sân khấu: mặt phẳng hành động ở độ sâu 0, mặt đất tại
+  y = 220, ~2 cm/đơn vị. Render THEO TẦNG (`sky`, `far`, `mid`, `near`, `fg`)
+  → `assets/backdrops/nemea_<tầng>.webp`, rộng thêm 24 đơn vị mỗi bên cho
+  camera trôi; sân khấu giữ parallax và lớp bụi Trì Trệ (bộ lọc màu từng tầng,
+  chỉ còn màn sương vẽ thêm — mạng nhện/đống bụi khớp hình vector nên bỏ).
+  Phối cảnh không khí làm trong vật liệu (trộn màu sương theo khoảng cách tới
+  máy quay), không dùng volume.
+  - Bài học: boolean khoét hang trên lưới voxel gồ ghề làm mất cả vách → dựng
+    vòm bằng khối quanh miệng hang. Vách đá vôi ghép từ HỘP xoay lệch rồi làm
+    gồ ghề (ghép ellipsoid ra khối tròn như bột nhào). Lưới nứt Voronoi trên
+    đá trông như bùn khô — bỏ.
+- **Boss Sư tử Nemea** (`lion_nemea.py`) chuyển sang `sprite_kit.export_sprites`
+  (atlas WebP như quái), sân khấu vẽ bằng `paintLionSprite` (lion_art.dart) và
+  giữ phần đọc nhịp: bụi cào đất, rung gầm gừ, vệt vuốt, sóng gầm, khiên da
+  loé khi bị chặn, Trì Trệ rời xác. Đầu làm lại theo tỉ lệ sư tử thật (mõm dài
+  vuông, mắt nhỏ đồng tử tròn, mũi da chữ T), bờm hai lớp ôm mặt, bóng đổ thật.
+- **Nhân vật** (`hero.py`, chế độ không `--still`): sprite TÁCH LỚP để giữ tuỳ
+  biến của màn tạo nhân vật (2 giới × 6 màu da × 6 màu tóc × 5 kiểu tóc) mà
+  không render mọi tổ hợp: `hero_<giới>_skin` render da trắng trung tính,
+  Flutter nhân màu da (`BlendMode.modulate`); `hero_<giới>_cloth` giữ màu, có
+  bóng đổ; `hero_<giới>_hair_<kiểu>` render xám, nhân màu tóc. Lớp khác chỉ
+  holdout (che khuất đúng, không hiện). Chuỗi: `plank`/`knees` theo góc khuỷu
+  178° → 70°, `stand`, `victory`. Flutter: `lib/art/hero_sprite.dart`.
+  Chưa có lớp Blender cho áo da sư tử, khiên, kiếm và lớp băng giá → khi đó
+  vẽ bản vector.
+
 **Tranh tham khảo** (chỉ học hình tượng, không chép; đều dùng thương mại được):
 
 | Boss | Tranh | Giấy phép |

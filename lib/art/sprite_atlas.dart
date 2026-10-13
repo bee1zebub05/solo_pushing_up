@@ -115,7 +115,8 @@ class SpriteAtlas {
   /// Vẽ chuỗi [anim] tại tiến độ [t] (0–1) quanh điểm neo (gốc canvas).
   /// [loop]: khung cuối nối về khung đầu. Hai khung kề nhau được hoà trộn
   /// theo phần lẻ để chuyển động mượt dù ít khung. [flash] 0–1: loé trắng
-  /// khi trúng đòn.
+  /// khi trúng đòn. [tint]: nhân màu (lớp render trắng/xám trung tính, ví dụ
+  /// da và tóc nhân vật theo màu người chơi chọn).
   void draw(
     Canvas canvas,
     String anim,
@@ -123,6 +124,7 @@ class SpriteAtlas {
     bool loop = false,
     double opacity = 1,
     double flash = 0,
+    Color? tint,
   }) {
     final frames = anims[anim];
     if (frames == null || frames.isEmpty) return;
@@ -131,13 +133,19 @@ class SpriteAtlas {
     final i = pos.floor() % n;
     final j = loop ? (i + 1) % n : (i + 1).clamp(0, n - 1);
     final mix = pos - pos.floor();
-    _frame(canvas, frames[i], opacity, flash);
+    _frame(canvas, frames[i], opacity, flash, tint);
     if (mix > 0.02 && j != i) {
-      _frame(canvas, frames[j], opacity * mix, flash);
+      _frame(canvas, frames[j], opacity * mix, flash, tint);
     }
   }
 
-  void _frame(Canvas canvas, SpriteFrame f, double opacity, double flash) {
+  void _frame(
+    Canvas canvas,
+    SpriteFrame f,
+    double opacity,
+    double flash,
+    Color? tint,
+  ) {
     final paint = _paint
       ..color = Color.fromRGBO(255, 255, 255, opacity.clamp(0.0, 1.0))
       ..colorFilter = flash > 0.01
@@ -145,6 +153,8 @@ class SpriteAtlas {
               Color.fromRGBO(255, 244, 220, 0.6 * flash.clamp(0.0, 1.0)),
               BlendMode.srcATop,
             )
+          : tint != null
+          ? ColorFilter.mode(tint, BlendMode.modulate)
           : null;
     canvas.drawImageRect(pages[f.page], f.src, f.offset & f.size, paint);
   }

@@ -6,6 +6,7 @@ import 'package:flame/components.dart';
 import '../battle_stage.dart';
 import '../greek_monsters.dart';
 import '../nemea_scene.dart';
+import '../nemea_backdrop.dart';
 import '../sprite_atlas.dart';
 import 'nemea_boss.dart';
 
@@ -32,6 +33,7 @@ class NemeaMonsterArt extends NemeaBossArt {
   /// không giữ ảnh 2048² của mọi quái trong bộ nhớ).
   @override
   Future<void> preload() async {
+    await NemeaBackdrop.load();
     for (final name in _spritesOf(kind)) {
       await SpriteAtlas.load(name);
     }

@@ -10,6 +10,7 @@ import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_map_art.dart';
+import 'package:solo_pushing_up/art/nemea_backdrop.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
 import 'package:solo_pushing_up/art/sprite_atlas.dart';
 import 'package:solo_pushing_up/art/vector_style.dart';
@@ -449,6 +450,8 @@ void main() {
 
   testWidgets('màn quái Kỳ công 1 bằng sprite Blender', (tester) async {
     await tester.runAsync(NemeaMonsterArt.preloadSprites);
+    await tester.runAsync(NemeaBackdrop.load);
+    expect(NemeaBackdrop.ready, isTrue, reason: 'phông Blender Nemea');
     // Thiếu/hỏng trang ảnh thì sân khấu lặng lẽ vẽ bản vector — bắt ở đây.
     for (final name in [
       'stymphalian_bird',
@@ -487,6 +490,40 @@ void main() {
         });
       }
     }
+  });
+
+  testWidgets('boss 1.10 Sư tử Nemea bằng sprite Blender', (tester) async {
+    final art = NemeaBossArt();
+    await tester.runAsync(art.preload);
+    expect(SpriteAtlas.get(NemeaBossArt.lionSprite), isNotNull);
+    expect(NemeaBackdrop.ready, isTrue);
+    final battle = StageBattleState()..bossHp = 0.6;
+    for (final (tag, phase, defeat, glint) in [
+      ('idle', -1.0, 0.0, -1.0),
+      ('windup', 0.3, 0.0, -1.0),
+      ('strike', 0.56, 0.0, -1.0),
+      ('blocked', -1.0, 0.0, 0.3),
+      ('defeat', -1.0, 1.0, -1.0),
+    ]) {
+      final frame = BossFrame(
+        time: 2.5,
+        attack: phase < 0 ? 0 : 0.9,
+        hurt: 0,
+        glint: glint,
+        defeat: defeat,
+        battle: battle,
+        attackPhase: phase,
+      );
+      await render(tester, 'sprite_1_10_$tag', (c) {
+        art.paintStageBackdrop(c);
+        art.paintScene(c, 2.5, battle);
+        art.paintBoss(c, frame);
+        paintHero(c, HeroPose.plank(120), effort: 0.5);
+        art.paintForeground(c, frame);
+        paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+      });
+    }
+    art.dispose();
   });
 
   testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {

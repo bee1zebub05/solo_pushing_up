@@ -182,6 +182,25 @@ void paintHero(
   layer.paint(canvas);
 }
 
+/// Chỉ hào quang sau rep quanh [pose] (nhân vật vẽ bằng sprite Blender —
+/// hero_sprite.dart — vẫn dùng chung hiệu ứng này).
+void paintHeroGlow(
+  Canvas canvas,
+  HeroPose pose, {
+  HeroLook look = const HeroLook(),
+  double glow = 0,
+}) {
+  if (glow <= 0) return;
+  final q = _quantize(pose);
+  final toe = q[HeroJoint.toe];
+  canvas.save();
+  canvas.translate(toe.dx, toe.dy);
+  canvas.scale(look.height);
+  canvas.translate(-toe.dx, -toe.dy);
+  _heroGlow(canvas, q, q[HeroJoint.hip], q[HeroJoint.shoulder], glow);
+  canvas.restore();
+}
+
 /// Ảnh nhân vật đã chụp theo tư thế (LRU 120; bộ nhớ ảnh còn chịu
 /// [RasterBudget] chung).
 final _heroImages = <Object, RasterLayer>{};

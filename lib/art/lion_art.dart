@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'sprite_atlas.dart';
 import 'vector_style.dart';
 
 /// Bảng màu Sư tử Nemea: da vàng ánh kim (không vũ khí nào xuyên thủng),
@@ -224,6 +225,64 @@ void paintLion(Canvas canvas, LionState s) {
 
   if (tint != null) canvas.restore();
 
+  if (fall > 0.3) _stagnationLeaving(canvas, t, fall, drop);
+  if (s.glint >= 0) _shieldFlash(canvas, head + const Offset(12, 14), s.glint);
+  canvas.restore();
+}
+
+/// Sư tử bằng sprite Blender (tool/blender/lion_nemea.py, cùng gốc toạ độ
+/// và nhịp đòn với [paintLion]): thân, bờm, bóng đổ đã có trong ảnh; ở đây
+/// chỉ thêm phần đọc nhịp trận — bụi cào đất khi lấy đà, rung gầm gừ, vệt
+/// vuốt, sóng gầm, khiên da loé khi bị chặn, Trì Trệ rời xác khi gục.
+void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
+  final t = s.time;
+  final fall = _smooth(s.defeat);
+  var windup = 0.0, strike = 0.0;
+  final p = s.attackPhase;
+  if (p >= 0) {
+    windup = p < 0.4
+        ? _smooth(p / 0.4)
+        : p < 0.55
+        ? 1 - _smooth((p - 0.4) / 0.15)
+        : 0;
+    strike = p < 0.4
+        ? 0
+        : p < 0.55
+        ? _smooth((p - 0.4) / 0.15)
+        : 1 - _smooth((p - 0.55) / 0.45);
+  }
+  final roar = math.max(s.mouth, math.max(strike, windup * 0.4));
+
+  if (windup > 0.05) _pawDust(canvas, t, windup);
+
+  canvas.save();
+  final growl = windup * math.sin(t * 60) * 1.2;
+  canvas.translate(10 * s.hurt + growl, 0);
+  // Trúng đòn: co người lại quanh chân.
+  canvas.scale(1 + 0.04 * s.hurt, 1 - 0.05 * s.hurt);
+  if (s.defeat > 0 && sprite.has('defeat')) {
+    sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt);
+  } else if (p >= 0 && sprite.has('attack')) {
+    sprite.draw(canvas, 'attack', p, flash: s.hurt);
+  } else {
+    final period = sprite.metaDouble('idlePeriod', 3);
+    sprite.draw(canvas, 'idle', t / period, loop: true, flash: s.hurt);
+  }
+
+  // Vị trí đầu và vuốt theo cùng công thức với pose() trong lion_nemea.py.
+  final shift = 10 * windup - 18 * strike + 10 * fall;
+  final drop = 6 * windup + 34 * fall;
+  final head = Offset(-74 + shift - 16 * strike, -104 + drop + 26 * fall + 9);
+  final swipe = strike * (1 - fall);
+  if (swipe > 0.25) {
+    final ground = Offset(-62 + 10 * windup - 36 * fall, 0);
+    _clawTrails(
+      canvas,
+      Offset.lerp(ground, const Offset(-120, -56), swipe)!,
+      swipe,
+    );
+  }
+  if (roar > 0.5 && fall == 0) _roarWaves(canvas, head, roar, t);
   if (fall > 0.3) _stagnationLeaving(canvas, t, fall, drop);
   if (s.glint >= 0) _shieldFlash(canvas, head + const Offset(12, 14), s.glint);
   canvas.restore();
