@@ -2,7 +2,9 @@
 
 Mỗi quái: vài chuỗi khung ([anims] = {tên: [hàm đặt dáng]}), render nền trong
 rồi cắt sát theo alpha, xếp vào các trang 2048×2048 (giới hạn an toàn cho GPU
-điện thoại) → `assets/sprites/<tên>_<trang>.png` + `assets/sprites/<tên>.json`.
+điện thoại) → trang PNG gốc `build/blender/sprites/pages/<tên>_<trang>.png`
+(tool/sprites_webp.py nén thành `assets/sprites/<tên>_<trang>.webp`, render.sh
+tự chạy) + `assets/sprites/<tên>.json`.
 
 Toạ độ trong json tính bằng ĐƠN VỊ SÂN KHẤU (400×260) so với điểm neo
 [anchor] (chân quái trên mặt đất, hoặc tâm thân với quái bay): sân khấu chỉ
@@ -98,6 +100,11 @@ def export_sprites(scene, cam, name, anims, anchor, units_per_m, extra=None, scr
 
     out_dir = os.path.join(ROOT, "assets", "sprites")
     os.makedirs(out_dir, exist_ok=True)
+    pages_dir = os.path.join(ROOT, "build", "blender", "sprites", "pages")
+    os.makedirs(pages_dir, exist_ok=True)
+    for old in os.listdir(pages_dir):
+        if old.rsplit("_", 1)[0] == name:
+            os.remove(os.path.join(pages_dir, old))
     for p, idx in enumerate(pages):
         height = max(place[i][2] + frames[i][1].shape[0] for i in idx)
         height = 1 << (int(height - 1).bit_length())  # luỹ thừa 2
@@ -106,7 +113,7 @@ def export_sprites(scene, cam, name, anims, anchor, units_per_m, extra=None, scr
             _, crop, _, _ = frames[i]
             _, ax, ay = place[i]
             sheet[ay : ay + crop.shape[0], ax : ax + crop.shape[1]] = crop
-        _save(sheet, os.path.join(out_dir, f"{name}_{p}.png"))
+        _save(sheet, os.path.join(pages_dir, f"{name}_{p}.png"))
     meta = {"unitsPerPixel": round(1 / ppu, 5), "pages": len(pages), "anims": {}}
     if extra:
         meta.update(extra)

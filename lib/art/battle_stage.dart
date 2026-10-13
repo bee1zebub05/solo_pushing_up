@@ -267,7 +267,11 @@ class BattleStageGame extends FlameGame {
 
   @override
   void onRemove() {
-    // Rời trận: trả bộ nhớ GPU của mọi ảnh chụp sẵn (vào trận sau chụp lại).
+    // Rời trận: Flame chỉ gọi onRemove của game, không gỡ cây component —
+    // phải tự gỡ để onRemove của từng phần chạy (trả sprite, lớp shader,
+    // phông chụp sẵn), nếu không mỗi trận giữ lại atlas của quái trước.
+    dispose();
+    // Trả bộ nhớ GPU của mọi ảnh chụp sẵn (vào trận sau chụp lại).
     RasterBudget.shared.purge();
     super.onRemove();
   }

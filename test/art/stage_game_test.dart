@@ -83,4 +83,34 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('rời trận: boss được dispose (trả sprite, lớp shader)', (
+    tester,
+  ) async {
+    final art = _DisposeProbeArt();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          width: 800,
+          height: 520,
+          child: GameWidget(game: BattleStageGame(boss: art)),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(art.disposed, isFalse);
+    await tester.pumpWidget(const SizedBox());
+    expect(art.disposed, isTrue);
+  });
+}
+
+class _DisposeProbeArt extends NemeaBossArt {
+  bool disposed = false;
+
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
 }

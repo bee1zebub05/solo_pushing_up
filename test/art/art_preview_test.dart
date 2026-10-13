@@ -11,6 +11,7 @@ import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_map_art.dart';
 import 'package:solo_pushing_up/art/nemea_scene.dart';
+import 'package:solo_pushing_up/art/sprite_atlas.dart';
 import 'package:solo_pushing_up/art/vector_style.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/dummy_art.dart';
@@ -448,6 +449,17 @@ void main() {
 
   testWidgets('màn quái Kỳ công 1 bằng sprite Blender', (tester) async {
     await tester.runAsync(NemeaMonsterArt.preloadSprites);
+    // Thiếu/hỏng trang ảnh thì sân khấu lặng lẽ vẽ bản vector — bắt ở đây.
+    for (final name in [
+      'stymphalian_bird',
+      'spartoi',
+      'stone_soldier',
+      'erymanthian_boar',
+      'harpy',
+      'young_hydra',
+    ]) {
+      expect(SpriteAtlas.get(name), isNotNull, reason: name);
+    }
     for (final (i, kind) in NemeaMonster.values.indexed) {
       final art = NemeaMonsterArt(kind);
       final battle = StageBattleState()

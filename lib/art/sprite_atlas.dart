@@ -15,7 +15,7 @@ class SpriteFrame {
   final Size size;
 }
 
-/// Sprite dựng bằng Blender (tool/blender/sprite_kit.py): các trang PNG +
+/// Sprite dựng bằng Blender (tool/blender/sprite_kit.py): các trang WebP +
 /// json mô tả khung theo chuỗi hoạt hình. Toạ độ đã tính sẵn theo đơn vị sân
 /// khấu quanh điểm neo (chân quái hoặc tâm thân quái bay) — chỉ việc vẽ.
 ///
@@ -80,7 +80,7 @@ class SpriteAtlas {
     final upp = (json['unitsPerPixel'] as num).toDouble();
     final pages = <ui.Image>[];
     for (var p = 0; p < (json['pages'] as int); p++) {
-      final data = await rootBundle.load('assets/sprites/${name}_$p.png');
+      final data = await rootBundle.load('assets/sprites/${name}_$p.webp');
       final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
       pages.add((await codec.getNextFrame()).image);
     }

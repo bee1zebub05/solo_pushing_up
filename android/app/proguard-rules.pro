@@ -13,3 +13,7 @@
 # WorkManager dùng Room: lớp *_Impl sinh tự động được tạo qua reflection.
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 -keep class androidx.work.** { *; }
+
+# Bản release bỏ model pose "accurate" (build.gradle.kts); plugin vẫn nhắc tới
+# lớp của nó trong nhánh chỉ chạy khi chọn PoseDetectionModel.accurate.
+-dontwarn com.google.mlkit.vision.pose.accurate.**
