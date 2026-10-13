@@ -6,7 +6,21 @@ import 'package:flutter/scheduler.dart';
 import '../art/hercules_art.dart';
 import '../art/hero_art.dart';
 import '../art/hero_pose.dart';
+import '../art/hero_sprite.dart';
+import '../art/nemea_backdrop.dart';
 import '../art/nemea_scene.dart';
+import '../art/sprite_atlas.dart';
+
+/// Atlas Hercules dựng Blender (tool/blender/hercules.py).
+const herculesSprite = 'hercules';
+
+/// Nạp phông, nhân vật, Hercules bằng Blender cho cảnh mở đầu (chưa có thì
+/// cảnh vẽ bản vector).
+Future<void> preloadNemeaIntro(HeroLook look) async {
+  await NemeaBackdrop.load();
+  await HeroSprites.load(look);
+  await SpriteAtlas.load(herculesSprite);
+}
 
 /// Lời Hercules ở cảnh mở đầu Kỳ công 1 (rules/cottruyen.md mục 3).
 const nemeaIntroLines = [
@@ -25,23 +39,51 @@ void paintNemeaIntro(
   HeroLook look = const HeroLook(),
   bool talking = false,
 }) {
-  paintNemeaSceneCached(canvas, time: time, dust: 0.85);
+  final blender = NemeaBackdrop.ready;
+  if (blender) {
+    // Phông Blender phủ bụi Trì Trệ (thung lũng chưa được giải phóng).
+    final dust = nemeaDustFilterAt(0.85);
+    for (final layer in NemeaLayer.values) {
+      NemeaBackdrop.paintLayer(canvas, layer, filter: dust);
+      if (layer == NemeaLayer.mid) paintNemeaDustMist(canvas, opacity: 0.85);
+    }
+    paintNemeaAmbient(canvas, time: time, dust: 0.85, realistic: true);
+  } else {
+    paintNemeaSceneCached(canvas, time: time, dust: 0.85);
+  }
   canvas.save();
   canvas.translate(110, stageGroundY);
   canvas.scale(0.82);
   canvas.translate(-110, -stageGroundY);
-  paintHero(canvas, HeroPose.standing(x: 110, breath: time / 3), look: look);
+  if (!HeroSprites.paint(canvas, look, const HeroSpriteFrame('stand', 0))) {
+    paintHero(canvas, HeroPose.standing(x: 110, breath: time / 3), look: look);
+  }
   canvas.restore();
   canvas.save();
   canvas.translate(300, stageGroundY);
-  canvas.scale(0.78);
-  paintHercules(
-    canvas,
-    time: time,
-    appear: math.min(1, time / 1.6),
-    talk: talking ? 1 : 0,
-  );
+  final hercules = SpriteAtlas.get(herculesSprite);
+  if (hercules != null) {
+    canvas.scale(0.82);
+    paintHerculesSprite(
+      canvas,
+      hercules,
+      time: time,
+      appear: math.min(1, time / 1.6),
+      talk: talking ? 1 : 0,
+    );
+  } else {
+    canvas.scale(0.78);
+    paintHercules(
+      canvas,
+      time: time,
+      appear: math.min(1, time / 1.6),
+      talk: talking ? 1 : 0,
+    );
+  }
   canvas.restore();
+  if (blender) {
+    NemeaBackdrop.paintForeground(canvas, filter: nemeaDustFilterAt(0.85));
+  }
 }
 
 /// Cảnh mở đầu trước trận Nemea đầu tiên. Chạm để sang câu tiếp; hết lời
@@ -72,6 +114,7 @@ class _NemeaIntroScreenState extends State<NemeaIntroScreen>
   void initState() {
     super.initState();
     _ticker.start();
+    preloadNemeaIntro(widget.look);
   }
 
   void _tick(Duration elapsed) =>

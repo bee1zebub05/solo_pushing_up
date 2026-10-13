@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'costume_art.dart';
+import 'sprite_atlas.dart';
 import 'vector_style.dart';
 
 /// Hercules: linh hồn huyền thoại dẫn đường cho người kế nhiệm (cảnh mở đầu
@@ -23,79 +24,7 @@ void paintHercules(
   final a = appear.clamp(0.0, 1.0);
   final breath = math.sin(time * 1.6);
   final gesture = math.sin(time * 3.2) * talk;
-
-  // Hào quang: vầng sáng và tia toả sau lưng.
-  final aura = const Offset(0, -140);
-  canvas.drawCircle(
-    aura,
-    150,
-    Paint()
-      ..shader = Gradient.radial(
-        aura,
-        150,
-        [
-          Color.fromRGBO(255, 222, 130, 0.55 * a),
-          Color.fromRGBO(255, 200, 90, 0.18 * a),
-          const Color(0x00FFC85A),
-        ],
-        const [0, 0.5, 1],
-      ),
-  );
-  final ray = Paint()..color = Color.fromRGBO(255, 236, 170, 0.18 * a);
-  for (var i = 0; i < 12; i++) {
-    final ang = i * math.pi / 6 + time * 0.12;
-    canvas.drawPath(
-      Path()
-        ..moveTo(aura.dx, aura.dy)
-        ..lineTo(
-          aura.dx + math.cos(ang - 0.06) * 170,
-          aura.dy + math.sin(ang - 0.06) * 170,
-        )
-        ..lineTo(
-          aura.dx + math.cos(ang + 0.06) * 170,
-          aura.dy + math.sin(ang + 0.06) * 170,
-        )
-        ..close(),
-      ray,
-    );
-  }
-
-  // Cột sáng giáng xuống lúc xuất hiện, tắt dần khi đã hiện đủ.
-  final beam = 1 - a;
-  if (a < 1) {
-    canvas.drawRect(
-      const Rect.fromLTRB(-46, -400, 46, 0),
-      Paint()
-        ..shader = Gradient.linear(
-          const Offset(-46, 0),
-          const Offset(46, 0),
-          [
-            const Color(0x00FFE9A8),
-            Color.fromRGBO(255, 236, 170, 0.55 * beam + 0.25 * a * (1 - a) * 4),
-            const Color(0x00FFE9A8),
-          ],
-          const [0, 0.5, 1],
-        ),
-    );
-  }
-  // Hạt ánh vàng bay lên quanh người (thần lực), luôn lấp lánh nhẹ.
-  for (var i = 0; i < 14; i++) {
-    final phase = (time * 0.4 + i / 14) % 1;
-    final x = -60 + (i * 37 % 120) + math.sin(time * 2 + i) * 6;
-    final y = -10 - phase * 230;
-    final twinkle = 0.5 + 0.5 * math.sin(time * 6 + i * 1.7);
-    canvas.drawCircle(
-      Offset(x, y),
-      1.2 + twinkle * 1.4,
-      Paint()
-        ..color = Color.fromRGBO(
-          255,
-          232,
-          150,
-          (0.3 + 0.6 * (1 - a)) * twinkle * (1 - phase),
-        ),
-    );
-  }
+  paintHerculesAura(canvas, time: time, appear: appear);
 
   // Hiện dần: mờ + trồi lên từ ánh sáng.
   canvas.save();
@@ -1015,4 +944,105 @@ void _herculesHead(Canvas canvas, Offset c, double time, double talk) {
     }
   }
   glint(canvas, c + const Offset(-6, -16), 2.2, alpha: 0.5);
+}
+
+/// Hào quang vàng sau lưng Hercules: vầng sáng, tia toả, cột sáng lúc hiện
+/// ra, hạt ánh vàng bay lên (dùng chung cho bản vector và sprite Blender).
+void paintHerculesAura(Canvas canvas, {double time = 0, double appear = 1}) {
+  final a = appear.clamp(0.0, 1.0);
+  final aura = const Offset(0, -140);
+  canvas.drawCircle(
+    aura,
+    150,
+    Paint()
+      ..shader = Gradient.radial(
+        aura,
+        150,
+        [
+          Color.fromRGBO(255, 222, 130, 0.55 * a),
+          Color.fromRGBO(255, 200, 90, 0.18 * a),
+          const Color(0x00FFC85A),
+        ],
+        const [0, 0.5, 1],
+      ),
+  );
+  final ray = Paint()..color = Color.fromRGBO(255, 236, 170, 0.18 * a);
+  for (var i = 0; i < 12; i++) {
+    final ang = i * math.pi / 6 + time * 0.12;
+    canvas.drawPath(
+      Path()
+        ..moveTo(aura.dx, aura.dy)
+        ..lineTo(
+          aura.dx + math.cos(ang - 0.06) * 170,
+          aura.dy + math.sin(ang - 0.06) * 170,
+        )
+        ..lineTo(
+          aura.dx + math.cos(ang + 0.06) * 170,
+          aura.dy + math.sin(ang + 0.06) * 170,
+        )
+        ..close(),
+      ray,
+    );
+  }
+
+  // Cột sáng giáng xuống lúc xuất hiện, tắt dần khi đã hiện đủ.
+  final beam = 1 - a;
+  if (a < 1) {
+    canvas.drawRect(
+      const Rect.fromLTRB(-46, -400, 46, 0),
+      Paint()
+        ..shader = Gradient.linear(
+          const Offset(-46, 0),
+          const Offset(46, 0),
+          [
+            const Color(0x00FFE9A8),
+            Color.fromRGBO(255, 236, 170, 0.55 * beam + 0.25 * a * (1 - a) * 4),
+            const Color(0x00FFE9A8),
+          ],
+          const [0, 0.5, 1],
+        ),
+    );
+  }
+  // Hạt ánh vàng bay lên quanh người (thần lực), luôn lấp lánh nhẹ.
+  for (var i = 0; i < 14; i++) {
+    final phase = (time * 0.4 + i / 14) % 1;
+    final x = -60 + (i * 37 % 120) + math.sin(time * 2 + i) * 6;
+    final y = -10 - phase * 230;
+    final twinkle = 0.5 + 0.5 * math.sin(time * 6 + i * 1.7);
+    canvas.drawCircle(
+      Offset(x, y),
+      1.2 + twinkle * 1.4,
+      Paint()
+        ..color = Color.fromRGBO(
+          255,
+          232,
+          150,
+          (0.3 + 0.6 * (1 - a)) * twinkle * (1 - phase),
+        ),
+    );
+  }
+}
+
+/// Hercules bằng sprite Blender (tool/blender/hercules.py, atlas
+/// `hercules`): bản render quay mặt sang phải nên lật ngang để nhìn về người
+/// chơi; gốc ở mặt đất. [talk] > 0: giơ tay khi nói (đưa đi đưa lại).
+void paintHerculesSprite(
+  Canvas canvas,
+  SpriteAtlas sprite, {
+  double time = 0,
+  double appear = 1,
+  double talk = 0,
+}) {
+  final a = appear.clamp(0.0, 1.0);
+  paintHerculesAura(canvas, time: time, appear: appear);
+  canvas.save();
+  canvas.translate(0, 30 * (1 - a));
+  canvas.scale(-1, 1);
+  if (talk > 0 && sprite.has('talk')) {
+    final k = 0.55 + 0.45 * math.sin(time * 3.2);
+    sprite.draw(canvas, 'talk', k * talk, opacity: a);
+  } else {
+    sprite.draw(canvas, 'idle', 0, opacity: a);
+  }
+  canvas.restore();
 }

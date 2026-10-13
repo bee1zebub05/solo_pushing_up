@@ -624,7 +624,7 @@ def cypress(name, base, h, mat, layer_name, seed=0):
 # ---------------------------------------------------------------- đền
 
 
-def temple(center, width, layer_name, marble, roof_mat, dark):
+def temple(center, width, layer_name, marble, roof_mat, dark, roof=True):
     """Đền Doric nhỏ quay mặt về máy quay: nền 3 bậc, 6 cột có rãnh, đầu
     cột, xà, diềm, trán tường tam giác; một cột gãy (thung lũng hoang tàn)."""
     cx, cy, cz = center
@@ -670,14 +670,26 @@ def temple(center, width, layer_name, marble, roof_mat, dark):
                 v.co = Vector((side_x + v.co.x, y + v.co.y, base_z + col_h / 2 + v.co.z))
     top = base_z + col_h + col_r * 0.5
     ent = width * 0.14
-    box(cx - width / 2, cx + width / 2, cy, cy + depth, top, top + ent * 0.45)  # xà
-    box(cx - width / 2, cx + width / 2, cy, cy + depth, top + ent * 0.45, top + ent)  # diềm
-    box(cx - width / 2 - 0.08 * width * 0.1, cx + width / 2 + 0.08 * width * 0.1, cy - 0.02 * width,
-        cy + depth + 0.02 * width, top + ent, top + ent * 1.1)  # gờ mái
-    # Lõi tối bên trong (naos) sau hàng cột.
-    box(cx - width * 0.36, cx + width * 0.36, cy + depth * 0.2, cy + depth * 0.85, base_z, top)
+    if roof:
+        box(cx - width / 2, cx + width / 2, cy, cy + depth, top, top + ent * 0.45)  # xà
+        box(cx - width / 2, cx + width / 2, cy, cy + depth, top + ent * 0.45, top + ent)  # diềm
+        box(cx - width / 2 - 0.08 * width * 0.1, cx + width / 2 + 0.08 * width * 0.1, cy - 0.02 * width,
+            cy + depth + 0.02 * width, top + ent, top + ent * 1.1)  # gờ mái
+        # Lõi tối bên trong (naos) sau hàng cột.
+        box(cx - width * 0.36, cx + width * 0.36, cy + depth * 0.2, cy + depth * 0.85, base_z, top)
+    else:
+        # Hoang tàn: xà chỉ còn trên hàng cột trước và một bên, tường naos đổ
+        # còn nửa, nền lát đá lộ ra.
+        bw = col_r * 1.4
+        box(cx - width / 2, cx + width / 2, cy + col_r * 1.6 - bw, cy + col_r * 1.6 + bw, top, top + ent * 0.5)
+        box(xs[0] - bw, xs[0] + bw, cy, cy + depth * 0.7, top, top + ent * 0.5)
+        for x0, x1 in ((-0.36, -0.3), (0.3, 0.36)):
+            box(cx + width * x0, cx + width * x1, cy + depth * 0.2, cy + depth * 0.85, base_z, base_z + col_h * 0.45)
     me = mesh_from("Temple", bm)
     t = obj("Temple", me, [marble], layer_name, smooth=False)
+    if not roof:
+        # Đền đổ mái (nhìn từ trên cao): chỉ còn hàng cột, xà, lõi tối.
+        return t, None
     # Trán tường + mái dốc.
     bm = bmesh.new()
     pk = top + ent * 1.1

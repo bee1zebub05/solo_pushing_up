@@ -43,6 +43,16 @@ void main() {
         ),
       );
 
+      // Boss nạp sprite/phông Blender thật: cho I/O chạy bằng thời gian thật
+      // tới khi sân khấu nạp xong.
+      for (var i = 0; i < 100 && !game.isLoaded; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(game.isLoaded, isTrue);
+
       Future<void> shot(String label) async {
         if (Platform.environment['ART_PREVIEW'] != '1') return;
         await tester.runAsync(() async {

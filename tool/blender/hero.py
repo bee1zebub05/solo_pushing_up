@@ -43,6 +43,12 @@ K = 1.0  # tỉ lệ người (1 = người thật ~1,75 m); quy đổi sang đ�
 SKIN = "#D9A27A" if STILL else "#F4ECE6"
 HAIR = "#2A1A10" if STILL else "#CFCBC6"
 HAIR_STYLES = ("curly", "buzz", "bun", "ponytail", "long")
+# `--only pelt,hair_long`: chỉ render các lớp này (lớp khác đã có atlas).
+ONLY = ARGS[ARGS.index("--only") + 1].split(",") if "--only" in ARGS else None
+
+
+def wanted(layer):
+    return ONLY is None or layer in ONLY
 
 
 # ---------------------------------------------------------------- thân người
@@ -206,6 +212,67 @@ def cloth_material(name, hex_):
 
 
 
+def build_pelt(body, rig, co):
+    """Áo da Sư tử Nemea (phần thưởng Kỳ công 1): tấm da lông vàng khoác
+    từ vai xuống quá mông phía lưng, mũ đầu sư tử có bờm sẫm trùm đỉnh và
+    gáy, hai chân trước buộc chéo trước ngực."""
+    w = weights_by_group(body)
+    bl = rig.data.bones
+    normals = [v.normal.copy() for v in body.data.vertices]
+    thigh = bl["thigh_l"]
+    hem_z = thigh.head_local.z + (thigh.tail_local.z - thigh.head_local.z) * 0.55
+    head = bl["head"]
+    brow_z = head.head_local.z + (head.tail_local.z - head.head_local.z) * 0.55
+    torso = ("pelvis", "spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "neck_01")
+    cape = body.vertex_groups.new(name="pelt_cape")
+    hood = body.vertex_groups.new(name="pelt_hood")
+    for i, p in enumerate(co):
+        g = w[i]
+        n = normals[i]
+        if g.get("HelperGeometry", 0) > 0.5:
+            continue
+        if g.get("head", 0) > 0.5:
+            # Mũ: đỉnh đầu và gáy, chừa mặt (pháp tuyến quay ra trước = −Y).
+            if p.z > brow_z and n.y > -0.55:
+                hood.add([i], 1.0, "REPLACE")
+            continue
+        on_body = sum(g.get(k, 0) for k in torso) > 0.5 or g.get("thigh_l", 0) + g.get("thigh_r", 0) > 0.5
+        shoulder = g.get("upperarm_l", 0) + g.get("upperarm_r", 0) > 0.4 and n.z > 0.3
+        if (on_body or shoulder) and p.z > hem_z and (n.y > 0.15 or (n.z > 0.55 and p.z > hem_z + 0.5)):
+            cape.add([i], 1.0, "REPLACE")
+    coat = fur_material("PeltCoat", [(0.0, "#E2C690"), (0.4, "#B07C3A"), (0.75, "#7A4C1C"), (1.0, "#46290E")],
+                        sheen=-0.1)
+    mane = fur_material("PeltMane", [(0.0, "#D2913A"), (0.3, "#9A4C1A"), (0.6, "#4E200C"), (1.0, "#160805")])
+    hide = skin_material("PeltHide", "#9C6E38", rough=0.9)
+    out = []
+    c = shell_copy(body, "PeltCape", "pelt_cape", 0.022, 0.008, [hide])
+    c.add_rest_position_attribute = True
+    out.append(c)
+    out.append(with_fur(c, coat, density=26000 / K ** 2, length=(0.02 * K, 0.035 * K), radius=0.0012 * K,
+                        comb=(0, 0.2, -1.0), lift=0.25, gravity=0.004 * K, jitter=0.25, seed=21, resolution=4))
+    h = shell_copy(body, "PeltHood", "pelt_hood", 0.03, 0.01, [hide])
+    h.add_rest_position_attribute = True
+    out.append(h)
+    out.append(with_fur(h, mane, density=30000 / K ** 2, length=(0.05 * K, 0.11 * K), radius=0.0016 * K,
+                        comb=(0, 1.0, -0.3), lift=0.6, gravity=0.02 * K, jitter=0.4, seed=22, resolution=6))
+    # Hai chân trước của tấm da buộc chéo trước ngực (gắn xương ngực).
+    sh_l = rig.matrix_world @ bl["upperarm_l"].head_local
+    sh_r = rig.matrix_world @ bl["upperarm_r"].head_local
+    chest = rig.matrix_world @ bl["spine_03"].head_local.lerp(bl["spine_03"].tail_local, 0.4)
+    knot = chest + Vector((0, -0.13, -0.02)) * K
+    paws = tapered_world("PeltPaws", [(sh_l + Vector((0, -0.04, 0.02)) * K, knot + Vector((0.05, 0, 0.04)) * K,
+                                       knot, 0.022 * K),
+                                      (sh_r + Vector((0, -0.04, 0.02)) * K, knot + Vector((-0.05, 0, 0.04)) * K,
+                                       knot, 0.022 * K)], flat=1.3, taper=0.5)
+    po = add_object("PeltPaws", paws, [hide])
+    parent_to_bone(po, rig, "spine_03")
+    po.add_rest_position_attribute = True
+    out.append(po)
+    out.append(with_fur(po, coat, density=40000 / K ** 2, length=(0.012 * K, 0.022 * K), radius=0.001 * K,
+                        comb=(0, -0.3, -1.0), lift=0.3, gravity=0.0, jitter=0.3, seed=23, resolution=4))
+    return out
+
+
 def tunic_group(body, rig, co):
     """Nhóm đỉnh `tunic`: thân từ vai trái chéo xuống nách phải (exomis hở vai
     phải), váy từ hông tới giữa đùi (lấy lưới phụ `helper-skirt` của MPFB cho
@@ -307,6 +374,7 @@ def build(fat=0.35):
                                         if o.type in ("MESH", "CURVES") and o is not body
                                         and not o.name.startswith(("Brow", "Floor"))],
               "brows": [o for o in bpy.data.objects if o.name.startswith("Brow")], "hair": {}}
+    layers["pelt"] = build_pelt(body, rig, co)
     styles = HAIR_STYLES if not STILL else ("ponytail" if FEMALE else "curly",)
     for style in styles:
         layers["hair"][style] = build_hair(body, rig, co, style)
@@ -561,6 +629,16 @@ def show_layer(layers, visible, hair_style=None, floor=None):
     for o in layers["skin"] + layers["cloth"] + layers["brows"] + [x for v in hair.values() for x in v]:
         o.hide_render = False
         o.is_holdout = o not in visible
+    # Áo da chỉ hiện ở lớp của nó (vẽ đè sau tóc trong Flutter); lớp khác
+    # không đục lỗ theo nó — người chơi chưa có áo vẫn đủ hình.
+    pelt_on = any(o in visible for o in layers["pelt"])
+    for o in layers["pelt"]:
+        o.hide_render = not pelt_on
+        o.is_holdout = False
+    if pelt_on:
+        for v in hair.values():
+            for o in v:
+                o.hide_render = True
     for style, objs in hair.items():
         if style != hair_style:
             for o in objs:
@@ -613,16 +691,24 @@ def main():
     }
     cam = camera(scene, 0.9 * K, 0.95 * K, 2.6 * K, 2.1 * K, 3.0 * upm, yaw=-10, pitch=7)
     meta = {"elbowFrom": 178, "elbowTo": 70, "anchorX": 40}
-    show_layer(layers, layers["skin"], floor=floor)
-    export_sprites(scene, cam, f"hero_{tag}_skin", anims, Vector(), upm, extra=meta)
-    show_layer(layers, layers["cloth"] + [floor], floor=floor)
-    export_sprites(scene, cam, f"hero_{tag}_cloth", anims, Vector(), upm, extra=meta)
+    if wanted("skin"):
+        show_layer(layers, layers["skin"], floor=floor)
+        export_sprites(scene, cam, f"hero_{tag}_skin", anims, Vector(), upm, extra=meta)
+    if wanted("cloth"):
+        show_layer(layers, layers["cloth"] + [floor], floor=floor)
+        export_sprites(scene, cam, f"hero_{tag}_cloth", anims, Vector(), upm, extra=meta)
+    if wanted("pelt"):
+        show_layer(layers, layers["pelt"], floor=floor)
+        export_sprites(scene, cam, f"hero_{tag}_pelt", anims, Vector(), upm, extra=meta)
     scene.cycles.samples = 64
     for style, objs in layers["hair"].items():
+        if not wanted("hair_" + style):
+            continue
         show_layer(layers, objs + layers["brows"], hair_style=style, floor=floor)
         export_sprites(scene, cam, f"hero_{tag}_hair_{style}", anims, Vector(), upm, extra=meta)
     from boss_kit import save_blend
     save_blend(f"hero_{tag}")
 
 
-main()
+if __name__ == "__main__":
+    main()

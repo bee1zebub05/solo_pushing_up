@@ -536,6 +536,19 @@ void main() {
       const HeroLook(),
       HeroLook(skin: skinTones[0], hair: hairColors[3]),
       HeroLook(skin: skinTones[5], hair: hairColors[0], height: 1.08),
+      HeroLook(
+        sex: HeroSex.female,
+        hairStyle: HairStyle.ponytail,
+        skin: skinTones[1],
+        hair: hairColors[1],
+        height: 0.94,
+      ),
+      HeroLook(
+        sex: HeroSex.female,
+        hairStyle: HairStyle.long,
+        skin: skinTones[3],
+        hair: hairColors[4],
+      ),
     ];
     for (final look in looks) {
       await tester.runAsync(() => HeroSprites.load(look));
@@ -571,6 +584,8 @@ void main() {
   });
 
   testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {
+    await tester.runAsync(NemeaMapImage.load);
+    expect(NemeaMapImage.image, isNotNull, reason: 'bản đồ Blender');
     await render(tester, 'nemea_map', (c) {
       c.scale(400 / nemeaMapSize.width, 260 / nemeaMapSize.height);
       paintNemeaMap(c, [

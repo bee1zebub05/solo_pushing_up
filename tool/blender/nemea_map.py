@@ -107,7 +107,7 @@ def to_map(p):
 # ---------------------------------------------------------------- địa hình
 
 
-HILLS = [((70, 90), 9.0, 2.6), ((200, 110), 10.0, 3.2), ((150, 262), 7.0, 1.2), ((30, 40), 12.0, 3.0)]
+HILLS = [((70, 80), 8.0, 2.2), ((200, 110), 9.0, 2.6), ((150, 268), 6.0, 1.0), ((30, 30), 10.0, 2.4)]
 
 
 def height(x, y):
@@ -116,14 +116,11 @@ def height(x, y):
     for (mx, my), r, hh in HILLS:
         c = ground_at(mx, my)
         h += hh * math.exp(-((x - c.x) ** 2 + (y - c.y) ** 2) / (r * r))
-    # Cao nguyên đá vôi góc trên phải (hang sư tử).
-    c = ground_at(*CAVE)
-    k = max(0.0, 1 - math.hypot((x - c.x) / 13, (y - c.y - 4) / 11))
-    h += 6.5 * min(1.0, k * 2.2)
-    # Lòng sông.
+    # Lòng sông: thung lũng thoải hai bên, đồi không lấn xuống nước.
     d = dist_to(RIVER, p)
-    if d < 14:
-        h -= 0.9 * (1 - (d / 14) ** 2)
+    if d < 26:
+        k = (1 - d / 26) ** 2
+        h = h * (1 - k) - 1.3 * k
     return h
 
 
@@ -207,7 +204,9 @@ def build():
     for a, b in zip(_bank_a, _bank_b):
         pa = ground_at(*a)
         pb = ground_at(*b)
-        rows.append((bm.verts.new((pa.x, pa.y, -0.42)), bm.verts.new((pb.x, pb.y, -0.42))))
+        pa = ground_at(*a, h=-0.55)
+        pb = ground_at(*b, h=-0.55)
+        rows.append((bm.verts.new((pa.x, pa.y, -0.55)), bm.verts.new((pb.x, pb.y, -0.55))))
     for (a0, b0), (a1, b1) in zip(rows, rows[1:]):
         bm.faces.new((a0, b0, b1, a1))
     add_object("River", nv.mesh_from("River", bm), [water_material()])
@@ -222,21 +221,24 @@ def build():
 
     # Đền trên đồi giữa.
     tc = ground_at(*TEMPLE)
-    nv.temple((tc.x, tc.y - 1.0, height(tc.x, tc.y) - 0.15), 3.2, "map", marble, roof, dark)
+    nv.temple((tc.x, tc.y - 1.4, height(tc.x, tc.y) - 0.15), 3.8, "map", marble, roof, dark, roof=False)
 
-    # Vách đá + miệng hang sư tử quay về phía máy quay (−Y).
-    cc = ground_at(*CAVE)
+    # Vách đá + miệng hang sư tử quay về phía máy quay (−Y): khối đá đứng
+    # trên mặt đất, miệng hang ở chân vách ngay điểm màn 10 (boss).
+    cc = ground_at(CAVE[0], CAVE[1] + 14)
     base = height(cc.x, cc.y)
     boxes = [
-        ((cc.x - 2.6, cc.y + 1.5, base + 0.6), (3.0, 3.4, 3.2), (0, 3, 8)),
-        ((cc.x + 2.6, cc.y + 1.8, base + 0.7), (3.0, 3.6, 3.6), (0, -4, -6)),
-        ((cc.x, cc.y + 2.6, base + 2.2), (6.0, 3.0, 1.6), (0, 2, 3)),
-        ((cc.x + 5.0, cc.y + 4.0, base + 1.0), (4.0, 5.0, 4.0), (0, 0, 10)),
+        ((cc.x - 2.4, cc.y + 1.6, base + 1.4), (2.6, 3.0, 3.2), (0, 3, 8)),
+        ((cc.x + 2.5, cc.y + 1.8, base + 1.6), (2.8, 3.2, 3.6), (0, -4, -6)),
+        ((cc.x, cc.y + 2.2, base + 3.1), (6.4, 3.0, 1.4), (0, 2, 3)),
+        ((cc.x + 5.5, cc.y + 3.5, base + 1.8), (4.0, 5.0, 4.0), (0, 0, 10)),
+        ((cc.x - 6.0, cc.y + 4.0, base + 1.2), (4.0, 4.0, 2.8), (0, -3, -12)),
+        ((cc.x + 0.5, cc.y + 5.0, base + 3.4), (9.0, 4.0, 2.4), (0, 0, 4)),
     ]
     cliff = nv.blob("MapCliff", [], voxel=0.12, smooth_iter=2, rough=0.3, rough_scale=0.9, seed=5, ledges=0.15,
                     boxes=boxes)
     add_object("MapCliff", cliff, [rock])
-    add_object("MapCaveMouth", nv.blob("MapCaveMouth", [((cc.x, cc.y + 0.6, base + 0.6), (1.1, 0.4, 1.0))],
+    add_object("MapCaveMouth", nv.blob("MapCaveMouth", [((cc.x, cc.y + 0.5, base + 0.8), (1.2, 0.5, 1.1))],
                                        voxel=0.08), [dark])
 
     # Rừng ô liu + bách: rải ngẫu nhiên, tránh đường mòn, sông, điểm màn, đền, hang.
@@ -253,7 +255,7 @@ def build():
                 continue
             if dist_to(PATH, (mx, my)) < 13 or dist_to(RIVER, (mx, my)) < 12:
                 continue
-            if math.hypot(mx - TEMPLE[0], my - TEMPLE[1]) < 26 or math.hypot(mx - CAVE[0], my - CAVE[1]) < 34:
+            if math.hypot(mx - TEMPLE[0], my - TEMPLE[1]) < 30 or (mx > 300 and my < 80):
                 continue
             g = ground_at(mx, my)
             z = height(g.x, g.y)

@@ -34,8 +34,11 @@ class HeroSpriteFrame {
 /// kiểu (nhân màu tóc). Gốc toạ độ = mũi chân lúc chống đẩy, ở điểm
 /// ([anchorX], 220) của sân khấu; [HeroLook.height] phóng quanh điểm đó.
 ///
-/// Chỉ nạp khi vào trận; chưa nạp, hoặc đang mang trang bị phần thưởng (áo
-/// da sư tử, khiên, kiếm — chưa có lớp Blender) thì vẽ bản vector.
+/// Áo da Sư tử Nemea (phần thưởng Kỳ công 1) là lớp `hero_<giới>_pelt` vẽ
+/// đè sau tóc (mũ đầu sư tử trùm lên tóc).
+///
+/// Chỉ nạp khi vào trận; chưa nạp, hoặc đang mang trang bị chưa có lớp
+/// Blender (khiên, kiếm, băng giá) thì vẽ bản vector.
 abstract final class HeroSprites {
   static const elbowFrom = 178.0;
   static const elbowTo = 70.0;
@@ -51,24 +54,38 @@ abstract final class HeroSprites {
     ];
   }
 
+  static String peltFor(HeroLook look) =>
+      'hero_${look.female ? 'female' : 'male'}_pelt';
+
+  /// Nạp cả lớp áo da: trận Sư tử Nemea trao áo ngay giữa sân khấu.
   static Future<void> load(HeroLook look) async {
-    for (final name in namesFor(look)) {
+    for (final name in [...namesFor(look), peltFor(look)]) {
       await SpriteAtlas.load(name);
     }
   }
 
   static void evict(HeroLook look) {
-    for (final name in namesFor(look)) {
+    for (final name in [...namesFor(look), peltFor(look)]) {
       SpriteAtlas.evict(name);
     }
   }
+
+  /// Vẽ được áo da bằng sprite (đã nạp lớp `pelt`).
+  static bool peltReady(HeroLook look) =>
+      SpriteAtlas.get(peltFor(look)) != null;
 
   static bool ready(HeroLook look) =>
       namesFor(look).every((n) => SpriteAtlas.get(n) != null);
 
   /// Vẽ [frame]; `false` nếu sprite chưa nạp (vẽ bản vector thay).
-  static bool paint(Canvas canvas, HeroLook look, HeroSpriteFrame frame) {
+  static bool paint(
+    Canvas canvas,
+    HeroLook look,
+    HeroSpriteFrame frame, {
+    bool pelt = false,
+  }) {
     final names = namesFor(look);
+    final peltLayer = pelt ? SpriteAtlas.get(peltFor(look)) : null;
     final skin = SpriteAtlas.get(names[0]);
     final cloth = SpriteAtlas.get(names[1]);
     final hair = SpriteAtlas.get(names[2]);
@@ -81,6 +98,7 @@ abstract final class HeroSprites {
       skin.draw(canvas, f.anim, f.t, opacity: opacity, tint: look.skin);
       cloth.draw(canvas, f.anim, f.t, opacity: opacity);
       hair.draw(canvas, f.anim, f.t, opacity: opacity, tint: look.hair);
+      peltLayer?.draw(canvas, f.anim, f.t, opacity: opacity);
     }
 
     final from = frame.from;

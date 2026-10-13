@@ -972,9 +972,13 @@ class _HeroComponent extends Component {
     );
   }
 
-  /// Sprite Blender chưa có lớp cho trang bị phần thưởng và lớp băng giá:
-  /// khi đó vẽ bản vector.
-  bool get _spriteOk => !cloak && !shield && !sword && cold < 0.02;
+  /// Sprite Blender chưa có lớp cho khiên, kiếm và lớp băng giá (áo da sư tử
+  /// thì có): khi đó vẽ bản vector.
+  bool get _spriteOk =>
+      (!cloak || HeroSprites.peltReady(look)) &&
+      !shield &&
+      !sword &&
+      cold < 0.02;
 
   @override
   void render(Canvas canvas) {
@@ -1003,7 +1007,7 @@ class _HeroComponent extends Component {
           : 0.0;
       canvas.save();
       canvas.translate(0, bob);
-      HeroSprites.paint(canvas, look, _sprite);
+      HeroSprites.paint(canvas, look, _sprite, pelt: cloak);
       canvas.restore();
       return;
     }
