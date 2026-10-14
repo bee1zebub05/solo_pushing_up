@@ -10,6 +10,8 @@ import 'package:flame/particles.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
 
+import '../game/battle.dart';
+import '../game/items.dart';
 import 'hero_art.dart';
 import 'hero_pose.dart';
 import 'hero_sprite.dart';
@@ -44,6 +46,19 @@ class StageBattleState {
 
   /// Số túi vàng Harpy đã cướp.
   int goldStolen = 0;
+
+  /// Chép trạng thái trận vừa tính ([Battle.view]).
+  void sync(BattleView view) {
+    water = view.water ?? 0;
+    headsLeft = view.headsLeft;
+    totalHeads = view.heads;
+    headHp = view.headHp / view.headMaxHp;
+    cold = view.cold;
+    bossHp = view.hpFraction;
+    charge = view.charge;
+    revives = view.revives;
+    goldStolen = view.goldStolen;
+  }
 }
 
 /// Tín hiệu âm thanh sân khấu gửi ra màn trận ([BattleStageGame.onCue]).
@@ -207,6 +222,23 @@ class BattleStageGame extends FlameGame {
          ),
        );
 
+  /// Sân khấu với nhân vật mang các vật phẩm người chơi đã có.
+  factory BattleStageGame.equipped({
+    required BossArt boss,
+    required Iterable<Item> items,
+    HeroLook look = const HeroLook(),
+  }) {
+    bool has(Item item) => items.any((i) => i.id == item.id);
+    return BattleStageGame(
+      boss: boss,
+      cloak: has(nemeanPelt),
+      shield: has(dragonScaleShield),
+      sword: has(kusanagi),
+      horse: has(nineManeHorse),
+      look: look,
+    );
+  }
+
   final BossArt boss;
 
   /// Đã có Ngựa chín hồng mao: phi vào đứng cạnh nhân vật khi thắng.
@@ -342,6 +374,16 @@ class BattleStageGame extends FlameGame {
       count: 40,
       colors: const [Color(0xFFFFD54F), Color(0xFFFFF59D), Color(0xFFFF8A65)],
     );
+  }
+
+  /// Vừa nhận [item] (lần đầu qua kỳ công): diễn ngay trên sân khấu nếu
+  /// vật phẩm có hiệu ứng riêng.
+  void receive(Item item) {
+    if (item.id == nemeanPelt.id) {
+      equipCloak();
+    } else if (item.id == nineManeHorse.id) {
+      arriveHorse();
+    }
   }
 
   /// Lần đầu nhận Ngựa chín hồng mao: cho ngựa phi vào ngay.

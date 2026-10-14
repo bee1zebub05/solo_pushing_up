@@ -26,10 +26,10 @@ void main() {
 
     // 12 rep × 2 + thắng 50 + lần đầu 100.
     expect(reward.xp, 174);
-    expect(reward.item, 'Áo choàng da sư tử');
+    expect(reward.item, nemeanPelt);
     expect(reward.unlockedLabor?.id, 'fafnir');
     expect(progress.isUnlocked(fafnirLabor), isTrue);
-    expect(progress.items, ['Áo choàng da sư tử']);
+    expect(progress.items, [nemeanPelt.id]);
     expect(progress.bestCombo, 8);
   });
 
@@ -122,6 +122,16 @@ void main() {
     expect(restored.totalReps, 20);
     expect(restored.bestCombo, 9);
     expect(restored.completedLabors, {'nemea'});
-    expect(restored.items, ['Áo choàng da sư tử']);
+    expect(restored.items, [nemeanPelt.id]);
+  });
+
+  test('bản lưu cũ ghi tên vật phẩm được đổi sang id', () {
+    final restored = PlayerProgress.decode(
+      '{"items": ["Áo choàng da sư tử", "Kiếm Kusanagi"]}',
+    );
+
+    expect(restored.items, [nemeanPelt.id, kusanagi.id]);
+    expect(restored.has(nemeanPelt), isTrue);
+    expect(restored.ownedItems, [nemeanPelt, kusanagi]);
   });
 }

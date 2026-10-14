@@ -196,8 +196,53 @@ vật bằng Blender.
   bóng đổ; `hero_<giới>_hair_<kiểu>` render xám, nhân màu tóc. Lớp khác chỉ
   holdout (che khuất đúng, không hiện). Chuỗi: `plank`/`knees` theo góc khuỷu
   178° → 70°, `stand`, `victory`. Flutter: `lib/art/hero_sprite.dart`.
-  Chưa có lớp Blender cho áo da sư tử, khiên, kiếm và lớp băng giá → khi đó
-  vẽ bản vector.
+  Áo da Sư tử Nemea là lớp `hero_<giới>_pelt` (tấm da lông phủ lưng + sườn,
+  cổ áo bờm, hai chân trước buộc ngực), vẽ đè sau tóc. Chưa có lớp Blender
+  cho khiên, kiếm và lớp băng giá → khi đó vẽ bản vector. Mũ đầu sư tử dựng
+  bằng ellipsoid trông như đồ chơi trên đầu → bỏ, cần mô hình nặn.
+  Ngân sách: da + áo đóng lại ×0,85 (1 trang 2048² mỗi lớp), tóc 1 dải trang
+  nhỏ → mỗi trận ~3 trang cho nhân vật.
+- **Bản đồ Thung lũng Nemea** (`nemea_map.py` → `assets/backdrops/nemea_map.webp`):
+  sa bàn nhìn chéo 40°, máy quay trực giao; toạ độ bản đồ 400×300 quy ra mặt
+  đất bằng tia chiếu (`ground_at`), cây rải tránh đường mòn/sông theo toạ độ
+  ẢNH. Vật cao (cao nguyên) bị đẩy lên trên ảnh theo độ cao → đặt vật theo
+  chân, không nâng nền. Đền trên bản đồ là đền đổ mái (nhìn từ trên chỉ thấy
+  mái đỏ). Flutter vẽ đường mòn, 10 điểm màn, nước lấp lánh đè lên.
+- **Hercules** (`hercules.py` → atlas `hercules`): dáng lực sĩ bằng target
+  chi tiết của MPFB (`make_human(details=…)` áp TRƯỚC khi gắn xương: lưng
+  chữ V, vai, ngực, lưng xô, bắp tay–cẳng tay, cổ, đùi, hàm vuông) — chỉ
+  macro "cơ bắp" thì ra người tập gym thường. Cởi trần (exomis chỉ giữ váy),
+  râu quai nón phủ cằm–hàm (chọn đỉnh theo nửa trước đầu + cổ, không theo gốc
+  xương đầu — gốc nằm trên cằm), nguyệt quế lá to, bỏ băng đầu đỏ của người
+  chơi. Đứng ¾ (`FACING` 52°) để thấy mặt và ngực; tay phải (phía máy quay)
+  tì đầu cán chuỳ chống đất, tay trái (phía xa) giơ về phía người chơi khi
+  nói — tay phía gần giơ hướng nào cũng đi ngang mặt. `talk` 7 khung; cảnh
+  mở đầu làm mượt mức giơ tay và giữ suốt đoạn thoại, chỉ nhấp nhẹ khi chữ
+  đang hiện (hoà hai khung xa nhau ra bóng ma hai cánh tay). Chân dung khung
+  thoại cắt từ sprite (`paintHerculesSpritePortrait`).
+- Công cụ: `tool/repack_sprites.py` đóng lại atlas từ khung đã render (cắt
+  theo thân đục, thu nhỏ) không cần chạy Blender; `hero.py --only pelt,...`
+  chỉ render lớp còn thiếu.
+- **Áo da sư tử bản nữ** (`hero_female_pelt`) đã render đủ 21 khung như bản
+  nam → nhân vật nữ khoác áo bằng sprite, không còn lùi về vector.
+- **Ảnh chụp sẵn cho màn ngoài trận** (`test/art/art_bake_test.dart`, chạy
+  `ART_BAKE=1 flutter test test/art/art_bake_test.dart` rồi
+  `python tool/sprites_webp.py --portraits` / `--banner`): màn chọn màn và
+  trang chủ không nạp atlas 2048² chỉ để vẽ hình tĩnh, mà dùng ảnh vẽ từ chính
+  sprite + phông Blender, cùng độ bão hoà sân khấu.
+  - Chân dung tròn 256 px cho 10 quái chương 1 → `assets/portraits/<id>.webp`
+    (~140 KB tổng). Khung riêng cho sprite (`framing` trong test, đo trên
+    `build/portraits/_stage_<id>.png` có lưới 20 đơn vị); bụi Trì Trệ lắng ở
+    mức máu 25 %. `BossPortrait.baked` là tập quái có ảnh; quái khác vẫn vẽ
+    vector.
+  - Khung trang chủ (`lib/art/home_banner_art.dart`): cảnh có sư tử hai bản
+    (phủ bụi / thung lũng đã giải phóng) + từng lớp nhân vật tư thế đứng (da,
+    áo, 5 kiểu tóc, áo da × nam/nữ), da và tóc nhân màu lúc vẽ → ~380 KB.
+  - Render lại sprite thì chạy lại bước chụp; test kiểm tra
+    `assets/portraits` khớp `BossPortrait.baked`.
+- Chương 1 không còn hình vector khi đã nạp tài nguyên Blender (vector chỉ
+  là bản dự phòng lúc chưa nạp). Khiên/kiếm/băng giá trên nhân vật thuộc kỳ
+  công sau.
 
 **Tranh tham khảo** (chỉ học hình tượng, không chép; đều dùng thương mại được):
 

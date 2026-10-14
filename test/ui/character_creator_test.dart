@@ -54,7 +54,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    saved = await ProfileStore.load();
+    saved = await const ProfileStore().load();
     expect(saved?.name, 'Lan');
     expect(saved?.sex, HeroSex.female);
     await tester.pump();

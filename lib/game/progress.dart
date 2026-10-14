@@ -19,7 +19,7 @@ class BattleReward {
   final int levelsGained;
 
   /// Vật phẩm nhận lần đầu thắng kỳ công.
-  final String? item;
+  final Item? item;
 
   /// Kỳ công vừa được mở khoá.
   final Labor? unlockedLabor;
@@ -54,7 +54,13 @@ class PlayerProgress {
 
   /// Các màn đã thắng (id của [Stage]).
   final Set<String> completedStages;
+
+  /// Id các vật phẩm đã có ([Item.id]), theo thứ tự nhận.
   final List<String> items;
+
+  bool has(Item item) => items.contains(item.id);
+
+  List<Item> get ownedItems => [for (final id in items) ?itemById(id)];
 
   static const xpPerRep = 2;
   static const victoryXp = 50;
@@ -126,13 +132,13 @@ class PlayerProgress {
     this.bestCombo = math.max(this.bestCombo, bestCombo);
 
     final levels = _addXp(gained);
-    String? item;
+    Item? item;
     Labor? unlocked;
     if (firstClear) {
       completedLabors.add(labor.id);
       completedStages.add(labor.id);
       item = labor.reward;
-      items.add(labor.reward);
+      if (!has(item)) items.add(item.id);
       unlocked = nextLabor(labor);
     }
     return BattleReward(
@@ -211,7 +217,12 @@ class PlayerProgress {
       ...((json['completedStages'] as List<Object?>?) ?? const [])
           .cast<String>(),
     },
-    items: [...((json['items'] as List<Object?>?) ?? const []).cast<String>()],
+    // Bản lưu cũ ghi tên vật phẩm: đổi sang id.
+    items: [
+      for (final raw
+          in ((json['items'] as List<Object?>?) ?? const []).cast<String>())
+        itemById(raw)?.id ?? raw,
+    ],
   );
 
   String encode() => jsonEncode(toJson());

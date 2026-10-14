@@ -51,7 +51,7 @@ void main() {
         labor: nemea,
         stage: nemea.stages.last,
       );
-      expect(reward.item, 'Áo choàng da sư tử');
+      expect(reward.item, nemeanPelt);
       expect(reward.unlockedLabor?.id, 'fafnir');
     });
 
@@ -131,9 +131,9 @@ void main() {
     test('mức lấy đà tăng dần trong lúc báo trước', () {
       final battle = Battle(enemy: erymanthianBoar);
       battle.apply([rep(0)]);
-      expect(battle.chargeAt(1000), 0);
-      expect(battle.chargeAt(7900), closeTo(0.56, 0.05));
-      expect(battle.chargeAt(9000), 1);
+      expect(battle.view(1000).charge, 0);
+      expect(battle.view(7900).charge, closeTo(0.56, 0.05));
+      expect(battle.view(9000).charge, 1);
     });
   });
 
@@ -156,7 +156,7 @@ void main() {
         events.addAll(battle.tick(t));
       }
       expect(events.whereType<GoldStolen>().map((e) => e.total), [1, 2]);
-      expect(battle.goldStolen, 2);
+      expect(battle.mechanic<GoldThief>()!.stolen, 2);
     });
   });
 }

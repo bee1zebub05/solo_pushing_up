@@ -8,6 +8,7 @@ import 'package:solo_pushing_up/art/hercules_art.dart';
 import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/hero_sprite.dart';
+import 'package:solo_pushing_up/art/home_banner_art.dart';
 import 'package:solo_pushing_up/art/horse_art.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 import 'package:solo_pushing_up/art/nemea_map_art.dart';
@@ -278,12 +279,39 @@ void main() {
     }
   });
 
+  testWidgets('cảnh mở đầu bằng Blender: phông, nhân vật, Hercules', (
+    tester,
+  ) async {
+    const look = HeroLook();
+    await tester.runAsync(() => preloadNemeaIntro(look));
+    expect(SpriteAtlas.get(herculesSprite), isNotNull);
+    for (final (name, time, talking) in [
+      ('appear', 0.8, false),
+      ('idle', 3.0, false),
+      ('talk', 3.0, true),
+    ]) {
+      await render(
+        tester,
+        'intro_blender_$name',
+        (c) => paintNemeaIntro(
+          c,
+          time: time,
+          talk: time > 1.6 ? 1 : 0,
+          talking: talking,
+        ),
+      );
+    }
+    NemeaBackdrop.evict();
+    HeroSprites.evict(look);
+    SpriteAtlas.evict(herculesSprite);
+  });
+
   testWidgets('cảnh mở đầu: Hercules hiện ra và dặn dò', (tester) async {
     await render(tester, 'intro_appear', (c) => paintNemeaIntro(c, time: 0.8));
     await render(
       tester,
       'intro_talk',
-      (c) => paintNemeaIntro(c, time: 3, talking: true),
+      (c) => paintNemeaIntro(c, time: 3, talk: 1, talking: true),
     );
     await render(tester, 'hands_sheet', (c) {
       c.drawRect(
@@ -580,7 +608,61 @@ void main() {
         });
       }
     }
+    // Áo da Sư tử Nemea (phần thưởng Kỳ công 1) cho cả nam và nữ.
+    for (final i in [0, 3]) {
+      final look = looks[i];
+      expect(HeroSprites.peltReady(look), isTrue, reason: '${look.sex}');
+      for (final (tag, f) in [
+        ('top', HeroSpriteFrame.plank(178)),
+        ('bottom', HeroSpriteFrame.plank(72)),
+        ('knees', HeroSpriteFrame.plank(90, onKnees: true)),
+        ('stand', const HeroSpriteFrame('stand', 0)),
+        ('victory', const HeroSpriteFrame('victory', 0)),
+      ]) {
+        await render(tester, 'hero_pelt_${i}_$tag', (c) {
+          art.paintStageBackdrop(c);
+          art.paintScene(c, 2.5, battle);
+          HeroSprites.paint(c, look, f, pelt: true);
+          art.paintForeground(c, frame);
+        });
+      }
+    }
     art.dispose();
+  });
+
+  testWidgets('khung trang chủ bằng ảnh Blender chụp sẵn', (tester) async {
+    final variants = [
+      ('dust', const HeroLook(), false, false),
+      (
+        'pelt_female',
+        HeroLook(
+          sex: HeroSex.female,
+          hairStyle: HairStyle.ponytail,
+          skin: skinTones[4],
+          hair: hairColors[0],
+        ),
+        true,
+        true,
+      ),
+      (
+        'pelt_male_dark',
+        HeroLook(skin: skinTones[5], hairStyle: HairStyle.buzz, height: 1.1),
+        true,
+        false,
+      ),
+    ];
+    for (final (name, look, cloak, freed) in variants) {
+      await tester.runAsync(
+        () => HomeBannerArt.load(look, cloak: cloak, freed: freed),
+      );
+      expect(HomeBannerArt.ready(look, cloak: cloak, freed: freed), isTrue);
+      await render(
+        tester,
+        'home_banner_$name',
+        (c) => HomeBannerArt.paint(c, look, cloak: cloak, freed: freed),
+        scale: 3,
+      );
+    }
   });
 
   testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {

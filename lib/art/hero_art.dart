@@ -1,9 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../game/appearance.dart';
+import '../game/player_profile.dart';
 import 'costume_art.dart';
 import 'hero_pose.dart';
 import 'vector_style.dart';
+
+export '../game/appearance.dart';
 
 /// Bảng màu nhân vật người chơi.
 abstract final class HeroColors {
@@ -42,20 +46,6 @@ const hairColors = <Color>[
   Color(0xFF9A9A9A),
 ];
 
-enum HeroSex { male, female }
-
-enum HairStyle {
-  curly('Xoăn ngắn'),
-  buzz('Cắt ngắn'),
-  bun('Búi Hy Lạp'),
-  ponytail('Đuôi ngựa'),
-  long('Tóc dài');
-
-  const HairStyle(this.label);
-
-  final String label;
-}
-
 /// Ngoại hình nhân vật. Chỉ khác hình, chỉ số và cách chơi giống hệt nhau
 /// (rules/cottruyen.md mục 2.2).
 class HeroLook {
@@ -80,6 +70,22 @@ class HeroLook {
   final double height;
 
   bool get female => sex == HeroSex.female;
+}
+
+/// Ngoại hình vẽ suy ra từ hồ sơ người chơi.
+extension PlayerProfileLook on PlayerProfile {
+  HeroLook get look {
+    // Mức mỡ "gọn" khác nhau giữa nam và nữ; quy về 0–1 cho hình vẽ.
+    final lean = sex == HeroSex.male ? 8.0 : 16.0;
+    return HeroLook(
+      sex: sex,
+      skin: skinTones[skinTone.clamp(0, skinTones.length - 1)],
+      hair: hairColors[hairColor.clamp(0, hairColors.length - 1)],
+      hairStyle: hairStyle,
+      fat: ((bodyFat - lean) / 30).clamp(0.0, 1.0),
+      height: (1 + (heightCm - 170) / 250).clamp(0.85, 1.15),
+    );
+  }
 }
 
 /// Đầu vẽ to hơn người thật một chút cho dễ thương (phong cách game).

@@ -37,6 +37,7 @@ void paintNemeaIntro(
   Canvas canvas, {
   required double time,
   HeroLook look = const HeroLook(),
+  double talk = 0,
   bool talking = false,
 }) {
   final blender = NemeaBackdrop.ready;
@@ -63,13 +64,15 @@ void paintNemeaIntro(
   canvas.translate(300, stageGroundY);
   final hercules = SpriteAtlas.get(herculesSprite);
   if (hercules != null) {
-    canvas.scale(0.82);
+    // Bản Blender cao hơn bản vector: thu nhỏ để đầu không chạm mép trên.
+    canvas.scale(0.76);
     paintHerculesSprite(
       canvas,
       hercules,
       time: time,
       appear: math.min(1, time / 1.6),
-      talk: talking ? 1 : 0,
+      talk: talk,
+      talking: talking,
     );
   } else {
     canvas.scale(0.78);
@@ -77,7 +80,7 @@ void paintNemeaIntro(
       canvas,
       time: time,
       appear: math.min(1, time / 1.6),
-      talk: talking ? 1 : 0,
+      talk: talk,
     );
   }
   canvas.restore();
@@ -104,6 +107,10 @@ class _NemeaIntroScreenState extends State<NemeaIntroScreen>
   // (lúc dispose), ticker sẽ không bao giờ chạy.
   late final Ticker _ticker = createTicker(_tick);
   double _seconds = 0;
+
+  /// Mức giơ tay của Hercules 0–1: lên dần khi bắt đầu thoại, giữ suốt
+  /// đoạn thoại (không giật lên xuống theo từng câu).
+  double _talk = 0;
   int _line = 0;
   double _lineStart = 1.6;
 
@@ -117,8 +124,13 @@ class _NemeaIntroScreenState extends State<NemeaIntroScreen>
     preloadNemeaIntro(widget.look);
   }
 
-  void _tick(Duration elapsed) =>
-      setState(() => _seconds = elapsed.inMicroseconds / 1e6);
+  void _tick(Duration elapsed) => setState(() {
+    final now = elapsed.inMicroseconds / 1e6;
+    final dt = (now - _seconds).clamp(0.0, 0.1);
+    _seconds = now;
+    final target = _seconds >= 1.6 ? 1.0 : 0.0;
+    _talk += (target - _talk) * (1 - math.exp(-dt * 4));
+  });
 
   int get _shownChars => ((_seconds - _lineStart) * _charsPerSecond)
       .floor()
@@ -195,6 +207,7 @@ class _NemeaIntroScreenState extends State<NemeaIntroScreen>
                         painter: _IntroPainter(
                           seconds: _seconds,
                           look: widget.look,
+                          talk: _talk,
                           talking: talking,
                         ),
                       ),
@@ -295,11 +308,13 @@ class _IntroPainter extends CustomPainter {
   _IntroPainter({
     required this.seconds,
     required this.look,
+    required this.talk,
     required this.talking,
   });
 
   final double seconds;
   final HeroLook look;
+  final double talk;
   final bool talking;
 
   @override
@@ -307,7 +322,13 @@ class _IntroPainter extends CustomPainter {
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.scale(size.width / stageSize.width);
-    paintNemeaIntro(canvas, time: seconds, look: look, talking: talking);
+    paintNemeaIntro(
+      canvas,
+      time: seconds,
+      look: look,
+      talk: talk,
+      talking: talking,
+    );
     canvas.restore();
   }
 
@@ -331,6 +352,10 @@ class _HerculesPortraitPainter extends CustomPainter {
           colors: [Color(0xFFFFE9A8), Color(0xFFB9822E)],
         ).createShader(Offset.zero & size),
     );
+    if (SpriteAtlas.get(herculesSprite) case final sprite?) {
+      paintHerculesSpritePortrait(canvas, sprite, size);
+      return;
+    }
     const view = 72.0;
     canvas.save();
     canvas.scale(size.width / view);

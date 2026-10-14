@@ -1025,24 +1025,46 @@ void paintHerculesAura(Canvas canvas, {double time = 0, double appear = 1}) {
 
 /// Hercules bằng sprite Blender (tool/blender/hercules.py, atlas
 /// `hercules`): bản render quay mặt sang phải nên lật ngang để nhìn về người
-/// chơi; gốc ở mặt đất. [talk] > 0: giơ tay khi nói (đưa đi đưa lại).
+/// chơi; gốc ở mặt đất. [talk] 0–1: mức giơ tay về phía người chơi (màn gọi
+/// làm mượt theo thời gian); [talking]: đang nói thì tay nhấp nhẹ theo lời.
 void paintHerculesSprite(
   Canvas canvas,
   SpriteAtlas sprite, {
   double time = 0,
   double appear = 1,
   double talk = 0,
+  bool talking = false,
 }) {
   final a = appear.clamp(0.0, 1.0);
   paintHerculesAura(canvas, time: time, appear: appear);
   canvas.save();
   canvas.translate(0, 30 * (1 - a));
   canvas.scale(-1, 1);
-  if (talk > 0 && sprite.has('talk')) {
-    final k = 0.55 + 0.45 * math.sin(time * 3.2);
-    sprite.draw(canvas, 'talk', k * talk, opacity: a);
+  final raise = talk.clamp(0.0, 1.0);
+  if (raise > 0.01 && sprite.has('talk')) {
+    // Giữ tay quanh tư thế giơ, chỉ nhấp nhẹ (khung kề nhau nên hoà khung
+    // không thành bóng ma hai cánh tay).
+    final bob = talking ? 0.88 + 0.12 * math.sin(time * 3.2) : 0.94;
+    sprite.draw(canvas, 'talk', raise * bob, opacity: a);
   } else {
     sprite.draw(canvas, 'idle', 0, opacity: a);
   }
+  canvas.restore();
+}
+
+/// Tâm mặt Hercules trong sprite (đơn vị sân khấu, gốc ở chân, đã lật) và
+/// bề rộng khung chân dung quanh đó.
+const herculesSpriteFace = Offset(6, -238);
+const herculesSpritePortraitView = 58.0;
+
+/// Chân dung tròn Hercules từ sprite (khung thoại cảnh mở đầu): khung tư
+/// thế đứng, cắt quanh mặt, cỡ [size].
+void paintHerculesSpritePortrait(Canvas canvas, SpriteAtlas sprite, Size size) {
+  canvas.save();
+  canvas.translate(size.width / 2, size.height / 2);
+  canvas.scale(size.width / herculesSpritePortraitView);
+  canvas.translate(-herculesSpriteFace.dx, -herculesSpriteFace.dy);
+  canvas.scale(-1, 1);
+  sprite.draw(canvas, 'idle', 0);
   canvas.restore();
 }

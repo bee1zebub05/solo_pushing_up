@@ -1,5 +1,4 @@
 import '../../game/battle.dart';
-import '../../game/labors.dart';
 import '../battle_stage.dart';
 import 'dummy_art.dart';
 import 'fafnir_boss.dart';
@@ -8,25 +7,24 @@ import 'nemea_monster_art.dart';
 import 'orochi_boss.dart';
 import 'thuy_tinh_boss.dart';
 
-/// Hình boss cho từng kẻ thù đã vẽ; null = chưa có hình (dùng biểu tượng tạm).
-BossArt? bossArtFor(EnemySpec enemy) {
-  if (enemy == nemeanLion) return NemeaBossArt();
-  final monster = switch (enemy) {
-    stymphalianFlock => NemeaMonster.birds,
-    stymphalianSwarm => NemeaMonster.swarm,
-    spartoi => NemeaMonster.spartoi,
-    stoneSoldier => NemeaMonster.stone,
-    erymanthianBoar => NemeaMonster.boar,
-    harpy => NemeaMonster.harpy,
-    spartoiPack => NemeaMonster.pack,
-    youngHydra => NemeaMonster.hydra,
-    stoneGuard => NemeaMonster.guard,
-    _ => null,
-  };
-  if (monster != null) return NemeaMonsterArt(monster);
-  if (enemy == fafnir) return FafnirBossArt();
-  if (enemy == orochi) return OrochiBossArt();
-  if (enemy == thuyTinh) return ThuyTinhBossArt();
-  if (enemy == trainingDummy) return TrainingDummyArt();
-  return null;
-}
+/// Hình của từng kẻ thù đã vẽ, theo [EnemySpec.id]. Mỗi lần gọi tạo bản
+/// mới vì hình giữ tài nguyên riêng (sprite, shader) và được trả khi rời trận.
+final Map<String, BossArt Function()> _bossArts = {
+  'nemean_lion': NemeaBossArt.new,
+  'stymphalian_flock': () => NemeaMonsterArt(NemeaMonster.birds),
+  'stymphalian_swarm': () => NemeaMonsterArt(NemeaMonster.swarm),
+  'spartoi': () => NemeaMonsterArt(NemeaMonster.spartoi),
+  'stone_soldier': () => NemeaMonsterArt(NemeaMonster.stone),
+  'erymanthian_boar': () => NemeaMonsterArt(NemeaMonster.boar),
+  'harpy': () => NemeaMonsterArt(NemeaMonster.harpy),
+  'spartoi_pack': () => NemeaMonsterArt(NemeaMonster.pack),
+  'young_hydra': () => NemeaMonsterArt(NemeaMonster.hydra),
+  'stone_guard': () => NemeaMonsterArt(NemeaMonster.guard),
+  'fafnir': FafnirBossArt.new,
+  'orochi': OrochiBossArt.new,
+  'thuy_tinh': ThuyTinhBossArt.new,
+  'training_dummy': TrainingDummyArt.new,
+};
+
+/// Hình boss cho kẻ thù đã vẽ; null = chưa có hình (dùng biểu tượng tạm).
+BossArt? bossArtFor(EnemySpec enemy) => _bossArts[enemy.id]?.call();

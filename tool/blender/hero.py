@@ -214,47 +214,49 @@ def cloth_material(name, hex_):
 
 def build_pelt(body, rig, co):
     """Áo da Sư tử Nemea (phần thưởng Kỳ công 1): tấm da lông vàng khoác
-    từ vai xuống quá mông phía lưng, mũ đầu sư tử có bờm sẫm trùm đỉnh và
-    gáy, hai chân trước buộc chéo trước ngực."""
+    từ vai xuống quá mông phía lưng và hai bên sườn, cổ áo bờm sẫm phủ gáy
+    và vai, hai chân trước buộc chéo trước ngực. (Mũ đầu sư tử dựng thử
+    trông như đồ chơi trên đầu — bỏ.)"""
     w = weights_by_group(body)
     bl = rig.data.bones
     normals = [v.normal.copy() for v in body.data.vertices]
     thigh = bl["thigh_l"]
     hem_z = thigh.head_local.z + (thigh.tail_local.z - thigh.head_local.z) * 0.55
     head = bl["head"]
-    brow_z = head.head_local.z + (head.tail_local.z - head.head_local.z) * 0.55
+    collar_z = bl["upperarm_l"].head_local.z - 0.07
     torso = ("pelvis", "spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "neck_01")
     cape = body.vertex_groups.new(name="pelt_cape")
-    hood = body.vertex_groups.new(name="pelt_hood")
+    hood = body.vertex_groups.new(name="pelt_collar")
     for i, p in enumerate(co):
         g = w[i]
         n = normals[i]
         if g.get("HelperGeometry", 0) > 0.5:
             continue
         if g.get("head", 0) > 0.5:
-            # Mũ: đỉnh đầu và gáy, chừa mặt (pháp tuyến quay ra trước = −Y).
-            if p.z > brow_z and n.y > -0.55:
-                hood.add([i], 1.0, "REPLACE")
             continue
+        # Cổ áo bờm: gáy, vai, đỉnh lưng (không trùm đầu).
+        upper = g.get("neck_01", 0) + g.get("clavicle_l", 0) + g.get("clavicle_r", 0) + g.get("spine_03", 0) > 0.5
+        if upper and p.z > collar_z and n.y > -0.35:
+            hood.add([i], 1.0, "REPLACE")
         on_body = sum(g.get(k, 0) for k in torso) > 0.5 or g.get("thigh_l", 0) + g.get("thigh_r", 0) > 0.5
         shoulder = g.get("upperarm_l", 0) + g.get("upperarm_r", 0) > 0.4 and n.z > 0.3
-        if (on_body or shoulder) and p.z > hem_z and (n.y > 0.15 or (n.z > 0.55 and p.z > hem_z + 0.5)):
+        if (on_body or shoulder) and p.z > hem_z and (n.y > -0.3 or (n.z > 0.55 and p.z > hem_z + 0.5)):
             cape.add([i], 1.0, "REPLACE")
     coat = fur_material("PeltCoat", [(0.0, "#E2C690"), (0.4, "#B07C3A"), (0.75, "#7A4C1C"), (1.0, "#46290E")],
                         sheen=-0.1)
     mane = fur_material("PeltMane", [(0.0, "#D2913A"), (0.3, "#9A4C1A"), (0.6, "#4E200C"), (1.0, "#160805")])
     hide = skin_material("PeltHide", "#9C6E38", rough=0.9)
     out = []
-    c = shell_copy(body, "PeltCape", "pelt_cape", 0.022, 0.008, [hide])
+    c = shell_copy(body, "PeltCape", "pelt_cape", 0.034, 0.008, [hide])
     c.add_rest_position_attribute = True
     out.append(c)
-    out.append(with_fur(c, coat, density=26000 / K ** 2, length=(0.02 * K, 0.035 * K), radius=0.0012 * K,
-                        comb=(0, 0.2, -1.0), lift=0.25, gravity=0.004 * K, jitter=0.25, seed=21, resolution=4))
-    h = shell_copy(body, "PeltHood", "pelt_hood", 0.03, 0.01, [hide])
+    out.append(with_fur(c, coat, density=90000 / K ** 2, length=(0.02 * K, 0.035 * K), radius=0.0009 * K,
+                        comb=(0, 0.2, -1.0), lift=0.06, gravity=0.004 * K, jitter=0.2, seed=21, resolution=4))
+    h = shell_copy(body, "PeltCollar", "pelt_collar", 0.04, 0.01, [hide])
     h.add_rest_position_attribute = True
     out.append(h)
-    out.append(with_fur(h, mane, density=30000 / K ** 2, length=(0.05 * K, 0.11 * K), radius=0.0016 * K,
-                        comb=(0, 1.0, -0.3), lift=0.6, gravity=0.02 * K, jitter=0.4, seed=22, resolution=6))
+    out.append(with_fur(h, mane, density=40000 / K ** 2, length=(0.06 * K, 0.12 * K), radius=0.0016 * K,
+                        comb=(0, 0.6, -1.0), lift=0.35, gravity=0.03 * K, jitter=0.35, seed=22, resolution=7))
     # Hai chân trước của tấm da buộc chéo trước ngực (gắn xương ngực).
     sh_l = rig.matrix_world @ bl["upperarm_l"].head_local
     sh_r = rig.matrix_world @ bl["upperarm_r"].head_local

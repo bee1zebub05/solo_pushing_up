@@ -398,4 +398,5 @@ def main():
     save_blend("nemea_lion")
 
 
-main()
+if __name__ == "__main__":
+    main()

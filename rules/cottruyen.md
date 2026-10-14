@@ -64,7 +64,7 @@ Những ô ghi "Như cũ" là cơ chế đã chỉ dùng hít đất từ đầu
 | 9. Tepegöz | Chỉ rep đủ sâu trúng mắt | Như cũ (💥 rep sâu) |
 | 10. Soumaoro | Mỗi dạng yếu trước một bài tập | Mỗi dạng yếu trước một kiểu: ⚡ / 🐢 / ⏸ / 💥 |
 | 11. Vucub Caquix | Trận bóng + Nhà Dơi ⏸ | Như cũ |
-| 12. Thuỷ Tinh | Các đợt sóng dùng 🔼🔽⏸ | Các đợt sóng dùng ⚡ 🐢 ⏸ 💥 (đã làm: `BattleArmor.risingFlood`) |
+| 12. Thuỷ Tinh | Các đợt sóng dùng 🔼🔽⏸ | Các đợt sóng dùng ⚡ 🐢 ⏸ 💥 (đã làm: `RisingFlood`, lib/game/mechanics/rising_flood.dart) |
 
 ### Chế độ Chống gối (có ngay từ bản ra mắt)
 Nếu chỉ có push-up chuẩn thì người mới tập, người lớn tuổi và người yếu sẽ bị bỏ lại. Giai đoạn 1 vì vậy có **2 mức**:

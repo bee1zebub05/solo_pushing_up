@@ -194,15 +194,25 @@ def rest_coords(body):
     return co
 
 
-def make_human(gender, muscle=0.5, weight=0.5, height=0.5, age=0.5, proportions=0.9, race=None, scale=1.0):
+def make_human(gender, muscle=0.5, weight=0.5, height=0.5, age=0.5, proportions=0.9, race=None, scale=1.0,
+               details=None):
     """Người MPFB + khung xương game_engine (tên xương kiểu Unreal: pelvis,
-    spine_01…, upperarm_l…), làm mịn một bậc; [scale] phóng cả người."""
+    spine_01…, upperarm_l…), làm mịn một bậc; [scale] phóng cả người.
+    [details]: {tên target MPFB: độ mạnh}, ví dụ {"torso-vshape-incr": 1}
+    (thư mục data/targets của MPFB) — áp TRƯỚC khi gắn xương để xương khớp
+    dáng mới."""
     from bl_ext.blender_org.mpfb.services.humanservice import HumanService
     from bl_ext.blender_org.mpfb.services.targetservice import TargetService
     macro = TargetService.get_default_macro_info_dict()
     macro.update(gender=gender, age=age, muscle=muscle, weight=weight, height=height, proportions=proportions)
     macro["race"] = race or {"asian": 0.45, "caucasian": 0.45, "african": 0.1}
     body = HumanService.create_human(macro_detail_dict=macro)
+    for name, value in (details or {}).items():
+        path = TargetService.target_full_path(name)
+        if path is None:
+            raise ValueError(f"không có target MPFB {name}")
+        TargetService.load_target(body, path, weight=value, name=name)
+    bpy.context.view_layer.update()
     rig = HumanService.add_builtin_rig(body, "game_engine")
     rig.scale = (scale, scale, scale)
     for pb in rig.pose.bones:

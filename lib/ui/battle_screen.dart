@@ -8,10 +8,10 @@ import '../art/hero_art.dart';
 import '../art/battle_stage.dart';
 import '../art/bosses/boss_registry.dart';
 import '../game/battle.dart';
-import '../game/labors.dart';
+import '../game/items.dart';
 import '../game/progress.dart';
-import '../pose/pose_frame.dart';
 import '../rep/pushup_counter.dart';
+import '../session/battle_controller.dart';
 import '../session/workout_session.dart';
 import '../sim/pose_simulator.dart';
 import 'depth_bar.dart';
@@ -19,25 +19,10 @@ import 'greek_ui.dart';
 import 'pill.dart';
 import 'pose_source_view.dart';
 
+export '../session/battle_controller.dart' show BattleOutcome;
+
 /// Màn chiến đấu thô (rules/congnghe.md lộ trình bước 2): mỗi rep là một đòn.
 /// Hình ảnh tạm (biểu tượng), chưa có art.
-/// Kết quả một trận, gửi cho màn hình gọi để ghi tiến trình.
-class BattleOutcome {
-  const BattleOutcome({
-    required this.won,
-    required this.reps,
-    required this.bestCombo,
-    this.goldStolen = 0,
-  });
-
-  final bool won;
-  final int reps;
-  final int bestCombo;
-
-  /// Túi vàng bị Harpy cướp trong trận.
-  final int goldStolen;
-}
-
 class BattleScreen extends StatefulWidget {
   const BattleScreen({
     super.key,
@@ -46,10 +31,7 @@ class BattleScreen extends StatefulWidget {
     this.emoji = '👾',
     this.victoryText,
     this.onFinished,
-    this.heroCloak = false,
-    this.heroShield = false,
-    this.heroSword = false,
-    this.heroHorse = false,
+    this.items = const [],
     this.heroLook = const HeroLook(),
   });
 
@@ -60,15 +42,8 @@ class BattleScreen extends StatefulWidget {
   final String emoji;
   final String? victoryText;
 
-  /// Người chơi đã có Áo choàng da sư tử (vẽ lên nhân vật).
-  final bool heroCloak;
-
-  /// Đã có Khiên vảy rồng / Kiếm Kusanagi (vẽ lên nhân vật).
-  final bool heroShield;
-  final bool heroSword;
-
-  /// Đã có Ngựa chín hồng mao (xuất hiện khi thắng).
-  final bool heroHorse;
+  /// Vật phẩm người chơi đã có (áo choàng, khiên… vẽ lên nhân vật).
+  final List<Item> items;
 
   /// Ngoại hình nhân vật người chơi đã tạo.
   final HeroLook heroLook;
@@ -83,7 +58,14 @@ class BattleScreen extends StatefulWidget {
 class _BattleScreenState extends State<BattleScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late final WorkoutSession _session = WorkoutSession(mode: widget.mode);
-  late Battle _battle = Battle(enemy: widget.enemy, mode: widget.mode);
+  late final BattleController _controller = BattleController(
+    enemy: widget.enemy,
+    mode: widget.mode,
+    session: _session,
+    onFinished: widget.onFinished,
+  );
+
+  BattleView get _view => _controller.view;
 
   /// Rung kẻ thù khi trúng đòn.
   late final AnimationController _shake = AnimationController(
@@ -91,26 +73,12 @@ class _BattleScreenState extends State<BattleScreen>
     duration: const Duration(milliseconds: 250),
   );
 
-  BattleEvent? _lastEvent;
-  int _lastEventKey = 0;
-  int _nowMs = 0;
-
-  /// Lúc người chơi bắt đầu hạ người trong rep đang làm (null = đang ở trên).
-  /// Mức lạnh dừng ở mốc này, vì luật tính nghỉ tới lúc bắt đầu hạ người:
-  /// rep chậm không bị coi là nghỉ.
-  int? _descentStartMs;
-  bool _reported = false;
-  BattleReward? _reward;
-
   /// Sân khấu có nhân vật và hoạt hình cho các boss đã vẽ; các trận khác
   /// vẫn dùng biểu tượng tạm.
   late final BattleStageGame? _stage = switch (_bossArt()) {
-    final art? => BattleStageGame(
+    final art? => BattleStageGame.equipped(
       boss: art,
-      cloak: widget.heroCloak,
-      shield: widget.heroShield,
-      sword: widget.heroSword,
-      horse: widget.heroHorse,
+      items: widget.items,
       look: widget.heroLook,
     ),
     null => null,
@@ -123,21 +91,23 @@ class _BattleScreenState extends State<BattleScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
+    _controller
+      ..addListener(_onBattleChanged)
+      ..onEvents = _onEvents
+      ..onReward = (reward) {
+        if (reward.item case final item?) _stage?.receive(item);
+      };
     _session
       ..addListener(_onSessionChanged)
-      ..frameListeners.add(_onFrame)
       ..init();
     // Âm riêng của boss: báo đòn khi boss lấy đà, tiếng trúng theo chất liệu.
     if ((_stage, _stage?.boss.soundKey) case (final stage?, final key?)) {
       _session.feedback.loadBossSounds(key);
-      stage.onCue = (cue) => _session.feedback.playBoss(
-        key,
-        switch (cue) {
-          StageCue.hit => 'hit',
-          StageCue.defeat => 'defeat',
-          StageCue.tell || StageCue.rage => 'tell',
-        },
-      );
+      stage.onCue = (cue) => _session.feedback.playBoss(key, switch (cue) {
+        StageCue.hit => 'hit',
+        StageCue.defeat => 'defeat',
+        StageCue.tell || StageCue.rage => 'tell',
+      });
     }
   }
 
@@ -146,6 +116,7 @@ class _BattleScreenState extends State<BattleScreen>
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     _shake.dispose();
+    _controller.dispose();
     _session.dispose();
     super.dispose();
   }
@@ -158,92 +129,41 @@ class _BattleScreenState extends State<BattleScreen>
     if (mounted) setState(() {});
   }
 
-  void _onFrame(PoseFrame frame, CounterSnapshot snapshot) {
-    _nowMs = frame.timestampMs;
-    final inRep =
-        snapshot.phase == CounterPhase.goingDown ||
-        snapshot.phase == CounterPhase.bottom;
-    _descentStartMs = inRep ? (_descentStartMs ?? frame.timestampMs) : null;
-    // Cơ chế boss hiện lên sân khấu: mực nước, đầu còn lại.
-    _stage?.battle
-      ?..water = _battle.water
-      ..headsLeft = _battle.headsLeft
-      ..totalHeads = widget.enemy.heads
-      ..headHp = _battle.headHp / widget.enemy.headMaxHp
-      ..cold = _battle.coldAt(_descentStartMs ?? frame.timestampMs)
-      ..bossHp = _battle.hpFraction
-      ..charge = _battle.chargeAt(frame.timestampMs)
-      ..goldStolen = _battle.goldStolen;
-    _stage?.updatePlayer(
-      elbowAngle: snapshot.phase == CounterPhase.searching
-          ? null
-          : snapshot.elbowAngle,
-      onKnees: snapshot.posture == Posture.knee,
-    );
-    final events = [
-      ..._battle.apply(snapshot.events),
-      ..._battle.tick(frame.timestampMs, plankHoldMs: snapshot.plankHoldMs),
-    ];
-    if (events.isEmpty) return;
-    // Sự kiện đổi cục diện (chém đứt / mọc đầu) quan trọng hơn con số damage.
-    _lastEvent =
-        events.whereType<ChargeWarning>().firstOrNull ??
-        events.whereType<ChargeLanded>().firstOrNull ??
-        events.whereType<Revived>().firstOrNull ??
-        events.whereType<GoldStolen>().firstOrNull ??
-        events.whereType<HeadSevered>().firstOrNull ??
-        events.whereType<HeadRegrown>().firstOrNull ??
-        events.whereType<WaveStarted>().firstOrNull ??
-        events.last;
-    _lastEventKey++;
-    if (events.any((e) => e is Hit)) _shake.forward(from: 0);
+  /// Mỗi khung trận đã tính: chép trạng thái lên sân khấu.
+  void _onBattleChanged() {
     if (_stage case final stage?) {
-      for (final e in events) {
-        switch (e) {
-          case Hit(:final critical):
-            stage.hit(critical: critical);
-          case Blocked():
-            stage.blocked();
-          case Victory():
-            stage.victory();
-          case Revived():
-            stage.battle.revives++;
-          default:
-        }
-      }
+      final snapshot = _session.snapshot;
+      stage.battle.sync(_view);
+      stage.updatePlayer(
+        elbowAngle: snapshot == null || snapshot.phase == CounterPhase.searching
+            ? null
+            : snapshot.elbowAngle,
+        onKnees: snapshot?.posture == Posture.knee,
+      );
     }
-    for (final wave in events.whereType<WaveStarted>()) {
-      _session.feedback.announce('Sóng mới. ${wave.wave.action.label}');
-    }
-    if (!_reported && events.any((e) => e is Victory || e is Defeat)) {
-      _reported = true;
-      _report(won: events.any((e) => e is Victory));
-    }
+    if (mounted) setState(() {});
   }
 
-  Future<void> _report({required bool won}) async {
-    final reward = await widget.onFinished?.call(
-      BattleOutcome(
-        won: won,
-        reps: _battle.reps,
-        bestCombo: _battle.bestCombo,
-        goldStolen: _battle.goldStolen,
-      ),
-    );
-    if (mounted) setState(() => _reward = reward);
-    if (reward?.item == nemea.reward) _stage?.equipCloak();
-    if (reward?.item == labors.last.reward) _stage?.arriveHorse();
+  void _onEvents(List<BattleEvent> events) {
+    if (events.any((e) => e is Hit)) _shake.forward(from: 0);
+    final stage = _stage;
+    if (stage == null) return;
+    for (final e in events) {
+      switch (e) {
+        case Hit(:final critical):
+          stage.hit(critical: critical);
+        case Blocked():
+          stage.blocked();
+        case Victory():
+          stage.victory();
+        default:
+      }
+    }
   }
 
   void _restart() {
-    setState(() {
-      _battle = Battle(enemy: widget.enemy, mode: widget.mode);
-      _lastEvent = null;
-      _reported = false;
-      _reward = null;
-    });
+    _controller.restart();
     _stage?.reset();
-    _session.resetCounter();
   }
 
   Future<void> _openSimulator() async {
@@ -272,9 +192,7 @@ class _BattleScreenState extends State<BattleScreen>
 
   @override
   Widget build(BuildContext context) {
-    final finished =
-        _battle.status == BattleStatus.won ||
-        _battle.status == BattleStatus.lost;
+    final finished = _view.finished;
     if (_stage case final stage?) {
       return _guardExit(finished, _buildStaged(stage, finished));
     }
@@ -296,7 +214,7 @@ class _BattleScreenState extends State<BattleScreen>
   /// vuốt; nút quay lại của Android hỏi lại trước khi rời. Nút ✕ vẫn rời ngay.
   Widget _guardExit(bool finished, Widget child) {
     return PopScope(
-      canPop: finished || _battle.status == BattleStatus.ready,
+      canPop: finished || _view.status == BattleStatus.ready,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final leave = await showDialog<bool>(
@@ -329,7 +247,7 @@ class _BattleScreenState extends State<BattleScreen>
     // Màn ngang (iPhone nằm ngang chỉ còn ~350 pt chiều cao): kéo kẻ thù và
     // thanh độ sâu lên cao, không để vị trí cố định cho màn dọc bị âm.
     final landscape = box.maxWidth > box.maxHeight;
-    final flood = widget.enemy.armor == BattleArmor.risingFlood;
+    final flood = _view.water != null;
     return Stack(
       children: [
         // Camera mờ đi làm nền, để kẻ thù và thanh máu nổi bật.
@@ -365,7 +283,7 @@ class _BattleScreenState extends State<BattleScreen>
   /// [compact]: màn ngang (chiều cao ít) — chữ nhỏ hơn, bỏ dòng số HP
   /// (thanh máu đã đủ đọc).
   Widget _buildTopBar({bool compact = false}) {
-    final remaining = _battle.remainingMs(_nowMs);
+    final remaining = _view.remainingMs;
     return Column(
       children: [
         Row(
@@ -384,7 +302,9 @@ class _BattleScreenState extends State<BattleScreen>
                   fontSize: compact ? 17 : 22,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.6,
-                  shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4)],
+                  shadows: const [
+                    Shadow(color: Color(0xCC000000), blurRadius: 4),
+                  ],
                 ),
               ),
             ),
@@ -418,7 +338,7 @@ class _BattleScreenState extends State<BattleScreen>
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: TweenAnimationBuilder<double>(
-              tween: Tween(end: _battle.hpFraction),
+              tween: Tween(end: _view.hpFraction),
               duration: const Duration(milliseconds: 300),
               builder: (context, value, _) => SizedBox(
                 height: 18,
@@ -428,7 +348,7 @@ class _BattleScreenState extends State<BattleScreen>
             ),
           ),
         ),
-        if (_battle.currentWave(_nowMs) case final wave?) ...[
+        if (_view.wave case final wave?) ...[
           const SizedBox(height: 6),
           _buildFlood(wave),
         ],
@@ -436,10 +356,10 @@ class _BattleScreenState extends State<BattleScreen>
         if (!compact || widget.enemy.heads > 1)
           Text(
             widget.enemy.heads > 1
-                ? 'Đầu ${math.min(widget.enemy.heads, widget.enemy.heads - _battle.headsLeft + 1)}'
+                ? 'Đầu ${math.min(widget.enemy.heads, widget.enemy.heads - _view.headsLeft + 1)}'
                       '/${widget.enemy.heads} · '
-                      'HP đầu ${_battle.headHp}/${widget.enemy.headMaxHp}'
-                : 'HP ${_battle.hp}/${widget.enemy.maxHp}',
+                      'HP đầu ${_view.headHp}/${widget.enemy.headMaxHp}'
+                : 'HP ${_view.hp}/${widget.enemy.maxHp}',
             style: const TextStyle(color: Colors.white70),
           ),
       ],
@@ -448,8 +368,8 @@ class _BattleScreenState extends State<BattleScreen>
 
   /// Thuỷ Tinh: mực nước và đợt sóng đang đòi hành động gì.
   Widget _buildFlood(Wave wave) {
-    final water = _battle.water;
-    final waveLeft = (_battle.waveRemainingMs(_nowMs) / 1000).ceil();
+    final water = _view.water ?? 0;
+    final waveLeft = (_view.waveRemainingMs / 1000).ceil();
     return Column(
       children: [
         Row(
@@ -476,7 +396,7 @@ class _BattleScreenState extends State<BattleScreen>
         ),
         const SizedBox(height: 6),
         Pill(
-          text: _battle.status == BattleStatus.ready
+          text: _view.status == BattleStatus.ready
               ? 'Đợt đầu: ${wave.action.icon} ${wave.action.label}'
               : '${wave.action.icon} ${wave.action.label} · ${waveLeft}s',
           color: Colors.blue.shade800,
@@ -566,10 +486,10 @@ class _BattleScreenState extends State<BattleScreen>
 
   /// Số sát thương / thông báo bay lên, chạy lại mỗi sự kiện.
   Widget _buildEventLabel() {
-    final event = _lastEvent;
+    final event = _controller.headline;
     if (event == null) return const SizedBox.shrink();
     return TweenAnimationBuilder<double>(
-      key: ValueKey(_lastEventKey),
+      key: ValueKey(_controller.headlineKey),
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 700),
       builder: (context, t, child) => Opacity(
@@ -581,7 +501,7 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildEnemy() {
-    final event = _lastEvent;
+    final event = _controller.headline;
     return Column(
       children: [
         AnimatedBuilder(
@@ -595,7 +515,7 @@ class _BattleScreenState extends State<BattleScreen>
             style: TextStyle(
               fontSize: 120,
               color: Colors.white.withValues(
-                alpha: _battle.status == BattleStatus.won ? 0.3 : 1,
+                alpha: _view.status == BattleStatus.won ? 0.3 : 1,
               ),
             ),
           ),
@@ -604,7 +524,7 @@ class _BattleScreenState extends State<BattleScreen>
         // Key đổi theo sự kiện để hiệu ứng chạy lại mỗi đòn.
         if (event != null)
           TweenAnimationBuilder<double>(
-            key: ValueKey(_lastEventKey),
+            key: ValueKey(_controller.headlineKey),
             tween: Tween(begin: 0, end: 1),
             duration: const Duration(milliseconds: 700),
             builder: (context, t, child) => Opacity(
@@ -697,7 +617,7 @@ class _BattleScreenState extends State<BattleScreen>
     final snapshot = _session.snapshot;
     final hint = switch (snapshot?.phase) {
       null || CounterPhase.searching =>
-        _battle.status == BattleStatus.ready
+        _view.status == BattleStatus.ready
             ? 'Vào tư thế chống đẩy để bắt đầu'
             : 'Vào lại tư thế chống đẩy',
       CounterPhase.top => 'Xuống!',
@@ -708,20 +628,20 @@ class _BattleScreenState extends State<BattleScreen>
       children: [
         Pill(text: hint),
         const Spacer(),
-        if (_battle.combo >= 2)
-          Pill(text: 'COMBO ×${_battle.combo}', color: Colors.deepOrange),
+        if (_view.combo >= 2)
+          Pill(text: 'COMBO ×${_view.combo}', color: Colors.deepOrange),
         const SizedBox(width: 8),
-        Pill(text: '${_battle.reps} rep', color: Colors.black87),
+        Pill(text: '${_view.reps} rep', color: Colors.black87),
       ],
     );
   }
 
   Widget _buildResult() {
-    final won = _battle.status == BattleStatus.won;
+    final won = _view.status == BattleStatus.won;
     final accent = won ? GreekUi.gold : const Color(0xFFE57373);
     final title = won
         ? 'CHIẾN THẮNG'
-        : _battle.defeatReason == DefeatReason.flooded
+        : _view.defeatReason == DefeatReason.flooded
         ? 'NƯỚC NGẬP NÚI'
         : 'HẾT GIỜ';
     // Bảng kết quả kiểu bia đá trong đền: nền gỗ sẫm, viền vàng, dải
@@ -780,10 +700,10 @@ class _BattleScreenState extends State<BattleScreen>
                   const SizedBox(height: 14),
                   _resultRow(
                     Icons.fitness_center,
-                    '${_battle.reps} rep',
-                    'combo cao nhất ×${_battle.bestCombo}',
+                    '${_view.reps} rep',
+                    'combo cao nhất ×${_view.bestCombo}',
                   ),
-                  if (_reward case final reward?) ...[
+                  if (_controller.reward case final reward?) ...[
                     _resultRow(
                       Icons.auto_awesome,
                       '+${reward.xp} XP',
@@ -791,7 +711,7 @@ class _BattleScreenState extends State<BattleScreen>
                       color: Colors.lightGreenAccent,
                     ),
                     if (reward.item case final item?)
-                      _resultRow(Icons.card_giftcard, item, 'phần thưởng'),
+                      _resultRow(Icons.card_giftcard, item.name, 'phần thưởng'),
                     if (reward.unlockedLabor case final next?)
                       _resultRow(
                         Icons.lock_open,

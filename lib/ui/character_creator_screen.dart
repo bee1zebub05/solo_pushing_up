@@ -8,7 +8,15 @@ import 'hero_preview.dart';
 
 /// Tạo / sửa nhân vật: ngoại hình và số đo cơ thể (chỉ lưu trên máy).
 class CharacterCreatorScreen extends StatefulWidget {
-  const CharacterCreatorScreen({super.key, this.initial, this.cloak = false});
+  const CharacterCreatorScreen({
+    super.key,
+    this.initial,
+    this.cloak = false,
+    this.store = const ProfileStore(),
+  });
+
+  /// Nơi lưu hồ sơ khi bấm lưu.
+  final ProfileStore store;
 
   /// null = tạo mới (lần đầu mở app).
   final PlayerProfile? initial;
@@ -48,7 +56,7 @@ class _CharacterCreatorScreenState extends State<CharacterCreatorScreen> {
 
   Future<void> _save() async {
     _p.name = _name.text.trim();
-    await ProfileStore.save(_p);
+    await widget.store.save(_p);
     if (mounted) Navigator.of(context).pop(_p);
   }
 

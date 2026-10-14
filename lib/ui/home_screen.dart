@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../art/bosses/boss_registry.dart';
-import '../art/bosses/dummy_art.dart';
 import '../art/bosses/nemea_boss.dart' show lionScale, lionX;
 import '../art/hero_art.dart';
 import '../art/hero_pose.dart';
+import '../art/home_banner_art.dart';
 import '../art/lion_art.dart';
 import '../art/nemea_scene.dart';
 import '../game/battle.dart';
@@ -26,7 +26,14 @@ import 'stage_select_screen.dart';
 /// Màn hình chính tạm: tiến trình, chọn chế độ, các kỳ công, luyện tập,
 /// và màn hình đếm (debug).
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    this.progressStore = const ProgressStore(),
+    this.profileStore = const ProfileStore(),
+  });
+
+  final ProgressStore progressStore;
+  final ProfileStore profileStore;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -40,10 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    ProgressStore.load().then((p) {
+    widget.progressStore.load().then((p) {
       if (mounted) setState(() => _progress = p);
     });
-    ProfileStore.load().then((profile) {
+    widget.profileStore.load().then((profile) {
       if (!mounted) return;
       if (profile == null) {
         // Lần đầu mở app: tạo nhân vật trước.
@@ -54,23 +61,20 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  bool get _hasCloak => _progress?.items.contains(nemea.reward) ?? false;
-
-  bool _hasReward(String laborId) =>
-      _progress?.items.contains(
-        labors.firstWhere((l) => l.id == laborId).reward,
-      ) ??
-      false;
-  bool get _hasShield => _hasReward('fafnir');
-  bool get _hasSword => _hasReward('orochi');
-  bool get _hasHorse => _hasReward('thuy_tinh');
+  bool _has(Item item) => _progress?.has(item) ?? false;
+  bool get _hasCloak => _has(nemeanPelt);
+  bool get _hasShield => _has(dragonScaleShield);
+  bool get _hasSword => _has(kusanagi);
 
   Future<void> _editCharacter() async {
     final saved = await Navigator.of(context).push<PlayerProfile>(
       MaterialPageRoute(
         fullscreenDialog: _profile == null,
-        builder: (_) =>
-            CharacterCreatorScreen(initial: _profile, cloak: _hasCloak),
+        builder: (_) => CharacterCreatorScreen(
+          initial: _profile,
+          cloak: _hasCloak,
+          store: widget.profileStore,
+        ),
       ),
     );
     if (saved != null && mounted) setState(() => _profile = saved);
@@ -92,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
       stage: stage,
       goldStolen: outcome.goldStolen,
     );
-    await ProgressStore.save(progress);
+    await widget.progressStore.save(progress);
     if (mounted) setState(() {});
     return reward;
   }
@@ -116,10 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : 'Màn ${stage.code} hoàn thành',
         onFinished: (outcome) =>
             _recordOutcome(outcome, labor: labor, stage: stage),
-        heroCloak: _hasCloak,
-        heroShield: _hasShield,
-        heroSword: _hasSword,
-        heroHorse: _hasHorse,
+        items: _progress?.ownedItems ?? const [],
         heroLook: _profile?.look ?? const HeroLook(),
       ),
     );
@@ -241,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => _openBattle(enemy: trainingDummy, emoji: '🎯'),
               child: ListTile(
                 contentPadding: EdgeInsets.all(16),
-                leading: BossPortrait(art: TrainingDummyArt()),
+                leading: const BossPortrait(enemy: trainingDummy),
                 title: Text('Thử thách 30 giây'),
                 subtitle: Text('Hạ bù nhìn 300 HP trước khi hết giờ'),
                 trailing: Icon(Icons.chevron_right),
@@ -275,12 +276,12 @@ class _HomeScreenState extends State<HomeScreen> {
         // Kỳ công khoá: chân dung boss xám tối + khoá đồng — lộ trước
         // đối thủ để gợi tò mò (thay emoji ổ khoá mỗi máy một kiểu).
         leading: switch (bossArtFor(labor.enemy)) {
-          final art? when unlocked => BossPortrait(art: art),
-          final art? => Stack(
+          _? when unlocked => BossPortrait(enemy: labor.enemy),
+          _? => Stack(
             children: [
               ColorFiltered(
                 colorFilter: const ColorFilter.matrix(_lockedPortrait),
-                child: BossPortrait(art: art),
+                child: BossPortrait(enemy: labor.enemy),
               ),
               const Positioned(
                 right: 0,
@@ -445,10 +446,10 @@ class _ProgressCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final item in progress.items)
+                  for (final item in progress.ownedItems)
                     Chip(
                       avatar: const Text('🎁'),
-                      label: Text(item),
+                      label: Text(item.name),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],
@@ -464,7 +465,7 @@ class _ProgressCard extends StatelessWidget {
 /// Tranh đầu trang: thung lũng Nemea (phủ bụi Trì Trệ cho tới khi thắng sư
 /// tử), người kế nhiệm đứng trước hang, sư tử rình; tựa game khắc chữ vàng
 /// trên trời. Vẽ tĩnh (không hoạt hình) — phông là ảnh chụp sẵn.
-class _HomeBanner extends StatelessWidget {
+class _HomeBanner extends StatefulWidget {
   const _HomeBanner({
     required this.look,
     required this.cloak,
@@ -476,7 +477,41 @@ class _HomeBanner extends StatelessWidget {
   final bool valleyFreed;
 
   @override
+  State<_HomeBanner> createState() => _HomeBannerState();
+}
+
+/// Nạp ảnh Blender chụp sẵn của khung; chưa có thì vẽ bản vector.
+class _HomeBannerState extends State<_HomeBanner> {
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_HomeBanner old) {
+    super.didUpdateWidget(old);
+    if (_assetsKey(old) != _assetsKey(widget)) _load();
+  }
+
+  /// Những gì quyết định ảnh cần nạp (màu da/tóc chỉ nhân lúc vẽ).
+  static Object _assetsKey(_HomeBanner w) =>
+      (w.look.sex, w.look.hairStyle, w.cloak, w.valleyFreed);
+
+  Future<void> _load() async {
+    await HomeBannerArt.load(
+      widget.look,
+      cloak: widget.cloak,
+      freed: widget.valleyFreed,
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final look = widget.look;
+    final cloak = widget.cloak;
+    final valleyFreed = widget.valleyFreed;
     final theme = Theme.of(context);
     final title = theme.textTheme.headlineMedium?.copyWith(
       color: GreekUi.ink,
@@ -505,7 +540,12 @@ class _HomeBanner extends StatelessWidget {
                   painter: _BannerPainter(
                     look: look,
                     cloak: cloak,
-                    dust: valleyFreed ? 0 : 0.85,
+                    freed: valleyFreed,
+                    blender: HomeBannerArt.ready(
+                      look,
+                      cloak: cloak,
+                      freed: valleyFreed,
+                    ),
                   ),
                 ),
                 // Tựa ở góc trời trên–phải (trên đầu sư tử, không che nhân
@@ -549,18 +589,33 @@ class _HomeBanner extends StatelessWidget {
 }
 
 class _BannerPainter extends CustomPainter {
-  _BannerPainter({required this.look, required this.cloak, required this.dust});
+  _BannerPainter({
+    required this.look,
+    required this.cloak,
+    required this.freed,
+    required this.blender,
+  });
 
   final HeroLook look;
   final bool cloak;
-  final double dust;
+
+  /// Đã giải phóng thung lũng (bụi Trì Trệ tan).
+  final bool freed;
+
+  /// Có ảnh Blender chụp sẵn ([HomeBannerArt]); không thì vẽ vector.
+  final bool blender;
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.scale(size.width / stageSize.width);
-    paintNemeaSceneCached(canvas, time: 2, dust: dust);
+    if (blender) {
+      HomeBannerArt.paint(canvas, look, cloak: cloak, freed: freed);
+      canvas.restore();
+      return;
+    }
+    paintNemeaSceneCached(canvas, time: 2, dust: freed ? 0 : 0.85);
     canvas.save();
     canvas.translate(lionX, stageGroundY);
     canvas.scale(lionScale);
@@ -582,7 +637,10 @@ class _BannerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BannerPainter old) =>
-      old.look != look || old.cloak != cloak || old.dust != dust;
+      old.look != look ||
+      old.cloak != cloak ||
+      old.freed != freed ||
+      old.blender != blender;
 }
 
 /// Xám hoá + tối ~45 % cho chân dung boss chưa mở.

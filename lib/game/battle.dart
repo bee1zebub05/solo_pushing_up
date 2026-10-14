@@ -1,95 +1,45 @@
 import 'dart:math' as math;
 
 import '../rep/pushup_counter.dart';
+import 'battle_mechanic.dart';
+import 'mechanics/mechanics.dart';
+
+export 'battle_mechanic.dart';
+export 'mechanics/mechanics.dart';
 
 /// Một kẻ thù trong trận. Số liệu tạm, sẽ cân bằng lại khi có dữ liệu người
 /// chơi thật (rules/cottruyen.md mục 8).
 class EnemySpec {
   const EnemySpec({
+    required this.id,
     required this.name,
     required this.maxHp,
     this.timeLimitMs,
-    this.armor = BattleArmor.none,
     this.heads = 1,
+    this.mechanics = const [],
   });
 
+  /// Khoá cố định để tra hình, âm thanh… (không đổi khi đổi tên hiển thị).
+  final String id;
   final String name;
   final int maxHp;
 
   /// Trận có giới hạn thời gian (null = không giới hạn).
   final int? timeLimitMs;
-  final BattleArmor armor;
 
-  /// Số đầu; máu chia đều cho mỗi đầu, chém lần lượt từng đầu.
+  /// Số đầu; máu chia đều cho mỗi đầu, chém lần lượt từng đầu, sát thương
+  /// không tràn sang đầu sau.
   final int heads;
+
+  /// Cơ chế riêng của kẻ thù (lib/game/mechanics/). Lưu hàm tạo vì cơ chế
+  /// có trạng thái: mỗi trận tạo bản mới, ví dụ `[FreezingCold.new]`.
+  final List<BattleMechanic Function()> mechanics;
 
   int get headMaxHp => (maxHp / heads).ceil();
 }
 
-/// Cơ chế phòng thủ đặc biệt của kẻ thù.
-enum BattleArmor {
-  none,
-
-  /// Sư tử Nemea: da không xuyên thủng, rep nông/sai tư thế bị chặn hoàn toàn
-  /// (dạy người chơi về form ngay từ tutorial — Kỳ công 1).
-  impenetrableHide,
-
-  /// Rồng Fafnir — Giá lạnh: nghỉ quá lâu giữa hai rep thì bị đóng băng, đòn
-  /// tiếp theo yếu đi (dạy giữ nhịp tập đều — Kỳ công 2).
-  freezingCold,
-
-  /// Yamata no Orochi — 8 cái đầu: sát thương không tràn sang đầu sau, đứt
-  /// combo thì đầu đang chém hồi đầy máu (dạy giữ chuỗi rep — Kỳ công 5).
-  regrowingHeads,
-
-  /// Thuỷ Tinh — Núi dâng, nước dâng: nước dâng liên tục, mỗi đòn hạ nước
-  /// xuống; nước ngập tới đỉnh thì thua. Trận chia thành các đợt sóng, mỗi đợt
-  /// đòi một kiểu hành động, đánh đúng kiểu thì mạnh hơn (Kỳ công 12).
-  risingFlood,
-
-  /// Spartoi — mọc lại từ răng rồng: lần đầu bị hạ thì đứng dậy với nửa
-  /// máu (dạy đánh dứt điểm — Kỳ công 1).
-  reviveOnce,
-
-  /// Lợn rừng Erymanthus — lao húc: định kỳ báo trước rồi húc; giữ tay
-  /// thẳng (plank) lúc bị húc thì né được, không thì nó hồi máu và mất combo.
-  chargingBoar,
-
-  /// Harpy — cướp vàng: nghỉ quá lâu giữa hai rep thì bị cướp vàng (trừ XP
-  /// thưởng cuối trận).
-  goldThief,
-}
-
-/// Kiểu hành động mà một đợt sóng đòi hỏi (rules/cottruyen.md mục 1b).
-enum WaveAction {
-  fast('⚡', 'Rep nhanh'),
-  slow('🐢', 'Rep chậm, xuống 3 giây'),
-  hold('⏸', 'Giữ tay thẳng, thân thẳng'),
-  deep('💥', 'Rep sâu');
-
-  const WaveAction(this.icon, this.label);
-
-  final String icon;
-  final String label;
-}
-
-/// Một đợt sóng: hành động được thưởng và độ dài.
-class Wave {
-  const Wave(this.action, this.durationMs);
-
-  final WaveAction action;
-  final int durationMs;
-}
-
-/// Thứ tự các đợt sóng của Thuỷ Tinh, lặp lại tới hết trận.
-const floodWaves = <Wave>[
-  Wave(WaveAction.fast, 12000),
-  Wave(WaveAction.slow, 15000),
-  Wave(WaveAction.hold, 10000),
-  Wave(WaveAction.deep, 12000),
-];
-
-/// Sát thương và hệ số. Chưa cân bằng: số dễ đọc để thử cảm giác chiến đấu.
+/// Sát thương và hệ số chung cho mọi trận; số của từng cơ chế nằm trong lớp
+/// cơ chế đó. Chưa cân bằng: số dễ đọc để thử cảm giác chiến đấu.
 class DamageRules {
   const DamageRules({
     this.baseDamage = 10,
@@ -99,20 +49,6 @@ class DamageRules {
     this.comboWindowMs = 2500,
     this.formWarningMultiplier = 0.5,
     this.kneeMultiplier = 0.7,
-    this.freezeAfterMs = 3000,
-    this.frozenMultiplier = 0.5,
-    this.floodRisePerSec = 3.5,
-    this.floodDrainPerHit = 8,
-    this.floodDrainMatched = 16,
-    this.matchedMultiplier = 1.5,
-    this.holdStrikeEveryMs = 2000,
-    this.holdStrikeDamage = 12,
-    this.reviveFraction = 0.5,
-    this.chargeEveryMs = 9000,
-    this.chargeWarnMs = 2500,
-    this.chargeDodgeHoldMs = 800,
-    this.chargeHealFraction = 0.1,
-    this.stealAfterMs = 4000,
   });
 
   final int baseDamage;
@@ -134,38 +70,6 @@ class DamageRules {
 
   /// Chế độ Tân binh (chống gối): XP/sát thương ×0,7 (rules/cottruyen.md 1b).
   final double kneeMultiplier;
-
-  /// [BattleArmor.freezingCold]: nghỉ quá bấy lâu thì đòn sau bị đóng băng.
-  final int freezeAfterMs;
-  final double frozenMultiplier;
-
-  /// [BattleArmor.risingFlood]: mực nước (0–100) dâng bấy nhiêu mỗi giây…
-  final double floodRisePerSec;
-
-  /// …mỗi đòn hạ xuống bấy nhiêu, đòn đúng đợt sóng hạ nhiều hơn.
-  final double floodDrainPerHit;
-  final double floodDrainMatched;
-
-  /// Đòn đúng kiểu đợt sóng đang đòi.
-  final double matchedMultiplier;
-
-  /// Đợt sóng ⏸: giữ tư thế cao mỗi bấy lâu là một đòn.
-  final int holdStrikeEveryMs;
-  final int holdStrikeDamage;
-
-  /// [BattleArmor.reviveOnce]: hồi lại bấy nhiêu phần máu khi đứng dậy.
-  final double reviveFraction;
-
-  /// [BattleArmor.chargingBoar]: chu kỳ húc, thời gian báo trước, cần giữ
-  /// tay thẳng bấy lâu lúc bị húc để né, và lượng máu hồi nếu húc trúng.
-  final int chargeEveryMs;
-  final int chargeWarnMs;
-  final int chargeDodgeHoldMs;
-  final double chargeHealFraction;
-
-  /// [BattleArmor.goldThief]: nghỉ quá bấy lâu thì bị cướp một túi vàng
-  /// (và cứ thêm bấy lâu nữa lại mất thêm).
-  final int stealAfterMs;
 }
 
 /// Điều xảy ra trong trận, để màn hình hiện hiệu ứng / âm thanh.
@@ -241,14 +145,14 @@ final class WaveStarted extends BattleEvent {
   final Wave wave;
 }
 
-/// Kẻ thù bị hạ lần đầu nhưng đứng dậy ([BattleArmor.reviveOnce]).
+/// Kẻ thù bị hạ lần đầu nhưng đứng dậy ([ReviveOnce]).
 final class Revived extends BattleEvent {
   const Revived(super.timestampMs, {required this.hp});
 
   final int hp;
 }
 
-/// Lợn rừng chuẩn bị húc: còn [inMs] nữa thì húc ([BattleArmor.chargingBoar]).
+/// Lợn rừng chuẩn bị húc: còn [inMs] nữa thì húc ([ChargingBoar]).
 final class ChargeWarning extends BattleEvent {
   const ChargeWarning(super.timestampMs, {required this.inMs});
 
@@ -267,7 +171,7 @@ final class ChargeLanded extends BattleEvent {
   final int healed;
 }
 
-/// Harpy cướp vàng vì nghỉ quá lâu ([BattleArmor.goldThief]).
+/// Harpy cướp vàng vì nghỉ quá lâu ([GoldThief]).
 final class GoldStolen extends BattleEvent {
   const GoldStolen(super.timestampMs, {required this.total});
 
@@ -284,18 +188,82 @@ final class Defeat extends BattleEvent {
 
 enum BattleStatus { ready, fighting, won, lost }
 
+/// Trạng thái trận tại một thời điểm, để màn hình và sân khấu vẽ. Phần chung
+/// do [Battle] điền; các trường cơ chế (giá trị mặc định = không có cơ chế
+/// đó) do [BattleMechanic.describe] điền lúc dựng.
+class BattleView {
+  BattleView({
+    required this.status,
+    required this.hp,
+    required this.maxHp,
+    required this.heads,
+    required this.headsLeft,
+    required this.headHp,
+    required this.headMaxHp,
+    required this.combo,
+    required this.bestCombo,
+    required this.reps,
+    required this.remainingMs,
+    required this.defeatReason,
+  });
+
+  final BattleStatus status;
+  final int hp;
+  final int maxHp;
+  final int heads;
+
+  /// Số đầu còn lại (tính cả đầu đang chém) và máu đầu đang chém.
+  final int headsLeft;
+  final int headHp;
+  final int headMaxHp;
+  final int combo;
+  final int bestCombo;
+  final int reps;
+
+  /// Thời gian còn lại (ms), null nếu không giới hạn.
+  final int? remainingMs;
+  final DefeatReason? defeatReason;
+
+  double get hpFraction => hp / maxHp;
+  bool get finished =>
+      status == BattleStatus.won || status == BattleStatus.lost;
+
+  /// Mực nước 0–100; null = trận không có nước dâng ([RisingFlood]).
+  double? water;
+
+  /// Đợt sóng hiện tại và thời gian còn lại của nó ([RisingFlood]).
+  Wave? wave;
+  int waveRemainingMs = 0;
+
+  /// Mức lạnh 0–1, chạm 1 là đòn sau bị đóng băng ([FreezingCold]).
+  double cold = 0;
+
+  /// Lợn rừng lấy đà 0–1, 1 = húc ngay ([ChargingBoar]).
+  double charge = 0;
+
+  /// Số túi vàng đã bị cướp ([GoldThief]).
+  int goldStolen = 0;
+
+  /// Số lần kẻ thù đã đứng dậy ([ReviveOnce]).
+  int revives = 0;
+}
+
 /// Logic một trận: nhận [RepEvent] từ bộ đếm, trừ máu kẻ thù. Không phụ
-/// thuộc Flutter để test được và dùng lại cho mọi màn chơi.
+/// thuộc Flutter để test được và dùng lại cho mọi màn chơi. Phần riêng của
+/// từng kẻ thù nằm trong [mechanics].
 class Battle {
   Battle({
     required this.enemy,
     this.rules = const DamageRules(),
     this.mode = PushupMode.standard,
-  }) : _hp = enemy.maxHp;
+  }) : _hp = enemy.maxHp,
+       mechanics = [for (final create in enemy.mechanics) create()];
 
   final EnemySpec enemy;
   final DamageRules rules;
   final PushupMode mode;
+  final List<BattleMechanic> mechanics;
+  late final BattleHost _host = _Host(this);
 
   int _hp;
   BattleStatus _status = BattleStatus.ready;
@@ -304,16 +272,7 @@ class Battle {
   int _combo = 0;
   int _reps = 0;
   int _bestCombo = 0;
-  double _water = 0;
-  int? _waterMs;
-  int _waveIndex = -1;
-  int _holdStrikes = 0;
   DefeatReason? _defeatReason;
-  bool _revived = false;
-  int? _chargeAtMs;
-  bool _chargeWarned = false;
-  int _goldStolen = 0;
-  int? _lastStealMs;
 
   int get hp => _hp;
   BattleStatus get status => _status;
@@ -323,74 +282,58 @@ class Battle {
   double get hpFraction => _hp / enemy.maxHp;
   DefeatReason? get defeatReason => _defeatReason;
 
-  /// Số túi vàng Harpy đã cướp trong trận.
-  int get goldStolen => _goldStolen;
+  /// Cơ chế kiểu [T] của trận này, null nếu kẻ thù không có.
+  T? mechanic<T extends BattleMechanic>() =>
+      mechanics.whereType<T>().firstOrNull;
 
-  /// Tiến độ báo trước cú húc 0–1 tại [nowMs] (1 = húc ngay), 0 nếu chưa
-  /// tới lúc báo. Để sân khấu vẽ lợn rừng lấy đà.
-  double chargeAt(int nowMs) {
-    final at = _chargeAtMs;
-    if (enemy.armor != BattleArmor.chargingBoar ||
-        at == null ||
-        _status != BattleStatus.fighting) {
-      return 0;
-    }
-    final left = at - nowMs;
-    if (left > rules.chargeWarnMs) return 0;
-    return (1 - left / rules.chargeWarnMs).clamp(0.0, 1.0);
-  }
+  /// Số đầu còn lại (tính cả đầu đang chém).
+  int get headsLeft => (_hp / enemy.headMaxHp).ceil();
 
-  /// Mức lạnh 0–1 tại [nowMs] ([BattleArmor.freezingCold]): bắt đầu tăng
-  /// sau 1/3 thời gian cho phép nghỉ, chạm 1 đúng lúc đòn sau sẽ bị đóng
-  /// băng. Để sân khấu báo trước bằng hình (nhân vật đóng băng dần).
-  double coldAt(int nowMs) {
-    final last = _lastHitMs;
-    if (enemy.armor != BattleArmor.freezingCold ||
-        last == null ||
-        _status != BattleStatus.fighting) {
-      return 0;
-    }
-    final start = rules.freezeAfterMs / 3;
-    return ((nowMs - last - start) / (rules.freezeAfterMs - start)).clamp(
-      0.0,
-      1.0,
-    );
-  }
+  /// Máu của đầu đang chém.
+  int get headHp =>
+      headsLeft == 0 ? 0 : _hp - (headsLeft - 1) * enemy.headMaxHp;
 
-  bool get _flood => enemy.armor == BattleArmor.risingFlood;
-
-  /// Mực nước 0–100 (chỉ có ở trận [BattleArmor.risingFlood]).
-  double get water => _water;
-
-  static final _cycleMs = floodWaves.fold(0, (sum, w) => sum + w.durationMs);
-
-  /// Vị trí trong chu kỳ sóng tại [nowMs] (đợt đầu nếu chưa bắt đầu).
-  (int, int) _waveAt(int nowMs) {
+  /// Thời gian còn lại (ms), null nếu không giới hạn hoặc chưa bắt đầu.
+  int? remainingMs(int nowMs) {
+    final limit = enemy.timeLimitMs;
     final start = _startMs;
-    var into = start == null ? 0 : (nowMs - start) % _cycleMs;
-    for (var i = 0; i < floodWaves.length; i++) {
-      final d = floodWaves[i].durationMs;
-      if (into < d) return (i, d - into);
-      into -= d;
-    }
-    return (0, floodWaves.first.durationMs);
+    if (limit == null || start == null) return limit;
+    return math.max(0, limit - (nowMs - start));
   }
 
-  /// Đợt sóng hiện tại, null nếu không phải trận Thuỷ Tinh.
-  Wave? currentWave(int nowMs) => _flood ? floodWaves[_waveAt(nowMs).$1] : null;
-
-  int waveRemainingMs(int nowMs) => _waveAt(nowMs).$2;
+  /// Trạng thái để vẽ tại [nowMs]. [restEndMs]: lúc người chơi bắt đầu hạ
+  /// người trong rep đang làm — thời gian nghỉ dừng ở mốc này (rep chậm
+  /// không bị coi là nghỉ); null = vẫn đang nghỉ.
+  BattleView view(int nowMs, {int? restEndMs}) {
+    final view = BattleView(
+      status: _status,
+      hp: _hp,
+      maxHp: enemy.maxHp,
+      heads: enemy.heads,
+      headsLeft: headsLeft,
+      headHp: headHp,
+      headMaxHp: enemy.headMaxHp,
+      combo: _combo,
+      bestCombo: _bestCombo,
+      reps: _reps,
+      remainingMs: remainingMs(nowMs),
+      defeatReason: _defeatReason,
+    );
+    for (final m in mechanics) {
+      m.describe(_host, view, nowMs, restEndMs ?? nowMs);
+    }
+    return view;
+  }
 
   void _start(int t) {
     _status = BattleStatus.fighting;
     _startMs = t;
-    _waterMs = t;
-    if (enemy.armor == BattleArmor.chargingBoar) {
-      _chargeAtMs = t + rules.chargeEveryMs;
+    for (final m in mechanics) {
+      m.onStart(_host, t);
     }
   }
 
-  /// Trừ máu; thắng nếu hết máu.
+  /// Trừ máu; thắng nếu hết máu (trừ khi một cơ chế giữ kẻ thù lại).
   List<BattleEvent> _damage(int t, int dealt, Hit Function(int) hit) {
     final out = <BattleEvent>[];
     var amount = dealt;
@@ -402,143 +345,41 @@ class Battle {
     if (enemy.heads > 1 && _hp > 0 && headsLeft < headsBefore) {
       out.add(HeadSevered(t, headsLeft: headsLeft));
     }
-    if (_hp == 0 && enemy.armor == BattleArmor.reviveOnce && !_revived) {
-      _revived = true;
-      _hp = (enemy.maxHp * rules.reviveFraction).round();
-      out.add(Revived(t, hp: _hp));
-      return out;
+    if (_hp > 0) return out;
+    for (final m in mechanics) {
+      if (m.onKnockedOut(_host, t) case final kept?) return out..addAll(kept);
     }
-    if (_hp == 0) {
-      _status = BattleStatus.won;
-      out.add(Victory(t, reps: _reps, durationMs: t - (_startMs ?? t)));
-    }
+    _status = BattleStatus.won;
+    out.add(Victory(t, reps: _reps, durationMs: t - (_startMs ?? t)));
     return out;
   }
 
-  /// Số đầu còn lại (tính cả đầu đang chém).
-  int get headsLeft => (_hp / enemy.headMaxHp).ceil();
-
-  /// Máu của đầu đang chém.
-  int get headHp =>
-      headsLeft == 0 ? 0 : _hp - (headsLeft - 1) * enemy.headMaxHp;
-
-  bool get _regrows => enemy.armor == BattleArmor.regrowingHeads;
-
-  /// Đứt combo: đầu đang chém (nếu đã bị thương) hồi đầy máu.
-  List<BattleEvent> _regrow(int t) {
-    if (!_regrows || _hp == 0) return const [];
-    final healed = enemy.headMaxHp - headHp;
-    if (healed <= 0) return const [];
-    _hp += healed;
-    return [HeadRegrown(t, healed: healed)];
-  }
-
-  /// Thời gian còn lại (ms), null nếu không giới hạn hoặc chưa bắt đầu.
-  int? remainingMs(int nowMs) {
-    final limit = enemy.timeLimitMs;
-    final start = _startMs;
-    if (limit == null || start == null) return limit;
-    return math.max(0, limit - (nowMs - start));
-  }
-
-  /// Gọi mỗi khung hình: hết giờ, nước dâng, đợt sóng, đòn giữ tư thế.
-  /// [plankHoldMs] lấy từ [CounterSnapshot.plankHoldMs].
-  List<BattleEvent> tick(int nowMs, {int plankHoldMs = 0}) {
-    // Trận Thuỷ Tinh bắt đầu cả khi người chơi giữ tư thế trước.
-    if (_status == BattleStatus.ready && _flood && plankHoldMs > 0) {
-      _start(nowMs);
-    }
-    if (_status != BattleStatus.fighting) return const [];
-    if (remainingMs(nowMs) == 0) return _lose(nowMs, DefeatReason.timeUp);
-    if (enemy.armor == BattleArmor.chargingBoar) {
-      return _chargeTick(nowMs, plankHoldMs);
-    }
-    if (enemy.armor == BattleArmor.goldThief) return _thiefTick(nowMs);
-    if (!_flood) return const [];
-
-    final out = <BattleEvent>[];
-    final (index, _) = _waveAt(nowMs);
-    if (index != _waveIndex) {
-      _waveIndex = index;
-      out.add(WaveStarted(nowMs, floodWaves[index]));
-    }
-
-    if (plankHoldMs == 0) _holdStrikes = 0;
-    final strikes = plankHoldMs ~/ rules.holdStrikeEveryMs;
-    while (_holdStrikes < strikes && _status == BattleStatus.fighting) {
-      _holdStrikes++;
-      // Giữ tư thế chỉ là đòn khi đúng đợt sóng ⏸.
-      if (floodWaves[index].action != WaveAction.hold) continue;
-      _drain(rules.floodDrainMatched);
-      var damage = rules.holdStrikeDamage.toDouble();
-      if (mode == PushupMode.knee) damage *= rules.kneeMultiplier;
-      out.addAll(
-        _damage(
-          nowMs,
-          math.max(1, damage.round()),
-          (dealt) => Hit(
-            nowMs,
-            damage: dealt,
-            critical: false,
-            combo: _combo,
-            matched: true,
-            held: true,
-          ),
-        ),
-      );
-    }
-    if (_status != BattleStatus.fighting) return out;
-
-    final last = _waterMs ?? nowMs;
-    _water = math.min(
-      100,
-      _water + rules.floodRisePerSec * (nowMs - last) / 1000,
-    );
-    _waterMs = nowMs;
-    if (_water >= 100) out.addAll(_lose(nowMs, DefeatReason.flooded));
-    return out;
-  }
-
-  List<BattleEvent> _chargeTick(int nowMs, int plankHoldMs) {
-    final at = _chargeAtMs;
-    if (at == null) return const [];
-    final out = <BattleEvent>[];
-    if (!_chargeWarned && at - nowMs <= rules.chargeWarnMs) {
-      _chargeWarned = true;
-      out.add(ChargeWarning(nowMs, inMs: at - nowMs));
-    }
-    if (nowMs >= at) {
-      final dodged = plankHoldMs >= rules.chargeDodgeHoldMs;
-      var healed = 0;
-      if (!dodged) {
-        healed = math.min(
-          enemy.maxHp - _hp,
-          (enemy.maxHp * rules.chargeHealFraction).round(),
-        );
-        _hp += healed;
-        _combo = 0;
-      }
-      out.add(ChargeLanded(nowMs, dodged: dodged, healed: healed));
-      _chargeAtMs = nowMs + rules.chargeEveryMs;
-      _chargeWarned = false;
-    }
-    return out;
-  }
-
-  List<BattleEvent> _thiefTick(int nowMs) {
-    final since = _lastStealMs ?? _lastHitMs ?? _startMs ?? nowMs;
-    if (nowMs - since < rules.stealAfterMs) return const [];
-    _goldStolen++;
-    _lastStealMs = nowMs;
-    return [GoldStolen(nowMs, total: _goldStolen)];
-  }
-
-  void _drain(double amount) => _water = math.max(0, _water - amount);
+  List<BattleEvent> _comboBroken(int t) => [
+    for (final m in mechanics) ...m.onComboBroken(_host, t),
+  ];
 
   List<BattleEvent> _lose(int t, DefeatReason reason) {
     _status = BattleStatus.lost;
     _defeatReason = reason;
     return [Defeat(t, reason)];
+  }
+
+  /// Gọi mỗi khung hình: hết giờ và phần theo thời gian của các cơ chế.
+  /// [plankHoldMs] lấy từ [CounterSnapshot.plankHoldMs].
+  List<BattleEvent> tick(int nowMs, {int plankHoldMs = 0}) {
+    if (_status == BattleStatus.ready &&
+        plankHoldMs > 0 &&
+        mechanics.any((m) => m.startsOnHold)) {
+      _start(nowMs);
+    }
+    if (_status != BattleStatus.fighting) return const [];
+    if (remainingMs(nowMs) == 0) return _lose(nowMs, DefeatReason.timeUp);
+    final out = <BattleEvent>[];
+    for (final m in mechanics) {
+      out.addAll(m.tick(_host, nowMs, plankHoldMs));
+      if (_status != BattleStatus.fighting) break;
+    }
+    return out;
   }
 
   /// Áp dụng các rep vừa kết thúc từ bộ đếm.
@@ -552,48 +393,40 @@ class Battle {
     return out;
   }
 
+  List<BattleEvent> _blocked(int t, String reason) {
+    _combo = 0;
+    return [..._comboBroken(t), Blocked(t, reason)];
+  }
+
   List<BattleEvent> _applyOne(RepEvent event) {
     final t = event.timestampMs;
     switch (event) {
       case PartialRep():
-        _combo = 0;
-        return [
-          ..._regrow(t),
-          Blocked(
-            t,
-            enemy.armor == BattleArmor.impenetrableHide
-                ? 'Bị chặn! Xuống sâu hơn'
-                : 'Chưa đủ sâu',
-          ),
-        ];
+        final message = mechanics
+            .map((m) => m.partialRepMessage())
+            .nonNulls
+            .firstOrNull;
+        return _blocked(t, message ?? 'Chưa đủ sâu');
       case RejectedRep(:final reason):
-        _combo = 0;
-        return [
-          ..._regrow(t),
-          Blocked(t, switch (reason) {
-            RejectReason.kneelingInStandardMode => 'Duỗi thẳng chân',
-            RejectReason.bodyNotStraight => 'Giữ thân thẳng',
-          }),
-        ];
+        return _blocked(t, switch (reason) {
+          RejectReason.kneelingInStandardMode => 'Duỗi thẳng chân',
+          RejectReason.bodyNotStraight => 'Giữ thân thẳng',
+        });
       case CountedRep():
-        if (enemy.armor == BattleArmor.impenetrableHide && event.formWarning) {
-          _combo = 0;
-          return [Blocked(t, 'Bị chặn! Giữ thân thẳng')];
+        for (final m in mechanics) {
+          if (m.blockCountedRep(event) case final reason?) {
+            return _blocked(t, reason);
+          }
         }
         final last = _lastHitMs;
         // Thời gian nghỉ thật: từ lúc xong rep trước tới lúc bắt đầu hạ người,
         // để rep chậm (xuống 3 giây) không bị tính là nghỉ.
         final restMs = last == null ? null : math.max(0, event.startMs - last);
-        final frozen =
-            enemy.armor == BattleArmor.freezingCold &&
-            restMs != null &&
-            restMs > rules.freezeAfterMs;
         _combo = restMs != null && restMs <= rules.comboWindowMs
             ? _combo + 1
             : 1;
-        final out = <BattleEvent>[if (_combo == 1) ..._regrow(t)];
+        final out = <BattleEvent>[if (_combo == 1) ..._comboBroken(t)];
         _lastHitMs = t;
-        _lastStealMs = null;
         _reps++;
         _bestCombo = math.max(_bestCombo, _combo);
 
@@ -605,36 +438,72 @@ class Battle {
         if (event.isDeep) damage *= rules.deepMultiplier;
         if (event.formWarning) damage *= rules.formWarningMultiplier;
         if (mode == PushupMode.knee) damage *= rules.kneeMultiplier;
-        if (frozen) damage *= rules.frozenMultiplier;
-        final matched = _flood && _matches(currentWave(t)!.action, event);
-        if (matched) damage *= rules.matchedMultiplier;
-        if (_flood) {
-          _drain(matched ? rules.floodDrainMatched : rules.floodDrainPerHit);
+        final strike = Strike(event, restMs: restMs, damage: damage);
+        for (final m in mechanics) {
+          m.onStrike(_host, strike);
         }
 
         out.addAll(
           _damage(
             t,
-            math.max(1, damage.round()),
+            math.max(1, strike.damage.round()),
             (dealt) => Hit(
               t,
               damage: dealt,
               critical: event.isDeep,
               combo: _combo,
-              frozen: frozen,
-              matched: matched,
+              frozen: strike.frozen,
+              matched: strike.matched,
             ),
           ),
         );
         return out;
     }
   }
+}
 
-  static bool _matches(WaveAction action, CountedRep rep) => switch (action) {
-    WaveAction.fast => rep.isFast,
-    WaveAction.slow => rep.isSlow,
-    WaveAction.deep => rep.isDeep,
-    // Đợt ⏸ thưởng cho việc giữ tư thế (xem [tick]), rep vẫn đánh thường.
-    WaveAction.hold => false,
-  };
+/// Cửa cho các cơ chế đọc/đổi trận mà không lộ hàm đổi ra màn hình.
+class _Host implements BattleHost {
+  _Host(this._b);
+
+  final Battle _b;
+
+  @override
+  EnemySpec get enemy => _b.enemy;
+  @override
+  PushupMode get mode => _b.mode;
+  @override
+  DamageRules get rules => _b.rules;
+  @override
+  BattleStatus get status => _b._status;
+  @override
+  int get hp => _b._hp;
+  @override
+  int get headHp => _b.headHp;
+  @override
+  int get combo => _b._combo;
+  @override
+  int? get startMs => _b._startMs;
+  @override
+  int? get lastHitMs => _b._lastHitMs;
+
+  @override
+  int heal(int amount) {
+    final healed = math.min(math.max(0, amount), _b.enemy.maxHp - _b._hp);
+    _b._hp += healed;
+    return healed;
+  }
+
+  @override
+  void setHp(int hp) => _b._hp = hp.clamp(0, _b.enemy.maxHp);
+
+  @override
+  void breakCombo() => _b._combo = 0;
+
+  @override
+  List<BattleEvent> strike(int t, double damage, Hit Function(int dealt) hit) =>
+      _b._damage(t, math.max(1, damage.round()), hit);
+
+  @override
+  List<BattleEvent> lose(int t, DefeatReason reason) => _b._lose(t, reason);
 }
