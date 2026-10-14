@@ -257,3 +257,31 @@ vật bằng Blender.
 Không dùng: ảnh chụp đá khắc Hylestad (CC BY-SA, buộc chia sẻ lại cùng giấy
 phép), tranh Rackham 1924 trên Heritage Images (bản quyền thương mại), mẫu
 sư tử RenderHub "editorial only".
+
+## 8. Thử phong cách "painted" kiểu Rise of Kingdoms (14/10/2026, đang dở)
+
+Mục tiêu: học cách làm đồ hoạ của RoK (3D chiếu sáng mềm, texture như vẽ tay,
+màu tươi, hình khối lớn, tỉ lệ anh hùng phóng đại) — không dùng tài nguyên
+của họ. Tượng fan RoK trên Yeggi (STL in 3D) chỉ để tham khảo dáng: không có
+màu/texture/xương, và vướng bản quyền Lilith + người nặn → không đưa vào game.
+
+Công cụ (`tool/blender/style_kit.py`, `style_test.py`,
+`tool/style_test_compose.py`): dựng một cảnh Nemea + sư tử + nhân vật, render
+hai bản (hiện tại / `--painted`) bằng đúng máy quay xuất sprite, ghép như sân
+khấu → `build/style/compare.png`.
+
+Kết quả 3 lần thử: lượt chỉnh TOÀN CỤC (bão hoà, AgX Punchy, chất liệu mờ,
+bớt gồ ghề, lông to thưa, "vẽ sẵn ánh sáng" theo hướng mặt + độ lồi, đầu/tay
+to hơn 14–18 %) chỉ đổi rất nhẹ — chưa ra chất RoK. Standard + tăng phơi
+sáng thì cháy cam; lọc Kuwahara hộp vuông ra ô vỡ hạt. Phát hiện: dưới nắng
+sạch, tài nguyên hiện tại đã khá gần RoK; trong game xám tím là do bụi Trì
+Trệ + sương phủ.
+
+Bước tiếp (cần sửa từng mô hình, không phải bộ lọc):
+1. Bảng màu: cỏ xanh tươi thay đất khô, bớt bụi Trì Trệ trong game (hoặc
+   chỉ phủ nhẹ) — thử nhanh nhất, tác động lớn nhất.
+2. Hình khối: đá/vách mặt lớn phẳng, bỏ nhiễu lổn nhổn; tán cây khối tròn
+   (đã có).
+3. Nhân vật: phóng đại mạnh (vai, tay, đầu, trang phục to bản, viền màu
+   đậm), texture vẽ tay cho áo/da.
+4. Lông/tóc: khối tạc từng lọn thay sợi.
