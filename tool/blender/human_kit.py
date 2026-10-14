@@ -4,6 +4,7 @@ trong hero.py) — đừng đọc lưới đã áp modifier, vì mask "Hide help
 bỏ bớt đỉnh làm lệch chỉ số."""
 
 import math
+import os
 
 import bpy
 import bmesh
@@ -194,6 +195,18 @@ def rest_coords(body):
     return co
 
 
+def target_path(name):
+    """Đường dẫn target MPFB theo tên; tên có "/" là đường dẫn tương đối trong
+    data/targets (ví dụ "expression/units/asian/mouth-open" — tên biểu cảm
+    trùng nhau giữa các thư mục chủng người nên phải chỉ rõ)."""
+    from bl_ext.blender_org.mpfb.services.targetservice import TargetService
+    if "/" not in name:
+        return TargetService.target_full_path(name)
+    root = os.path.dirname(os.path.dirname(TargetService.target_full_path("head-fat-incr")))
+    path = os.path.join(root, *name.split("/")) + ".target.gz"
+    return path if os.path.exists(path) else None
+
+
 def make_human(gender, muscle=0.5, weight=0.5, height=0.5, age=0.5, proportions=0.9, race=None, scale=1.0,
                details=None):
     """Người MPFB + khung xương game_engine (tên xương kiểu Unreal: pelvis,
@@ -208,7 +221,7 @@ def make_human(gender, muscle=0.5, weight=0.5, height=0.5, age=0.5, proportions=
     macro["race"] = race or {"asian": 0.45, "caucasian": 0.45, "african": 0.1}
     body = HumanService.create_human(macro_detail_dict=macro)
     for name, value in (details or {}).items():
-        path = TargetService.target_full_path(name)
+        path = target_path(name)
         if path is None:
             raise ValueError(f"không có target MPFB {name}")
         TargetService.load_target(body, path, weight=value, name=name)

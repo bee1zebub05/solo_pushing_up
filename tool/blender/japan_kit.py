@@ -21,9 +21,12 @@ FONT_JP = r"C:\Windows\Fonts\YuGothB.ttc"  # có chữ Hán; dự phòng msgothi
 # ---------------------------------------------------------------- vật liệu
 
 
-def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None):
+def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None, cavity=None, tattoo_band=0.9):
     """Da boss tô màu (đỏ oni, trắng ngà thần…): loang hai tông theo nhiễu,
-    [tattoo] màu hoa văn xoáy (vân sóng méo) — để None nếu không xăm."""
+    [tattoo] màu hoa văn xoáy (vân sóng méo) — để None nếu không xăm;
+    [tattoo_band] 0,9 (nét dày) → 0,93 (nét mảnh, lộ khối cơ hơn).
+    [cavity] = (màu hõm, khoảng cách m, độ mạnh): tô đậm khe giữa các khối cơ
+    bằng AO cục bộ, gờ cơ sáng lên — cho thớ cơ đọc rõ ở cỡ sprite."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -63,7 +66,7 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None)
         wave.inputs["Detail Scale"].default_value = 1.5
         L(mix_v.outputs[0], wave.inputs["Vector"])
         band = N.new("ShaderNodeMapRange")
-        band.inputs["From Min"].default_value = 0.9
+        band.inputs["From Min"].default_value = tattoo_band
         band.inputs["From Max"].default_value = 0.94
         L(wave.outputs["Fac"], band.inputs["Value"])
         tm = N.new("ShaderNodeMix")
@@ -83,6 +86,23 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None)
         L(color, lm.inputs[6])
         lm.inputs[7].default_value = srgb(lips)
         color = lm.outputs[2]
+    if cavity:
+        hue, dist, strength = cavity
+        ao = N.new("ShaderNodeAmbientOcclusion")
+        ao.only_local = True
+        ao.samples = 16
+        ao.inputs["Distance"].default_value = dist
+        dark_k = N.new("ShaderNodeMapRange")  # AO 1 (lồi) → 0, AO thấp (khe) → 1
+        dark_k.inputs["From Min"].default_value = 1.0
+        dark_k.inputs["From Max"].default_value = 0.7
+        dark_k.inputs["To Max"].default_value = strength
+        L(ao.outputs["AO"], dark_k.inputs["Value"])
+        cm = N.new("ShaderNodeMix")
+        cm.data_type = "RGBA"
+        L(dark_k.outputs[0], cm.inputs["Factor"])
+        L(color, cm.inputs[6])
+        cm.inputs[7].default_value = srgb(hue)
+        color = cm.outputs[2]
     L(color, bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = rough
     bsdf.inputs["Subsurface Weight"].default_value = sss
@@ -480,9 +500,17 @@ class StandPoser:
         for pb in rig.pose.bones:
             pb.rotation_euler = (0, 0, 0)
         for s, sg in (("l", 1), ("r", -1)):
-            rig.pose.bones[f"thigh_{s}"].rotation_euler = (crouch * 0.6, 0, sg * stance)
+            # Dạng chân quanh trục trước–sau của khung xương (Y), đổi sang hệ
+            # cục bộ của xương đùi — trục Z cục bộ bị xoay lệch nên quay quanh
+            # nó làm hai chân bắt chéo.
+            loc = rig.data.bones[f"thigh_{s}"].matrix_local.to_3x3().inverted()
+            spread = Matrix.Rotation(-sg * stance, 3, loc @ Vector((0, 1, 0)))
+            rig.pose.bones[f"thigh_{s}"].rotation_euler = (spread @ Matrix.Rotation(crouch * 0.6, 3, "X")).to_euler()
             rig.pose.bones[f"calf_{s}"].rotation_euler.x = -crouch
-            rig.pose.bones[f"foot_{s}"].rotation_euler = (crouch * 0.4, 0, -sg * stance)
+            loc = rig.data.bones[f"foot_{s}"].matrix_local.to_3x3().inverted()
+            rig.pose.bones[f"foot_{s}"].rotation_euler = (
+                Matrix.Rotation(sg * stance, 3, loc @ Vector((0, 1, 0))) @ Matrix.Rotation(crouch * 0.4, 3, "X")
+            ).to_euler()
         S = self.scale
         rig.matrix_world = Matrix.Rotation(self.facing, 4, "Z") @ Matrix.Diagonal((S, S, S, 1))
         bpy.context.view_layer.update()
@@ -496,6 +524,42 @@ class StandPoser:
         t.location = target
         p.location = pole
         bpy.context.view_layer.update()
+
+    def palm(self, s, fingers, palm_dir):
+        """Xoay bàn tay [s]: ngón chỉ theo [fingers], lòng bàn tay quay về
+        [palm_dir] (thế giới). Gọi sau place()."""
+        rig = self.rig
+        bl = rig.data.bones
+        m3 = rig.matrix_world.to_3x3().normalized()
+        rest = rig.matrix_world @ bl[f"hand_{s}"].matrix_local
+        d = (m3 @ (bl[f"middle_01_{s}"].head_local - bl[f"hand_{s}"].head_local)).normalized()
+        # Dáng chữ A lúc nghỉ: lòng bàn tay quay vào trong thân.
+        inward = m3 @ Vector((-1 if s == "l" else 1, 0, 0))
+        n = (inward - d * inward.dot(d)).normalized()
+        fr = Matrix((d, n, d.cross(n))).transposed()
+        f = fingers.normalized()
+        pd = (palm_dir - f * palm_dir.dot(f)).normalized()
+        to = Matrix((f, pd, f.cross(pd))).transposed()
+        h = self.ik[s][2]
+        h.matrix_world = (to @ fr.transposed()).to_4x4() @ Matrix(rest.to_3x3().normalized()).to_4x4()
+        pb = rig.pose.bones[f"hand_{s}"]
+        if not any(c.type == "COPY_ROTATION" for c in pb.constraints):
+            pb.constraints.new("COPY_ROTATION").target = h
+        bpy.context.view_layer.update()
+
+
+def fist(rig, s, curl=1.0):
+    """Nắm bàn tay [s] quanh cán (chuỳ, kiếm)."""
+    for f in ("index", "middle", "ring", "pinky"):
+        for j, ang in (("01", 60), ("02", 85), ("03", 55)):
+            pb = rig.pose.bones.get(f"{f}_{j}_{s}")
+            if pb:
+                pb.rotation_euler.x = math.radians(ang * curl)
+    for j, ang in (("02", 25), ("03", 35)):
+        pb = rig.pose.bones.get(f"thumb_{j}_{s}")
+        if pb:
+            pb.rotation_euler.x = math.radians(ang * curl)
+    bpy.context.view_layer.update()
 
 
 def inflate(body, co, center, radii, amount, name="Inflate", front_only=True):
@@ -518,6 +582,46 @@ def inflate(body, co, center, radii, amount, name="Inflate", front_only=True):
         if front_only:
             f *= max(0.0, -n.y) ** 0.5 if n.y < 0 else 0.15
         key.data[i].co = key.data[i].co + n * amount * f
+    key.value = 1.0
+    return key
+
+
+def muscle_bulge(body, co, rig, bone, lobes, name, min_w=0.35):
+    """Bắp cơ dọc xương [bone] (shape key): mỗi lobe (u0, wu, góc0°, rộng°,
+    biên độ m) — u theo chiều dài xương (0 gốc → 1 ngọn), góc quanh trục
+    (0 = trước mặt −Y, 90 = phía ngoài thân, 180 = sau lưng); biên độ âm là
+    rãnh phân cơ. Chỉ đỉnh thuộc nhóm [bone] (trọng số ≥ [min_w]), đẩy theo
+    pháp tuyến, nhân trọng số nên không lan sang thân."""
+    if body.data.shape_keys is None:
+        body.shape_key_add(name="Basis")
+    key = body.shape_key_add(name=name, from_mix=False)
+    b = rig.data.bones[bone]
+    h, t = b.head_local, b.tail_local
+    L = (t - h).length
+    a = (t - h).normalized()
+    front = Vector((0, -1, 0))
+    f = (front - a * front.dot(a)).normalized()
+    out = Vector((1 if h.x >= 0 else -1, 0, 0))
+    lat = a.cross(f)
+    if lat.dot(out) < 0:
+        lat = -lat
+    w = weights_by_group(body)
+    normals = [v.normal.copy() for v in body.data.vertices]
+    for i, p in enumerate(co):
+        g = w[i]
+        wb = g.get(bone, 0)
+        if wb < min_w or g.get("HelperGeometry", 0) > 0.5:
+            continue
+        d = p - h
+        u = d.dot(a) / L
+        r = d - a * d.dot(a)
+        ang = math.degrees(math.atan2(r.dot(lat), r.dot(f)))
+        disp = 0.0
+        for u0, wu, a0, wa, amp in lobes:
+            da = (ang - a0 + 180) % 360 - 180
+            disp += amp * math.exp(-((u - u0) / wu) ** 2 * 2) * math.exp(-(da / wa) ** 2 * 2)
+        if disp:
+            key.data[i].co = key.data[i].co + normals[i] * disp * min(1.0, wb * 1.4)
     key.value = 1.0
     return key
 

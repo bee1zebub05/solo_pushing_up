@@ -23,15 +23,17 @@ from boss_kit import STILL, ROOT, add_object, add_sun, glow_material, gold_mater
     reset_scene, skin_material  # noqa: E402
 from hair_kit import hair_material, ribbon_locks, strand_locks  # noqa: E402
 from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords, shadow_catcher, \
-    tapered_world, weights_by_group  # noqa: E402
-from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, flame, \
-    flame_material, hakama, head_frame, horn, inflate, kanji_plate, limb_band, painted_skin, silk_material, \
-    twisted_rope  # noqa: E402
+    store_point_attr, tapered_world, weights_by_group  # noqa: E402
+from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
+    flame_material, hakama, head_frame, horn, inflate, kanji_plate, limb_band, muscle_bulge, painted_skin, \
+    silk_material, twisted_rope  # noqa: E402
 
 S = 1.45  # khổng lồ lùn bè, ~2,3 m
 
 ONI_BODY = {
     "stomach-pregnant-incr": 1.0,
+    "stomach-navel-out": 0.6,
+    "torso-muscle-dorsi-incr": 1.0,
     "torso-scale-horiz-incr": 1.0,
     "torso-scale-depth-incr": 0.8,
     "torso-scale-vert-decr": 0.4,
@@ -44,9 +46,27 @@ ONI_BODY = {
     "measure-neck-height-decr": 0.7,
     "chin-width-incr": 0.9,
     "chin-prominent-incr": 0.6,
-    "head-square": 0.8,
-    "mouth-scale-horiz-incr": 0.7,
-    "mouth-angles-down": 0.8,
+    "head-square": 0.5,
+    "head-fat-incr": 1.0,
+    "neck-double-incr": 1.0,
+    "mouth-scale-horiz-incr": 1.0,
+    "mouth-upperlip-volume-incr": 1.0,
+    "mouth-lowerlip-volume-incr": 1.0,
+    "mouth-lowerlip-height-incr": 0.6,
+    "mouth-upperlip-height-incr": 0.3,
+    "mouth-scale-depth-incr": 0.6,
+    "nose-flaring-incr": 1.0,
+    "nose-scale-horiz-incr": 0.8,
+    "nose-volume-incr": 0.6,
+    "nose-point-width-incr": 0.7,
+    # Biểu cảm mặt nạ Hannya: há miệng nhe răng, khoé kéo ngược, cánh mũi nhăn.
+    "expression/units/asian/mouth-open": 0.6,
+    "expression/units/asian/mouth-upward-retraction": 0.9,
+    "expression/units/asian/mouth-corner-puller": 0.8,
+    "expression/units/asian/nose-left-elevation": 0.5,
+    "expression/units/asian/nose-right-elevation": 0.5,
+    "expression/units/asian/eye-left-opened-up": 0.5,
+    "expression/units/asian/eye-right-opened-up": 0.5,
     "eyebrows-trans-down": 0.7,
     "eyebrows-angle-down": 0.8,
     "measure-upperarm-circ-incr": 1.0,
@@ -55,6 +75,9 @@ ONI_BODY = {
 }
 for s_ in ("l", "r"):
     ONI_BODY.update({
+        f"{s_}-cheek-volume-incr": 1.0,
+        f"{s_}-cheek-bones-incr": 0.4,
+        f"{s_}-upperarm-shoulder-muscle-incr": 1.0,
         f"{s_}-upperarm-muscle-incr": 1.0,
         f"{s_}-upperarm-scale-horiz-incr": 1.0,
         f"{s_}-upperarm-scale-depth-incr": 1.0,
@@ -72,48 +95,75 @@ for s_ in ("l", "r"):
 
 def safe_details(d):
     """Bỏ target không có trong MPFB (tên khác giữa các bản)."""
-    from bl_ext.blender_org.mpfb.services.targetservice import TargetService
+    from human_kit import target_path
     out = {}
     for k, v in d.items():
-        if TargetService.target_full_path(k) is None:
+        if target_path(k) is None:
             print("ONI bỏ target không có:", k)
             continue
         out[k] = v
     return out
 
 
-def mane(rig, head_c, up, fwd, right):
-    """Bờm trắng: lọn khối to dựng ngược ra sau và hai bên (dáng lửa), rủ
-    xuống lưng; thêm sợi mảnh cho mềm viền."""
+def mane(body, co, rig, head_c, up, fwd, right):
+    """Bờm trắng dài chải ngược từ chân tóc, ôm sọ rồi rủ nặng xuống lưng và
+    hai vai theo trọng lực (không dựng nhọn); gốc da đầu phủ lông ngắn."""
+    from human_kit import shell_copy
     rng = random.Random(4)
-    white = skin_material("ManeLock", "#EEE8DC", rough=0.6, noise_scale=80)
+    scalp_m = skin_material("ManeScalp", "#B8B0A4", rough=0.8)
     strands = hair_material("ManeHair", "#D8D0C2", "#F2EEE6", "#FFFFFF", rough=0.4)
-    locks, guides = [], []
-    R = 0.115 * S
-    for k in range(110):
-        # Gốc phân bố trên nửa sau + đỉnh đầu (không che mặt).
-        az = rng.uniform(-math.pi * 0.95, math.pi * 0.95)  # quanh trục lên, 0 = sau gáy
-        el = rng.uniform(-0.25, 1.15)
-        back = -fwd
+    scalp = shell_copy(body, "ManeScalp", "scalp", 0.004 * S, 0.0, [scalp_m])
+    # Mặt sau thân theo từng tầng cao: tóc rủ bám lưng, không xuyên vai.
+    bl = rig.data.bones
+    z_hi = bl["neck_01"].head_local.z
+    z_lo = bl["spine_02"].head_local.z
+    rings = []
+    for k in range(7):
+        z = z_hi + (z_lo - z_hi) * k / 6
+        rings.append(body_ring(body, co, z, ("spine_02", "spine_03", "neck_01", "clavicle_l", "clavicle_r"),
+                               pad=0.0))
+    R = 0.112 * S
+    back = -fwd
+    # Bán kính sọ thật theo từng hướng (đỉnh nhóm xương đầu): gốc tóc phải
+    # nằm ngoài lớp da đầu, mặt cầu R cố định lọt vào trong làm lộ "mũ".
+    w = weights_by_group(body)
+    m = body.matrix_world
+    skull = [(m @ co[i]) - head_c for i in range(len(co))
+             if w[i].get("head", 0) > 0.5 and w[i].get("HelperGeometry", 0) < 0.5]
+    skull = [(v.normalized(), v.length) for v in skull if v.length > 1e-6]
+
+    def radius(d):
+        near = [r for u, r in skull if u.dot(d) > 0.985]
+        return max(near) + 0.006 * S if near else R
+    guides = []
+    for k in range(260):
+        az = rng.uniform(-math.pi * 0.75, math.pi * 0.75)  # 0 = sau gáy; không mọc trước mặt
+        el = rng.uniform(-0.25, 1.5)
         d = (back * math.cos(az) + right * math.sin(az)) * math.cos(el) + up * math.sin(el)
-        if d.dot(fwd) > 0.35:
+        if d.dot(fwd) > 0.72:  # mọc tới chân tóc, chừa trán
             continue
-        root = head_c + d * R
-        length = rng.uniform(0.25, 0.55) * S
-        # Hất lên rồi ra sau, đuôi rủ xuống theo trọng lực (dáng lửa cháy).
-        # Hất ra rồi rủ xuống lưng/vai (đỉnh đầu dựng cao hơn, hai bên rủ nhiều).
-        rise = 0.35 if el > 0.7 else -0.2
-        tip = root + (d * 0.55 + back * 0.45 + up * (rise - rng.uniform(0.3, 1.0))).normalized() * length
-        mid = root.lerp(tip, 0.4) + d * 0.08 * S + up * 0.07 * S
-        locks.append((root, mid, tip, rng.uniform(0.016, 0.026) * S))
-        g = [root.lerp(mid, t) if t < 0.5 else mid.lerp(tip, (t - 0.5) * 2) for t in [i / 7 for i in range(8)]]
-        guides.append(g)
-    ro = ribbon_locks("ManeLocks", [(a, b, c, r * 0.4) for a, b, c, r in locks], white, flat=1.8, taper=1.2)
-    parent_to_bone(ro, rig, "head")
-    so = strand_locks("ManeStrands", guides, strands, per_lock=70, spread=0.03 * S, clump=0.3,
-                      frizz=0.01 * S, root_radius=0.0016 * S, seed=3)
+        rd = radius(d)
+        lat = math.sin(az) * math.cos(el)  # −1…1: bên phải/trái nhân vật
+        # Rạp theo mặt sọ: quay dần hướng gốc về sau gáy, sát da đầu.
+        nape = (back * 0.85 + right * lat * 0.55 - up * 0.25).normalized()
+        pts = []
+        for j in range(5):
+            t = j / 4
+            v = d.lerp(nape, t).normalized()
+            pts.append(head_c + v * max(rd, radius(v)) * (1.0 + 0.08 * t))
+        ang = lat * rng.uniform(0.9, 1.25)
+        pad = rng.uniform(0.03, 0.07) * S
+        drop = rng.uniform(0.5, 1.0)
+        n = max(2, int(len(rings) * drop))
+        for j, (c, rx, ry) in enumerate(rings[:n]):
+            t = (j + 1) / n
+            p = c + right * math.sin(ang) * (rx * 0.75 + pad) + back * math.cos(ang) * (ry + pad * (1 + t))
+            pts.append(p + Vector((0, 0, rng.uniform(-0.01, 0.01) * S)))
+        guides.append(pts)
+    so = strand_locks("ManeStrands", guides, strands, per_lock=45, spread=0.02 * S, clump=0.4,
+                      frizz=0.006 * S, curl=0.004 * S, root_radius=0.0016 * S, seed=3)
     parent_to_bone(so, rig, "head")
-    return [ro, so]
+    return [scalp, so]
 
 
 def brows(body, co, rig, up, fwd, right):
@@ -164,13 +214,13 @@ def kanabo(grip, direction, length, mats):
     side = d.orthogonal().normalized()
     up2 = d.cross(side)
     pts = [butt.lerp(top, t) for t in (0.0, 0.03, 0.3, 0.45, 0.6, 0.9, 0.98, 1.0)]
-    radii = [(0.03,) * 2, (0.034,) * 2, (0.036,) * 2, (0.05,) * 2, (0.075,) * 2, (0.085,) * 2, (0.07,) * 2,
+    radii = [(0.028,) * 2, (0.024,) * 2, (0.026,) * 2, (0.05,) * 2, (0.075,) * 2, (0.085,) * 2, (0.07,) * 2,
              (0.03,) * 2]
     radii = [(a * S, b * S) for a, b in radii]
     body = add_object("Kanabo", raw_tube("Kanabo", pts, radii, sides=8), [iron])
     body.data.polygons.foreach_set("use_smooth", [False] * len(body.data.polygons))
     out = [body]
-    for t, r in ((0.04, 0.04), (0.28, 0.042), (0.47, 0.058), (0.96, 0.08)):
+    for t, r in ((0.04, 0.032), (0.3, 0.034), (0.47, 0.058), (0.96, 0.08)):
         c = butt.lerp(top, t)
         ring = [c + (side * math.cos(2 * math.pi * k / 24) + up2 * math.sin(2 * math.pi * k / 24)) * r * S
                 for k in range(24)]
@@ -268,23 +318,92 @@ def buckle(rig, at, fwd, gold, iron, eye):
     return out
 
 
+def muscles(body, co, rig):
+    """Đắp khối cơ cho thớ cơ đọc rõ ở cỡ sprite (target MPFB làm cơ tròn mềm):
+    ngực có gờ dưới sắc + rãnh giữa, cơ thang, và bắp dọc xương tay (vai,
+    bắp tay trước/sau, cẳng tay) kèm rãnh phân cơ. Toạ độ nghỉ cục bộ; người
+    nhìn về −Y, trái +X."""
+    bl = rig.data.bones
+
+    def front_y(x, z, r=0.03):
+        ys = [p.y for p in co if abs(p.x - x) < r and abs(p.z - z) < r]
+        return min(ys) if ys else 0.0
+
+    zc = bl["spine_03"].head_local.z + 0.06  # tầm ngực
+    for sx in (-1, 1):
+        x = 0.09 * sx
+        inflate(body, co, Vector((x, front_y(x, zc), zc)), (0.1, 0.1, 0.08), 0.07, name=f"Pec{sx}",
+                front_only=False)
+        inflate(body, co, Vector((x * 1.05, front_y(x, zc - 0.085), zc - 0.085)), (0.11, 0.1, 0.018), -0.03,
+                name=f"PecFold{sx}", front_only=False)
+        nk = bl["neck_01"].head_local
+        inflate(body, co, Vector((0.08 * sx, nk.y + 0.03, nk.z - 0.02)), (0.07, 0.07, 0.05), 0.035,
+                name=f"Trap{sx}", front_only=False)
+        s_ = "l" if sx > 0 else "r"
+        # (u0, độ rộng u, góc°, độ rộng góc°, biên độ m)
+        muscle_bulge(body, co, rig, f"upperarm_{s_}", [
+            (0.12, 0.16, 70, 110, 0.035),   # cơ delta trùm vai
+            (0.3, 0.05, 40, 60, -0.012),    # rãnh delta – bắp tay
+            (0.58, 0.2, 0, 55, 0.04),       # bắp tay trước (nhị đầu)
+            (0.5, 0.25, 180, 60, 0.032),    # bắp tay sau (tam đầu)
+            (0.55, 0.3, 90, 14, -0.012),    # rãnh giữa trước/sau phía ngoài
+            (0.55, 0.3, -90, 14, -0.008),
+        ], f"Arm{s_}")
+        muscle_bulge(body, co, rig, f"lowerarm_{s_}", [
+            (0.22, 0.18, 45, 50, 0.03),     # cơ cánh tay quay
+            (0.25, 0.2, -60, 50, 0.022),    # nhóm gấp cổ tay
+            (0.3, 0.3, -5, 10, -0.008),     # rãnh giữa hai nhóm
+        ], f"Forearm{s_}")
+    inflate(body, co, Vector((0, front_y(0, zc), zc)), (0.016, 0.1, 0.11), -0.025, name="Sternum",
+            front_only=False)
+
+
+def pupils(body, co, rig, fwd):
+    """Đồng tử đen tròn giữa mắt vàng (điểm trước nhất của khối cầu mắt)."""
+    black = skin_material("Pupil", "#050404", rough=0.1)
+    w = weights_by_group(body)
+    m = body.matrix_world
+    for g in ("helper-l-eye", "helper-r-eye"):
+        pts = [m @ co[i] for i in range(len(co)) if w[i].get(g, 0) > 0.5]
+        front = max(pts, key=lambda p: p.dot(fwd))
+        o = add_object(f"Pupil{g}", raw_ellipsoid(f"Pupil{g}", front + fwd * 0.001 * S,
+                                                    (0.0065 * S, 0.0065 * S, 0.0065 * S)), [black])
+        parent_to_bone(o, rig, "head")
+
+
 def build():
-    body, rig, parts = boss_human(1.0, muscle=1.0, weight=1.0, height=1.0, age=0.62, proportions=0.55, scale=S,
+    # Mỡ vừa phải để khối cơ (vai, ngực, tay, lưng) hằn rõ; bụng và mặt đắp riêng.
+    body, rig, parts = boss_human(1.0, muscle=1.0, weight=0.55, height=1.0, age=0.62, proportions=0.55, scale=S,
                                   details=safe_details(ONI_BODY), eyebrows=None)
-    skin = painted_skin("OniSkin", "#B83A2C", "#8A2820", tattoo="#64140F", sss=0.12, rough=0.72)
+    w0 = weights_by_group(body)
+    store_point_attr(body, "lips", [min(1.0, w0[i].get("lips", 0)) for i in range(len(w0))])
+    clay = "--clay" in sys.argv  # soát hình khối: bỏ hoa văn xăm
+    skin = painted_skin("OniSkin", "#B83A2C", "#8A2820", tattoo=None if clay else "#7A2016", sss=0.12, rough=0.72, lips="#4A0C0A",
+                        cavity=("#3A0806", 0.1 * S, 0.9), tattoo_band=0.935)
     body.data.materials.clear()
     body.data.materials.append(skin)
-    # Mắt hổ phách phát sáng (cả nhãn cầu — nhìn dữ như mặt nạ Nō).
+    # Mắt vàng kim như mặt nạ Hannya (đồng tử đen đắp riêng bên dưới).
     if "eyes" in parts:
         parts["eyes"].data.materials.clear()
-        parts["eyes"].data.materials.append(glow_material("OniEye", "#FFB830", strength=2.5, base="#E09020"))
+        parts["eyes"].data.materials.append(glow_material("OniEye", "#FFC23A", strength=1.2, base="#C88A18"))
+    # Răng ngà ngả vàng, lưỡi đỏ sẫm.
+    if "teeth" in parts:
+        parts["teeth"].data.materials.clear()
+        parts["teeth"].data.materials.append(skin_material("OniTeeth", "#E2CC92", rough=0.3))
+    if "tongue" in parts:
+        parts["tongue"].data.materials.clear()
+        parts["tongue"].data.materials.append(skin_material("OniTongue", "#5A0E10", rough=0.4))
     bl = rig.data.bones
-    # Bụng phệ tròn căng (đắp thêm, target MPFB chỉ nhô nhẹ trên người cơ bắp).
+    # Bụng phệ to tròn, xệ thấp (đắp thêm, target MPFB chỉ nhô nhẹ trên người cơ bắp)
+    # + vòng eo phình hai bên cho dáng thùng phuy.
     co0 = rest_coords(body)
-    nav = Vector((0, min(p.y for p in co0) * 0.6, bl["spine_01"].tail_local.z))
-    inflate(body, co0, nav, (0.2, 0.22, 0.19), 0.13, name="Belly")
+    nav = Vector((0, min(p.y for p in co0) * 0.6, bl["spine_01"].tail_local.z - 0.03))
+    inflate(body, co0, nav, (0.26, 0.27, 0.25), 0.24, name="Belly")
+    inflate(body, co0, nav + Vector((0, 0.05, 0)), (0.3, 0.3, 0.2), 0.05, name="Barrel", front_only=False)
+    muscles(body, co0, rig)
     co = rest_coords(body)
     head_c, up, fwd, right = head_frame(rig)
+    pupils(body, co, rig, fwd)
 
     iron = skin_material("Iron", "#202026", rough=0.35, metallic=0.85, noise_scale=40)
     gold = gold_material("OniGold", "#E0AE48", rough=0.3)
@@ -305,7 +424,7 @@ def build():
         horn(f"Horn{s}", root, up * 1.0 + right * s * 0.35 + fwd * 0.15, 0.2 * S, 0.026 * S,
              -fwd * 0.9 + right * s * 0.4 - up * 0.2, horn_m, rig)
 
-    mane(rig, head_c, up, fwd, right)
+    mane(body, co, rig, head_c, up, fwd, right)
     brows(body, co, rig, up, fwd, right)
     tusks(body, co, rig, up, fwd, right)
 
@@ -342,20 +461,34 @@ def build():
 
 def pose_and_props(rig, mats):
     poser = StandPoser(rig, facing_deg=-48, scale=S)
-    poser.place(stance=math.radians(14), crouch=math.radians(10))
+    poser.place(stance=math.radians(9), crouch=math.radians(12))
     fwd, left, up = poser.frame()
     right = -left
     # Tay phải vác chuỳ trên vai phải.
     sh_r = poser.world("upperarm_r", 0.0)
-    grip = sh_r + fwd * 0.12 * S + right * 0.06 * S
+    grip = sh_r + fwd * 0.16 * S + right * 0.08 * S - up * 0.04 * S
     poser.arm("r", grip, sh_r + right * 0.6 - up * 0.5)
+    want = (-fwd * 0.8 + up * 0.5 + right * 0.3).normalized()  # hướng đầu chuỳ: qua vai ra sau
+    fist(rig, "r")
+    # Bàn tay nối thẳng cẳng tay; thử hai chiều lòng bàn tay, giữ chiều mà
+    # trục đốt ngón (ngón trỏ → ngón út) chỉ về đuôi chuỳ, ngón cái về đầu chuỳ.
+    fa = (poser.world("hand_r", 0.0) - poser.world("lowerarm_r", 0.0)).normalized()
+    cd = (want - fa * want.dot(fa)).normalized()
+    for sign in (1, -1):
+        poser.palm("r", fa, fa.cross(cd) * sign)
+        knuckle = poser.world("pinky_01_r", 0.0) - poser.world("index_01_r", 0.0)
+        if knuckle.dot(cd) < 0:
+            break
+    club_dir = -knuckle.normalized()
+    # Tâm lỗ nắm đấm: giữa gốc ngón giữa và các đốt đã gập.
+    hole = (poser.world("middle_01_r", 0.0) + poser.world("middle_02_r", 0.0) + poser.world("middle_03_r", 0.0)
+            + poser.world("middle_03_r", 1.0)) / 4
+    kanabo(hole, club_dir, 1.7 * S, (mats["iron"], mats["gold"], mats["tassel"]))
     # Tay trái chìa ra trước, ngửa bàn tay nâng lửa ma.
     sh_l = poser.world("upperarm_l", 0.0)
     reach = poser.a + poser.b
     hand = sh_l + left * reach * 0.6 + fwd * reach * 0.45 - up * reach * 0.38
     poser.arm("l", hand, sh_l + left * 0.3 - up * 0.8 - fwd * 0.1)
-    club_dir = (-fwd * 0.8 + up * 0.5 + right * 0.3).normalized()
-    kanabo(poser.world("hand_r", 1.0), club_dir, 1.7 * S, (mats["iron"], mats["gold"], mats["tassel"]))
     palm = poser.world("hand_l", 0.6) + up * 0.06 * S
     flame("Onibi", palm, 0.26 * S, 0.12 * S, mats["fire"], lean=-fwd * 0.05 * S + up * 0.02, tongues=4, seed=1)
     flame("OnibiFloat", sh_r + right * 0.35 * S + up * 0.35 * S, 0.18 * S, 0.08 * S, mats["fire"], tongues=3, seed=5)
@@ -380,10 +513,28 @@ def main():
     os.makedirs(out, exist_ok=True)
     pb = rig.pose.bones["head"]
     head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)
-    camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 260, yaw=-8, pitch=6)
-    render_to(scene, os.path.join(out, "still_full.png"))
-    camera(scene, head.x, head.z - 0.05 * S, 0.6 * S, 0.6 * S, 900, yaw=-8, pitch=4)
-    render_to(scene, os.path.join(out, "still_face.png"))
+    if "--grip-only" not in sys.argv:
+        camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 260, yaw=-8, pitch=6)
+        render_to(scene, os.path.join(out, "still_full.png"))
+        camera(scene, head.x, head.z - 0.05 * S, 0.6 * S, 0.6 * S, 900, yaw=-8, pitch=4)
+        render_to(scene, os.path.join(out, "still_face.png"))
+    if "--grip" in sys.argv or "--grip-only" in sys.argv:  # soát tay cầm chuỳ (xuyên) và chân (bắt chéo)
+        hand = rig.matrix_world @ rig.pose.bones["hand_r"].head
+        camera(scene, hand.x, hand.z, 0.5 * S, 0.5 * S, 900, yaw=-8, pitch=4)
+        render_to(scene, os.path.join(out, "check_grip.png"))
+        camera(scene, hand.x, hand.z, 0.5 * S, 0.5 * S, 900, yaw=-100, pitch=4)
+        render_to(scene, os.path.join(out, "check_grip_side.png"))
+        camera(scene, hand.x, hand.z, 0.5 * S, 0.5 * S, 900, yaw=-8, pitch=4)
+        club = [o for o in bpy.data.objects if o.name.startswith("Kanabo")]
+        for o in club:
+            o.hide_render = True
+        render_to(scene, os.path.join(out, "check_fist.png"))
+        for o in club:
+            o.hide_render = False
+        camera(scene, 0.0, 0.3 * S, 1.4 * S, 0.7 * S, 400, yaw=-8, pitch=6)
+        render_to(scene, os.path.join(out, "check_legs.png"))
+        camera(scene, head.x, head.z - 0.45 * S, 0.8 * S, 0.8 * S, 700, yaw=-8, pitch=4)
+        render_to(scene, os.path.join(out, "check_torso.png"))
     from boss_kit import save_blend
     save_blend("oni_boss")
 
