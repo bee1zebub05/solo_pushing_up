@@ -586,6 +586,45 @@ def inflate(body, co, center, radii, amount, name="Inflate", front_only=True):
     return key
 
 
+def belly_ball(body, co, center, rx, ry, rz_top, rz_bot, tuck_z, name="BellyBall", soft=0.18, top_flat=0.3):
+    """Bụng bia tròn kiểu Gragas (shape key): chiếu đỉnh thân nằm trong khối
+    elip ra mặt elip theo tia từ tâm — mặt cầu tròn đều, không nhọn như đẩy
+    theo pháp tuyến. Nửa trên cao [rz_top] hoà vào ngực, nửa dưới [rz_bot]
+    nặng và trễ; dưới [tuck_z] tắt hẳn nên mép dưới có nếp gấp chờm qua đai.
+    [top_flat] làm nửa trên nông dần để bụng thoải vào ngực. Lưng không bị
+    đẩy. Toạ độ nghỉ cục bộ, người nhìn về −Y."""
+    if body.data.shape_keys is None:
+        body.shape_key_add(name="Basis")
+    key = body.shape_key_add(name=name, from_mix=False)
+    w = weights_by_group(body)
+    torso = ("pelvis", "spine_01", "spine_02", "spine_03")
+
+    def smooth(a, b, x):
+        t = min(1.0, max(0.0, (x - a) / (b - a)))
+        return t * t * (3 - 2 * t)
+
+    for i, p in enumerate(co):
+        g = w[i]
+        tw = smooth(0.15, 0.7, sum(g.get(k, 0) for k in torso))  # hông lẫn trọng số tay: mờ dần
+        if g.get("HelperGeometry", 0) > 0.5 or tw <= 0:
+            continue
+        d = p - center
+        up = max(0.0, d.z / rz_top)
+        q = Vector((d.x / rx, d.y / (ry * (1 - top_flat * min(1.0, up))), d.z / (rz_top if d.z > 0 else rz_bot)))
+        r = q.length
+        if r < 1e-6 or r > 1.0 + soft:
+            continue
+        # Hợp mềm (smooth max) giữa thân và mặt elip: không có gờ ở mép trên.
+        r_new = 0.5 * (r + 1.0 + math.sqrt((r - 1.0) ** 2 + soft * soft))
+        front = smooth(-0.7, 0.2, -q.y / r)  # sau lưng → 0
+        f = tw * front * smooth(tuck_z - 0.025, tuck_z + 0.015, p.z)
+        if f <= 0:
+            continue
+        key.data[i].co = key.data[i].co + d * ((r_new / r - 1.0) * f)
+    key.value = 1.0
+    return key
+
+
 def muscle_bulge(body, co, rig, bone, lobes, name, min_w=0.35):
     """Bắp cơ dọc xương [bone] (shape key): mỗi lobe (u0, wu, góc0°, rộng°,
     biên độ m) — u theo chiều dài xương (0 gốc → 1 ngọn), góc quanh trục

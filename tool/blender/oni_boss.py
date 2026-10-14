@@ -25,7 +25,7 @@ from hair_kit import hair_material, ribbon_locks, strand_locks  # noqa: E402
 from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords, shadow_catcher, \
     store_point_attr, tapered_world, weights_by_group  # noqa: E402
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
-    flame_material, hakama, head_frame, horn, inflate, kanji_plate, limb_band, muscle_bulge, painted_skin, \
+    flame_material, hakama, head_frame, horn, inflate, belly_ball, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
 
 S = 1.45  # khổng lồ lùn bè, ~2,3 m
@@ -334,7 +334,7 @@ def muscles(body, co, rig):
         x = 0.09 * sx
         inflate(body, co, Vector((x, front_y(x, zc), zc)), (0.1, 0.1, 0.08), 0.07, name=f"Pec{sx}",
                 front_only=False)
-        inflate(body, co, Vector((x * 1.05, front_y(x, zc - 0.085), zc - 0.085)), (0.11, 0.1, 0.018), -0.03,
+        inflate(body, co, Vector((x * 1.05, front_y(x, zc - 0.085), zc - 0.085)), (0.11, 0.1, 0.018), -0.018,
                 name=f"PecFold{sx}", front_only=False)
         nk = bl["neck_01"].head_local
         inflate(body, co, Vector((0.08 * sx, nk.y + 0.03, nk.z - 0.02)), (0.07, 0.07, 0.05), 0.035,
@@ -394,12 +394,23 @@ def build():
         parts["tongue"].data.materials.clear()
         parts["tongue"].data.materials.append(skin_material("OniTongue", "#5A0E10", rough=0.4))
     bl = rig.data.bones
-    # Bụng phệ to tròn, xệ thấp (đắp thêm, target MPFB chỉ nhô nhẹ trên người cơ bắp)
-    # + vòng eo phình hai bên cho dáng thùng phuy.
+    # Bụng bia tròn kiểu Gragas: khối cầu từ dưới ngực, rộng gần hết thân,
+    # nặng ở nửa dưới, trễ chờm qua đai thừng (nếp gấp ở mép dưới).
     co0 = rest_coords(body)
-    nav = Vector((0, min(p.y for p in co0) * 0.6, bl["spine_01"].tail_local.z - 0.03))
-    inflate(body, co0, nav, (0.26, 0.27, 0.25), 0.24, name="Belly")
-    inflate(body, co0, nav + Vector((0, 0.05, 0)), (0.3, 0.3, 0.2), 0.05, name="Barrel", front_only=False)
+    z_chest = bl["spine_03"].head_local.z + 0.02
+    tuck_z = bl["pelvis"].head_local.z + 0.05
+    zc = tuck_z + (z_chest - tuck_z) * 0.36
+    band = [p for p in co0 if abs(p.z - zc) < 0.02 and abs(p.x) < 0.25]
+    half_w = max(abs(p.x) for p in band)
+    y_front = min(p.y for p in band)
+    ry = 0.3
+    center = Vector((0, y_front + ry - 0.23, zc))  # nhô 0,23 m trước bụng gốc
+    belly_ball(body, co0, center, half_w + 0.11, ry, z_chest - zc + 0.1, zc - tuck_z + 0.08, tuck_z, soft=0.3)
+    # Rốn lõm sâu giữa khối bụng.
+    co1 = rest_coords(body)
+    nz = zc - 0.02
+    navel = min((p for p in co1 if abs(p.x) < 0.015 and abs(p.z - nz) < 0.015), key=lambda p: p.y)
+    inflate(body, co1, navel, (0.022, 0.04, 0.03), -0.03, name="Navel", front_only=False)
     muscles(body, co0, rig)
     co = rest_coords(body)
     head_c, up, fwd, right = head_frame(rig)
@@ -518,6 +529,11 @@ def main():
         render_to(scene, os.path.join(out, "still_full.png"))
         camera(scene, head.x, head.z - 0.05 * S, 0.6 * S, 0.6 * S, 900, yaw=-8, pitch=4)
         render_to(scene, os.path.join(out, "still_face.png"))
+    if "--belly" in sys.argv:  # soát dáng bụng: nghiêng và chính diện
+        mid = rig.matrix_world @ rig.pose.bones["spine_01"].head
+        for tag, yaw in (("side", -100), ("front", -48)):
+            camera(scene, mid.x, mid.z, 1.1 * S, 1.1 * S, 600, yaw=yaw, pitch=2)
+            render_to(scene, os.path.join(out, f"check_belly_{tag}.png"))
     if "--grip" in sys.argv or "--grip-only" in sys.argv:  # soát tay cầm chuỳ (xuyên) và chân (bắt chéo)
         hand = rig.matrix_world @ rig.pose.bones["hand_r"].head
         camera(scene, hand.x, hand.z, 0.5 * S, 0.5 * S, 900, yaw=-8, pitch=4)
