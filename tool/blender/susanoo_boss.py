@@ -25,9 +25,9 @@ from boss_kit import ROOT, add_object, add_sun, glow_material, gold_material, pa
     reset_scene, skin_material  # noqa: E402
 from hair_kit import hair_material, ribbon_locks, strand_locks  # noqa: E402
 from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords, shadow_catcher, \
-    tapered_world  # noqa: E402
-from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, ellipse_ring, flame, flame_material, \
-    hakama, head_frame, limb_band, painted_skin, silk_material  # noqa: E402
+    store_point_attr, tapered_world, weights_by_group  # noqa: E402
+from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, ellipse_ring, fist, flame, \
+    flame_material, hakama, head_frame, hero_muscles, limb_band, painted_skin, silk_material  # noqa: E402
 
 S = 1.25
 
@@ -44,6 +44,19 @@ SUSANOO_BODY = {
     "chin-prominent-incr": 0.5,
     "head-square": 0.6,
     "eyebrows-angle-down": 0.7,
+    # Cuồng nộ: mày chau xuống giữa, nhe răng gầm, cánh mũi nhăn, cổ căng.
+    "expression/units/caucasian/eyebrows-left-down": 1.0,
+    "expression/units/caucasian/eyebrows-right-down": 1.0,
+    "expression/units/caucasian/eyebrows-left-extern-up": 0.4,
+    "expression/units/caucasian/eyebrows-right-extern-up": 0.4,
+    "expression/units/caucasian/eye-left-opened-up": 0.5,
+    "expression/units/caucasian/eye-right-opened-up": 0.5,
+    "expression/units/caucasian/mouth-open": 0.45,
+    "expression/units/caucasian/mouth-upward-retraction": 0.7,
+    "expression/units/caucasian/mouth-retraction": 0.5,
+    "expression/units/caucasian/nose-left-elevation": 0.4,
+    "expression/units/caucasian/nose-right-elevation": 0.4,
+    "expression/units/caucasian/neck-platysma": 0.6,
 }
 for s_ in ("l", "r"):
     SUSANOO_BODY.update({
@@ -80,9 +93,10 @@ def storm_hair(rig, head_c, up, fwd, right):
                        for t in [i / 9 for i in range(10)]])
     # Hai lọn mái dài rủ trước tai.
     for s in (-1, 1):
+        # Lọn mái bị gió hất: cong ra ngoài má rồi bay về phía gió, hở mặt.
         root = head_c + up * 0.07 * S + fwd * 0.06 * S + right * s * 0.06 * S
-        tip = root + right * s * 0.05 * S - up * 0.4 * S + fwd * 0.04 * S
-        mid = root + right * s * 0.06 * S - up * 0.12 * S + fwd * 0.03 * S
+        tip = root + right * s * 0.12 * S - up * 0.3 * S + wind * 0.2 * S
+        mid = root + right * s * 0.07 * S - up * 0.1 * S + fwd * 0.01 * S
         for j in range(4):
             off = right * s * 0.008 * j * S
             locks.append((root + off, mid + off, tip + off * 2, 0.012 * S))
@@ -258,14 +272,30 @@ def halo(center, normal, up, gold, r=0.55):
 def build():
     body, rig, parts = boss_human(1.0, muscle=1.0, weight=0.55, height=1.0, age=0.5, proportions=1.0, scale=S,
                                   details=SUSANOO_BODY, eyebrows=None)
-    skin = painted_skin("MarbleSkin", "#E6E8EA", "#BCC4CE", sss=0.25, rough=0.5)
+    bl = rig.data.bones
+    co0 = rest_coords(body)
+    # Hoa văn sấm tím chỉ trên nửa ngực trái + vai, bắp tay trái (như tranh).
+    w0 = weights_by_group(body)
+    z_lo = bl["spine_02"].head_local.z
+    mask = []
+    for i, p in enumerate(co0):
+        g = w0[i]
+        zone = sum(g.get(k, 0) for k in ("spine_03", "spine_02", "clavicle_l", "upperarm_l"))
+        side = min(1.0, max(0.0, (p.x - 0.005) / 0.03))
+        low = min(1.0, max(0.0, (p.z - z_lo) / 0.05))
+        mask.append(min(1.0, zone) * side * low * (g.get("HelperGeometry", 0) < 0.5))
+    store_point_attr(body, "tattoo", mask)
+    hero_muscles(body, co0, rig, k=0.75)
+    clay = "--clay" in sys.argv
+    skin = painted_skin("MarbleSkin", "#E6E8EA", "#BCC4CE", tattoo=None if clay else "#6A3AB0", sss=0.25, rough=0.5,
+                        cavity=("#5C6478", 0.12 * S, 1.0), tattoo_band=0.925, tattoo_attr="tattoo",
+                        tattoo_scale=6.0)
     body.data.materials.clear()
     body.data.materials.append(skin)
     if "eyes" in parts:
         parts["eyes"].data.materials.clear()
         parts["eyes"].data.materials.append(glow_material("GodEye", "#A8FFD8", strength=3.0, base="#60D0A0"))
     co = rest_coords(body)
-    bl = rig.data.bones
     head_c, up, fwd, right = head_frame(rig)
     gold = gold_material("GodGold", "#E2B656", rough=0.25)
     white = skin_material("WhiteArmor", "#ECEEF0", rough=0.3, noise_scale=30)
@@ -277,15 +307,25 @@ def build():
     storm_hair(rig, head_c, up, fwd, right)
     # Mày bạc rậm chau.
     brow_m = skin_material("SilverBrow", "#E6ECE8", rough=0.5)
+    wv = weights_by_group(body)
+    mw = body.matrix_world
+    face = [mw @ co[i] for i in range(len(co)) if wv[i].get("head", 0) > 0.5 and wv[i].get("HelperGeometry", 0) < 0.5]
+
+    def on_skin(a, lift=0.004):
+        """Điểm trên da trước [a] theo hướng nhìn (gờ mày nằm trước tâm mắt)."""
+        near = [p for p in face if ((p - a) - fwd * (p - a).dot(fwd)).length < 0.008 * S]
+        return (max(near, key=lambda p: p.dot(fwd)) if near else a) + fwd * lift * S
+
     for g, s in (("helper-l-eye", 1), ("helper-r-eye", -1)):
         c = group_center(body, g, co)
         side = -right if s > 0 else right
         lk = []
         for k in range(6):
             t = k / 5
-            a = c + up * (0.022 + 0.005 * t) * S + fwd * 0.012 * S + side * (0.003 + 0.028 * t) * S
-            tip = a + side * 0.03 * S + up * (0.018 - 0.006 * t) * S - fwd * 0.01 * S
-            lk.append((a, a.lerp(tip, 0.5) + up * 0.006 * S, tip, 0.006 * S))
+            # Mày chau: đầu mày trong thấp, đuôi hất lên thái dương như ngọn lửa.
+            a = on_skin(c + up * (0.016 + 0.012 * t) * S + side * (0.004 + 0.026 * t) * S)
+            tip = on_skin(a + side * 0.022 * S + up * (0.016 + 0.004 * t) * S, lift=0.002) - fwd * 0.004 * S
+            lk.append((a, a.lerp(tip, 0.5) + fwd * 0.003 * S, tip, (0.007 - 0.002 * t) * S))
         o = ribbon_locks(f"Brow{s}", lk, brow_m, flat=1.8, taper=1.0)
         parent_to_bone(o, rig, "head")
     crown(rig, head_c, up, fwd, right, gold, gem, plume)
@@ -335,8 +375,21 @@ def pose(rig, mats):
     poser.arm("l", sh_l + left * reach * 0.55 + fwd * reach * 0.5 - up * reach * 0.15, sh_l + left * 0.4 - up * 0.6)
     steel = skin_material("Steel", "#C8D4E0", rough=0.12, metallic=1.0, noise_scale=80)
     wrap = skin_material("GripWrap", "#1E2A58", rough=0.7, noise_scale=200)
-    hand = poser.world("hand_r", 0.7)
-    totsuka(hand, (fwd * 0.75 - up * 0.55 + right * 0.2), up, steel, mats["gold"], wrap)
+    # Nắm chặt chuôi kiếm: lưỡi ra phía ngón cái, chỉ chéo xuống trước.
+    want = (fwd * 0.75 - up * 0.55 + right * 0.2).normalized()
+    fist(rig, "r")
+    fa = (poser.world("hand_r", 0.0) - poser.world("lowerarm_r", 0.0)).normalized()
+    cd = (want - fa * want.dot(fa)).normalized()
+    for sign in (1, -1):
+        poser.palm("r", fa, fa.cross(cd) * sign)
+        knuckle = poser.world("pinky_01_r", 0.0) - poser.world("index_01_r", 0.0)
+        if knuckle.dot(cd) < 0:
+            break
+    blade_dir = -knuckle.normalized()
+    hole = (poser.world("middle_01_r", 0.0) + poser.world("middle_02_r", 0.0) + poser.world("middle_03_r", 0.0)
+            + poser.world("middle_03_r", 1.0)) / 4
+    flat = fa if abs(fa.dot(blade_dir)) < 0.9 else up
+    totsuka(hole, blade_dir, flat, steel, mats["gold"], wrap)
     back = poser.world("spine_03", 0.8) - fwd * 0.22 * S
     halo(back, -fwd, up, mats["gold"], r=0.48)
     # Lửa ma xanh: một ngọn trên lòng bàn tay trái, vài ngọn bay quanh.
@@ -364,7 +417,7 @@ def main():
     shadow_catcher()
     out = os.path.join(ROOT, "build", "blender", "susanoo")
     os.makedirs(out, exist_ok=True)
-    camera(scene, 0.0, 1.25 * S, 2.8 * S, 2.9 * S, 240, yaw=-8, pitch=6)
+    camera(scene, -0.25 * S, 1.25 * S, 3.3 * S, 2.9 * S, 240, yaw=-8, pitch=6)
     render_to(scene, os.path.join(out, "still_full.png"))
     pb = rig.pose.bones["head"]
     head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)

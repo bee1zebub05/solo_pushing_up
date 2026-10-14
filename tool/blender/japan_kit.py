@@ -21,10 +21,12 @@ FONT_JP = r"C:\Windows\Fonts\YuGothB.ttc"  # có chữ Hán; dự phòng msgothi
 # ---------------------------------------------------------------- vật liệu
 
 
-def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None, cavity=None, tattoo_band=0.9):
+def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None, cavity=None, tattoo_band=0.9,
+                 tattoo_attr=None, tattoo_scale=4.5):
     """Da boss tô màu (đỏ oni, trắng ngà thần…): loang hai tông theo nhiễu,
     [tattoo] màu hoa văn xoáy (vân sóng méo) — để None nếu không xăm;
     [tattoo_band] 0,9 (nét dày) → 0,93 (nét mảnh, lộ khối cơ hơn).
+    [tattoo_attr] tên thuộc tính điểm 0…1 giới hạn vùng xăm (ví dụ nửa ngực).
     [cavity] = (màu hõm, khoảng cách m, độ mạnh): tô đậm khe giữa các khối cơ
     bằng AO cục bộ, gờ cơ sáng lên — cho thớ cơ đọc rõ ở cỡ sprite."""
     mat = bpy.data.materials.new(name)
@@ -60,7 +62,7 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None,
         L(sc.outputs[0], mix_v.inputs[1])
         wave = N.new("ShaderNodeTexWave")
         wave.wave_type = "RINGS"
-        wave.inputs["Scale"].default_value = 4.5
+        wave.inputs["Scale"].default_value = tattoo_scale
         wave.inputs["Distortion"].default_value = 11
         wave.inputs["Detail"].default_value = 2
         wave.inputs["Detail Scale"].default_value = 1.5
@@ -69,9 +71,19 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None,
         band.inputs["From Min"].default_value = tattoo_band
         band.inputs["From Max"].default_value = 0.94
         L(wave.outputs["Fac"], band.inputs["Value"])
+        fac = band.outputs[0]
+        if tattoo_attr:
+            ta = N.new("ShaderNodeAttribute")
+            ta.attribute_type = "GEOMETRY"
+            ta.attribute_name = tattoo_attr
+            mul = N.new("ShaderNodeMath")
+            mul.operation = "MULTIPLY"
+            L(fac, mul.inputs[0])
+            L(ta.outputs["Fac"], mul.inputs[1])
+            fac = mul.outputs[0]
         tm = N.new("ShaderNodeMix")
         tm.data_type = "RGBA"
-        L(band.outputs[0], tm.inputs["Factor"])
+        L(fac, tm.inputs["Factor"])
         L(color, tm.inputs[6])
         tm.inputs[7].default_value = srgb(tattoo)
         color = tm.outputs[2]
@@ -663,6 +675,46 @@ def muscle_bulge(body, co, rig, bone, lobes, name, min_w=0.35):
             key.data[i].co = key.data[i].co + normals[i] * disp * min(1.0, wb * 1.4)
     key.value = 1.0
     return key
+
+
+def hero_muscles(body, co, rig, k=1.0):
+    """Đắp khối cơ cho thớ cơ đọc rõ ở cỡ sprite (target MPFB làm cơ tròn mềm):
+    ngực có gờ dưới sắc + rãnh giữa, cơ thang, và bắp dọc xương tay (vai,
+    bắp tay trước/sau, cẳng tay) kèm rãnh phân cơ. Toạ độ nghỉ cục bộ; người
+    nhìn về −Y, trái +X. [k] nhân mọi biên độ (oni 1, thần mảnh hơn ~0,7)."""
+    bl = rig.data.bones
+
+    def front_y(x, z, r=0.03):
+        ys = [p.y for p in co if abs(p.x - x) < r and abs(p.z - z) < r]
+        return min(ys) if ys else 0.0
+
+    zc = bl["spine_03"].head_local.z + 0.06  # tầm ngực
+    for sx in (-1, 1):
+        x = 0.09 * sx
+        inflate(body, co, Vector((x, front_y(x, zc), zc)), (0.1, 0.1, 0.08), 0.07 * k, name=f"Pec{sx}",
+                front_only=False)
+        inflate(body, co, Vector((x * 1.05, front_y(x, zc - 0.085), zc - 0.085)), (0.11, 0.1, 0.018), -0.018 * k,
+                name=f"PecFold{sx}", front_only=False)
+        nk = bl["neck_01"].head_local
+        inflate(body, co, Vector((0.08 * sx, nk.y + 0.03, nk.z - 0.02)), (0.07, 0.07, 0.05), 0.035 * k,
+                name=f"Trap{sx}", front_only=False)
+        s_ = "l" if sx > 0 else "r"
+        # (u0, độ rộng u, góc°, độ rộng góc°, biên độ m)
+        muscle_bulge(body, co, rig, f"upperarm_{s_}", [
+            (0.12, 0.16, 70, 110, 0.035 * k),   # cơ delta trùm vai
+            (0.3, 0.05, 40, 60, -0.012 * k),    # rãnh delta – bắp tay
+            (0.58, 0.2, 0, 55, 0.04 * k),       # bắp tay trước (nhị đầu)
+            (0.5, 0.25, 180, 60, 0.032 * k),    # bắp tay sau (tam đầu)
+            (0.55, 0.3, 90, 14, -0.012 * k),    # rãnh giữa trước/sau phía ngoài
+            (0.55, 0.3, -90, 14, -0.008 * k),
+        ], f"Arm{s_}")
+        muscle_bulge(body, co, rig, f"lowerarm_{s_}", [
+            (0.22, 0.18, 45, 50, 0.03 * k),     # cơ cánh tay quay
+            (0.25, 0.2, -60, 50, 0.022 * k),    # nhóm gấp cổ tay
+            (0.3, 0.3, -5, 10, -0.008 * k),     # rãnh giữa hai nhóm
+        ], f"Forearm{s_}")
+    inflate(body, co, Vector((0, front_y(0, zc), zc)), (0.016, 0.1, 0.11), -0.025 * k, name="Sternum",
+            front_only=False)
 
 
 def kamon_material(name, base, crest, scale=10.0, sheen=0.5, rough=0.6, trim=None, size=1.0):

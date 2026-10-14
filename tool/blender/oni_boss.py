@@ -25,7 +25,7 @@ from hair_kit import combed_material, hair_material, ribbon_locks, strand_locks 
 from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords, shadow_catcher, \
     store_point_attr, tapered_world, weights_by_group  # noqa: E402
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
-    flame_material, hakama, head_frame, horn, inflate, belly_ball, kanji_plate, limb_band, muscle_bulge, painted_skin, \
+    flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
 
 S = 1.45  # khổng lồ lùn bè, ~2,3 m
@@ -315,46 +315,6 @@ def buckle(rig, at, fwd, gold, iron, eye):
     return out
 
 
-def muscles(body, co, rig):
-    """Đắp khối cơ cho thớ cơ đọc rõ ở cỡ sprite (target MPFB làm cơ tròn mềm):
-    ngực có gờ dưới sắc + rãnh giữa, cơ thang, và bắp dọc xương tay (vai,
-    bắp tay trước/sau, cẳng tay) kèm rãnh phân cơ. Toạ độ nghỉ cục bộ; người
-    nhìn về −Y, trái +X."""
-    bl = rig.data.bones
-
-    def front_y(x, z, r=0.03):
-        ys = [p.y for p in co if abs(p.x - x) < r and abs(p.z - z) < r]
-        return min(ys) if ys else 0.0
-
-    zc = bl["spine_03"].head_local.z + 0.06  # tầm ngực
-    for sx in (-1, 1):
-        x = 0.09 * sx
-        inflate(body, co, Vector((x, front_y(x, zc), zc)), (0.1, 0.1, 0.08), 0.07, name=f"Pec{sx}",
-                front_only=False)
-        inflate(body, co, Vector((x * 1.05, front_y(x, zc - 0.085), zc - 0.085)), (0.11, 0.1, 0.018), -0.018,
-                name=f"PecFold{sx}", front_only=False)
-        nk = bl["neck_01"].head_local
-        inflate(body, co, Vector((0.08 * sx, nk.y + 0.03, nk.z - 0.02)), (0.07, 0.07, 0.05), 0.035,
-                name=f"Trap{sx}", front_only=False)
-        s_ = "l" if sx > 0 else "r"
-        # (u0, độ rộng u, góc°, độ rộng góc°, biên độ m)
-        muscle_bulge(body, co, rig, f"upperarm_{s_}", [
-            (0.12, 0.16, 70, 110, 0.035),   # cơ delta trùm vai
-            (0.3, 0.05, 40, 60, -0.012),    # rãnh delta – bắp tay
-            (0.58, 0.2, 0, 55, 0.04),       # bắp tay trước (nhị đầu)
-            (0.5, 0.25, 180, 60, 0.032),    # bắp tay sau (tam đầu)
-            (0.55, 0.3, 90, 14, -0.012),    # rãnh giữa trước/sau phía ngoài
-            (0.55, 0.3, -90, 14, -0.008),
-        ], f"Arm{s_}")
-        muscle_bulge(body, co, rig, f"lowerarm_{s_}", [
-            (0.22, 0.18, 45, 50, 0.03),     # cơ cánh tay quay
-            (0.25, 0.2, -60, 50, 0.022),    # nhóm gấp cổ tay
-            (0.3, 0.3, -5, 10, -0.008),     # rãnh giữa hai nhóm
-        ], f"Forearm{s_}")
-    inflate(body, co, Vector((0, front_y(0, zc), zc)), (0.016, 0.1, 0.11), -0.025, name="Sternum",
-            front_only=False)
-
-
 def pupils(body, co, rig, fwd):
     """Đồng tử đen tròn giữa mắt vàng (điểm trước nhất của khối cầu mắt)."""
     black = skin_material("Pupil", "#050404", rough=0.1)
@@ -408,7 +368,7 @@ def build():
     nz = zc - 0.02
     navel = min((p for p in co1 if abs(p.x) < 0.015 and abs(p.z - nz) < 0.015), key=lambda p: p.y)
     inflate(body, co1, navel, (0.022, 0.04, 0.03), -0.03, name="Navel", front_only=False)
-    muscles(body, co0, rig)
+    hero_muscles(body, co0, rig)
     co = rest_coords(body)
     head_c, up, fwd, right = head_frame(rig)
     pupils(body, co, rig, fwd)
