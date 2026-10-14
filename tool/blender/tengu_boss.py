@@ -27,6 +27,7 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
     tapered_world, weights_by_group  # noqa: E402
 from japan_kit import StandPoser, body_ring, boss_human, bone_point, claws, ellipse_ring, feather_fan, garment, \
     hakama, head_frame, kamon_material, painted_skin, sleeve_bag  # noqa: E402
+from japan_kit import flat_band  # noqa: E402
 
 S = 1.15
 
@@ -41,29 +42,6 @@ TENGU_BODY = {
     "mouth-angles-down": 1.0,
     "head-square": 0.5,
 }
-
-
-def flat_band(name, pts, outs, width, thick):
-    """Dải vải dẹt dọc [pts]: rộng [width] theo mặt thân, dày [thick] theo
-    hướng ra ngoài [outs] — không xoắn như ống dẹt khi đi gần thẳng đứng."""
-    verts, faces = [], []
-    n = len(pts)
-    for i, p in enumerate(pts):
-        tan = (pts[min(i + 1, n - 1)] - pts[max(i - 1, 0)]).normalized()
-        o = outs[i] - tan * outs[i].dot(tan)
-        o.normalize()
-        w = o.cross(tan).normalized()
-        for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
-            verts.append(p + w * a * width + o * b * thick)
-    for i in range(n - 1):
-        for k in range(4):
-            k2 = (k + 1) % 4
-            faces.append((i * 4 + k, i * 4 + k2, (i + 1) * 4 + k2, (i + 1) * 4 + k))
-    faces += [(3, 2, 1, 0), tuple((n - 1) * 4 + k for k in range(4))]
-    mesh = bpy.data.meshes.new(name)
-    mesh.from_pydata(verts, [], faces)
-    mesh.update()
-    return mesh
 
 
 def nose(body, co, rig, up, fwd, mat):

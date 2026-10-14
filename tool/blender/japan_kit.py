@@ -717,6 +717,30 @@ def hero_muscles(body, co, rig, k=1.0):
             front_only=False)
 
 
+def flat_band(name, pts, outs, width, thick, widths=None):
+    """Dải vải dẹt dọc [pts]: rộng [width] theo mặt thân, dày [thick] theo
+    hướng ra ngoài [outs] — không xoắn như ống dẹt khi đi gần thẳng đứng.
+    [widths] hệ số rộng từng điểm (thuôn đầu dải)."""
+    verts, faces = [], []
+    n = len(pts)
+    for i, p in enumerate(pts):
+        tan = (pts[min(i + 1, n - 1)] - pts[max(i - 1, 0)]).normalized()
+        o = outs[i] - tan * outs[i].dot(tan)
+        o.normalize()
+        w = o.cross(tan).normalized()
+        for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            verts.append(p + w * a * width * (widths[i] if widths else 1.0) + o * b * thick)
+    for i in range(n - 1):
+        for k in range(4):
+            k2 = (k + 1) % 4
+            faces.append((i * 4 + k, i * 4 + k2, (i + 1) * 4 + k2, (i + 1) * 4 + k))
+    faces += [(3, 2, 1, 0), tuple((n - 1) * 4 + k for k in range(4))]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    return mesh
+
+
 def kamon_material(name, base, crest, scale=10.0, sheen=0.5, rough=0.6, trim=None, size=1.0):
     """Vải in hoa văn tròn (kamon / hoa cúc tròn) rải đều: ô Voronoi, mỗi ô
     một vòng tròn [crest] có cánh hoa (sóng quanh tâm)."""

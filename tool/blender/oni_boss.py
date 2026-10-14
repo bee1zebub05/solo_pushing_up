@@ -27,6 +27,8 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
+from japan_kit import flat_band  # noqa: E402
+from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ lùn bè, ~2,3 m
 
@@ -321,6 +323,110 @@ def buckle(rig, at, fwd, gold, iron, eye):
     return out
 
 
+def tiger_material(name):
+    """Da hổ: nền cam, vằn đen méo (sóng dải + nhiễu), lông ngắn có bump."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    N, L = nt.nodes, nt.links.new
+    out = N.new("ShaderNodeOutputMaterial")
+    bsdf = N.new("ShaderNodeBsdfPrincipled")
+    tc = N.new("ShaderNodeTexCoord")
+    wave = N.new("ShaderNodeTexWave")
+    wave.wave_type = "BANDS"
+    wave.bands_direction = "Z"
+    wave.inputs["Scale"].default_value = 3.2
+    wave.inputs["Distortion"].default_value = 9
+    wave.inputs["Detail"].default_value = 3
+    L(tc.outputs["Object"], wave.inputs["Vector"])
+    stripe = N.new("ShaderNodeMapRange")
+    stripe.inputs["From Min"].default_value = 0.78
+    stripe.inputs["From Max"].default_value = 0.84
+    L(wave.outputs["Fac"], stripe.inputs["Value"])
+    blot = N.new("ShaderNodeTexNoise")
+    blot.inputs["Scale"].default_value = 8
+    L(tc.outputs["Object"], blot.inputs["Vector"])
+    base = N.new("ShaderNodeMix")
+    base.data_type = "RGBA"
+    L(blot.outputs["Fac"], base.inputs["Factor"])
+    base.inputs[6].default_value = srgb("#E0912E")
+    base.inputs[7].default_value = srgb("#B8641C")
+    col = N.new("ShaderNodeMix")
+    col.data_type = "RGBA"
+    L(stripe.outputs[0], col.inputs["Factor"])
+    L(base.outputs[2], col.inputs[6])
+    col.inputs[7].default_value = srgb("#1A1210")
+    L(col.outputs[2], bsdf.inputs["Base Color"])
+    fur = N.new("ShaderNodeTexNoise")
+    fur.inputs["Scale"].default_value = 400
+    L(tc.outputs["Object"], fur.inputs["Vector"])
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.35
+    L(fur.outputs["Fac"], bump.inputs["Height"])
+    L(bump.outputs[0], bsdf.inputs["Normal"])
+    bsdf.inputs["Roughness"].default_value = 0.85
+    bsdf.inputs["Sheen Weight"].default_value = 0.4
+    L(bsdf.outputs[0], out.inputs["Surface"])
+    return mat
+
+
+def pelt(body, co, rig, mat, tuck_z):
+    """Tấm da hổ khoác vai trái: dải rộng bám mặt thân từ ngực trên, vòng
+    qua đỉnh vai, rủ xuống lưng (tránh vùng bụng biến dạng mạnh khi tạo dáng). Toạ độ nghỉ
+    cục bộ (người nhìn −Y, trái +X), đổi sang thế giới khi dựng lưới."""
+    w = weights_by_group(body)
+    bl = rig.data.bones
+    groups = ("spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "neck_01", "pelvis")
+    torso = [co[i] for i in range(len(co))
+             if w[i].get("HelperGeometry", 0) < 0.5 and sum(w[i].get(g, 0) for g in groups) > 0.5]
+    pad = 0.025
+
+    def around(z, theta):
+        d = Vector((math.sin(math.radians(theta)), -math.cos(math.radians(theta)), 0))
+        band = [q for q in torso if abs(q.z - z) < 0.012]
+        cx = (min(q.x for q in band) + max(q.x for q in band)) / 2
+        cy = (min(q.y for q in band) + max(q.y for q in band)) / 2
+        c = Vector((cx, cy, z))
+        cand = [q for q in band if (q - c).normalized().dot(d) > 0.99]
+        best = max(cand or band, key=lambda q: (q - c).dot(d))
+        return best + d * pad, d
+
+    def top(x, y):
+        near = [q for q in torso if abs(q.x - x) < 0.02 and abs(q.y - y) < 0.02]
+        return max(q.z for q in near) if near else None
+
+    z_sh = bl["clavicle_l"].head_local.z
+    n = 12
+    front = [around(z_sh - 0.24 + 0.2 * i / (n - 1), 22 + 30 * i / (n - 1)) for i in range(n)]
+    back = [around(z_sh - 0.04 - 0.28 * i / (n - 1), 128 + 25 * i / (n - 1)) for i in range(n)]
+    # Cung qua đỉnh vai: nội suy hai đầu, nâng lên trên mặt cơ thang.
+    a, b = front[-1][0], back[0][0]
+    arc = []
+    for k in range(1, 6):
+        t = k / 6
+        q = a.lerp(b, t)
+        zt = top(q.x, q.y)
+        lift = max(q.z, (zt or q.z) + pad) + 0.02 * math.sin(math.pi * t)
+        arc.append((Vector((q.x, q.y, lift)), Vector((0, 0, 1))))
+    path = front + arc + back
+    pts = [p_ for p_, _ in path]
+    outs = [o_ for _, o_ in path]
+    for _ in range(3):  # làm mượt đường, giữ hai đầu
+        pts = [pts[0]] + [(pts[i - 1] + pts[i] * 2 + pts[i + 1]) / 4 for i in range(1, len(pts) - 1)] + [pts[-1]]
+    # Hai đầu thuôn như chân hổ buông thõng.
+    nn = len(pts)
+    taper = [min(1.0, 0.3 + 0.7 * min(i, nn - 1 - i) / (nn * 0.22)) for i in range(nn)]
+    m = body.matrix_world
+    m3 = m.to_3x3().normalized()
+    wpts = [m @ q for q in pts]
+    wouts = [(m3 @ o_).normalized() for o_ in outs]
+    sc = m.to_scale().x
+    o = add_object("TigerPelt", flat_band("TigerPelt", wpts, wouts, 0.1 * sc, 0.007 * sc, widths=taper), [mat])
+    parent_to_bone(o, rig, "spine_03")
+    return o
+
+
 def pupils(body, co, rig, fwd):
     """Đồng tử đen tròn giữa mắt vàng (điểm trước nhất của khối cầu mắt)."""
     black = skin_material("Pupil", "#050404", rough=0.1)
@@ -416,6 +522,9 @@ def build():
     buckle(rig, c - Vector((0, ry + 0.035 * S, 0)), fwd, gold, iron, eye_purple)
     knee_z = bl["calf_l"].head_local.z * S + 0.05 * S
     apron(rig, c, rx * 0.55, ry, c.z - 0.06 * S, knee_z, fwd, apron_m, gold)
+
+    # ---- da hổ vắt vai trái (trang phục kinh điển của oni)
+    pelt(body, co, rig, tiger_material("TigerPelt"), tuck_z)
 
     # ---- quần hakama chàm, gấu viền vàng
     hakama(body, co, rig, "Hakama", navy, flare=0.13 * S)
