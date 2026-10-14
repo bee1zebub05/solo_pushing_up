@@ -385,7 +385,10 @@ def build():
                                                                                               0.02 * S)), [gem])):
         parent_to_bone(o, rig, "pelvis")
     hakama(body, co, rig, "Hakama", navy, flare=0.08 * S)
-    skirt_plates(rig, c, rx * 1.15, ry * 1.2, c.z - 0.015 * S, 0.4 * S, white, gold)
+    # Tấm váy giáp sơn trắng, vân mây vàng chìm (không còn trơn).
+    plate_m = silk_material("PlateLacquer", "#ECEEF0", pattern="#C9A24E", sheen=0.05, rough=0.3,
+                            pattern_scale=2.2, pattern_band=0.935)
+    skirt_plates(rig, c, rx * 1.15, ry * 1.2, c.z - 0.015 * S, 0.4 * S, plate_m, gold)
     fire = flame_material("BlueOnibi", "#A8E8FF", "#2050E0", strength=2.2)
     return body, rig, {"gold": gold, "white": white, "fire": fire}
 

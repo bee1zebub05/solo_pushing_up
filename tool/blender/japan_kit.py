@@ -124,7 +124,7 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None,
     return mat
 
 
-def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6):
+def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6, pattern_scale=3.5, pattern_band=0.9):
     """Lụa / vải dày Nhật: ánh sheen, nếp mềm; [pattern] màu vân mây xoáy
     (kumo) in chìm; [trim] màu dải viền theo thuộc tính `hem` (0 ở gấu)."""
     mat = bpy.data.materials.new(name)
@@ -140,12 +140,12 @@ def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6):
     if pattern:
         wave = N.new("ShaderNodeTexWave")
         wave.wave_type = "RINGS"
-        wave.inputs["Scale"].default_value = 3.5
+        wave.inputs["Scale"].default_value = pattern_scale
         wave.inputs["Distortion"].default_value = 14
         wave.inputs["Detail"].default_value = 2
         L(tc.outputs["Object"], wave.inputs["Vector"])
         band = N.new("ShaderNodeMapRange")
-        band.inputs["From Min"].default_value = 0.9
+        band.inputs["From Min"].default_value = pattern_band
         band.inputs["From Max"].default_value = 0.95
         L(wave.outputs["Fac"], band.inputs["Value"])
         pm = N.new("ShaderNodeMix")
