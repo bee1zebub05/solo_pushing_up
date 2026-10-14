@@ -437,7 +437,12 @@ def pose(rig, mats):
     back = poser.world("spine_03", 0.8) - fwd * 0.22 * S
     halo(back, -fwd, up, mats["gold"], r=0.48)
     # Lửa ma xanh: một ngọn trên lòng bàn tay trái, vài ngọn bay quanh.
-    palm = poser.world("hand_l", 0.6) + up * 0.05 * S
+    # Tay trái triệu lửa: ngửa lòng bàn tay, ngón quặp nhẹ như móng vuốt.
+    fa_l = (poser.world("hand_l", 0.0) - poser.world("lowerarm_l", 0.0)).normalized()
+    flat_l = (fa_l - up * fa_l.dot(up)).normalized()  # ngón chỉ ngang ra trước, lòng bàn tay ngửa
+    poser.palm("l", (flat_l - up * 0.1).normalized(), up)
+    fist(rig, "l", curl=0.45)
+    palm = (poser.world("hand_l", 0.0) + poser.world("middle_01_l", 0.0)) / 2 + up * 0.05 * S
     flame("Onibi", palm, 0.24 * S, 0.1 * S, mats["fire"], lean=fwd * 0.04 * S, tongues=4, seed=2)
     rng = random.Random(6)
     for k in range(5):
@@ -467,6 +472,11 @@ def main():
     head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)
     camera(scene, head.x - 0.05, head.z + 0.03, 0.65 * S, 0.65 * S, 850, yaw=-8, pitch=4)
     render_to(scene, os.path.join(out, "still_face.png"))
+    if "--hand" in sys.argv:  # soát hai bàn tay (nắm kiếm, triệu lửa)
+        for s_ in ("l", "r"):
+            h = rig.matrix_world @ rig.pose.bones[f"hand_{s_}"].head
+            camera(scene, h.x, h.z, 0.45 * S, 0.45 * S, 900, yaw=-8, pitch=4)
+            render_to(scene, os.path.join(out, f"check_hand_{s_}.png"))
     from boss_kit import save_blend
     save_blend("susanoo_boss")
 
