@@ -196,7 +196,15 @@ Ký hiệu: 🔼 push-up · 🔽 squat · ⏸ plank
 ### Kỳ công 5: Nhật Bản, Sông Hi
 - **Bối cảnh:** rừng tuyết tùng, cổng torii, sông núi Izumo.
 - **Quái:** oni, kappa, yūrei (hồn ma).
-- **Boss:** **Yamata no Orochi**, rắn 8 đầu 8 đuôi.
+- **Boss:** **Yamata no Orochi**, rắn 8 đầu 8 đuôi. Các boss khác của vùng
+  (chốt 14/10/2026): Susanoo cuồng nộ, Thiên hoàng Sutoku, Tamamo-no-Mae,
+  Shuten-dōji — xem mục 3b.5. Chia màn (chốt 14/10/2026): HAI kỳ công Nhật,
+  mỗi kỳ công 10 màn, tách theo thời đại:
+  - *Izumo (thời thần thoại):* Susanoo cuồng nộ → Shuten-dōji → Orochi
+    (boss cuối). Susanoo bại trận tỉnh lại, dẫn đường đi diệt Orochi.
+  - *Kinh đô Heian (thời lịch sử):* Tamamo-no-Mae → Thiên hoàng Sutoku
+    (boss cuối). Phông cung điện, đền, núi Nasu / Sanuki.
+  Số thứ tự kỳ công cho phần Heian chưa xếp vào danh sách 12.
 - **Cơ chế:** *8 cái đầu*. Mỗi đầu cần một chuỗi rep **không ngắt quãng** (combo). Ngắt giữa chừng thì đầu đó hồi máu.
 - **Phụ:** tengu là đồng minh. Họ "dạy võ" người chơi, giống truyền thuyết về Yoshitsune.
 
@@ -321,8 +329,15 @@ Ký hiệu: 🔼 push-up · 🔽 squat · ⏸ plank
 | Thường | Kappa | Thuỷ quái có đĩa nước trên đầu | Cúi chào (🔽) làm nó cúi theo, đổ nước, mất sức. Lấy từ truyện dân gian |
 | Thường | Yūrei | Hồn ma | Tàng hình xen kẽ, chỉ đánh được khi hiện hình |
 | Tinh anh | Tsuchigumo | Nhện đất khổng lồ | Giăng tơ: giảm tốc độ đếm combo |
-| Mini-boss | Shuten-dōji | Vua oni, bị Minamoto no Raikō diệt | Uống rượu hồi máu: phải ngắt bằng combo |
-| **Boss** | **Yamata no Orochi** | Rắn 8 đầu, bị Susanoo diệt | 8 đầu, mỗi đầu cần một combo không ngắt quãng |
+| Mini-boss | Shuten-dōji | Vua oni ở núi Ōe, nghiện rượu; Minamoto no Raikō cùng Tứ Thiên Vương giả làm tu sĩ, chuốc rượu độc rồi chém | Uống rượu hồi máu: phải ngắt bằng combo |
+| **Boss** | **Susanoo cuồng nộ** | Thần bão. Trước khi diệt Orochi, ông phá ruộng lúa của Amaterasu, ném ngựa lột da vào phòng dệt làm chết một thị nữ; Amaterasu trốn vào hang Ama-no-Iwato, thế giới tối đen; ông bị đuổi khỏi Takamagahara (Kojiki) | Chưa thiết kế cơ chế. Gợi ý: bão, gió đẩy lùi, kiếm Totsuka |
+| **Boss** | **Thiên hoàng Sutoku** | Thiên hoàng thua loạn Hōgen (1156), bị đày sang Sanuki; chép kinh gửi về kinh đô bị trả lại, ông cắn lưỡi viết lời nguyền bằng máu, chết thành oan hồn hoá đại tengu, vua quỷ (Hōgen monogatari, Ugetsu monogatari) | Chưa thiết kế cơ chế. Gợi ý: lời nguyền máu, đàn tengu, lửa ma |
+| **Boss** | **Tamamo-no-Mae** | Hồ ly chín đuôi giả làm mỹ nhân trong cung Thiên hoàng Toba; bị âm dương sư Abe no Yasunari vạch mặt, chạy về Nasu, bị quân triều đình giết, hoá đá độc Sesshō-seki | Chưa thiết kế cơ chế. Gợi ý: ảo ảnh, chín đuôi |
+| **Boss** | **Yamata no Orochi** | Rắn 8 đầu, bị Susanoo chuốc rượu ủ 8 lần rồi chém; kiếm Kusanagi nằm trong đuôi | 8 đầu, mỗi đầu cần một combo không ngắt quãng (đã làm) |
+
+> Susanoo và Sutoku là kami đang được thờ (đền Yasaka, Hikawa; Shiramine
+> Jingū) — ngoại lệ có chủ ý của nguyên tắc nhạy cảm 1 (mục 6), người dùng
+> chốt ngày 14/10/2026: đánh thẳng như boss phản diện.
 
 ### 6. Trung Hoa
 | Cấp | Tên | Nguồn gốc | Đặc điểm |
@@ -452,6 +467,7 @@ Thoại của Trì Trệ nên dùng chính những câu người ta tự nói v�
 ## 6. Nguyên tắc nhạy cảm văn hoá
 
 1. **Không dùng thần linh của tôn giáo còn được thờ** làm boss hay nhân vật để đánh (Hindu, Hồi giáo, Kitô giáo, Phật giáo, kami Shinto). Thần chỉ xuất hiện như bối cảnh hoặc đồng minh xa.
+   - **Ngoại lệ đã chốt (14/10/2026):** Susanoo cuồng nộ và Thiên hoàng Sutoku (vùng Nhật Bản) là boss để đánh, dù đang được thờ như kami. Người dùng đã được báo rủi ro và chọn giữ. Vẫn bắt buộc mục 5 (người Nhật đọc lại thoại và hình) trước khi phát hành.
 2. **Không biến quốc gia có thật thành kẻ thù.** Kẻ thù luôn là quái vật thần thoại hoặc sự Trì Trệ.
 3. **Không dùng hoàng gia Thái Lan** (luật khi quân).
 4. **Câu chuyện linh thiêng của người bản địa** (thổ dân châu Mỹ, Úc, Māori) chỉ làm khi có người trong cộng đồng tư vấn.

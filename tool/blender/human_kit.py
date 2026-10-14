@@ -265,3 +265,29 @@ def camera(scene, cx, cz, width, height, ppm, yaw=-10, pitch=7):
     scene.render.resolution_x = round(width * ppm)
     scene.render.resolution_y = round(height * ppm)
     return cam
+
+
+def add_face_parts(body, eyes="high-poly", eyebrows="eyebrow001", eyelashes="eyelashes01", teeth="teeth_base",
+                   tongue="tongue01", eye_material="MAKESKIN"):
+    """Mắt, lông mày, lông mi, răng, lưỡi từ gói tài nguyên hệ thống MakeHuman
+    (CC0, cài vào %APPDATA%/Blender Foundation/Blender/<bản>/mpfb/data — xem
+    rules/dohoa.md mục 10). Gọi SAU make_human (đã có xương): MPFB tự gắn trọng
+    số theo thân. Bỏ một phần bằng cách truyền None. Trả {loại: object}."""
+    from bl_ext.blender_org.mpfb.services.assetservice import AssetService
+    from bl_ext.blender_org.mpfb.services.humanservice import HumanService
+    before = set(bpy.data.objects)
+    out = {}
+    for kind, name in (("eyes", eyes), ("eyebrows", eyebrows), ("eyelashes", eyelashes), ("teeth", teeth),
+                       ("tongue", tongue)):
+        if not name:
+            continue
+        path = AssetService.find_asset_absolute_path(f"{name}/{name}.mhclo", asset_subdir=kind)
+        if path is None:
+            raise FileNotFoundError(f"chưa cài tài nguyên MPFB {kind}/{name} (gói makehuman_system_assets)")
+        HumanService.add_mhclo_asset(path, body, asset_type=kind, subdiv_levels=1,
+                                     material_type=eye_material if kind == "eyes" else "MAKESKIN")
+        new = [o for o in bpy.data.objects if o not in before]
+        before |= set(new)
+        if new:
+            out[kind] = new[0]
+    return out
