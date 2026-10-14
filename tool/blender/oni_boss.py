@@ -463,7 +463,12 @@ def pose_and_props(rig, mats):
     reach = poser.a + poser.b
     hand = sh_l + left * reach * 0.6 + fwd * reach * 0.45 - up * reach * 0.38
     poser.arm("l", hand, sh_l + left * 0.3 - up * 0.8 - fwd * 0.1)
-    palm = poser.world("hand_l", 0.6) + up * 0.06 * S
+    # Ngửa lòng bàn tay, ngón vuốt quặp nhẹ ôm lửa.
+    fa_l = (poser.world("hand_l", 0.0) - poser.world("lowerarm_l", 0.0)).normalized()
+    flat_l = (fa_l - up * fa_l.dot(up)).normalized()
+    poser.palm("l", (flat_l - up * 0.1).normalized(), up)
+    fist(rig, "l", curl=0.45)
+    palm = (poser.world("hand_l", 0.0) + poser.world("middle_01_l", 0.0)) / 2 + up * 0.06 * S
     flame("Onibi", palm, 0.26 * S, 0.12 * S, mats["fire"], lean=-fwd * 0.05 * S + up * 0.02, tongues=4, seed=1)
     flame("OnibiFloat", sh_r + right * 0.35 * S + up * 0.35 * S, 0.18 * S, 0.08 * S, mats["fire"], tongues=3, seed=5)
     flame("OnibiFloat2", sh_l + left * 0.25 * S + up * 0.55 * S - fwd * 0.2 * S, 0.14 * S, 0.06 * S, mats["fire"],
@@ -503,6 +508,9 @@ def main():
         render_to(scene, os.path.join(out, "check_grip.png"))
         camera(scene, hand.x, hand.z, 0.5 * S, 0.5 * S, 900, yaw=-100, pitch=4)
         render_to(scene, os.path.join(out, "check_grip_side.png"))
+        hl = rig.matrix_world @ rig.pose.bones["hand_l"].head
+        camera(scene, hl.x, hl.z, 0.5 * S, 0.5 * S, 900, yaw=-8, pitch=4)
+        render_to(scene, os.path.join(out, "check_hand_l.png"))
         camera(scene, hand.x, hand.z, 0.5 * S, 0.5 * S, 900, yaw=-8, pitch=4)
         club = [o for o in bpy.data.objects if o.name.startswith("Kanabo")]
         for o in club:
