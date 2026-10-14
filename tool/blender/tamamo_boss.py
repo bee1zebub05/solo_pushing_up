@@ -314,6 +314,16 @@ def build_human():
     so = strand_locks("HairStrands", guides, hair_m, per_lock=40, spread=0.012 * H, clump=0.55, frizz=0.002 * H,
                       root_radius=0.0009 * H, seed=4)
     parent_to_bone(so, rig, "head")
+    # Mày mảnh cong lá liễu, đuôi xếch lên thái dương (nét hồ ly).
+    for g, s in (("helper-l-eye", 1), ("helper-r-eye", -1)):
+        c = group_center(body, g, co)
+        side = -right if s > 0 else right
+        a = c + up * 0.017 * H + fwd * 0.024 * H - side * 0.012 * H
+        b = c + up * 0.03 * H + fwd * 0.024 * H + side * 0.006 * H
+        e = c + up * 0.027 * H + fwd * 0.012 * H + side * 0.026 * H
+        o = add_object(f"Brow{s}", tapered_world(f"Brow{s}", [(a, b, e, 0.0032 * H)], flat=2.6, taper=0.7),
+                       [hair_dark])
+        parent_to_bone(o, rig, "head")
 
     # ---- trang sức tóc: trâm vàng có tua, hoa trà đỏ, mũ hoa vàng đá đỏ
     jew = []

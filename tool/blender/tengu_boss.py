@@ -43,6 +43,29 @@ TENGU_BODY = {
 }
 
 
+def flat_band(name, pts, outs, width, thick):
+    """Dải vải dẹt dọc [pts]: rộng [width] theo mặt thân, dày [thick] theo
+    hướng ra ngoài [outs] — không xoắn như ống dẹt khi đi gần thẳng đứng."""
+    verts, faces = [], []
+    n = len(pts)
+    for i, p in enumerate(pts):
+        tan = (pts[min(i + 1, n - 1)] - pts[max(i - 1, 0)]).normalized()
+        o = outs[i] - tan * outs[i].dot(tan)
+        o.normalize()
+        w = o.cross(tan).normalized()
+        for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            verts.append(p + w * a * width + o * b * thick)
+    for i in range(n - 1):
+        for k in range(4):
+            k2 = (k + 1) % 4
+            faces.append((i * 4 + k, i * 4 + k2, (i + 1) * 4 + k2, (i + 1) * 4 + k))
+    faces += [(3, 2, 1, 0), tuple((n - 1) * 4 + k for k in range(4))]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    return mesh
+
+
 def nose(body, co, rig, up, fwd, mat):
     """Mũi dài đỏ đặc trưng của tengu: mọc từ sống mũi, thẳng ra trước, hơi
     vểnh lên ở chóp tròn."""
@@ -196,16 +219,25 @@ def build():
     for s in ("l", "r"):
         sleeve_bag(rig, s, robe, length=0.3 * S, width=0.26 * S)
     # Cổ áo chữ V xanh nhạt: hai vạt chéo từ gáy xuống đai.
+    # Mỗi vạt bám mặt ngoài áo theo từng tầng cao (trước đây đường cong Bézier
+    # cắt xuyên ngực nên chìm trong áo).
     nb = bone_point(rig, "neck_01", 0.2)
-    c, rx, ry = body_ring(body, co, waist + 0.12, ("pelvis", "spine_01", "spine_02"), pad=0.03)
-    collar = []
+    z_top, z_bot = bl["neck_01"].head_local.z - 0.02, waist + 0.12
     for s in (-1, 1):
-        a = nb - fwd * 0.04 * S + right * s * 0.065 * S + up * 0.02 * S
-        b = nb + fwd * 0.1 * S + right * s * 0.075 * S - up * 0.1 * S
-        e = c - Vector((0, ry + 0.035 * S, 0)) + right * s * 0.012 * S  # hai vạt gặp nhau ở đai (chữ V)
-        collar.append((a, b, e, 0.028 * S))
-    co_o = add_object("Collar", tapered_world("Collar", collar, flat=2.4, taper=0.05), [lining])
-    parent_to_bone(co_o, rig, "spine_03")
+        rail, outs = [nb - fwd * 0.04 * S + right * s * 0.065 * S + up * 0.02 * S], [-fwd + right * s]
+        for k in range(15):
+            u = k / 14
+            z = z_top + (z_bot - z_top) * u
+            c, rx, ry = body_ring(body, co, z, ("spine_01", "spine_02", "spine_03", "neck_01"), pad=0.04 * S)
+            dx = (0.07 * (1 - u) ** 1.3 + 0.012) * S  # hai vạt khép dần, gặp nhau ở đai (chữ V)
+            p = c + right * s * dx + fwd * ry * math.sqrt(max(0.0, 1 - (dx / rx) ** 2))
+            rail.append(p)
+            outs.append(Vector((p.x - c.x, p.y - c.y, 0.0)))
+        for _ in range(2):  # làm mượt đường vạt
+            rail = [rail[0]] + [(rail[i - 1] + rail[i] * 2 + rail[i + 1]) / 4 for i in range(1, len(rail) - 1)] \
+                + [rail[-1]]
+        co_o = add_object(f"Collar{s}", flat_band(f"Collar{s}", rail, outs, 0.03 * S, 0.008 * S), [lining])
+        parent_to_bone(co_o, rig, "spine_03")
     # Đai obi xanh nhạt + dây buộc.
     from japan_kit import twisted_rope
     c2, rx2, ry2 = body_ring(body, co, waist + 0.04, ("pelvis", "spine_01"), pad=0.045)
