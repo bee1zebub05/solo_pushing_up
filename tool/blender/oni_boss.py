@@ -429,6 +429,28 @@ def pelt(body, co, rig, mat, tuck_z):
     sc = m.to_scale().x
     o = add_object("TigerPelt", flat_band("TigerPelt", wpts, wouts, 0.1 * sc, 0.007 * sc, widths=taper), [mat])
     parent_to_bone(o, rig, "spine_03")
+    # Viền lông tua ra hai mép (da thú, không phải vải): lọn ngắn chĩa ra
+    # ngoài mép rồi rủ theo trọng lực.
+    rng = random.Random(12)
+    fur = hair_material("PeltFur", "#9A5A1A", "#D88A30", "#F0C080", rough=0.5)
+    guides = []
+    for i in range(len(wpts)):
+        nb = len(wpts)
+        tan = (wpts[min(i + 1, nb - 1)] - wpts[max(i - 1, 0)]).normalized()
+        o_ = (wouts[i] - tan * wouts[i].dot(tan)).normalized()
+        side = o_.cross(tan).normalized()
+        for sg in (-1, 1):
+            edge = wpts[i] + side * sg * 0.1 * sc * taper[i]
+            out_d = (side * sg * 0.7 + o_ * 0.3).normalized()
+            ln = rng.uniform(0.025, 0.045) * sc
+            g = [edge - side * sg * 0.008 * sc]
+            for j in range(1, 5):
+                t = j / 4
+                g.append(edge + out_d * ln * t + Vector((0, 0, -1)) * ln * 0.6 * t * t)
+            guides.append(g)
+    fo = strand_locks("PeltFur", guides, fur, per_lock=30, spread=0.012 * sc, clump=0.3, frizz=0.004 * sc,
+                      root_radius=0.0012 * sc, seed=14)
+    parent_to_bone(fo, rig, "spine_03")
     return o
 
 
