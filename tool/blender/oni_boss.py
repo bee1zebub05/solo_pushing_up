@@ -37,8 +37,10 @@ ONI_BODY = {
     "torso-scale-horiz-incr": 1.0,
     "torso-scale-depth-incr": 0.8,
     "torso-scale-vert-decr": 0.4,
-    "lowerlegs-height-decr": 0.6,
-    "measure-lowerleg-height-decr": 0.5,
+    "lowerlegs-height-decr": 1.0,
+    "measure-lowerleg-height-decr": 0.8,
+    "upperlegs-height-decr": 0.8,
+    "measure-upperleg-height-decr": 0.6,
     "measure-shoulder-dist-incr": 1.0,
     "torso-muscle-pectoral-incr": 1.0,
     "neck-scale-horiz-incr": 1.0,
@@ -275,7 +277,11 @@ def apron(rig, center, rx, ry, waist_z, knee_z, fwd, mat, gold):
     sol.thickness = 0.008 * S
     parent_to_bone(o, rig, "pelvis")
     from mathutils import Matrix
-    front = center + Vector((0, -(ry + 0.03 * S) - 0.1 * S - 0.006 * S, (waist_z + knee_z) / 2 - center.z + 0.04 * S))
+    # Chữ dán đúng mặt tạp dề ở giữa (cùng công thức với lưới trên, u = 0).
+    zk = (waist_z + knee_z) / 2 + 0.04 * S
+    kk = 1 - (waist_z - zk) / (waist_z - knee_z)
+    yk = -(ry + 0.03 * S) * (0.7 + 0.3 * kk) - 0.17 * S * (1 - kk) ** 0.8
+    front = center + Vector((0, yk - 0.008 * S - 0.006 * S, zk - center.z))
     rot = Matrix.Rotation(math.radians(90), 3, "X")
     k = kanji_plate("Oni", "鬼", front, 0.14 * S, gold, rot=rot, depth=0.003 * S)
     k.parent = rig
