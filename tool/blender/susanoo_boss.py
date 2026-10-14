@@ -251,6 +251,39 @@ def totsuka(grip, direction, flat_dir, steel, gold, wrap):
     return out
 
 
+def lightning(name, a, b, mat, seed, jitter=0.12, radius=0.004, branches=2, depth=5):
+    """Tia sét gấp khúc từ [a] đến [b]: dời điểm giữa ngẫu nhiên vuông góc
+    (biên độ giảm nửa mỗi tầng), vài nhánh rẽ ngắn; ống phát sáng mảnh."""
+    rng = random.Random(seed)
+    d = b - a
+    side = d.orthogonal().normalized()
+    side2 = d.normalized().cross(side)
+
+    def bolt(p, q, amp, n):
+        pts = [p, q]
+        for _ in range(n):
+            nxt = [pts[0]]
+            for u, v in zip(pts, pts[1:]):
+                off = (side * rng.uniform(-1, 1) + side2 * rng.uniform(-1, 1)) * amp
+                nxt += [(u + v) / 2 + off, v]
+            pts = nxt
+            amp *= 0.5
+        return pts
+
+    out = []
+    main = bolt(a, b, d.length * jitter, depth)
+    out.append(add_object(name, raw_tube(name, main, [(radius * S,) * 2] * len(main), sides=6), [mat]))
+    for k in range(branches):
+        i = rng.randrange(len(main) // 4, len(main) * 3 // 4)
+        p = main[i]
+        q = p + (d.normalized() * 0.4 + side * rng.uniform(-1, 1) + side2 * rng.uniform(-1, 1)).normalized() \
+            * d.length * rng.uniform(0.15, 0.3)
+        br = bolt(p, q, (q - p).length * jitter, depth - 2)
+        out.append(add_object(f"{name}B{k}", raw_tube(f"{name}B{k}", br, [(radius * 0.6 * S,) * 2] * len(br),
+                                                     sides=5), [mat]))
+    return out
+
+
 def halo(center, normal, up, gold, r=0.55):
     """Vòng hào quang vàng sau lưng: vòng tròn + tia lửa ngắn toả ra."""
     side = up.cross(normal).normalized()
@@ -287,7 +320,7 @@ def build():
     store_point_attr(body, "tattoo", mask)
     hero_muscles(body, co0, rig, k=0.75)
     clay = "--clay" in sys.argv
-    skin = painted_skin("MarbleSkin", "#E6E8EA", "#BCC4CE", tattoo=None if clay else "#6A3AB0", sss=0.25, rough=0.5,
+    skin = painted_skin("MarbleSkin", "#DCE0E4", "#AEB6C2", tattoo=None if clay else "#6A3AB0", sss=0.25, rough=0.5,
                         cavity=("#5C6478", 0.12 * S, 1.0), tattoo_band=0.925, tattoo_attr="tattoo",
                         tattoo_scale=6.0)
     body.data.materials.clear()
@@ -306,7 +339,7 @@ def build():
 
     storm_hair(rig, head_c, up, fwd, right)
     # Mày bạc rậm chau.
-    brow_m = skin_material("SilverBrow", "#E6ECE8", rough=0.5)
+    brow_m = skin_material("SilverBrow", "#AEBCB8", rough=0.5)
     wv = weights_by_group(body)
     mw = body.matrix_world
     face = [mw @ co[i] for i in range(len(co)) if wv[i].get("head", 0) > 0.5 and wv[i].get("HelperGeometry", 0) < 0.5]
@@ -325,7 +358,7 @@ def build():
             # Mày chau: đầu mày trong thấp, đuôi hất lên thái dương như ngọn lửa.
             a = on_skin(c + up * (0.016 + 0.012 * t) * S + side * (0.004 + 0.026 * t) * S)
             tip = on_skin(a + side * 0.022 * S + up * (0.016 + 0.004 * t) * S, lift=0.002) - fwd * 0.004 * S
-            lk.append((a, a.lerp(tip, 0.5) + fwd * 0.003 * S, tip, (0.007 - 0.002 * t) * S))
+            lk.append((a, a.lerp(tip, 0.5) + fwd * 0.003 * S, tip, (0.011 - 0.003 * t) * S))
         o = ribbon_locks(f"Brow{s}", lk, brow_m, flat=1.8, taper=1.0)
         parent_to_bone(o, rig, "head")
     crown(rig, head_c, up, fwd, right, gold, gem, plume)
@@ -390,6 +423,17 @@ def pose(rig, mats):
             + poser.world("middle_03_r", 1.0)) / 4
     flat = fa if abs(fa.dot(blade_dir)) < 0.9 else up
     totsuka(hole, blade_dir, flat, steel, mats["gold"], wrap)
+    # Sét quấn lưỡi kiếm Totsuka (thần bão), vài tia phóng ra từ mũi.
+    bolt_m = glow_material("Bolt", "#6AB0FF", strength=2.2, base="#2E6CFF")
+    guard = hole + blade_dir * 0.07 * S
+    tip = guard + blade_dir * 0.95 * S
+    for k in range(3):
+        lightning(f"BladeBolt{k}", guard.lerp(tip, 0.05 + 0.1 * k), tip + blade_dir * 0.08 * S * k, bolt_m,
+                  seed=31 + k, jitter=0.08, radius=0.005, branches=2)
+    for k in range(2):
+        out_dir = (blade_dir + up * (0.6 - 1.2 * k) + fwd * 0.3).normalized()
+        lightning(f"TipBolt{k}", tip, tip + out_dir * 0.35 * S, bolt_m, seed=41 + k, jitter=0.15, radius=0.0045,
+                  branches=1)
     back = poser.world("spine_03", 0.8) - fwd * 0.22 * S
     halo(back, -fwd, up, mats["gold"], r=0.48)
     # Lửa ma xanh: một ngọn trên lòng bàn tay trái, vài ngọn bay quanh.
