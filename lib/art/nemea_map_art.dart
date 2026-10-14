@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'art_mode.dart';
 import 'vector_style.dart';
 
 /// Kích thước bản đồ Thung lũng Nemea (đơn vị vẽ).
@@ -83,14 +84,17 @@ Path _poly(List<Offset> pts) => Path()..addPolygon(pts, true);
 /// Bản đồ Thung lũng Nemea dựng bằng Blender (tool/blender/nemea_map.py),
 /// nạp khi mở màn chọn màn; chưa có thì vẽ bản vector.
 abstract final class NemeaMapImage {
-  static ui.Image? image;
+  static ui.Image? _image;
   static Future<void>? _loading;
+
+  /// Ảnh đã nạp; chế độ 2.5D ([ArtMode.vector]) luôn null.
+  static ui.Image? get image => ArtModeSetting.blender ? _image : null;
 
   static Future<void> load() => _loading ??= () async {
     try {
       final data = await rootBundle.load('assets/backdrops/nemea_map.webp');
       final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      image = (await codec.getNextFrame()).image;
+      _image = (await codec.getNextFrame()).image;
     } catch (_) {
       // Chưa render: giữ bản vector.
     }

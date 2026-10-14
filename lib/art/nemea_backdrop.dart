@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'art_mode.dart';
 import 'nemea_scene.dart';
 
 /// Phông Thung lũng Nemea dựng bằng Blender (tool/blender/nemea_valley.py):
@@ -28,7 +29,9 @@ abstract final class NemeaBackdrop {
 
   static const _names = ['sky', 'far', 'mid', 'near', 'fg'];
 
-  static bool get ready => _images.length == _names.length;
+  /// Chế độ 2.5D ([ArtMode.vector]) luôn false → sân khấu vẽ bản vector.
+  static bool get ready =>
+      ArtModeSetting.blender && _images.length == _names.length;
 
   static Future<void> load() => _loading ??= _load(_generation);
 

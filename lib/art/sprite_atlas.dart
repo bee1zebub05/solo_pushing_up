@@ -4,6 +4,8 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'art_mode.dart';
+
 /// Một khung trong atlas: vùng ảnh trên trang [page] và vị trí góc trên trái
 /// so với điểm neo, tính bằng đơn vị sân khấu.
 class SpriteFrame {
@@ -35,7 +37,9 @@ class SpriteAtlas {
 
   /// Atlas đã nạp ([load]), hoặc null — không tự nạp: chỉ trận đấu nạp
   /// (BossArt.preload), chân dung ở các màn hình khác vẽ bản vector.
-  static SpriteAtlas? get(String name) => _cache[name];
+  /// Chế độ 2.5D ([ArtMode.vector]) luôn trả null.
+  static SpriteAtlas? get(String name) =>
+      ArtModeSetting.blender ? _cache[name] : null;
 
   static Future<SpriteAtlas?> load(String name) {
     final pending = _loading[name];

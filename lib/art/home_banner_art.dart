@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'art_mode.dart';
 import 'hero_art.dart';
 import 'nemea_scene.dart';
 import 'vector_style.dart';
@@ -71,7 +72,9 @@ abstract final class HomeBannerArt {
     HeroLook look, {
     required bool cloak,
     required bool freed,
-  }) => _assets(look, cloak: cloak, freed: freed).every(_images.containsKey);
+  }) =>
+      ArtModeSetting.blender &&
+      _assets(look, cloak: cloak, freed: freed).every(_images.containsKey);
 
   static final _paint = Paint()..filterQuality = FilterQuality.medium;
 

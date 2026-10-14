@@ -285,3 +285,35 @@ Bước tiếp (cần sửa từng mô hình, không phải bộ lọc):
 3. Nhân vật: phóng đại mạnh (vai, tay, đầu, trang phục to bản, viền màu
    đậm), texture vẽ tay cho áo/da.
 4. Lông/tóc: khối tạc từng lọn thay sợi.
+
+Bước 1 (14/10, phiên sau): `nemea_valley.LUSH` (style_test bật khi
+`--painted`) đổi bảng màu sang đồng cỏ tươi: nền cỏ xanh vàng, đồi ô liu và
+bách xanh đậm hơn, cỏ lông xanh; lối đất trụi chỉ ở lõi dải hành động (thuộc
+tính `scar` ≥ 0,7, màu đất dịu `#A48C68`; ngưỡng 0,35 thì lối phủ gần hết tiền
+cảnh và cam gắt vì bị bão hoà thêm). Đây là thay đổi ĐẦU TIÊN thấy rõ chất
+RoK — xác nhận màu nền mới là đòn bẩy chính, không phải shader. Còn thiếu:
+vách đá vẫn lổn nhổn (bước 2), nhân vật nhỏ và nhạt so với nền (bước 3).
+Chưa đụng bụi Trì Trệ trong game (`NemeaBoss.maxDust = 0.85`): đó là cơ chế
+"thung lũng sạch dần theo máu boss". Người dùng chốt (14/10): KHÔNG hạ
+bụi Trì Trệ — giữ nguyên cơ chế; chất RoK phải đến từ tài nguyên, không từ
+việc bớt bụi.
+
+Áp dụng (14/10): `LUSH = True` mặc định; đã render lại phông trận, bản đồ chọn
+màn (`nemea_map.py` lấy màu cỏ/đất/cây qua `nv.pal`), chụp lại chân dung và
+khung trang chủ (`ART_BAKE=1 flutter test test/art/art_bake_test.dart` rồi
+`python tool/sprites_webp.py --portraits` / `--banner`). Bụi Trì Trệ giữ
+nguyên nên khung trang chủ trước khi giải phóng vẫn xám.
+
+## 9. Công tắc đồ hoạ 2.5D ↔ 3D (14/10/2026)
+
+Trang chủ có mục "Đồ hoạ": **2.5D** = bản vector vẽ bằng code (`lib/art/`,
+phông nhiều lớp parallax), **3D** = tài nguyên Blender (mặc định). Lưu bằng
+SharedPreferences (`art_mode_v1`), nạp trong `main()`.
+
+Cách làm (`lib/art/art_mode.dart`): không rẽ nhánh ở từng hình — các cổng
+nạp tài nguyên Blender (`SpriteAtlas.get`, `NemeaBackdrop.ready`,
+`NemeaMapImage.image`, `HomeBannerArt.ready`, chân dung chụp sẵn trong
+`BossPortrait`) coi như chưa có ảnh khi ở 2.5D, nên mọi hình tự rơi về bản
+vector như lúc thiếu tài nguyên. Hệ quả: code vector KHÔNG còn là tạm — phải
+giữ chạy được; hình mới cần có cả bản vector, hoặc chấp nhận 2.5D vẽ thiếu.
+Test: `test/art/art_mode_test.dart`.

@@ -73,6 +73,28 @@ def _mat(name):
 
 HAZE = "#B4C2D2"
 
+# Bảng màu "đồng cỏ tươi" (thử phong cách painted, rules/dohoa.md mục 8):
+# Mặc định dùng đồng cỏ tươi (14/10); style_test.py đặt LUSH = False cho bản
+# "hiện tại" để so với bản đất khô cũ.
+LUSH = True
+DRY_PALETTE = {
+    "ground": ("#B4966A", "#8C7050"), "ground_patch": "#7E7A3C", "pebble": "#D8CDB6",
+    "grass": [(0.0, "#C8B870"), (0.5, "#9A9A50"), (1.0, "#5E6A34")],
+    "olive_far": ("#7E9256", "#4A5A36"), "cypress": ("#3E5230", "#22301C"),
+    "map_grass": ("#8E9A52", "#B8A866"), "map_dirt": "#A88C62",
+}
+LUSH_PALETTE = {
+    "ground": ("#7A9A48", "#567A34"), "ground_patch": "#A89660", "pebble": "#C9C29A",
+    "path": "#A48C68",
+    "grass": [(0.0, "#D6E07A"), (0.5, "#8CB848"), (1.0, "#4E8030")],
+    "olive_far": ("#8AB04E", "#46702E"), "cypress": ("#3E6A30", "#1E3E1C"),
+    "map_grass": ("#6E9440", "#9CB458"), "map_dirt": "#A48C68",
+}
+
+
+def pal(key):
+    return (LUSH_PALETTE if LUSH else DRY_PALETTE)[key]
+
 
 def finish(mat, nt, bsdf, out, haze=1.0):
     """Phối cảnh không khí: càng xa càng hoà vào màu sương trời (theo khoảng
@@ -123,7 +145,7 @@ def ground_material(name="Dirt", haze=1.0):
     """Đất khô sáng của Argolis: cát nâu vàng, sỏi vôi lốm đốm, vệt cỏ úa."""
     mat, nt, bsdf, out = _mat(name)
     N, L = nt.nodes, nt.links.new
-    tc, _ = noise_color(nt, bsdf, "#B4966A", "#8C7050", 1.4, lo=0.4, hi=0.62)
+    tc, _ = noise_color(nt, bsdf, *pal("ground"), 1.4, lo=0.4, hi=0.62)
     vor = N.new("ShaderNodeTexVoronoi")
     vor.inputs["Scale"].default_value = 26
     L(tc.outputs["Object"], vor.inputs["Vector"])
@@ -144,13 +166,30 @@ def ground_material(name="Dirt", haze=1.0):
     g.data_type = "RGBA"
     L(gm.outputs[0], g.inputs["Factor"])
     L(base, g.inputs[6])
-    g.inputs[7].default_value = srgb("#7E7A3C")
+    g.inputs[7].default_value = srgb(pal("ground_patch"))
     p = N.new("ShaderNodeMix")
     p.data_type = "RGBA"
     L(peb.outputs[0], p.inputs["Factor"])
     L(g.outputs[2], p.inputs[6])
-    p.inputs[7].default_value = srgb("#D8CDB6")
-    L(p.outputs[2], bsdf.inputs["Base Color"])
+    p.inputs[7].default_value = srgb(pal("pebble"))
+    color = p.outputs[2]
+    if LUSH:
+        # Lối đất trụi theo thuộc tính `scar` (lối đi trên dải hành động);
+        # mặt không có thuộc tính này trả 0 → giữ cỏ.
+        sc = N.new("ShaderNodeAttribute")
+        sc.attribute_name = "scar"
+        sm = N.new("ShaderNodeMapRange")
+        sm.interpolation_type = "SMOOTHSTEP"
+        sm.inputs["From Min"].default_value = 0.7
+        sm.inputs["From Max"].default_value = 0.97
+        L(sc.outputs["Fac"], sm.inputs["Value"])
+        d = N.new("ShaderNodeMix")
+        d.data_type = "RGBA"
+        L(sm.outputs[0], d.inputs["Factor"])
+        L(color, d.inputs[6])
+        d.inputs[7].default_value = srgb(pal("path"))
+        color = d.outputs[2]
+    L(color, bsdf.inputs["Base Color"])
     bump = N.new("ShaderNodeBump")
     bump.inputs["Strength"].default_value = 0.5
     bump.inputs["Distance"].default_value = 0.02
@@ -720,12 +759,12 @@ def build():
     bark = bark_material()
     olive = foliage_material("Olive")
     olive_inner = flat_material("OliveInner", "#2E3A24", rough=1)
-    olive_far = foliage_material("OliveFar", lit="#7E9256", dark="#4A5A36", translucent=0.1)
-    cypress_mat = foliage_material("Cypress", lit="#3E5230", dark="#22301C", translucent=0.05)
+    olive_far = foliage_material("OliveFar", *pal("olive_far"), translucent=0.1)
+    cypress_mat = foliage_material("Cypress", *pal("cypress"), translucent=0.05)
     marble = marble_material("TempleMarble", base="#EDE4D0", vein="#C2B8A6", glow_strength=0.0)
     roof_mat = flat_material("RoofTile", "#B4644A", rough=0.8)
     cave_dark = flat_material("CaveDark", "#0C0806", rough=1, haze=0)
-    grass_mat = fur_material("Grass", [(0.0, "#C8B870"), (0.5, "#9A9A50"), (1.0, "#5E6A34")])
+    grass_mat = fur_material("Grass", pal("grass"))
     leaf = leaf_mesh()
 
     # ---- núi xa: dãy núi đá vôi Argolis, xanh mờ trong sương.

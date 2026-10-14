@@ -42,6 +42,7 @@ def finish(scene):
 
 def backdrop():
     import nemea_valley as nv
+    nv.LUSH = PAINTED  # bảng màu đồng cỏ tươi thay đất khô
     scene = begin(64)
     nv.sky_world(scene)
     nv.build()

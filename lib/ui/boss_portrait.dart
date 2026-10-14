@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../art/art_mode.dart';
 import '../art/battle_stage.dart';
 import '../art/bosses/boss_registry.dart';
 import '../game/battle.dart';
@@ -28,7 +29,10 @@ class BossPortrait extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final id = enemy.id;
-    final art = baked.contains(id) ? null : bossArtFor(enemy);
+    // Chế độ 2.5D: kẻ thù nào cũng vẽ bản vector.
+    final art = baked.contains(id) && ArtModeSetting.blender
+        ? null
+        : bossArtFor(enemy);
     return SizedBox.square(
       dimension: size,
       child: ClipOval(

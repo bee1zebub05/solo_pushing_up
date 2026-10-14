@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'art/art_mode.dart';
 import 'ui/home_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ArtModeSetting.load();
   // Cho xoay ngang: phòng nhỏ đôi khi chỉ đặt máy nằm ngang được
   // (review Pushup RPG chê ép xoay camera).
   SystemChrome.setPreferredOrientations([

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../art/art_mode.dart';
 import '../art/bosses/boss_registry.dart';
 import '../art/bosses/nemea_boss.dart' show lionScale, lionX;
 import '../art/hero_art.dart';
@@ -232,6 +233,33 @@ class _HomeScreenState extends State<HomeScreen> {
               _mode == PushupMode.knee
                   ? 'Chống gối · sát thương và XP ×0,7'
                   : 'Push-up chuẩn · sát thương và XP đầy đủ',
+              style: theme.textTheme.bodySmall,
+            ),
+            const GreekHeading('Đồ hoạ'),
+            SegmentedButton<ArtMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ArtMode.vector,
+                  label: Text('2.5D'),
+                  icon: Icon(Icons.brush),
+                ),
+                ButtonSegment(
+                  value: ArtMode.blender,
+                  label: Text('3D'),
+                  icon: Icon(Icons.view_in_ar),
+                ),
+              ],
+              selected: {ArtModeSetting.mode},
+              onSelectionChanged: (s) async {
+                await ArtModeSetting.set(s.single);
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(height: 4),
+            Text(
+              ArtModeSetting.blender
+                  ? 'Dựng 3D bằng Blender · ảnh nét, nặng hơn'
+                  : 'Vẽ vector · nhẹ, phông nhiều lớp parallax',
               style: theme.textTheme.bodySmall,
             ),
             const GreekHeading('Hành trình'),

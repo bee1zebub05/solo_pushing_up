@@ -128,7 +128,7 @@ def grass_material():
     """Đồng cỏ cuối hè Argolis: xanh ô liu xen vàng rơm, lốm đốm đất."""
     mat, nt, bsdf, out = nv._mat("MapGrass")
     N, L = nt.nodes, nt.links.new
-    tc, tex = nv.noise_color(nt, bsdf, "#8E9A52", "#B8A866", 0.18, detail=6, lo=0.4, hi=0.62)
+    tc, tex = nv.noise_color(nt, bsdf, *nv.pal("map_grass"), 0.18, detail=6, lo=0.4, hi=0.62)
     dirt = N.new("ShaderNodeTexNoise")
     dirt.inputs["Scale"].default_value = 1.6
     L(tc.outputs["Object"], dirt.inputs["Vector"])
@@ -141,7 +141,7 @@ def grass_material():
     mix.data_type = "RGBA"
     L(dm.outputs[0], mix.inputs["Factor"])
     L(bsdf.inputs["Base Color"].links[0].from_socket, mix.inputs[6])
-    mix.inputs[7].default_value = srgb("#A88C62")
+    mix.inputs[7].default_value = srgb(nv.pal("map_dirt"))
     # Đá lộ ra ở sườn dốc.
     geo = N.new("ShaderNodeNewGeometry")
     sep = N.new("ShaderNodeSeparateXYZ")
@@ -186,8 +186,8 @@ def build():
     grass = grass_material()
     rock = nv.rock_material("MapRock", haze=0)
     bark = nv.bark_material("MapBark", haze=0)
-    olive = nv.foliage_material("MapOlive", lit="#8A9E5A", dark="#4E6236", haze=0, translucent=0.1)
-    cyp = nv.foliage_material("MapCypress", lit="#3E5230", dark="#22301C", haze=0, translucent=0.05)
+    olive = nv.foliage_material("MapOlive", *nv.pal("olive_far"), haze=0, translucent=0.1)
+    cyp = nv.foliage_material("MapCypress", *nv.pal("cypress"), haze=0, translucent=0.05)
     marble = marble_material("MapMarble", base="#EDE4D0", vein="#C2B8A6", glow_strength=0.0)
     roof = nv.flat_material("MapRoof", "#B4644A", rough=0.8, haze=0)
     dark = nv.flat_material("MapCave", "#0C0806", rough=1, haze=0)
