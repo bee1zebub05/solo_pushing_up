@@ -21,7 +21,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import STILL, ROOT, add_object, add_sun, glow_material, gold_material, parent_to_bone, render_to, \
     reset_scene, skin_material  # noqa: E402
-from hair_kit import hair_material, ribbon_locks, strand_locks  # noqa: E402
+from hair_kit import combed_material, hair_material, ribbon_locks, strand_locks  # noqa: E402
 from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords, shadow_catcher, \
     store_point_attr, tapered_world, weights_by_group  # noqa: E402
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
@@ -110,7 +110,7 @@ def mane(body, co, rig, head_c, up, fwd, right):
     hai vai theo trọng lực (không dựng nhọn); gốc da đầu phủ lông ngắn."""
     from human_kit import shell_copy
     rng = random.Random(4)
-    scalp_m = skin_material("ManeScalp", "#B8B0A4", rough=0.8)
+    scalp_m = combed_material("ManeScalp", "#A89E90", "#EEE8DE", scale=4.5)
     strands = hair_material("ManeHair", "#D8D0C2", "#F2EEE6", "#FFFFFF", rough=0.4)
     scalp = shell_copy(body, "ManeScalp", "scalp", 0.004 * S, 0.0, [scalp_m])
     # Mặt sau thân theo từng tầng cao: tóc rủ bám lưng, không xuyên vai.
@@ -136,14 +136,11 @@ def mane(body, co, rig, head_c, up, fwd, right):
         near = [r for u, r in skull if u.dot(d) > 0.985]
         return max(near) + 0.006 * S if near else R
     guides = []
-    for k in range(260):
-        az = rng.uniform(-math.pi * 0.75, math.pi * 0.75)  # 0 = sau gáy; không mọc trước mặt
-        el = rng.uniform(-0.25, 1.5)
-        d = (back * math.cos(az) + right * math.sin(az)) * math.cos(el) + up * math.sin(el)
-        if d.dot(fwd) > 0.72:  # mọc tới chân tóc, chừa trán
-            continue
+    # Gốc tóc lấy mẫu trên chính các đỉnh da đầu: phủ kín tới chân tóc.
+    roots = [((m @ co[i]) - head_c).normalized() for i in range(len(co)) if w[i].get("scalp", 0) > 0.5]
+    for d in rng.sample(roots, min(320, len(roots))):
         rd = radius(d)
-        lat = math.sin(az) * math.cos(el)  # −1…1: bên phải/trái nhân vật
+        lat = d.dot(right)  # −1…1: bên phải/trái nhân vật
         # Rạp theo mặt sọ: quay dần hướng gốc về sau gáy, sát da đầu.
         nape = (back * 0.85 + right * lat * 0.55 - up * 0.25).normalized()
         pts = []

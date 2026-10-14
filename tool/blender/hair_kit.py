@@ -145,6 +145,42 @@ def hair_material(name, root, mid, tip, sheen=0.08, rough=0.35):
     return mat
 
 
+def combed_material(name, dark, light, scale=4.0, rough=0.45):
+    """Mảng tóc chải bết sát da đầu (vỏ scalp): sọc mảnh chạy trước → sau
+    (dọc trục Y vật thể), méo nhẹ theo nhiễu, có bump — đọc thành tóc dày,
+    không thành mũ trơn dưới lớp sợi."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    N, L = nt.nodes, nt.links.new
+    out = N.new("ShaderNodeOutputMaterial")
+    bsdf = N.new("ShaderNodeBsdfPrincipled")
+    tc = N.new("ShaderNodeTexCoord")
+    wave = N.new("ShaderNodeTexWave")
+    wave.wave_type = "BANDS"
+    wave.bands_direction = "X"
+    wave.inputs["Scale"].default_value = scale
+    wave.inputs["Distortion"].default_value = 2.5
+    wave.inputs["Detail"].default_value = 3
+    L(tc.outputs["Object"], wave.inputs["Vector"])
+    ramp = N.new("ShaderNodeValToRGB")
+    e = ramp.color_ramp.elements
+    e[0].position, e[0].color = 0.25, srgb(dark)
+    e[1].position, e[1].color = 0.85, srgb(light)
+    L(wave.outputs["Fac"], ramp.inputs[0])
+    L(ramp.outputs[0], bsdf.inputs["Base Color"])
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.5
+    L(wave.outputs["Fac"], bump.inputs["Height"])
+    L(bump.outputs[0], bsdf.inputs["Normal"])
+    bsdf.inputs["Roughness"].default_value = rough
+    if "Anisotropic" in bsdf.inputs:
+        bsdf.inputs["Anisotropic"].default_value = 0.6
+    L(bsdf.outputs[0], out.inputs["Surface"])
+    return mat
+
+
 def fan(center, normal, up, n, length, spread_deg, droop, radius):
     """Một nhúm lọn xoè quạt từ [center] theo hướng [normal], cong xuống theo
     trọng lực [droop] — tiện cho bờm, mái, tóc tung bay."""
