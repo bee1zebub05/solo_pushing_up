@@ -741,6 +741,21 @@ def flat_band(name, pts, outs, width, thick, widths=None):
     return mesh
 
 
+def skin_snapper(body, co, fwd, scale, radius=0.008):
+    """Hàm on_skin(a, lift) đưa điểm [a] (thế giới) ra mặt da trước nó theo
+    hướng nhìn [fwd] — cho mày, vạch sơn mặt: tâm mắt helper nằm sâu sau gờ
+    mày nên cộng khoảng cố định hay lọt vào trong trán."""
+    w = weights_by_group(body)
+    m = body.matrix_world
+    face = [m @ co[i] for i in range(len(co)) if w[i].get("head", 0) > 0.5 and w[i].get("HelperGeometry", 0) < 0.5]
+
+    def on_skin(a, lift=0.004):
+        near = [p for p in face if ((p - a) - fwd * (p - a).dot(fwd)).length < radius * scale]
+        return (max(near, key=lambda p: p.dot(fwd)) if near else a) + fwd * lift * scale
+
+    return on_skin
+
+
 def kamon_material(name, base, crest, scale=10.0, sheen=0.5, rough=0.6, trim=None, size=1.0):
     """Vải in hoa văn tròn (kamon / hoa cúc tròn) rải đều: ô Voronoi, mỗi ô
     một vòng tròn [crest] có cánh hoa (sóng quanh tâm)."""

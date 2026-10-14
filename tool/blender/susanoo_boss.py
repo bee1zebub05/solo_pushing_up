@@ -28,6 +28,7 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
     store_point_attr, tapered_world, weights_by_group  # noqa: E402
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, hero_muscles, limb_band, painted_skin, silk_material  # noqa: E402
+from japan_kit import skin_snapper  # noqa: E402
 
 S = 1.25
 
@@ -340,14 +341,7 @@ def build():
     storm_hair(rig, head_c, up, fwd, right)
     # Mày bạc rậm chau.
     brow_m = skin_material("SilverBrow", "#AEBCB8", rough=0.5)
-    wv = weights_by_group(body)
-    mw = body.matrix_world
-    face = [mw @ co[i] for i in range(len(co)) if wv[i].get("head", 0) > 0.5 and wv[i].get("HelperGeometry", 0) < 0.5]
-
-    def on_skin(a, lift=0.004):
-        """Điểm trên da trước [a] theo hướng nhìn (gờ mày nằm trước tâm mắt)."""
-        near = [p for p in face if ((p - a) - fwd * (p - a).dot(fwd)).length < 0.008 * S]
-        return (max(near, key=lambda p: p.dot(fwd)) if near else a) + fwd * lift * S
+    on_skin = skin_snapper(body, co, fwd, S)
 
     for g, s in (("helper-l-eye", 1), ("helper-r-eye", -1)):
         c = group_center(body, g, co)

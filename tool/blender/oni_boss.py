@@ -27,7 +27,7 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import flat_band  # noqa: E402
+from japan_kit import flat_band, skin_snapper  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ lùn bè, ~2,3 m
@@ -69,8 +69,8 @@ ONI_BODY = {
     "expression/units/asian/mouth-corner-puller": 0.8,
     "expression/units/asian/nose-left-elevation": 0.5,
     "expression/units/asian/nose-right-elevation": 0.5,
-    "expression/units/asian/eye-left-opened-up": 0.5,
-    "expression/units/asian/eye-right-opened-up": 0.5,
+    "expression/units/asian/eye-left-opened-up": 0.9,
+    "expression/units/asian/eye-right-opened-up": 0.9,
     "eyebrows-trans-down": 0.7,
     "eyebrows-angle-down": 0.8,
     "measure-upperarm-circ-incr": 1.0,
@@ -80,6 +80,9 @@ ONI_BODY = {
 for s_ in ("l", "r"):
     ONI_BODY.update({
         f"{s_}-cheek-volume-incr": 1.0,
+        f"{s_}-eye-scale-incr": 1.0,  # mắt to trợn như mặt nạ Hannya
+        f"{s_}-eye-height2-incr": 0.8,
+        f"{s_}-eye-corner2-up": 0.6,
         f"{s_}-cheek-bones-incr": 0.4,
         f"{s_}-upperarm-shoulder-muscle-incr": 1.0,
         f"{s_}-upperarm-muscle-incr": 1.0,
@@ -170,16 +173,18 @@ def mane(body, co, rig, head_c, up, fwd, right):
 def brows(body, co, rig, up, fwd, right):
     """Mày trắng rậm chau xuống (lọn dẹt hất ra ngoài)."""
     white = skin_material("BrowWhite", "#F2EEE6", rough=0.6)
+    on_skin = skin_snapper(body, co, fwd, S)
     out = []
     for g, s in (("helper-l-eye", 1), ("helper-r-eye", -1)):
         c = group_center(body, g, co)
         side = -right if s > 0 else right  # helper-l-eye là mắt trái nhân vật
         locks = []
-        for k in range(6):
-            t = k / 5
-            a = c + up * (0.024 + 0.006 * t) * S + fwd * 0.012 * S + side * (0.004 + 0.03 * t) * S
-            tip = a + side * 0.045 * S + up * (0.03 - 0.012 * t) * S - fwd * 0.01 * S
-            locks.append((a, a.lerp(tip, 0.5) + up * 0.008 * S, tip, 0.009 * S))
+        for k in range(8):
+            t = k / 7
+            # Gốc bám gờ mày: đầu trong thấp chau, đuôi hất lên thái dương như lửa.
+            a = on_skin(c + up * (0.018 + 0.014 * t) * S + side * (0.002 + 0.032 * t) * S, lift=0.002)
+            tip = a + side * (0.02 + 0.015 * t) * S + up * (0.012 + 0.03 * t) * S + fwd * 0.006 * S
+            locks.append((a, a.lerp(tip, 0.5) + fwd * 0.006 * S, tip, (0.012 - 0.003 * t) * S))
         o = ribbon_locks(f"Brow{s}", locks, white, flat=2.0, taper=1.0)
         parent_to_bone(o, rig, "head")
         out.append(o)
