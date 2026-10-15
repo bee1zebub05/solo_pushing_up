@@ -13,10 +13,18 @@ from mathutils import Matrix, Vector
 from boss_kit import add_object, parent_to_bone, srgb
 
 
+_WEIGHTS = {}
+
+
 def weights_by_group(obj):
-    """[{tên nhóm: trọng số}] cho từng đỉnh."""
-    names = {g.index: g.name for g in obj.vertex_groups}
-    return [{names[g.group]: g.weight for g in v.groups} for v in obj.data.vertices]
+    """[{tên nhóm: trọng số}] cho từng đỉnh. Nhớ đệm theo (tên, số đỉnh, số
+    nhóm) — lưới người đã chia dày gọi hàng trăm lần khi khắc chi tiết."""
+    key = (obj.name, len(obj.data.vertices), len(obj.vertex_groups))
+    if key not in _WEIGHTS:
+        names = {g.index: g.name for g in obj.vertex_groups}
+        _WEIGHTS.clear()
+        _WEIGHTS[key] = [{names[g.group]: g.weight for g in v.groups} for v in obj.data.vertices]
+    return _WEIGHTS[key]
 
 
 def group_center(body, name, co):

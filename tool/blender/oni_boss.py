@@ -27,7 +27,7 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import flat_band, skin_snapper  # noqa: E402
+from japan_kit import conform_outside, densify, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ lùn bè, ~2,3 m
@@ -35,7 +35,6 @@ S = 1.45  # khổng lồ lùn bè, ~2,3 m
 ONI_BODY = {
     "stomach-pregnant-incr": 1.0,
     "stomach-navel-out": 0.6,
-    "torso-muscle-dorsi-incr": 1.0,
     "torso-scale-horiz-incr": 1.0,
     "torso-scale-depth-incr": 0.8,
     "torso-scale-vert-decr": 0.4,
@@ -51,7 +50,7 @@ ONI_BODY = {
     "chin-width-incr": 0.9,
     "chin-prominent-incr": 0.6,
     "head-square": 0.5,
-    "head-fat-incr": 1.0,
+    "head-fat-incr": 0.4,
     "neck-double-incr": 1.0,
     "mouth-scale-horiz-incr": 1.0,
     "mouth-upperlip-volume-incr": 1.0,
@@ -67,23 +66,46 @@ ONI_BODY = {
     "expression/units/asian/mouth-open": 0.6,
     "expression/units/asian/mouth-upward-retraction": 0.9,
     "expression/units/asian/mouth-corner-puller": 0.8,
-    "expression/units/asian/nose-left-elevation": 0.5,
-    "expression/units/asian/nose-right-elevation": 0.5,
-    "expression/units/asian/eye-left-opened-up": 0.9,
-    "expression/units/asian/eye-right-opened-up": 0.9,
+    "expression/units/asian/nose-left-elevation": 0.8,
+    "expression/units/asian/nose-right-elevation": 0.8,
+    "expression/units/asian/nose-compression": 0.6,
+    # Mắt gườm: mày sụp đè mí trên, mí dưới nheo — không trợn tròn.
+    "expression/units/asian/eye-left-opened-up": 0.3,
+    "expression/units/asian/eye-right-opened-up": 0.3,
+    "expression/units/asian/eye-left-slit": 0.35,
+    "expression/units/asian/eye-right-slit": 0.35,
+    "expression/units/asian/eyebrows-left-down": 0.9,
+    "expression/units/asian/eyebrows-right-down": 0.9,
     "eyebrows-trans-down": 0.7,
     "eyebrows-angle-down": 0.8,
+    "eyebrows-trans-forward": 1.0,
+    "forehead-trans-forward": 0.5,
+    "head-age-incr": 0.6,
+    "nose-hump-incr": 0.5,
+    "nose-nostrils-width-incr": 1.0,
+    # Thân võ sĩ sumo: ngực nặng xệ, eo – hông – cổ to, mỡ trùm bắp tay.
+    "measure-bust-circ-incr": 1.0,
+    "measure-frontchest-dist-incr": 0.7,
+    "measure-underbust-circ-incr": 1.0,
+    "breast-volume-vert-down": 1.0,
+    "breast-trans-down": 0.6,
+    "breast-dist-incr": 0.5,
+    "measure-waist-circ-incr": 1.0,
+    "measure-hips-circ-incr": 0.7,
+    "measure-neck-circ-incr": 1.0,
+    "neck-back-scale-depth-incr": 0.8,
     "measure-upperarm-circ-incr": 1.0,
     "measure-thigh-circ-incr": 1.0,
     "measure-calf-circ-incr": 0.8,
+    "measure-ankle-circ-incr": 0.6,
 }
 for s_ in ("l", "r"):
     ONI_BODY.update({
-        f"{s_}-cheek-volume-incr": 1.0,
+        f"{s_}-cheek-volume-incr": 0.2,
         f"{s_}-eye-scale-incr": 1.0,  # mắt to trợn như mặt nạ Hannya
         f"{s_}-eye-height2-incr": 0.8,
         f"{s_}-eye-corner2-up": 0.6,
-        f"{s_}-cheek-bones-incr": 0.4,
+        f"{s_}-cheek-bones-incr": 1.0,
         f"{s_}-upperarm-shoulder-muscle-incr": 1.0,
         f"{s_}-upperarm-muscle-incr": 1.0,
         f"{s_}-upperarm-scale-horiz-incr": 1.0,
@@ -97,6 +119,10 @@ for s_ in ("l", "r"):
         f"{s_}-lowerleg-scale-vert-decr": 0.5,
         f"{s_}-lowerleg-scale-horiz-incr": 0.6,
         f"{s_}-foot-scale-incr": 0.6,
+        f"{s_}-foot-scale-horiz-incr": 0.8,  # bàn chân bè đỡ khối nặng
+        f"{s_}-upperarm-fat-incr": 0.6,
+        f"{s_}-lowerarm-fat-incr": 0.25,
+        f"{s_}-eye-bag-incr": 0.6,
     })
 
 
@@ -424,58 +450,417 @@ def pelt(body, co, rig, mat, tuck_z):
     taper = [min(1.0, 0.3 + 0.7 * min(i, nn - 1 - i) / (nn * 0.22)) for i in range(nn)]
     m = body.matrix_world
     m3 = m.to_3x3().normalized()
-    wpts = [m @ q for q in pts]
-    wouts = [(m3 @ o_).normalized() for o_ in outs]
     sc = m.to_scale().x
-    o = add_object("TigerPelt", flat_band("TigerPelt", wpts, wouts, 0.1 * sc, 0.007 * sc, widths=taper), [mat])
+    # Dày đường gấp ba (tấm da ôm cong theo vai), mỗi hàng chia 9 đỉnh theo
+    # bề ngang: sau khi tạo dáng conform_outside ép từng đỉnh bám mặt da,
+    # tấm dẹt một dải cứng thì hai mép cắm vào ngực.
+    wp, wo, wt = [], [], []
+    for i in range(nn - 1):
+        for k in range(3):
+            t = k / 3
+            wp.append(m @ pts[i].lerp(pts[i + 1], t))
+            wo.append((m3 @ outs[i].lerp(outs[i + 1], t)).normalized())
+            wt.append(taper[i] + (taper[i + 1] - taper[i]) * t)
+    wp.append(m @ pts[-1])
+    wo.append((m3 @ outs[-1]).normalized())
+    wt.append(taper[-1])
+    cols = 9
+    verts, faces = [], []
+    n = len(wp)
+    for i in range(n):
+        tan = (wp[min(i + 1, n - 1)] - wp[max(i - 1, 0)]).normalized()
+        o_ = (wo[i] - tan * wo[i].dot(tan)).normalized()
+        side = o_.cross(tan).normalized()
+        for c in range(cols):
+            u = c / (cols - 1) * 2 - 1
+            verts.append(wp[i] + side * u * 0.11 * sc * wt[i])
+    for i in range(n - 1):
+        for c in range(cols - 1):
+            faces.append((i * cols + c, i * cols + c + 1, (i + 1) * cols + c + 1, (i + 1) * cols + c))
+    mesh = bpy.data.meshes.new("TigerPelt")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    # Pháp tuyến quay ra ngoài thân (Solidify đắp dày ra phía ngoài).
+    if mesh.polygons[len(faces) // 2].normal.dot(wo[n // 2]) < 0:
+        mesh.flip_normals()
+    o = add_object("TigerPelt", mesh, [mat])
+    o["cols"] = cols
+    sol = o.modifiers.new("Thick", "SOLIDIFY")
+    sol.thickness = 0.008 * sc
+    sol.offset = 1.0
+    o.modifiers.new("Smooth", "SUBSURF").levels = 1
     parent_to_bone(o, rig, "spine_03")
-    # Viền lông tua ra hai mép (da thú, không phải vải): lọn ngắn chĩa ra
-    # ngoài mép rồi rủ theo trọng lực.
+    return o
+
+
+def pelt_fur(o, rig):
+    """Viền lông tua ra hai mép tấm da (da thú, không phải vải): lọn ngắn chĩa
+    ra ngoài mép rồi rủ theo trọng lực. Gọi SAU conform_outside — dựng theo
+    mép đã bám da trong dáng thật, đổi về toạ độ nghỉ rồi gắn xương."""
+    cols = o["cols"]
+    mw = o.matrix_world
+    vs = [mw @ v.co for v in o.data.vertices]
+    rows = len(vs) // cols
+    sc = rig.matrix_world.to_scale().x
     rng = random.Random(12)
     fur = hair_material("PeltFur", "#9A5A1A", "#D88A30", "#F0C080", rough=0.5)
     guides = []
-    for i in range(len(wpts)):
-        nb = len(wpts)
-        tan = (wpts[min(i + 1, nb - 1)] - wpts[max(i - 1, 0)]).normalized()
-        o_ = (wouts[i] - tan * wouts[i].dot(tan)).normalized()
-        side = o_.cross(tan).normalized()
-        for sg in (-1, 1):
-            edge = wpts[i] + side * sg * 0.1 * sc * taper[i]
-            out_d = (side * sg * 0.7 + o_ * 0.3).normalized()
-            ln = rng.uniform(0.025, 0.045) * sc
-            g = [edge - side * sg * 0.008 * sc]
+    for i in range(rows):
+        for c, nb in ((0, 1), (cols - 1, cols - 2)):
+            edge = vs[i * cols + c]
+            out_d = (edge - vs[i * cols + nb]).normalized()
+            ln = rng.uniform(0.022, 0.04) * sc
+            g = [edge - out_d * 0.006 * sc]
             for j in range(1, 5):
                 t = j / 4
                 g.append(edge + out_d * ln * t + Vector((0, 0, -1)) * ln * 0.6 * t * t)
             guides.append(g)
     fo = strand_locks("PeltFur", guides, fur, per_lock=30, spread=0.012 * sc, clump=0.3, frizz=0.004 * sc,
                       root_radius=0.0012 * sc, seed=14)
-    parent_to_bone(fo, rig, "spine_03")
-    return o
+    # Lông dựng theo toạ độ thế giới của dáng hiện tại: gắn xương theo ma
+    # trận xương ĐANG tạo dáng (parent_to_bone tính theo dáng nghỉ).
+    from mathutils import Matrix
+    pb = rig.pose.bones["spine_03"]
+    fo.parent = rig
+    fo.parent_type = "BONE"
+    fo.parent_bone = "spine_03"
+    fo.matrix_parent_inverse = (rig.matrix_world @ pb.matrix @ Matrix.Translation((0, pb.length, 0))).inverted()
+    return fo
+
+
+def local_center(body, co, group):
+    w = weights_by_group(body)
+    pts = [co[i] for i in range(len(co)) if w[i].get(group, 0) > 0.5]
+    return sum(pts, Vector()) / len(pts), pts
+
+
+def face_front(body, co):
+    """Hàm fy(x, z): y mặt da trước nhất của đầu tại (x, z) — toạ độ nghỉ cục bộ."""
+    w = weights_by_group(body)
+    head = [co[i] for i in range(len(co)) if w[i].get("head", 0) > 0.5 and w[i].get("HelperGeometry", 0) < 0.5
+            and w[i].get("JointCubes", 0) < 0.5]
+
+    def fy(x, z, r=0.004):
+        ys = [p.y for p in head if abs(p.x - x) < r and abs(p.z - z) < r]
+        return min(ys) if ys else None
+
+    def on(x, z):
+        y = fy(x, z) or fy(x, z, 0.008)
+        return Vector((x, y, z))
+
+    return on
+
+
+def sculpt_face(body, co):
+    """Mặt riêng của Shuten-dōji, khắc thẳng lên da (shape key): gờ mày nhô
+    thành mái che hốc mắt sâu, hai rãnh cau dọc giữa mày, ba nếp nhăn ngang
+    trán, sống mũi nhăn kiểu gầm gừ, rãnh mũi–má sâu, gò má và cơ hàm bạnh,
+    nếp chân chim — phá nét mặt người mẫu chung của MPFB."""
+    on = face_front(body, co)
+    eye, _ = local_center(body, co, "helper-l-eye")
+    xe, ze = abs(eye.x), eye.z
+    lips, lip_pts = local_center(body, co, "lips")
+    zm = lips.z
+    xm = max(abs(p.x) for p in lip_pts)
+    for s in (-1, 1):
+        # Mái mày: khối nhô trên hốc mắt, đầu trong thấp sát sống mũi.
+        inflate(body, co, on(s * xe * 0.95, ze + 0.02), (0.028, 0.03, 0.012), 0.014, name=f"BrowShelf{s}",
+                front_only=False)
+        inflate(body, co, on(s * xe * 0.45, ze + 0.012), (0.012, 0.03, 0.01), 0.008, name=f"BrowKnot{s}",
+                front_only=False)
+        # Hốc mắt sâu dưới mái mày.
+        inflate(body, co, on(s * xe, ze + 0.006), (0.018, 0.02, 0.007), -0.007, name=f"Socket{s}",
+                front_only=False)
+        # Rãnh cau dọc giữa hai mày.
+        ridge(body, co, [on(s * 0.006, ze - 0.002), on(s * 0.007, ze + 0.016), on(s * 0.005, ze + 0.034)],
+              0.003, -0.0045, f"Frown{s}")
+        # Rãnh mũi–má: từ cánh mũi vòng xuống ngoài khoé miệng.
+        ridge(body, co, [on(s * (xm * 0.62), zm + 0.03), on(s * (xm * 0.95), zm + 0.014),
+                         on(s * (xm * 1.12), zm - 0.004), on(s * (xm * 1.08), zm - 0.024)],
+              0.006, -0.01, f"Nasolabial{s}")
+        inflate(body, co, on(s * (xm * 1.35), zm + 0.012), (0.018, 0.03, 0.02), 0.007, name=f"CheekMass{s}",
+                front_only=False)
+        inflate(body, co, on(s * (xe * 1.35), ze - 0.022), (0.018, 0.03, 0.011), 0.009, name=f"Zygoma{s}",
+                front_only=False)
+        # Nếp dưới mí dưới và chân chim đuôi mắt.
+        ridge(body, co, [on(s * (xe - 0.013), ze - 0.013), on(s * xe, ze - 0.019), on(s * (xe + 0.015), ze - 0.014)],
+              0.003, -0.0035, f"UnderEye{s}")
+        for k, dz in enumerate((-0.006, 0.0, 0.007)):
+            ridge(body, co, [on(s * (xe + 0.02), ze + dz * 0.4), on(s * (xe + 0.032), ze + dz * 1.3)],
+                  0.002, -0.0025, f"Crow{s}{k}")
+        # Cơ hàm bạnh dưới gò má.
+        inflate(body, co, Vector((s * (xm * 1.9), on(s * xm * 1.9, zm - 0.012).y, zm - 0.012)), (0.02, 0.04, 0.03),
+                0.007, name=f"Masseter{s}", front_only=False)
+    inflate(body, co, on(0.0, ze + 0.008), (0.006, 0.02, 0.008), 0.003, name="Procerus", front_only=False)
+    # Mũi củ của gã nghiện rượu (Shuten-dōji = "đồng tử say"): đầu mũi tròn
+    # to, hai cánh mũi phồng.
+    tip = min((p for p in co if abs(p.x) < 0.004 and zm < p.z < ze), key=lambda p: p.y)
+    inflate(body, co, tip + Vector((0, 0.004, -0.002)), (0.013, 0.014, 0.012), 0.009, name="NoseBulb",
+            front_only=False)
+    for s in (-1, 1):
+        inflate(body, co, tip + Vector((s * 0.016, 0.012, -0.008)), (0.009, 0.012, 0.008), 0.005,
+                name=f"NoseWing{s}", front_only=False)
+    # Sẹo chém dọc qua mắt trái (nửa mặt hướng về người chơi): gờ thịt lồi.
+    scar = [on(xe * 0.8, ze + 0.05), on(xe * 1.0, ze + 0.022), on(xe * 1.15, ze - 0.02), on(xe * 1.3, ze - 0.05)]
+    ridge(body, co, scar, 0.005, 0.004, "Scar", ends=0.15)
+    # Ba nếp nhăn ngang trán, cong võng xuống giữa.
+    for k in range(3):
+        z0 = ze + 0.036 + k * 0.011
+        ridge(body, co, [on(x, z0 - 0.007 * (x / 0.045) ** 2 * (-1) - 0.004) for x in
+                         (-0.045, -0.03, -0.015, 0.0, 0.015, 0.03, 0.045)], 0.003, -0.0035, f"Forehead{k}")
+    # Sống mũi nhăn ngang khi gầm.
+    for k in range(3):
+        z0 = ze - 0.006 - k * 0.006
+        ridge(body, co, [on(-0.011, z0 + 0.002), on(0.0, z0 - 0.001), on(0.011, z0 + 0.002)], 0.0022, -0.003,
+              f"NoseWrinkle{k}")
+    return xe, ze
+
+
+def face_paint(body, co):
+    """Thuộc tính `flush` (đỏ rượu ửng mũi, gò má) và `scar` (sẹo nhạt màu
+    thịt non, theo đúng đường gờ sẹo của sculpt_face)."""
+    on = face_front(body, co)
+    eye, _ = local_center(body, co, "helper-l-eye")
+    xe, ze = abs(eye.x), eye.z
+    lips, _ = local_center(body, co, "lips")
+    w = weights_by_group(body)
+    tip = min((p for p in co if abs(p.x) < 0.004 and lips.z < p.z < ze), key=lambda p: p.y)
+    scar = [on(xe * 0.8, ze + 0.05), on(xe * 1.0, ze + 0.022), on(xe * 1.15, ze - 0.02), on(xe * 1.3, ze - 0.05)]
+    flush, sc = [], []
+    for i, p in enumerate(co):
+        if w[i].get("head", 0) < 0.5 or p.y > tip.y + 0.06:
+            flush.append(0.0)
+            sc.append(0.0)
+            continue
+        f = math.exp(-((p - tip).length / 0.02) ** 2)
+        for s in (-1, 1):
+            c = Vector((s * xe * 1.4, p.y, ze - 0.03))
+            f = max(f, 0.6 * math.exp(-((p.x - c.x) ** 2 + (p.z - c.z) ** 2) / 0.022 ** 2))
+        flush.append(f)
+        d = min(((p - a) - (b - a) * max(0.0, min(1.0, (p - a).dot(b - a) / (b - a).length_squared))).length
+                for a, b in zip(scar, scar[1:]))
+        sc.append(math.exp(-(d / 0.0038) ** 2))
+    store_point_attr(body, "flush", flush)
+    store_point_attr(body, "scar", sc)
+
+
+def kumadori(body, co):
+    """Thuộc tính `kuma` 0…1: quầng sơn đỏ thẫm quanh hốc mắt, vệt đuôi mắt
+    hất lên thái dương (vẽ mặt kumadori vai ác) — ánh mắt sắc, có khung."""
+    w = weights_by_group(body)
+    vals = [0.0] * len(co)
+    for g, s in (("helper-l-eye", 1), ("helper-r-eye", -1)):
+        c, _ = local_center(body, co, g)
+        for i, p in enumerate(co):
+            gw = w[i]
+            if gw.get("head", 0) < 0.5 or gw.get("HelperGeometry", 0) > 0.5 or p.y > c.y + 0.004:
+                continue
+            dx, dz = (p.x - c.x) * s, p.z - (c.z + 0.002)
+            ring = math.exp(-((dx / 0.026) ** 2 + (dz / 0.017) ** 2) ** 2 * 1.0)
+            # Vệt hất từ đuôi mắt lên thái dương, thuôn nhọn.
+            t = (dx - 0.012) / 0.03
+            flick = 0.0
+            if 0 <= t <= 1:
+                zl = 0.002 + t * 0.022
+                flick = math.exp(-((dz - zl) / (0.007 * (1 - t) + 0.0015)) ** 2)
+            vals[i] = max(vals[i], min(1.0, ring * 1.1), flick)
+    store_point_attr(body, "kuma", [v * 0.95 for v in vals])
+
+
+TORSO = ("pelvis", "spine_01", "spine_02", "spine_03")
+
+
+def body_detail(body, co, rig):
+    """Thớ cơ, gân xanh, khối mỡ và cổ chân – bàn chân (shape key, toạ độ
+    nghỉ cục bộ): ngực võ sĩ sumo nặng xệ có nếp dưới, ngấn hông, gân xanh
+    cẳng tay – bắp tay – mu bàn tay, thớ cơ delta, bắp chân hai đầu, gân
+    Achilles, mắt cá, gân mu bàn chân, khớp ngón chân."""
+    bl = rig.data.bones
+    w = weights_by_group(body)
+
+    def pt(bone, u, ang, out=0.2):
+        """Điểm da quanh xương [bone] ở tỉ lệ [u], góc [ang]° (0 trước, 90 ngoài thân)."""
+        b = bl[bone]
+        h, t = b.head_local, b.tail_local
+        a = (t - h).normalized()
+        f = Vector((0, -1, 0))
+        f = (f - a * f.dot(a)).normalized()
+        o = Vector((1 if h.x >= 0 else -1, 0, 0))
+        lat = a.cross(f)
+        if lat.dot(o) < 0:
+            lat = -lat
+        r = math.radians(ang)
+        return snap_rest(body, co, h.lerp(t, u) + (f * math.cos(r) + lat * math.sin(r)) * out)
+
+    zc = bl["spine_03"].head_local.z + 0.02
+    # Eo béo liền khối với bụng: mỡ phủ kín hai sườn và lưng dưới từ dưới
+    # ngực xuống đai (bỏ dáng chữ V cơ lưng xô), ngấn mỡ chờm trên đai.
+    z_lo = bl["pelvis"].head_local.z + 0.05
+    z_hi = zc - 0.02
+    torso_pts = [(i, p) for i, p in enumerate(co)
+                 if sum(w[i].get(k, 0) for k in TORSO) > 0.5 and w[i].get("HelperGeometry", 0) < 0.5]
+    for k in range(5):
+        z = z_lo + (z_hi - z_lo) * k / 4
+        band = [p for _, p in torso_pts if abs(p.z - z) < 0.015]
+        if not band:
+            continue
+        cy = (min(p.y for p in band) + max(p.y for p in band)) / 2
+        amt = 0.08 * (1 - 0.4 * k / 4)  # dày nhất ở eo, mỏng dần lên ngực
+        for sx in (-1, 1):
+            xs = max(p.x * sx for p in band)
+            inflate(body, co, Vector((sx * xs, cy + 0.01, z)), (0.09, 0.16, 0.08), amt, name=f"FlankFat{k}{sx}",
+                    front_only=False, groups=TORSO)
+        yb = max(p.y for p in band)
+        yf = min(p.y for p in band)
+        if k >= 2:  # bụng trên dưới ngực: mỡ phủ mất múi cơ, nối ngực xuống bụng
+            inflate(body, co, Vector((0, yf, z)), (0.16, 0.08, 0.06), amt * 0.8, name=f"UpperGut{k}",
+                    front_only=False, groups=TORSO)
+        inflate(body, co, Vector((0, yb, z)), (0.14, 0.07, 0.07), amt * 0.7, name=f"BackFat{k}",
+                front_only=False, groups=TORSO)
+    # Ngấn mỡ chờm qua đai: cuộn lồi ở sườn – lưng, rãnh gấp ngay dưới.
+    zr = z_lo + 0.03
+    band = [p for _, p in torso_pts if abs(p.z - zr) < 0.015]
+    cx = 0.0
+    cy = (min(p.y for p in band) + max(p.y for p in band)) / 2
+    roll, crease = [], []
+    for a in range(-110, 111, 10):  # 0° = sau lưng, ±90° = hai sườn
+        d = Vector((math.sin(math.radians(a)), math.cos(math.radians(a)), 0))
+        q = max(band, key=lambda p: (p - Vector((cx, cy, p.z))).normalized().dot(d))
+        roll.append(snap_rest(body, co, Vector((q.x, q.y, zr + 0.02))))
+        crease.append(snap_rest(body, co, Vector((q.x, q.y, zr - 0.012))))
+    ridge(body, co, roll, 0.028, 0.03, "WaistRoll", groups=TORSO, ends=0.1)
+    ridge(body, co, crease, 0.008, -0.014, "WaistCrease", groups=TORSO, ends=0.1)
+    for sx in (-1, 1):
+        s_ = "l" if sx > 0 else "r"
+        x = 0.1 * sx
+        fy = min(p.y for p in co if abs(p.x - x) < 0.03 and abs(p.z - zc) < 0.03)
+        # Ngực nặng xệ: khối lớn thấp, nếp gấp dưới ngực sâu.
+        inflate(body, co, Vector((x, fy, zc - 0.04)), (0.12, 0.1, 0.1), 0.075, name=f"PecMass{sx}",
+                front_only=False, groups=TORSO)
+        fold = [snap_rest(body, co, Vector((sx * xx, fy, zc - 0.1 - 0.03 * (xx - 0.09) ** 2 / 0.01)))
+                for xx in (0.02, 0.06, 0.1, 0.14, 0.17)]
+        ridge(body, co, fold, 0.008, -0.012, f"PecFoldDeep{sx}", groups=TORSO)
+        # Gân xanh cẳng tay (mặt trong) và bắp tay trước, rẽ nhánh.
+        ridge(body, co, [pt(f"lowerarm_{s_}", u, -35 + 25 * u) for u in (0.08, 0.3, 0.55, 0.8, 0.95)],
+              0.005, 0.0035, f"VeinFore{s_}", groups=(f"lowerarm_{s_}", f"hand_{s_}"), ends=0.1)
+        ridge(body, co, [pt(f"lowerarm_{s_}", u, -35 + 60 * (u - 0.3)) for u in (0.3, 0.5, 0.7)],
+              0.004, 0.0028, f"VeinFore2{s_}", groups=(f"lowerarm_{s_}",))
+        ridge(body, co, [pt(f"upperarm_{s_}", u, 15) for u in (0.35, 0.6, 0.85, 1.0)],
+              0.005, 0.003, f"VeinBicep{s_}", groups=(f"upperarm_{s_}", f"lowerarm_{s_}"))
+        # Thớ cơ delta: rãnh mảnh toả từ điểm bám giữa bắp tay lên mỏm vai.
+        for k, ang in enumerate((25, 60, 95, 130)):
+            ridge(body, co, [pt(f"upperarm_{s_}", 0.42, 70), pt(f"upperarm_{s_}", 0.2, ang),
+                             pt(f"upperarm_{s_}", 0.04, ang)], 0.0035, -0.0025, f"DeltFiber{s_}{k}",
+                  groups=(f"upperarm_{s_}", f"clavicle_{s_}"))
+        # Gân mu bàn tay.
+        for k, f in enumerate(("index", "middle", "ring", "pinky")):
+            a = snap_rest(body, co, bl[f"hand_{s_}"].head_local.lerp(bl[f"{f}_01_{s_}"].head_local, 0.15)
+                          + Vector((0, 0, 0.02)))
+            b = snap_rest(body, co, bl[f"{f}_01_{s_}"].head_local + Vector((0, 0, 0.012)))
+            ridge(body, co, [a, b], 0.003, 0.0018, f"HandTendon{s_}{k}", groups=(f"hand_{s_}",))
+        # Bắp chân: hai đầu cơ sinh đôi, cơ chày trước, gân Achilles, mắt cá.
+        muscle_bulge(body, co, rig, f"calf_{s_}", [
+            (0.28, 0.17, 145, 38, 0.03),     # đầu ngoài cơ sinh đôi
+            (0.3, 0.17, -150, 38, 0.034),    # đầu trong, thấp hơn chút
+            (0.3, 0.3, 180, 8, -0.008),      # rãnh giữa hai đầu
+            (0.35, 0.28, 25, 22, 0.012),     # cơ chày trước
+            (0.4, 0.3, 0, 8, -0.006),        # sống ống chân
+            (0.86, 0.1, 180, 16, 0.013),     # gân Achilles
+            (0.84, 0.1, 140, 18, -0.008),    # hõm hai bên gân
+            (0.84, 0.1, -140, 18, -0.008),
+            (0.96, 0.05, 95, 28, 0.016),     # mắt cá ngoài
+            (0.93, 0.05, -95, 28, 0.014),    # mắt cá trong, cao hơn
+        ], f"Calf{s_}", min_w=0.25)
+        # Gân mu bàn chân từ cổ chân xoè tới gốc từng ngón; khớp ngón nổi.
+        ank = local_center(body, co, f"joint-{s_}-ankle")[0]
+        top = snap_rest(body, co, ank + Vector((0, -0.05, 0.0)))
+        for k in range(1, 6):
+            tb = local_center(body, co, f"joint-{s_}-toe-{k}-1")[0]
+            tb = snap_rest(body, co, tb + Vector((0, 0, 0.02)))
+            mid = snap_rest(body, co, top.lerp(tb, 0.5) + Vector((0, 0, 0.03)))
+            ridge(body, co, [top, mid, tb], 0.0045 if k > 1 else 0.006, 0.0038 if k > 1 else 0.005,
+                  f"FootTendon{s_}{k}", groups=(f"foot_{s_}", f"ball_{s_}", f"calf_{s_}"), ends=0.15)
+            for j in (2, 3):
+                g = f"joint-{s_}-toe-{k}-{j}"
+                if g in body.vertex_groups:
+                    kn = snap_rest(body, co, local_center(body, co, g)[0] + Vector((0, 0, 0.02)))
+                    inflate(body, co, kn, (0.007, 0.007, 0.006), 0.005, name=f"Knuckle{s_}{k}{j}",
+                            front_only=False)
+        # Gót chân dày, đệm gan bàn chân.
+        heel = snap_rest(body, co, ank + Vector((0, 0.04, -0.06)))
+        inflate(body, co, heel, (0.03, 0.03, 0.025), 0.008, name=f"Heel{s_}", front_only=False)
+
+
+def sole_paint(body, co):
+    """Thuộc tính `sole`: gan bàn chân và mép gót sạm chai."""
+    w = weights_by_group(body)
+    normals = [v.normal for v in body.data.vertices]
+    z0 = min(p.z for p in co)
+    vals = []
+    for i, p in enumerate(co):
+        g = w[i]
+        f = g.get("foot_l", 0) + g.get("foot_r", 0) + g.get("ball_l", 0) + g.get("ball_r", 0)
+        down = max(0.0, -normals[i].z)
+        low = max(0.0, 1 - (p.z - z0) / 0.03)
+        vals.append(min(1.0, f) * min(1.0, down * 1.5 * low + low * 0.4))
+    store_point_attr(body, "sole", vals)
 
 
 def pupils(body, co, rig, fwd):
-    """Đồng tử đen tròn giữa mắt vàng (điểm trước nhất của khối cầu mắt)."""
-    black = skin_material("Pupil", "#050404", rough=0.1)
+    """Mống mắt hổ phách sẫm + đồng tử đen trên lòng mắt vàng. Dựng ở gốc
+    toạ độ rồi đặt bằng aim_pupils (nhìn thẳng máy quay sau khi tạo dáng)."""
+    black = skin_material("Pupil", "#030202", rough=0.08)
+    iris_m = skin_material("Iris", "#5A1E04", rough=0.15)
     w = weights_by_group(body)
     m = body.matrix_world
+    out = []
     for g in ("helper-l-eye", "helper-r-eye"):
         pts = [m @ co[i] for i in range(len(co)) if w[i].get(g, 0) > 0.5]
-        front = max(pts, key=lambda p: p.dot(fwd))
-        o = add_object(f"Pupil{g}", raw_ellipsoid(f"Pupil{g}", front + fwd * 0.001 * S,
-                                                    (0.0065 * S, 0.0065 * S, 0.0065 * S)), [black])
-        parent_to_bone(o, rig, "head")
+        c = sum(pts, Vector()) / len(pts)
+        r = max((p - c).dot(fwd) for p in pts)
+        for name, rad, flat, mat, lift in (("Iris", 0.0095, 0.25, iris_m, 0.0), ("Pupil", 0.0042, 0.35, black, 0.0006)):
+            o = add_object(f"{name}{g}", raw_ellipsoid(f"{name}{g}", Vector(), (rad * S, rad * S, rad * S * flat)), [mat])
+            parent_to_bone(o, rig, "head")
+            o["eye_c"] = c
+            o["eye_r"] = r + lift * S
+            o["eye_fwd"] = fwd
+            out.append(o)
+    return out
+
+
+def aim_pupils(objs, cam, limit_deg=28):
+    """Đồng tử nhìn về máy quay (người chơi), lệch tối đa [limit_deg] so với
+    hướng mặt — ánh mắt khoá vào người xem, không nhìn lạc ra ngoài."""
+    bpy.context.view_layer.update()  # máy quay vừa tạo: matrix_world chưa tính
+    view = (cam.matrix_world.to_3x3() @ Vector((0, 0, 1))).normalized()
+    for o in objs:
+        M = o.matrix_world @ o.matrix_basis.inverted()
+        Mi = M.inverted()
+        c = Vector(o["eye_c"])
+        f = Vector(o["eye_fwd"])
+        f_w = (M.to_3x3() @ f).normalized()
+        ang = f_w.angle(view)
+        d_w = f_w.slerp(view, min(1.0, math.radians(limit_deg) / ang)) if ang > 1e-4 else f_w
+        d = (Mi.to_3x3() @ d_w).normalized()
+        o.location = c + d * o["eye_r"]
+        o.rotation_mode = "QUATERNION"
+        o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(d)
+    bpy.context.view_layer.update()
 
 
 def build():
-    # Mỡ vừa phải để khối cơ (vai, ngực, tay, lưng) hằn rõ; bụng và mặt đắp riêng.
-    body, rig, parts = boss_human(1.0, muscle=1.0, weight=0.55, height=1.0, age=0.62, proportions=0.55, scale=S,
+    # Võ sĩ sumo: mỡ dày trùm khối cơ (ngực, eo, cổ), cơ – gân vẫn khắc riêng
+    # ở phần da lộ; bụng và mặt đắp riêng.
+    body, rig, parts = boss_human(1.0, muscle=0.7, weight=0.9, height=1.0, age=0.62, proportions=0.55, scale=S,
                                   details=safe_details(ONI_BODY), eyebrows=None)
+    densify(body)
     w0 = weights_by_group(body)
     store_point_attr(body, "lips", [min(1.0, w0[i].get("lips", 0)) for i in range(len(w0))])
     clay = "--clay" in sys.argv  # soát hình khối: bỏ hoa văn xăm
     skin = painted_skin("OniSkin", "#B83A2C", "#8A2820", tattoo=None if clay else "#7A2016", sss=0.12, rough=0.72, lips="#4A0C0A",
-                        cavity=("#3A0806", 0.1 * S, 0.9), tattoo_band=0.935)
+                        cavity=("#3A0806", 0.1 * S, 0.9), tattoo_band=0.935,
+                        paints=[("sole", "#5A1A14"), ("flush", "#D8483A"), ("kuma", "#140202"),
+                                ("scar", "#F2B8A4")])
     body.data.materials.clear()
     body.data.materials.append(skin)
     # Mắt vàng kim như mặt nạ Hannya (đồng tử đen đắp riêng bên dưới).
@@ -508,9 +893,15 @@ def build():
     navel = min((p for p in co1 if abs(p.x) < 0.015 and abs(p.z - nz) < 0.015), key=lambda p: p.y)
     inflate(body, co1, navel, (0.022, 0.04, 0.03), -0.03, name="Navel", front_only=False)
     hero_muscles(body, co0, rig)
+    co2 = rest_coords(body)
+    sculpt_face(body, co2)
+    body_detail(body, co2, rig)
     co = rest_coords(body)
+    kumadori(body, co)
+    face_paint(body, co)
+    sole_paint(body, co)
     head_c, up, fwd, right = head_frame(rig)
-    pupils(body, co, rig, fwd)
+    eyes = pupils(body, co, rig, fwd)
 
     iron = skin_material("Iron", "#202026", rough=0.35, metallic=0.85, noise_scale=40)
     gold = gold_material("OniGold", "#E0AE48", rough=0.3)
@@ -551,7 +942,7 @@ def build():
     apron(rig, c, rx * 0.55, ry, c.z - 0.06 * S, knee_z, fwd, apron_m, gold)
 
     # ---- da hổ vắt vai trái (trang phục kinh điển của oni)
-    pelt(body, co, rig, tiger_material("TigerPelt"), tuck_z)
+    pelt_o = pelt(body, co, rig, tiger_material("TigerPelt"), tuck_z)
 
     # ---- quần hakama chàm, gấu viền vàng
     hakama(body, co, rig, "Hakama", navy, flare=0.13 * S)
@@ -561,12 +952,10 @@ def build():
         limb_band(rig, f"lowerarm_{s}", 0.42, 0.92, 0.062 * S, 0.05 * S, black, f"Bracer{s}")
         for t in (0.45, 0.9):
             limb_band(rig, f"lowerarm_{s}", t - 0.02, t + 0.02, 0.066 * S, 0.066 * S, gold, f"BracerBand{s}")
-        limb_band(rig, f"upperarm_{s}", 0.12, 0.22, 0.085 * S, 0.083 * S, gold, f"Armlet{s}")
+        limb_band(rig, f"upperarm_{s}", 0.2, 0.3, 0.104 * S, 0.1 * S, gold, f"Armlet{s}")  # trùm bắp tay béo
         claws(rig, s, claw_m, length=0.035 * S, radius=0.007 * S)
         claws(rig, s, claw_m, length=0.04 * S, radius=0.01 * S, toes=True)
-        # Cổ chân quấn vải đỏ.
-        limb_band(rig, f"calf_{s}", 0.86, 0.98, 0.06 * S, 0.055 * S, tassel, f"Anklet{s}")
-    return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire}
+    return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire, "eyes": eyes, "pelt": pelt_o}
 
 
 def pose_and_props(rig, mats):
@@ -612,6 +1001,17 @@ def pose_and_props(rig, mats):
     return poser
 
 
+def look_at(scene, p, width, height, ppm, yaw, pitch):
+    """Máy quay trực giao có tâm khung đúng điểm [p] (human_kit.camera đặt
+    tâm ở mặt phẳng y = 0 nên lệch khi quay góc lớn)."""
+    rot = Vector((math.radians(90 - pitch), 0, math.radians(yaw)))
+    from mathutils import Euler
+    fwd = Euler(rot).to_matrix() @ Vector((0, 0, -1))
+    t = -p.y / fwd.y
+    q = p + fwd * t
+    return camera(scene, q.x, q.z, width, height, ppm, yaw=yaw, pitch=pitch)
+
+
 def lights(scene):
     add_sun(scene, "Key", (0.35, 0.75, -0.55), 3.6, "#FFE2C2", angle=3)
     add_sun(scene, "Rim", (-0.75, -0.3, -0.25), 3.2, "#9EC0FF", angle=4)
@@ -619,17 +1019,26 @@ def lights(scene):
 
 
 def main():
-    scene = reset_scene(samples=96, world_hex="#C9C4C0", world_strength=0.7, keep_prefs=True)
+    scene = reset_scene(samples=32 if "--quick" in sys.argv else 96, world_hex="#C9C4C0", world_strength=0.7, keep_prefs=True)
     body, rig, mats = build()
     pose_and_props(rig, mats)
+    # Tấm da hổ bám da trong dáng thật (vai trái nâng tay làm cơ delta nhô).
+    conform_outside(mats["pelt"], body, 0.006 * S, 0.02 * S)
+    pelt_fur(mats["pelt"], rig)
     lights(scene)
     shadow_catcher()
     out = os.path.join(ROOT, "build", "blender", "oni")
     os.makedirs(out, exist_ok=True)
     pb = rig.pose.bones["head"]
     head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)
-    if "--grip-only" not in sys.argv:
-        camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 260, yaw=-8, pitch=6)
+    if "--dry" in sys.argv:  # dựng cảnh không render; ONI_DEBUG = script soát chạy thêm
+        aim_pupils(mats["eyes"], camera(scene, head.x, head.z, 0.4 * S, 0.4 * S, 100, yaw=-44, pitch=3))
+        if os.environ.get("ONI_DEBUG"):
+            exec(open(os.environ["ONI_DEBUG"], encoding="utf-8").read())
+        return
+    if "--grip-only" not in sys.argv and "--checks" not in sys.argv:
+        cam = camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 260, yaw=-8, pitch=6)
+        aim_pupils(mats["eyes"], cam)
         render_to(scene, os.path.join(out, "still_full.png"))
         camera(scene, head.x, head.z - 0.05 * S, 0.6 * S, 0.6 * S, 900, yaw=-8, pitch=4)
         render_to(scene, os.path.join(out, "still_face.png"))
@@ -658,6 +1067,14 @@ def main():
         render_to(scene, os.path.join(out, "check_legs.png"))
         camera(scene, head.x, head.z - 0.45 * S, 0.8 * S, 0.8 * S, 700, yaw=-8, pitch=4)
         render_to(scene, os.path.join(out, "check_torso.png"))
+    if "--face" in sys.argv:  # soát mặt chính diện (khắc nếp, hốc mắt, đồng tử) và bàn chân cận
+        cam = look_at(scene, head - Vector((0, 0, 0.03 * S)), 0.42 * S, 0.42 * S, 1600, yaw=-44, pitch=3)
+        aim_pupils(mats["eyes"], cam)
+        render_to(scene, os.path.join(out, "check_face_front.png"))
+        ft = rig.matrix_world @ (rig.pose.bones["ball_l"].head + rig.pose.bones["ball_r"].head) / 2
+        ft.z = 0.08 * S
+        look_at(scene, ft, 0.85 * S, 0.3 * S, 1100, yaw=-8, pitch=10)
+        render_to(scene, os.path.join(out, "check_foot.png"))
     from boss_kit import save_blend
     save_blend("oni_boss")
 

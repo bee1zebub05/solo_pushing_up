@@ -22,11 +22,13 @@ FONT_JP = r"C:\Windows\Fonts\YuGothB.ttc"  # có chữ Hán; dự phòng msgothi
 
 
 def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None, cavity=None, tattoo_band=0.9,
-                 tattoo_attr=None, tattoo_scale=4.5):
+                 tattoo_attr=None, tattoo_scale=4.5, paints=None):
     """Da boss tô màu (đỏ oni, trắng ngà thần…): loang hai tông theo nhiễu,
     [tattoo] màu hoa văn xoáy (vân sóng méo) — để None nếu không xăm;
     [tattoo_band] 0,9 (nét dày) → 0,93 (nét mảnh, lộ khối cơ hơn).
     [tattoo_attr] tên thuộc tính điểm 0…1 giới hạn vùng xăm (ví dụ nửa ngực).
+    [paints] [(tên thuộc tính điểm, màu)] tô đè theo thứ tự (vẽ mặt kumadori,
+    gan bàn chân chai) — thuộc tính ghi bằng human_kit.store_point_attr.
     [cavity] = (màu hõm, khoảng cách m, độ mạnh): tô đậm khe giữa các khối cơ
     bằng AO cục bộ, gờ cơ sáng lên — cho thớ cơ đọc rõ ở cỡ sprite."""
     mat = bpy.data.materials.new(name)
@@ -98,6 +100,16 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None,
         L(color, lm.inputs[6])
         lm.inputs[7].default_value = srgb(lips)
         color = lm.outputs[2]
+    for attr, hue in paints or ():
+        pa = N.new("ShaderNodeAttribute")
+        pa.attribute_type = "GEOMETRY"
+        pa.attribute_name = attr
+        pm = N.new("ShaderNodeMix")
+        pm.data_type = "RGBA"
+        L(pa.outputs["Fac"], pm.inputs["Factor"])
+        L(color, pm.inputs[6])
+        pm.inputs[7].default_value = srgb(hue)
+        color = pm.outputs[2]
     if cavity:
         hue, dist, strength = cavity
         ao = N.new("ShaderNodeAmbientOcclusion")
@@ -230,6 +242,27 @@ def boss_human(gender=1.0, muscle=1.0, weight=0.6, height=1.0, age=0.6, proporti
                            scale=scale, details=details)
     parts = add_face_parts(body, eyebrows=eyebrows) if face else {}
     return body, rig, parts
+
+
+def densify(body):
+    """Chia lưới thân dày gấp 4 (áp một bậc subsurf vào lưới gốc) để khắc
+    được nếp nhăn, gân, thớ cơ mảnh hơn khoảng cách đỉnh MPFB. Gộp trước mọi
+    shape key (target MPFB) vào lưới — Blender không áp modifier khi còn
+    shape key. Nhóm đỉnh (trọng số xương, helper) được nội suy theo."""
+    from human_kit import rest_coords
+    co = rest_coords(body)
+    if body.data.shape_keys:
+        body.shape_key_clear()
+    for v, p in zip(body.data.vertices, co):
+        v.co = p
+    sub = next((m for m in body.modifiers if m.type == "SUBSURF"), None) or body.modifiers.new("Smooth", "SUBSURF")
+    sub.levels = sub.render_levels = 1
+    with bpy.context.temp_override(object=body, active_object=body):
+        bpy.ops.object.modifier_move_to_index(modifier=sub.name, index=0)
+        bpy.ops.object.modifier_apply(modifier=sub.name)
+    sub = body.modifiers.new("Smooth", "SUBSURF")
+    sub.levels = sub.render_levels = 1
+    bpy.context.view_layer.update()
 
 
 def bone_point(rig, name, at=0.0):
@@ -574,10 +607,11 @@ def fist(rig, s, curl=1.0):
     bpy.context.view_layer.update()
 
 
-def inflate(body, co, center, radii, amount, name="Inflate", front_only=True):
+def inflate(body, co, center, radii, amount, name="Inflate", front_only=True, groups=None):
     """Đắp thêm khối (bụng phệ, ngực…) bằng shape key: đẩy đỉnh ra theo pháp
     tuyến, mạnh nhất ở [center] (toạ độ nghỉ cục bộ), tắt dần theo elip
-    [radii]. [front_only]: chỉ mặt trước (pháp tuyến hướng −Y)."""
+    [radii]. [front_only]: chỉ mặt trước (pháp tuyến hướng −Y). [groups]:
+    nhân theo tổng trọng số các nhóm đỉnh này (không lan sang tay, nách)."""
     if body.data.shape_keys is None:
         body.shape_key_add(name="Basis")
     key = body.shape_key_add(name=name, from_mix=False)
@@ -590,6 +624,8 @@ def inflate(body, co, center, radii, amount, name="Inflate", front_only=True):
         f = math.exp(-d.length_squared * 2.0)
         if f < 0.01:
             continue
+        if groups:
+            f *= min(1.0, sum(w[i].get(k, 0) for k in groups))
         n = normals[i]
         if front_only:
             f *= max(0.0, -n.y) ** 0.5 if n.y < 0 else 0.15
@@ -754,6 +790,103 @@ def skin_snapper(body, co, fwd, scale, radius=0.008):
         return (max(near, key=lambda p: p.dot(fwd)) if near else a) + fwd * lift * scale
 
     return on_skin
+
+
+_SKIN_IDX = {}
+
+
+def snap_rest(body, co, p):
+    """Đỉnh da (toạ độ nghỉ cục bộ) gần [p] nhất — bỏ khối helper."""
+    key = (body.name, len(co))
+    if _SKIN_IDX.get("key") != key:
+        w = weights_by_group(body)
+        _SKIN_IDX["key"] = key
+        _SKIN_IDX["idx"] = [i for i in range(len(co))
+                            if w[i].get("HelperGeometry", 0) < 0.5 and w[i].get("JointCubes", 0) < 0.5]
+    best, bd = p, 1e9
+    for i in _SKIN_IDX["idx"]:
+        d = (co[i] - p).length_squared
+        if d < bd:
+            best, bd = co[i], d
+    return best.copy()
+
+
+def ridge(body, co, path, radius, amount, name, groups=None, ends=0.25):
+    """Gờ/rãnh dọc đường gấp khúc [path] (shape key, toạ độ nghỉ cục bộ):
+    gân xanh, gân cơ, nếp nhăn (biên độ âm), thớ cơ. Đẩy theo pháp tuyến,
+    tắt dần theo khoảng cách tới đường (bán kính [radius]) và thuôn ở hai
+    đầu ([ends] = phần chiều dài thuôn). [groups] giới hạn theo nhóm đỉnh."""
+    if body.data.shape_keys is None:
+        body.shape_key_add(name="Basis")
+    key = body.shape_key_add(name=name, from_mix=False)
+    w = weights_by_group(body)
+    normals = [v.normal.copy() for v in body.data.vertices]
+    segs = list(zip(path, path[1:]))
+    lens = [(b - a).length for a, b in segs]
+    total = sum(lens) or 1.0
+    lo = Vector((min(p.x for p in path), min(p.y for p in path), min(p.z for p in path))) - Vector((radius * 3,) * 3)
+    hi = Vector((max(p.x for p in path), max(p.y for p in path), max(p.z for p in path))) + Vector((radius * 3,) * 3)
+    for i, p in enumerate(co):
+        if not (lo.x < p.x < hi.x and lo.y < p.y < hi.y and lo.z < p.z < hi.z):
+            continue
+        g = w[i]
+        if g.get("HelperGeometry", 0) > 0.5 or g.get("JointCubes", 0) > 0.5:
+            continue
+        gw = 1.0
+        if groups:
+            gw = min(1.0, sum(g.get(k, 0) for k in groups) * 1.4)
+            if gw <= 0:
+                continue
+        best, at, acc = 1e9, 0.0, 0.0
+        for (a, b), ln in zip(segs, lens):
+            ab = b - a
+            t = 0.0 if ln < 1e-9 else max(0.0, min(1.0, (p - a).dot(ab) / (ln * ln)))
+            d = (p - (a + ab * t)).length
+            if d < best:
+                best, at = d, (acc + t * ln) / total
+            acc += ln
+        if best > radius * 2.5:
+            continue
+        taper = min(1.0, min(at, 1 - at) / ends) if ends > 0 else 1.0
+        f = math.exp(-(best / radius) ** 2 * 2) * (taper * taper * (3 - 2 * taper)) * gw
+        key.data[i].co = key.data[i].co + normals[i] * amount * f
+    key.value = 1.0
+    return key
+
+
+def conform_outside(obj, body, gap, reach):
+    """Sau khi tạo dáng: đẩy từng đỉnh của [obj] (tấm da, vải khoác) ra
+    ngoài mặt da [body] đã biến dạng, cách ít nhất [gap] m, và kéo về sát da
+    nếu xa hơn [reach] m (vải rủ bám thân) — hết lún vào ngực, vai. Mặt da
+    lấy từ lưới đã đánh giá (xương + shape key + subsurf)."""
+    from mathutils.bvhtree import BVHTree
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg)
+    me = ev.to_mesh()
+    mw = body.matrix_world
+    verts = [mw @ v.co for v in me.vertices]
+    tree = BVHTree.FromPolygons(verts, [tuple(p.vertices) for p in me.polygons])
+    ev.to_mesh_clear()
+    om = obj.matrix_world
+    inv = om.inverted()
+    moved = 0
+    for v in obj.data.vertices:
+        p = om @ v.co
+        hit, n, _, dist = tree.find_nearest(p)
+        if hit is None:
+            continue
+        side = (p - hit).dot(n)
+        target = None
+        if side < gap:
+            target = hit + n * gap
+        elif side > reach:
+            target = hit + n * reach
+        if target is not None:
+            v.co = inv @ target
+            moved += 1
+    obj.data.update()
+    return moved
 
 
 def kamon_material(name, base, crest, scale=10.0, sheen=0.5, rough=0.6, trim=None, size=1.0):
