@@ -276,7 +276,10 @@ def review(scene, body, rig, name, S, fwd, *, clothes=(), important=None, free=(
     shot("feet_top", "Bàn chân · trên xuống", feet, _yaw_for(-fwd), 70, px=520, hide=clothes,
          clip_above=ankle + 0.18 * S)
     hz = (mw @ pb["head"].head).z
-    head = [p for p in verts if p.z > hz - 0.03 * S]
+    # Chỉ đỉnh gần trục đầu theo phương ngang: lưới liền (model Tripo) có cánh,
+    # tay giơ cao hơn cổ → khung mặt bị kéo rộng.
+    hx = mw @ pb["head"].head
+    head = [p for p in verts if p.z > hz - 0.03 * S and Vector((p.x - hx.x, p.y - hx.y)).length < 0.4 * S]
     shot("face", "Mặt · chính diện", head, _yaw_for(-fwd), 3, px=560, pad=0.2)
     shot("face_game", "Mặt · góc game", head, gy, gp, px=560, pad=0.2)
     for s, lab in (("l", "trái"), ("r", "phải")):

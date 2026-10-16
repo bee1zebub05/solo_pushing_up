@@ -19,6 +19,33 @@ figcaption{font-size:12.5px;color:var(--mut);margin-top:4px}.wide{grid-column:1/
 <h1>Báo cáo đồ hoạ</h1>
 <p class="s">Xếp kiểu stack: <b>mục mới nhất ở trên cùng</b>, kéo xuống là các phiên cũ hơn.</p>
 
+<!--tengu-tripo-1610-start-->
+<h2>21. 16/10 (tối): tengu sinh bằng Tripo — gắn xương, làm dày lưới, soát 0 cảnh báo</h2>
+<p class="s">Nhánh <code>feat/chapter2_japan</code> · <code>art_src/tripo/tengu_001/</code>, <code>tool/blender/tengu_tripo.py</code>, <code>tripo_kit.build_rig/densify</code> · <b>chờ bạn xem</b></p>
+<div class="box"><b>Bản tengu Tripo (dáng chữ T, texture 4096) đã có xương và lưới mịn.</b>
+<ul>
+<li><b>Xương MPFB + 3 đốt cánh mỗi bên</b>, gắn trong Blender (không tốn credit Rig). Bone heat thất bại trên lưới AI → tính trên bản phụ voxel (khối lớn nhất, phóng ×10) rồi chép trọng số về; 0 đỉnh thiếu trọng số.</li>
+<li><b>Lưới dày hơn:</b> GLB xẻ quad Tripo thành tam giác; ghép lại 5 823 quad rồi subsurf (render ~93k mặt), không nứt theo đường nối UV.</li>
+<li><b>Dáng thử:</b> tay hạ/giơ, khuỷu gập, cánh vỗ, chân co, thân vặn — tay áo, hakama, cổ chân không rách. <code>--review</code>: 0 cảnh báo, chân/chiều cao 0,48 (hakama phồng).</li>
+<li>Lần đầu đưa Tripo cả bức tranh → ra tấm phù điêu; bài học: ảnh nhân vật tách nền, đứng chữ T.</li>
+<li><b>Bạn chốt:</b> bản Tripo <b>thay hẳn</b> bản MPFB (giờ là <code>tengu_boss.py</code>, ảnh duyệt vẫn ở <code>build/blender/tengu/</code>); <b>cánh to ×1,25 và rũ xuống</b> — gốc cánh vẫn bám lưng, soát lại 0 cảnh báo.</li>
+<li><b>Mon vàng mặt sau</b> (bạn yêu cầu): Tripo chỉ vẽ mon ở mặt trước. Lấy một mon trọn vẹn trên ống hakama làm khuôn, đóng 11 con lên lưng áo, dưới đai, vạt sau, lưng tay áo, hakama sau — so le như mặt trước, liền nét.</li>
+</ul></div>
+<!--tengu-tripo-1610-end-->
+
+<!--tripo-1610-start-->
+<h2>20. 16/10 (tối): đường ống Tripo AI → repo, Claude xem được Blender đang mở</h2>
+<p class="s">Nhánh <code>feat/chapter2_japan</code> · <code>tool/blender/addons/tripo_inbox.py</code>, <code>tripo_kit.py</code>, <code>tripo_view.py</code> · rules/dohoa.md mục 12</p>
+<div class="box"><b>Model sinh bằng Tripo giờ vào repo bằng một nút bấm.</b>
+<ul>
+<li><b>Không mất lần sinh nào:</b> Tripo Bridge xoá file ngay sau khi nhập vào Blender; addon <b>SPU Tripo</b> chép file gốc vào <code>art_src/tripo/_inbox/</code> trước đó.</li>
+<li><b>Nút "Gửi vào repo"</b> (phím N › tab SPU): đặt tên → <code>art_src/tripo/&lt;tên&gt;/model.glb</code> + <code>meta.json</code> + ảnh nhỏ; <code>.glb</code> lưu bằng Git LFS.</li>
+<li><b>Xương Tripo đổi tên sang tên MPFB</b> khi nhập (thử trên xương kiểu Mixamo: 22/22 đúng) → bộ soát <code>--review</code> và xuất sprite chạy nguyên trên model Tripo.</li>
+<li><b>Xem nhanh:</b> <code>bash tool/blender/render.sh tripo_view &lt;tên&gt;</code> → tấm soát xoay vòng + ảnh đất sét (lộ lỗi lưới mà texture che).</li>
+<li><b>Claude nhìn thẳng vào Blender</b> qua MCP (addon MCP for Blender, bấm Connect), tắt telemetry.</li>
+</ul></div>
+<!--tripo-1610-end-->
+
 <!--oni-1610e-start-->
 <h2>19. 16/10 (đêm): oni bản 10c — vòng bắp tay ôm da, vuốt chân bám ngón; cờ <code>--review</code> hiệu chỉnh xong</h2>
 <p class="s">Nhánh <code>feat/chapter2_japan</code> · <code>review_kit</code>, <code>japan_kit.band_fit</code>, <code>toe_claws</code> · chưa push · <b>chờ bạn xem</b></p>

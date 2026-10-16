@@ -13,9 +13,14 @@ else
   "$BLENDER" -b --factory-startup -P "tool/blender/$name.py" -- "$@"
 fi
 # Bộ soát (--review, review_kit) → ghép một tấm sheet.png có nhãn + cảnh báo.
-case " $* " in
-  *" --review "*) python -I tool/blender/review_sheet.py "build/blender/review/$name" ;;
-esac
+# tripo_view luôn ra bộ ảnh soát, đặt theo tên model (tham số đầu).
+if [ "$name" = tripo_view ]; then
+  python -I tool/blender/review_sheet.py "build/blender/review/$1"
+else
+  case " $* " in
+    *" --review "*) python -I tool/blender/review_sheet.py "build/blender/review/$name" ;;
+  esac
+fi
 # Trang atlas / tầng phông nền mới → nén WebP vào assets/.
 if [ -d build/blender/sprites/pages ] || [ -d build/blender/backdrops ]; then
   python -I tool/sprites_webp.py

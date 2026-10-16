@@ -68,4 +68,7 @@ dataset/eval_frames/
 *.blend1
 # File .blend do script tool/blender/ sinh lại được
 /art_src/blender/*.blend
+# Hộp thư Tripo: mọi lần sinh được addon chép tự động — chỉ model đã đặt tên
+# (nút "Gửi vào repo", art_src/tripo/<tên>/) mới commit (Git LFS)
+/art_src/tripo/_inbox/
 __pycache__/

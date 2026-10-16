@@ -1,0 +1,5 @@
+art_src/tripo/**/*.glb filter=lfs diff=lfs merge=lfs -text
+art_src/tripo/**/*.fbx filter=lfs diff=lfs merge=lfs -text
+art_src/tripo/**/*.obj filter=lfs diff=lfs merge=lfs -text
+art_src/tripo/**/*.usdz filter=lfs diff=lfs merge=lfs -text
+art_src/tripo/**/*.stl filter=lfs diff=lfs merge=lfs -text

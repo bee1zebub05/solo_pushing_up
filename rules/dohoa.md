@@ -340,7 +340,7 @@ Boss dựng theo tranh người dùng chọn (ảnh duyệt `--still`, CHƯA xu�
 |---|---|---|
 | Yamata no Orochi (làm lại: rắn thật xanh xám, bụng hồng, mắt vàng, vàng lá) | `orochi_boss.py` | `build/blender/orochi/` |
 | Shuten-dōji (oni đỏ vác kanabō) | `oni_boss.py` | `build/blender/oni/` |
-| Sutoku hoá đại tengu | `tengu_boss.py` | `build/blender/tengu/` |
+| Sutoku hoá đại tengu | `tengu_boss.py` (model Tripo `art_src/tripo/tengu_001/` từ 16/10, thay bản MPFB) | `build/blender/tengu/` |
 | Susanoo cuồng nộ (lửa ma xanh, hào quang) | `susanoo_boss.py` | `build/blender/susanoo/` |
 | Tamamo-no-Mae, dạng cáo / dạng người | `tamamo_boss.py --form fox|human` | `build/blender/tamamo/` |
 
@@ -414,3 +414,32 @@ Bộ soát tự động (`bash tool/blender/render.sh <script> --review --quick`
 - **Vòng ôm chi béo: ôm theo viền da, không theo vòng tròn quanh xương.** Thiết diện tay béo là bầu dục và thịt xệ lệch trục. Vòng tròn hoặc chìm một phía, hoặc nới ra thì bung lỏng phía kia; nới theo tia hay nới vô hạn còn làm vòng bung ngang người. Dùng `japan_kit.band_fit` sau khi tạo dáng: nó đo viền da thật (chỉ đỉnh thuộc xương đó), làm mượt quanh chu vi rồi dựng vòng theo viền. Đặt vòng ở giữa đoạn chi; sát vai, sát hông thịt dính thân nên không có thiết diện riêng.
 - **Số liệu đẹp chưa đủ, phải nhìn ảnh.** Một lần nới vòng tay cho kết quả "0% chìm" vì vòng đã phình to gấp đôi. Mỗi lần sửa theo số liệu, render ảnh cận vật vừa sửa.
 - Bộ soát tự bỏ qua lưới mắt phụ MPFB (Irishelper). Đồ cố ý cắm vào thân (vuốt tay nắm, khuyên vòng sau thừng) thì khai báo qua `embedded=`.
+
+## 12. Model Tripo AI → repo (16/10/2026)
+Tripo Studio gửi model sang Blender qua addon **Tripo Bridge** (cổng 60600). Addon này ghi file vào thư mục tạm, nhập vào cảnh rồi **xoá file ngay**: model chỉ còn trong cảnh chưa lưu. Đường ống của repo:
+- **Addon `SPU Tripo`** (`tool/blender/addons/tripo_inbox.py`, cài một lần bằng `blender -b -P tool/blender/install_tripo_inbox.py`; file mồi trong thư mục addon nạp code thẳng từ repo).
+  - Tự động: bọc `ModelImporter.import_model` của Tripo, chép file gốc vào `art_src/tripo/_inbox/<giờ>_<tên>.glb` trước khi nhập. `_inbox/` không commit.
+  - Nút **Gửi vào repo** (phím N › tab SPU): xuất vật đang chọn (cả con, xương, hoạt hình, chỗ sửa tay) → `art_src/tripo/<tên>/model.glb` + `meta.json` (tam giác, khung, xương, hoạt hình, ghi chú/prompt) + `thumb.png`. Thư mục này commit, `*.glb` qua **Git LFS** (`.gitattributes`).
+- **`tool/blender/tripo_kit.py`**: `load` (nhập, gom dưới `<tên>_root`, bỏ hình hiển thị xương Icosphere của bộ nhập glTF, **đổi tên xương sang tên MPFB game_engine**), `normalize` (yaw, chiều cao, chân chạm z=0), `decimate`, `tone` (bão hoà/sáng/nhám), `action_frames` (khung sprite từ hoạt hình Tripo), `default_lights` (ba đèn như oni).
+  - Đổi tên xương theo tên + độ sâu thứ bậc (Mixamo `LeftUpLeg`→`thigh_l`, `Spine/Spine1/Spine2`→`spine_01..03`…), ghi `build/blender/tripo/<tên>/bones.txt`. Đoán sai thì truyền `bones={cũ: mới}`. Nhờ vậy `review_kit` / `sprite_kit` dùng nguyên, không cần bản riêng cho Tripo.
+- **Xem nhanh:** `bash tool/blender/render.sh tripo_view <tên> [--height H] [--yaw Y] [--review] [--quick] [--save]` → `build/blender/review/<tên>/sheet.png`. Không cờ = bộ xoay vòng + ảnh đất sét (bỏ texture, lộ lỗi lưới). `--review` = bộ soát nhân vật, cần đủ xương người.
+- **Dùng thật trong game:** viết `tool/blender/<tên>.py` theo `tripo_kit` (như các script boss) rồi xuất sprite bằng `sprite_kit.export_sprites`.
+- **Claude xem cảnh đang mở:** server MCP `blender` (`uvx blender-mcp==2.0.0`, phạm vi local, `DISABLE_TELEMETRY=true`) nói chuyện với addon *MCP for Blender* (cổng 9876). Trong Blender: N › tab BlenderMCP › **Connect**. Chỉ để xem/thử; sản phẩm đi qua hộp thư.
+- **Giới hạn Tripo:** lưới tam giác lộn xộn, texture nướng sẵn ánh sáng → hợp quái thường, đồ vật, cảnh. Boss chính vẫn dựng bằng MPFB.
+
+### Gắn xương và làm dày lưới model Tripo (tengu, 16/10 tối)
+- **Đưa Tripo ảnh nhân vật tách nền, đứng chữ T/A.** Ảnh nguyên bức tranh (tengu trên cành thông) → Tripo dựng cả tranh thành tấm phù điêu, không có lưng.
+- **Texture để Tripo làm (20 credit, đủ 360°); xương thì tự gắn** (`tripo_kit.build_rig`), không tốn credit. Khớp đọc trên ảnh chính diện + nghiêng có lưới toạ độ 10 cm (dáng chữ T rất dễ đọc). Xương thêm (cánh `wing_01..03_l`) đặt tên tuỳ ý, `_l` tự sinh `_r`.
+- **Bone heat trên lưới AI hỏng cả lưới** (đỉnh tách theo đường nối UV, vải nhiều lớp). Ba bước đã thử ra:
+  1. Tính trên bản phụ voxel remesh, ô = **1,5% chiều cao** (nhỏ hơn thì vải hở/lông cánh vỡ vụn, khối lớn nhất có khi là cái cánh).
+  2. Chỉ giữ **khối liền lớn nhất**: một mảnh không "thấy" xương là hỏng cả hệ.
+  3. Giải ở cỡ **×10**: cỡ 2 m có cánh thì bộ giải thiếu chính xác, ×10 thì được.
+  Rồi chép trọng số về lưới thật theo 4 đỉnh gần nhất (UV/texture giữ nguyên).
+- **Xoay xương theo trục thế giới** (`tengu_tripo.rot`), không đoán trục cục bộ — xương dọc (chân) và xương ngang (tay, cánh) có trục cục bộ khác nhau.
+- **GLB chỉ chứa tam giác:** quad "Smart Mesh" của Tripo bị xẻ đôi khi xuất. `tripo_kit.densify`: hàn đỉnh trùng → ghép tam giác lại thành quad (tengu 9 882 tam giác → 5 823 quad ≈ 5 769 gốc) → Subdivision Surface đặt SAU xương. Mịn viền và chỗ gập khớp, không thêm chi tiết — chi tiết nằm ở texture 4096.
+- `review_kit` khung mặt chỉ lấy đỉnh gần trục đầu (lưới liền có cánh kéo khung rộng).
+- **Tengu chốt dùng bản Tripo** (`tengu_boss.py`, thay hẳn bản MPFB; code MPFB cũ còn trong lịch sử git). Người dùng duyệt chỉnh: cánh ×1,25, rũ xuống (`WING_SCALE`, `WING_DROOP`). Phóng cánh bằng scale ở xương `wing_01` trong dáng nền (đốt con thừa hưởng) → lông cánh không méo, gốc cánh vẫn bám lưng.
+- **Tripo hay chỉ vẽ hoạ tiết mặt trước** (tengu: mon vàng có ở ngực/quần trước, lưng trơn). `tripo_kit.front_map` chiếu model từ trước ra ảnh màu theo (x, z) → cắt một hoạ tiết trọn vẹn làm khuôn → `stamp_back` đóng khuôn lên các tâm (x, z) ở mặt sau (chỉ phần màu hoạ tiết, chỉ lên vải; khuôn lật ngang để đọc đúng chiều từ sau). Làm trên texture lúc dựng, `model.glb` giữ nguyên.
+  - **Không chép nguyên vị trí trước → sau:** mặt trước bị đai buông, vạt áo, nếp gấp che → hoạ tiết sau khuyết theo.
+  - **Xét "là vải" theo màu trung bình cả tam giác:** vải Tripo có đốm nhạt khác màu; xét từng điểm ảnh thì khuôn thủng lỗ chỗ.
+  - UV Tripo vỡ thành hàng trăm mảnh nhỏ → mọi thao tác texture phải đi qua toạ độ 3D, không cắt dán trong ảnh UV.

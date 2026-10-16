@@ -1,0 +1,37 @@
+{
+  "name": "tengu_001",
+  "source": "tripo",
+  "created": "2026-10-16T18:40:27",
+  "updated": "2026-10-16T18:40:27",
+  "note": "",
+  "inbox": "20261016-183946_tengu.fbx",
+  "objects": [
+    "tengu.001"
+  ],
+  "triangles": 9882,
+  "bbox_m": {
+    "min": [
+      1.0849,
+      0.1105,
+      0.0578
+    ],
+    "max": [
+      2.0844,
+      0.612,
+      1.0065
+    ],
+    "size": [
+      0.9995,
+      0.5015,
+      0.9487
+    ]
+  },
+  "armature": [],
+  "actions": [],
+  "images": {
+    "tripo_image_0e68fbe3_0": [
+      4096,
+      4096
+    ]
+  }
+}
