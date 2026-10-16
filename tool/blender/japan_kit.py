@@ -200,9 +200,9 @@ def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6, pat
     return mat
 
 
-def flame_material(name, core, edge, strength=6.0):
+def flame_material(name, core, edge, strength=6.0, opacity=1.0):
     """Lửa ma: phát sáng, lõi sáng ở giữa (theo pháp tuyến hướng máy quay),
-    mờ dần ra rìa."""
+    mờ dần ra rìa. [opacity] < 1 cho quầng sáng mờ bao quanh."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -224,8 +224,12 @@ def flame_material(name, core, edge, strength=6.0):
     alpha.operation = "SUBTRACT"
     alpha.inputs[0].default_value = 1.0
     L(lw.outputs["Facing"], alpha.inputs[1])
+    fade = N.new("ShaderNodeMath")
+    fade.operation = "MULTIPLY"
+    fade.inputs[1].default_value = opacity
+    L(alpha.outputs[0], fade.inputs[0])
     mix = N.new("ShaderNodeMixShader")
-    L(alpha.outputs[0], mix.inputs["Fac"])
+    L(fade.outputs[0], mix.inputs["Fac"])
     L(tr.outputs[0], mix.inputs[1])
     L(em.outputs[0], mix.inputs[2])
     L(mix.outputs[0], out.inputs["Surface"])
@@ -441,12 +445,55 @@ def flame(name, base, height, width, mat, lean=Vector((0, 0, 0)), tongues=3, see
     return out
 
 
-def hakama(body, co, rig, name, mat, flare=0.11, top_pad=0.03):
+def hitodama(name, head, size, trail, mats, seed=0, tails=3, embers=7):
+    """Lửa ma trơi (hitodama) đang bay: đầu tròn lõi vàng nóng, rìa đỏ, quầng
+    sáng mờ bao ngoài; đuôi lửa xoắn kéo ngược hướng bay [trail] rồi tách
+    [tails] lưỡi phụ uốn lệch pha; tàn lửa lấm tấm rơi lại sau đuôi.
+    [mats] = (lửa, quầng, tàn lửa)."""
+    import random
+    rng = random.Random(seed)
+    fire, halo, spark = mats
+    tr = trail.normalized()
+    side = tr.orthogonal().normalized()
+    up2 = tr.cross(side)
+    out = []
+
+    def tongue(tag, length, width, phase, swirl, start=0.0, n=16):
+        cap = min(0.45, 1.0 / length)  # đầu tròn dài ≈ một bán kính
+        pts, radii = [], []
+        for i in range(n + 1):
+            t = i / n
+            ang = phase + swirl * 2 * math.pi * t
+            off = (side * math.cos(ang) + up2 * math.sin(ang)) * size * 0.7 * (t ** 1.4)
+            pts.append(head + tr * size * (length * (start + t * (1 - start)) - 0.9) + off)
+            x = min(1.0, t / cap)
+            r = width * size * math.sqrt(max(0.0, 1 - (1 - x) ** 2)) * (1 - t) ** 1.3
+            radii.append((r + 0.0004,) * 2)
+        out.append(add_object(f"{name}{tag}", raw_tube(f"{name}{tag}", pts, radii, sides=14), [fire]))
+
+    tongue("Main", 4.5, 1.0, rng.uniform(0, 6.3), 0.9)
+    for k in range(tails):  # lưỡi phụ tách từ thân đuôi, uốn ngược chiều nhau
+        tongue(f"Tail{k}", rng.uniform(3.0, 4.2), rng.uniform(0.38, 0.55), 2 * math.pi * k / tails + rng.uniform(-0.4, 0.4),
+               rng.choice((-1, 1)) * rng.uniform(0.6, 1.1), start=rng.uniform(0.15, 0.3))
+    out.append(add_object(f"{name}Halo", raw_ellipsoid(f"{name}Halo", head + tr * size * 0.3, (size * 1.35,) * 3,
+                                                       segments=20, rings=12), [halo]))
+    for k in range(embers):
+        t = rng.uniform(1.5, 5.0)
+        p = head + tr * size * t + (side * rng.uniform(-1, 1) + up2 * rng.uniform(-1, 1)) * size * 0.5 * t ** 0.7
+        r = size * rng.uniform(0.05, 0.11) * (1.2 - t / 6)
+        out.append(add_object(f"{name}Ember{k}", raw_ellipsoid(f"{name}Ember{k}", p, (r, r, r * 1.6), segments=8,
+                                                               rings=6), [spark]))
+    return out
+
+
+def hakama(body, co, rig, name, mat, flare=0.11, top_pad=0.03, drape=6, top=0.04):
     """Quần hakama ống rộng: vỏ ôm hông + hai ống chân, phồng dần xuống gấu
-    (trọng số nhóm đỉnh điều khiển độ đẩy ra), dừng trên mắt cá."""
+    (trọng số nhóm đỉnh điều khiển độ đẩy ra), dừng trên mắt cá. [drape] =
+    số lượt làm mượt: thân béo cần nhiều để vải dày rủ trùm, không lộ khối đùi.
+    [top] = mép trên cao hơn gốc xương chậu bao nhiêu (phải nằm dưới đai)."""
     w = weights_by_group(body)
     bl = rig.data.bones
-    hip_z = bl["pelvis"].head_local.z + 0.04
+    hip_z = bl["pelvis"].head_local.z + top
     ankle_z = bl["foot_l"].head_local.z + 0.05
     span = hip_z - ankle_z
     keep = body.vertex_groups.new(name=f"{name}_keep")
@@ -481,7 +528,7 @@ def hakama(body, co, rig, name, mat, flare=0.11, top_pad=0.03):
     d.vertex_group = f"{name}_puff"
     sm = o.modifiers.new("Soft", "SMOOTH")
     sm.factor = 0.8
-    sm.iterations = 6
+    sm.iterations = drape
     s = o.modifiers.new("Thick", "SOLIDIFY")
     s.thickness = 0.006
     s.offset = 1.0
@@ -669,6 +716,55 @@ def belly_ball(body, co, center, rx, ry, rz_top, rz_bot, tuck_z, name="BellyBall
         if f <= 0:
             continue
         key.data[i].co = key.data[i].co + d * ((r_new / r - 1.0) * f)
+    key.value = 1.0
+    return key
+
+
+def limb_fat(body, co, rig, bone, profile, name, groups, inner=0.4, front=1.0, back=1.0):
+    """Mỡ quấn quanh chi (shape key): đẩy đỉnh ra xa trục xương [bone] — khối
+    tròn đều như đùi người béo, không nhọn như đẩy theo pháp tuyến. [profile]
+    = [(u, mét)] nội suy tuyến tính dọc xương (u = 0 đầu, 1 đuôi; ngoài
+    khoảng thì 0). [inner] giảm phía trong (hai đùi không đâm vào nhau),
+    [front]/[back] nhân phía trước/sau. Nhân theo tổng trọng số [groups]."""
+    if body.data.shape_keys is None:
+        body.shape_key_add(name="Basis")
+    key = body.shape_key_add(name=name, from_mix=False)
+    w = weights_by_group(body)
+    b = rig.data.bones[bone]
+    h, t = b.head_local, b.tail_local
+    axis = t - h
+    length = axis.length
+    axis = axis / length
+    out_x = 1 if h.x >= 0 else -1
+
+    def amount(u):
+        if u <= profile[0][0] or u >= profile[-1][0]:
+            return 0.0
+        for (u0, a0), (u1, a1) in zip(profile, profile[1:]):
+            if u0 <= u <= u1:
+                k = (u - u0) / (u1 - u0)
+                k = k * k * (3 - 2 * k)
+                return a0 + (a1 - a0) * k
+        return 0.0
+
+    for i, p in enumerate(co):
+        g = w[i]
+        if g.get("HelperGeometry", 0) > 0.5:
+            continue
+        gw = min(1.0, sum(g.get(k, 0) for k in groups))
+        if gw <= 0:
+            continue
+        u = (p - h).dot(axis) / length
+        a = amount(u)
+        if a <= 0:
+            continue
+        r = p - (h + axis * u * length)
+        if r.length < 1e-5:
+            continue
+        r.normalize()
+        f = 1 - (1 - inner) * max(0.0, -r.x * out_x)
+        f *= 1 + ((front if r.y < 0 else back) - 1) * min(1.0, abs(r.y) * 1.5)
+        key.data[i].co = key.data[i].co + r * a * f * gw
     key.value = 1.0
     return key
 

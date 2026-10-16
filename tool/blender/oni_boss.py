@@ -27,21 +27,19 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import conform_outside, densify, ridge, skin_snapper, snap_rest  # noqa: E402
+from japan_kit import conform_outside, densify, hitodama, limb_fat, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
-S = 1.45  # khổng lồ lùn bè, ~2,3 m
+S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~2,6 m
 
 ONI_BODY = {
     "stomach-pregnant-incr": 1.0,
     "stomach-navel-out": 0.6,
     "torso-scale-horiz-incr": 1.0,
     "torso-scale-depth-incr": 0.8,
-    "torso-scale-vert-decr": 0.4,
-    "lowerlegs-height-decr": 1.0,
-    "measure-lowerleg-height-decr": 0.8,
-    "upperlegs-height-decr": 0.8,
-    "measure-upperleg-height-decr": 0.6,
+    # Chân dài như người thường (ảnh tham khảo người béo phì): chân cụt làm
+    # thân dưới phình thành cái chuông úp; cao lên thì khối mỡ mới ra tỉ lệ.
+    "lowerlegs-height-decr": 0.15,
     "measure-shoulder-dist-incr": 1.0,
     "torso-muscle-pectoral-incr": 1.0,
     "neck-scale-horiz-incr": 1.0,
@@ -115,8 +113,6 @@ for s_ in ("l", "r"):
         f"{s_}-lowerarm-scale-depth-incr": 0.8,
         f"{s_}-hand-scale-incr": 0.8,
         f"{s_}-upperleg-scale-horiz-incr": 0.8,
-        f"{s_}-upperleg-scale-vert-decr": 0.6,
-        f"{s_}-lowerleg-scale-vert-decr": 0.5,
         f"{s_}-lowerleg-scale-horiz-incr": 0.6,
         f"{s_}-foot-scale-incr": 0.6,
         f"{s_}-foot-scale-horiz-incr": 0.8,  # bàn chân bè đỡ khối nặng
@@ -268,15 +264,72 @@ def kanabo(grip, direction, length, mats):
             b0 = butt.lerp(top, t) + n * rr * 0.9
             spikes.append((b0, b0 + n * 0.02 * S, b0 + n * 0.045 * S, 0.014 * S))
     out.append(add_object("KanaboSpikes", tapered_world("KanaboSpikes", spikes, sides=8, taper=1.0), [gold]))
-    # Tua đỏ ở đuôi.
-    rng = random.Random(2)
-    cords = []
-    for k in range(14):
-        a = 2 * math.pi * k / 14
-        b0 = butt - d * 0.01 * S + (side * math.cos(a) + up2 * math.sin(a)) * 0.01 * S
-        tip = b0 - Vector((0, 0, rng.uniform(0.14, 0.2) * S)) + (side * math.cos(a) + up2 * math.sin(a)) * 0.02 * S
-        cords.append((b0, b0.lerp(tip, 0.5), tip, 0.006 * S))
-    out.append(add_object("KanaboTassel", tapered_world("KanaboTassel", cords, sides=6, taper=0.6), [tassel]))
+    out += fusa(butt - d * 0.012 * S, d, (gold, tassel))
+    return out
+
+
+def fusa(hang, d, mats):
+    """Tua kiểu Nhật (fusa) treo đuôi chuỳ: vòng dây bện vàng–đỏ, nút thắt tròn
+    quấn dây vàng chữ thập, chóp đồng loe, đai buộc cổ tua, chùm sợi đỏ hai
+    tông xoè nhẹ rồi rủ theo trọng lực. [hang] = điểm treo, [d] = trục chuỳ."""
+    gold, red = mats
+    dark = skin_material("TasselDark", "#6A0C10", rough=0.55)
+    red_s = skin_material("TasselSilk", "#B4161C", rough=0.35, noise_scale=300)
+    down = Vector((0, 0, -1))
+    sd = d.cross(down).normalized()  # mặt phẳng vòng dây: dọc trục chuỳ
+    if sd.length < 1e-3:
+        sd = Vector((1, 0, 0))
+    lean = (d - down * d.dot(down)).normalized() * 0.18  # tua đung đưa nhẹ về phía đầu chuỳ
+    out = []
+    # Vòng dây bện: hai sợi xoắn quanh một vòng elip đứng.
+    loop_h, loop_w = 0.04 * S, 0.012 * S
+    lc = hang + down * loop_h * 0.5
+    fd = sd.cross(down).normalized()
+    for k, mat in enumerate((gold, red)):
+        pts = []
+        for i in range(96):
+            t = 2 * math.pi * i / 96
+            c = lc + fd * loop_w * math.sin(t) - down * loop_h * 0.5 * math.cos(t)
+            tan = (fd * loop_w * math.cos(t) + down * loop_h * 0.5 * math.sin(t)).normalized()
+            n1 = tan.cross(sd).normalized()
+            ang = 14 * t + math.pi * k
+            pts.append(c + (n1 * math.cos(ang) + sd * math.sin(ang)) * 0.0022 * S)
+        out.append(add_object(f"FusaCord{k}", raw_tube(f"FusaCord{k}", pts, [(0.0024 * S,) * 2] * 96, sides=8,
+                                                       closed=True), [mat]))
+    # Nút thắt tròn bọc dây vàng chữ thập.
+    kc = hang + down * (loop_h + 0.016 * S)
+    kr = 0.017 * S
+    out.append(add_object("FusaKnot", raw_ellipsoid("FusaKnot", kc, (kr, kr, kr * 1.1), segments=20, rings=12), [red]))
+    for k, (a1, a2) in enumerate(((sd, fd), (sd, down), (fd, down))):
+        ring = [kc + (a1 * math.cos(2 * math.pi * j / 40) + a2 * math.sin(2 * math.pi * j / 40)) * kr * 1.02
+                for j in range(40)]
+        out.append(add_object(f"FusaWrap{k}", raw_tube(f"FusaWrap{k}", ring, [(0.0022 * S,) * 2] * 40, sides=8,
+                                                       closed=True), [gold]))
+    # Chóp đồng loe hình chuông + đai buộc cổ tua.
+    top = kc + down * kr * 1.05
+    cap = [top + down * h * 0.024 * S for h in (0.0, 0.25, 0.6, 1.0)]
+    out.append(add_object("FusaCap", raw_tube("FusaCap", cap, [(r * S,) * 2 for r in (0.006, 0.011, 0.015, 0.017)],
+                                              sides=16), [gold]))
+    neck = cap[-1] + down * 0.016 * S
+    ring = [neck + (sd * math.cos(2 * math.pi * j / 40) + fd * math.sin(2 * math.pi * j / 40)) * 0.0175 * S
+            for j in range(40)]
+    out.append(add_object("FusaBand", raw_tube("FusaBand", ring, [(0.0035 * S, 0.006 * S)] * 40, sides=8,
+                                               closed=True), [gold]))
+    # Chùm sợi: gốc trong chóp, bó lại ở đai rồi xoè, ngọn so le.
+    rng = random.Random(7)
+    threads = {red_s: [], dark: []}
+    for k in range(150):
+        a = rng.uniform(0, 2 * math.pi)
+        rr = math.sqrt(rng.uniform(0.05, 1.0))
+        rad = sd * math.cos(a) + fd * math.sin(a)
+        p0 = cap[-1] - down * 0.004 * S + rad * rr * 0.014 * S
+        p1 = neck + rad * rr * 0.017 * S + down * 0.03 * S
+        L = rng.uniform(0.165, 0.18) * S
+        p2 = neck + rad * (0.022 + 0.022 * rr) * S + (down + lean + rad * rng.uniform(-0.05, 0.05)) * L
+        threads[red_s if rng.random() < 0.7 else dark].append((p0, p1, p2, 0.0019 * S))
+    for mat, strands in threads.items():
+        out.append(add_object(f"FusaThreads{mat.name}", tapered_world(f"FusaThreads{mat.name}", strands, sides=5,
+                                                                    steps=10, taper=0.04), [mat]))
     return out
 
 
@@ -791,6 +844,69 @@ def body_detail(body, co, rig):
         inflate(body, co, heel, (0.03, 0.03, 0.025), 0.008, name=f"Heel{s_}", front_only=False)
 
 
+def lower_fat(body, co, rig):
+    """Thân dưới người béo phì (shape key, toạ độ nghỉ): hông bè gần bằng bụng,
+    mông và bụng dưới trễ dưới đai, đùi to liền khối thon dần xuống gối có
+    đệm mỡ, bắp chân dày. Hakama sao từ thân nên phồng theo — không còn dáng
+    ống thắt dưới đai."""
+    bl = rig.data.bones
+    w = weights_by_group(body)
+    hips = TORSO + ("thigh_l", "thigh_r")
+    pz = bl["pelvis"].head_local.z
+    pts = [p for i, p in enumerate(co)
+           if sum(w[i].get(k, 0) for k in hips) > 0.5 and w[i].get("HelperGeometry", 0) < 0.5]
+    for z, amt, rad in ((pz - 0.07, 0.1, (0.12, 0.17, 0.12)), (pz + 0.02, 0.06, (0.1, 0.16, 0.09))):
+        band = [p for p in pts if abs(p.z - z) < 0.015]
+        cy = (min(p.y for p in band) + max(p.y for p in band)) / 2
+        for sx in (-1, 1):
+            xs = max(p.x * sx for p in band)
+            inflate(body, co, Vector((sx * xs, cy + 0.01, z)), rad, amt, name=f"HipFat{z:.2f}{sx}",
+                    front_only=False, groups=hips)
+    # Mông nặng xệ và bụng dưới trễ dưới đai (che trong hakama nhưng đẩy quần phồng).
+    band = [p for p in pts if abs(p.z - (pz - 0.08)) < 0.015]
+    yb, yf = max(p.y for p in band), min(p.y for p in band)
+    # Vòng eo liền khối: đẩy hai sườn và lưng dưới ra xa trục thân (mặt trước đã
+    # có bụng) để lưng chảy liền xuống mông, không thắt eo giữa bụng và hông.
+    band = [p for p in pts if abs(p.z - (pz + 0.04)) < 0.015]
+    cy = (min(p.y for p in band) + max(p.y for p in band)) / 2
+    prof = [(pz - 0.09, 0.0), (pz - 0.02, 0.07), (pz + 0.06, 0.1), (pz + 0.15, 0.08), (pz + 0.26, 0.0)]
+    if body.data.shape_keys is None:
+        body.shape_key_add(name="Basis")
+    key = body.shape_key_add(name="WaistFill", from_mix=False)
+    for i, p in enumerate(co):
+        g = w[i]
+        if g.get("HelperGeometry", 0) > 0.5 or not prof[0][0] < p.z < prof[-1][0]:
+            continue
+        gw = min(1.0, sum(g.get(k, 0) for k in hips))
+        for (z0, a0), (z1, a1) in zip(prof, prof[1:]):
+            if z0 <= p.z <= z1:
+                k = (p.z - z0) / (z1 - z0)
+                amt = a0 + (a1 - a0) * k * k * (3 - 2 * k)
+                break
+        r = Vector((p.x, p.y - cy, 0))
+        if r.length < 1e-4:
+            continue
+        r.normalize()
+        f = 1 - 0.65 * max(0.0, -r.y)  # mặt trước nhẹ tay
+        key.data[i].co = key.data[i].co + r * amt * f * gw
+    key.value = 1.0
+    # Mông là điểm nhô ra sau xa nhất (ảnh tham khảo người béo phì nhìn nghiêng),
+    # lưng dưới lồi liền xuống mông; bụng dưới rơi gần thẳng đứng dưới đai.
+    for sx in (-1, 1):
+        inflate(body, co, Vector((sx * 0.08, yb, pz - 0.12)), (0.13, 0.12, 0.14), 0.13, name=f"Glute{sx}",
+                front_only=False, groups=hips)
+    inflate(body, co, Vector((0, yb, pz + 0.07)), (0.17, 0.08, 0.1), 0.05, name="LowBackFat", front_only=False,
+            groups=hips)
+    inflate(body, co, Vector((0, yf, pz - 0.07)), (0.2, 0.1, 0.11), 0.11, name="LowerGut", front_only=False,
+            groups=hips)
+    for s in ("l", "r"):
+        # Đùi trên dày gần bằng thân, hai đùi áp sát, thon đều xuống gối.
+        limb_fat(body, co, rig, f"thigh_{s}", [(-0.2, 0.0), (0.0, 0.11), (0.4, 0.09), (0.8, 0.05), (1.0, 0.025),
+                                               (1.12, 0.0)], f"ThighFat{s}", (f"thigh_{s}",), inner=0.75, back=1.2)
+        limb_fat(body, co, rig, f"calf_{s}", [(-0.1, 0.0), (0.02, 0.02), (0.3, 0.035), (0.75, 0.015), (0.95, 0.0)],
+                 f"CalfFat{s}", (f"calf_{s}",), inner=0.6)
+
+
 def sole_paint(body, co):
     """Thuộc tính `sole`: gan bàn chân và mép gót sạm chai."""
     w = weights_by_group(body)
@@ -879,14 +995,14 @@ def build():
     # nặng ở nửa dưới, trễ chờm qua đai thừng (nếp gấp ở mép dưới).
     co0 = rest_coords(body)
     z_chest = bl["spine_03"].head_local.z + 0.02
-    tuck_z = bl["pelvis"].head_local.z + 0.05
-    zc = tuck_z + (z_chest - tuck_z) * 0.36
+    tuck_z = bl["pelvis"].head_local.z + 0.01  # bụng trễ thấp, chờm qua đai như người béo phì thật
+    zc = tuck_z + (z_chest - tuck_z) * 0.32
     band = [p for p in co0 if abs(p.z - zc) < 0.02 and abs(p.x) < 0.25]
     half_w = max(abs(p.x) for p in band)
     y_front = min(p.y for p in band)
     ry = 0.3
     center = Vector((0, y_front + ry - 0.23, zc))  # nhô 0,23 m trước bụng gốc
-    belly_ball(body, co0, center, half_w + 0.11, ry, z_chest - zc + 0.1, zc - tuck_z + 0.08, tuck_z, soft=0.3)
+    belly_ball(body, co0, center, half_w + 0.11, ry, z_chest - zc + 0.1, zc - tuck_z + 0.1, tuck_z, soft=0.3)
     # Rốn lõm sâu giữa khối bụng.
     co1 = rest_coords(body)
     nz = zc - 0.02
@@ -896,6 +1012,7 @@ def build():
     co2 = rest_coords(body)
     sculpt_face(body, co2)
     body_detail(body, co2, rig)
+    lower_fat(body, co2, rig)
     co = rest_coords(body)
     kumadori(body, co)
     face_paint(body, co)
@@ -912,7 +1029,9 @@ def build():
     navy = silk_material("Hakama", "#22284A", pattern="#3A3860", trim="#B08A3C", sheen=0.5)
     apron_m = silk_material("ApronCloth", "#1A1E3A", pattern="#2C3058", sheen=0.4)
     tassel = skin_material("Tassel", "#A01C1C", rough=0.7)
-    fire = flame_material("Onibi", "#FF3A10", "#9A0806", strength=1.6)
+    fire = flame_material("Onibi", "#FFD27A", "#E0200A", strength=1.8)  # lõi vàng nóng, rìa đỏ
+    halo = flame_material("OnibiHalo", "#FF5A20", "#8A0804", strength=1.2, opacity=0.07)
+    spark = glow_material("OnibiSpark", "#FFB040", strength=4, base="#FF6010")
     eye_purple = glow_material("BuckleEyeGlow", "#C060FF", strength=6, base="#6020A0")
 
     # ---- sừng: mọc trên trán hai bên, cong ra sau và ra ngoài
@@ -932,7 +1051,7 @@ def build():
           big={19: (0.05 * S, gold)})
 
     # ---- đai thừng shimenawa + khoá mặt quỷ
-    waist_z = bl["pelvis"].head_local.z + 0.03  # đai thấp dưới bụng phệ
+    waist_z = bl["pelvis"].head_local.z - 0.02  # đai thấp, nằm dưới nếp bụng chờm
     c, rx, ry = body_ring(body, co, waist_z, ("pelvis", "spine_01", "spine_02"), pad=0.035)
     ring = ellipse_ring(c, rx, ry, n=72)
     for o in twisted_rope("Shimenawa", ring, 0.04 * S, rope_m):
@@ -945,7 +1064,7 @@ def build():
     pelt_o = pelt(body, co, rig, tiger_material("TigerPelt"), tuck_z)
 
     # ---- quần hakama chàm, gấu viền vàng
-    hakama(body, co, rig, "Hakama", navy, flare=0.13 * S)
+    hakama(body, co, rig, "Hakama", navy, flare=0.13 * S, top_pad=0.05, drape=24, top=-0.01)
 
     # ---- giáp tay vàng–đen, vòng cổ tay
     for s in ("l", "r"):
@@ -955,7 +1074,7 @@ def build():
         limb_band(rig, f"upperarm_{s}", 0.2, 0.3, 0.104 * S, 0.1 * S, gold, f"Armlet{s}")  # trùm bắp tay béo
         claws(rig, s, claw_m, length=0.035 * S, radius=0.007 * S)
         claws(rig, s, claw_m, length=0.04 * S, radius=0.01 * S, toes=True)
-    return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire, "eyes": eyes, "pelt": pelt_o}
+    return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire, "halo": halo, "spark": spark, "eyes": eyes, "pelt": pelt_o}
 
 
 def pose_and_props(rig, mats):
@@ -994,11 +1113,42 @@ def pose_and_props(rig, mats):
     poser.palm("l", (flat_l - up * 0.1).normalized(), up)
     fist(rig, "l", curl=0.45)
     palm = (poser.world("hand_l", 0.0) + poser.world("middle_01_l", 0.0)) / 2 + up * 0.06 * S
-    flame("Onibi", palm, 0.26 * S, 0.12 * S, mats["fire"], lean=-fwd * 0.05 * S + up * 0.02, tongues=4, seed=1)
-    flame("OnibiFloat", sh_r + right * 0.35 * S + up * 0.35 * S, 0.18 * S, 0.08 * S, mats["fire"], tongues=3, seed=5)
-    flame("OnibiFloat2", sh_l + left * 0.25 * S + up * 0.55 * S - fwd * 0.2 * S, 0.14 * S, 0.06 * S, mats["fire"],
-          tongues=3, seed=9)
+    flame("Onibi", palm, 0.26 * S, 0.12 * S, mats["fire"], lean=-fwd * 0.05 * S + up * 0.02, tongues=5, seed=1)
+    add_object("OnibiHalo", raw_ellipsoid("OnibiHalo", palm + up * 0.1 * S, (0.1 * S, 0.1 * S, 0.14 * S)),
+               [mats["halo"]])
+    rng = random.Random(4)
+    for k in range(8):  # tàn lửa bốc lên từ lòng bàn tay
+        p = palm + up * rng.uniform(0.2, 0.42) * S + (fwd * rng.uniform(-1, 1) + left * rng.uniform(-1, 1)) * 0.07 * S
+        r = rng.uniform(0.005, 0.009) * S
+        add_object(f"OnibiEmber{k}", raw_ellipsoid(f"OnibiEmber{k}", p, (r, r, r * 1.6), segments=8, rings=6),
+                   [mats["spark"]])
+    wisps(poser, mats)
     return poser
+
+
+def wisps(poser, mats, n=8):
+    """Vòng lửa ma trơi bay xoắn ốc quanh thân (ngược chiều kim đồng hồ nhìn từ
+    trên), đuôi kéo ngược hướng bay và hơi bốc lên. Bỏ ngọn nào rơi trước
+    bụng/mặt nhìn từ máy quay ảnh duyệt để không che boss."""
+    from mathutils import Euler
+    fwd, left, up = poser.frame()
+    c0 = poser.world("spine_02", 0.0)
+    cam = Euler((math.radians(84), 0, math.radians(-8))).to_matrix() @ Vector((0, 0, -1))
+    cam_h = Vector((cam.x, cam.y, 0)).normalized()
+    rng = random.Random(11)
+    for k in range(n):
+        a = 2 * math.pi * k / n + 0.3
+        radial = fwd * math.cos(a) + left * math.sin(a)
+        tangent = -fwd * math.sin(a) + left * math.cos(a)
+        h = (-0.55 + 1.5 * k / (n - 1)) * S + rng.uniform(-0.08, 0.08) * S
+        p = c0 + radial * rng.uniform(0.82, 1.0) * S + up * h
+        lateral = (p - c0) - cam_h * (p - c0).dot(cam_h)
+        lateral.z = 0
+        if (p - c0).dot(cam_h) < 0 and lateral.length < 0.55 * S:
+            continue  # trước thân nhìn từ máy quay
+        size = rng.uniform(0.04, 0.06) * S
+        hitodama(f"Wisp{k}", p, size, -tangent * 0.6 + up * 0.8, (mats["fire"], mats["halo"], mats["spark"]),
+                 seed=20 + k)
 
 
 def look_at(scene, p, width, height, ppm, yaw, pitch):
