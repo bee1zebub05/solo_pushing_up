@@ -27,11 +27,12 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import DrapedSkirt, conform_outside, densify, fire_material, hitodama, lift_over, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
+from japan_kit import DrapedSkirt, conform_outside, densify, fire_material, hitodama, drape_chain, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~2,6 m
 ROPE_R = 0.04 * S  # bán kính thừng shimenawa (khoá đai treo vào thừng)
+BEAD_PENDANT = 19  # hạt vàng to giữa ngực trong chuỗi 26 hạt
 
 ONI_BODY = {
     "stomach-pregnant-incr": 1.0,
@@ -1119,7 +1120,7 @@ def build():
     # ---- chuỗi hạt đen to quanh cổ, mặt đồng vàng phía trước
     neck_base = bone_point(rig, "neck_01", 0.0) - up * 0.03 * S
     beads("Bead", neck_base + fwd * 0.03 * S, 0.17 * S, 0.14 * S, 0.12 * S, 26, 0.03 * S, bead_m, rig, "spine_03",
-          big={19: (0.05 * S, gold)})
+          big={BEAD_PENDANT: (0.05 * S, gold)})
 
     # ---- đai thừng shimenawa + khoá mặt quỷ
     waist_z = bl["pelvis"].head_local.z - 0.02  # đai thấp, nằm dưới nếp bụng chờm
@@ -1246,8 +1247,10 @@ def main():
     # Tấm da hổ bám da trong dáng thật (vai trái nâng tay làm cơ delta nhô).
     conform_outside(mats["pelt"], body, 0.006 * S, 0.02 * S)
     pelt_fur(mats["pelt"], rig)
-    # Chuỗi hạt vắt lên trên tấm da hổ (không chui dưới mép da).
-    lift_over([o for o in bpy.data.objects if o.name.startswith("Bead")], mats["pelt"], 0.01 * S)
+    # Chuỗi hạt vắt lên trên tấm da hổ như một sợi dây liền, hạt cách đều.
+    import re
+    bead_objs = sorted((o for o in bpy.data.objects if re.fullmatch(r"Bead\d+", o.name)), key=lambda o: int(o.name[4:]))
+    drape_chain(bead_objs, [(body, True, 0.004 * S), (mats["pelt"], False, 0.01 * S)], anchor=BEAD_PENDANT)
     dress_lower(body, rig, poser, mats)
     lights(scene)
     shadow_catcher()

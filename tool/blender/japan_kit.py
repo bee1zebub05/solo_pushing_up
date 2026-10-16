@@ -411,32 +411,123 @@ def beads(name, center, rx, ry, drop, n, r, mat, rig, bone, tilt=Vector((0, 0, 1
     return objs
 
 
-def lift_over(objs, cover, gap):
-    """Đẩy từng vật (hạt chuỗi…) ra trước mặt ngoài tấm [cover] (da thú, vải
-    đã bám da) nếu đang nằm dưới/xuyên nó — dây vắt lên trên tấm, không chui
-    vào. Dùng ở dáng hiện tại (sau conform_outside); trả số vật đã đẩy."""
+def _surface_tree(obj, evaluated):
+    """BVH thế giới của [obj]: [evaluated] = lưới đã áp xương/modifier (thân
+    tạo dáng); False = lưới gốc một lớp (tấm da đã bám da — bản Solidify có
+    vỏ trong quay pháp tuyến vào thân). Dựng từ đỉnh/mặt như conform_outside:
+    bmesh.from_mesh/from_object trên thân MPFB có shape key làm Blender sập."""
     from mathutils.bvhtree import BVHTree
-    # Lưới gốc một lớp (pháp tuyến ra ngoài), không lấy bản Solidify: vỏ
-    # trong quay pháp tuyến vào thân, hạt nằm dưới tấm sẽ bị coi là ở trên.
-    bm = bmesh.new()
-    bm.from_mesh(cover.data)
-    bm.transform(cover.matrix_world)
-    bm.normal_update()
-    tree = BVHTree.FromBMesh(bm)
-    moved = 0
+    mw = obj.matrix_world
+    if evaluated:
+        bpy.context.view_layer.update()
+        ev = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+        me = ev.to_mesh()
+    else:
+        me = obj.data
+    tree = BVHTree.FromPolygons([mw @ v.co for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+    if evaluated:
+        ev.to_mesh_clear()
+    return tree
+
+
+def drape_chain(objs, covers, anchor=0, rounds=12, slack=0.04):
+    """Chuỗi hạt vòng kín [objs] (theo thứ tự, dựng sẵn quanh cổ có võng) vắt
+    qua các mặt [covers] = [(vật, đã tạo dáng?, khe hở)] ở dáng hiện tại, coi
+    cả chuỗi là một sợi dây:
+    - giữ dáng gốc (độ võng trước ngực), chỉ làm mượt ĐỘ ĐẨY ra khỏi mặt dọc
+      dây → hạt kề nhau cùng được nâng dần (làm mượt chính vị trí thì vòng kín
+      co lại thành vòng cổ siết, hạt mốc bị kéo lên cằm);
+    - rải hạt theo chiều dài dây, khoảng hở đều [slack] × đường kính; số hạt
+      nhỏ tính cho vừa dây, hạt thừa bị xoá (hạt đè nhau trông như cục dính).
+    Hạt [anchor] (mặt dây vàng) giữ chỗ. Đẩy từng hạt riêng lẻ thì chuỗi gãy
+    khúc, chỗ hở chỗ dồn. Trả về số hạt còn lại."""
+    trees = [(_surface_tree(o, ev), gap) for o, ev, gap in covers]
+    n = len(objs)
+    centers, radii = [], []
     for o in objs:
         pts = [o.matrix_world @ Vector(c) for c in o.bound_box]
         c = sum(pts, Vector()) / 8
-        r = max((p - c).length for p in pts) / 3 ** 0.5
-        hit, nrm, _, dist = tree.find_nearest(c)
-        if hit is None or dist > r * 3:
-            continue
-        depth = (c - hit).dot(nrm)
-        if depth < r + gap:
-            o.matrix_world = Matrix.Translation(nrm * (r + gap - depth)) @ o.matrix_world
-            moved += 1
-    bm.free()
-    return moved
+        centers.append(c)
+        radii.append(max((q - c).length for q in pts) / 3 ** 0.5)
+    r = min(radii)
+    base = [centers[i].lerp(centers[(i + 1) % n], t / 4) for i in range(n) for t in range(4)]
+    m = len(base)
+
+    axis = sum(centers, Vector()) / n
+
+    def pushed(q, rad, level=False):
+        """Đẩy ra ngoài mọi mặt theo pháp tuyến mặt gần nhất. [level]: đẩy
+        NGANG ra khỏi trục chuỗi, mặt ngoài cùng tìm bằng tia bắn từ ngoài vào
+        (cho mặt dây trước ngực: tâm lọt trong khối thân béo thì mặt gần nhất
+        là dưới cằm → bị đẩy lên cổ). Không dùng cho cả dây: tia ngang trúng cơ
+        vai, dây bị đẩy rộng ra tới vai."""
+        if level:
+            out = q - axis
+            out.z = 0
+            out = out.normalized() if out.length > 1e-6 else Vector((1, 0, 0))
+            reach = rad * 5
+            for tree, gap in trees:
+                loc, _, _, _ = tree.ray_cast(q + out * reach, -out, reach * 2)
+                if loc is not None and (q - loc).dot(out) < rad + gap:
+                    q = q + out * (rad + gap - (q - loc).dot(out))
+            return q
+        for tree, gap in trees:
+            hit, nrm, _, dist = tree.find_nearest(q, rad * 6)
+            if hit is not None:
+                depth = (q - hit).dot(nrm)
+                if depth < rad + gap:
+                    q = q + nrm * (rad + gap - depth)
+        return q
+
+    off = [Vector() for _ in range(m)]
+    for _ in range(rounds):
+        off = [pushed(base[i] + off[i], r) - base[i] for i in range(m)]
+        off = [(off[i - 1] + off[i] * 2 + off[(i + 1) % m]) / 4 for i in range(m)]
+    line = [pushed(base[i] + off[i], r) for i in range(m)]
+    seg = [(line[(i + 1) % m] - line[i]).length for i in range(m)]
+    total = sum(seg)
+    cum = [0.0]
+    for d in seg:
+        cum.append(cum[-1] + d)
+
+    def at(sv):
+        sv %= total
+        i = max(j for j in range(m) if cum[j] <= sv)
+        return line[i].lerp(line[(i + 1) % m], (sv - cum[i]) / seg[i] if seg[i] else 0.0)
+
+    # Mặt dây (to, bán kính rb) treo thấp hơn dây dz: hai hạt kề cách nó theo
+    # dây một đoạn h để không đè → chiếm chỗ trên dây như hạt bán kính ra.
+    rb = radii[anchor]
+    dz = max(0.0, rb - r)
+    h = math.sqrt(max((rb + r * (1 + slack)) ** 2 - dz * dz, (2 * r) ** 2))
+    ra = h - r
+    keep = min(n - 1, int((total - 2 * ra) / (2 * r * (1 + slack))))
+    order = [objs[(anchor + j) % n] for j in range(1, n)]
+    for o in order[keep:]:
+        bpy.data.objects.remove(o, do_unlink=True)
+    order = order[:keep]
+    gap = (total - 2 * ra - keep * 2 * r) / (keep + 1)
+    # Mặt dây ở điểm nhô ra trước nhất của dây (hướng từ tâm chuỗi tới hạt
+    # mốc ban đầu), không theo chỉ số hạt: dây lệch sau khi đẩy thì hạt mốc
+    # có thể nằm cao gần cằm; điểm thấp nhất thì lệch sang bên khi thân xoay.
+    front = centers[anchor] - axis
+    front.z = 0
+    front.normalize()
+    sv = cum[max(range(m), key=lambda i: (line[i] - axis).dot(front))]
+    place = [(objs[anchor], centers[anchor], at(sv))]
+    sv += ra + gap + r
+    for j, o in enumerate(order):
+        place.append((o, centers[objs.index(o)], at(sv)))
+        sv += 2 * r + gap
+    for o, c, target in place:
+        rad = radii[objs.index(o)]
+        if rad > r * 1.05:
+            # Hạt to treo như mặt dây: đỉnh hạt chạm dây, thân hạt rủ xuống
+            # dưới dây rồi đẩy ra khỏi ngực (đặt tâm lên dây thì hạt nhô lên
+            # trên chuỗi, lơ lửng trước cổ).
+            target = pushed(target - Vector((0, 0, dz)), rad, level=True)
+        o.matrix_world = Matrix.Translation(target - c) @ o.matrix_world
+    return keep + 1
 
 
 def twisted_rope(name, ring, r, mat, twists=26, strands=2):
