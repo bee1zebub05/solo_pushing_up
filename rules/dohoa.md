@@ -385,3 +385,22 @@ Oni mất ~7 vòng nhận xét. Phần lớn vòng sửa là lỗi có thể b�
 - Mỗi vòng thử dùng `--dry --quick` + biến `ONI_DEBUG` trỏ tới script soát (khoảng 1,5 phút) render đúng góc cần xem, ghép thành một ảnh lưới. Chỉ render đầy đủ (khoảng 9 phút) khi đã ưng.
 - **Bộ ảnh soát cố định trước khi đưa người dùng xem:** toàn thân · nghiêng trần (ẩn quần áo) · nghiêng mặc đồ · sau lưng · cận bàn chân (trước + trên xuống) · cận mặt. Tự hỏi: bóng có giống tham khảo không, đồ gắn có bị che không, chỗ tiếp xúc (đai–thân, vải–chân, vuốt–ngón) có khớp không.
 - Lỗi "Cannot change old file" / sót `.blend@` (file lớn vừa ghi bị Windows khoá tạm) đã sửa trong `boss_kit.save_blend` 16/10: lưu ra file tạm, tự đổi tên `@` có thử lại; không còn phải xoá tay.
+
+### Bổ sung sau vòng soát cận (bản 10 → 10b, 16/10 tối — oni được duyệt)
+Người dùng phóng to ảnh duyệt và thấy lỗi mà ảnh toàn thân che mất. Ba ảnh cắt cận của người dùng ra 6 lỗi.
+- **Bộ soát phải có ảnh cận từng phụ kiện** ở cỡ người dùng hay phóng (khoảng 700 px/m): tay + vật cầm, khoá đai, chuỗi hạt/vòng cổ, mép da thú/vải, giáp tay. Kèm vài con số đo (khe giữa các hạt, bán kính da so với giáp). Số liệu bắt lỗi nhanh hơn nhìn ảnh.
+- **Màu dưới AgX:** vật phát sáng mạnh hoặc nhiều lớp bán trong suốt chồng nhau (mặt trước + sau ống, nhiều lưỡi lửa) cộng sáng, AgX đẩy về trắng kem. Lửa dùng `japan_kit.fire_material`: ramp bão hoà, cường độ ≈ 1,4, đục ở lõi.
+- **Tên thuộc tính lưới:** không đặt `heat`, `density`, `flame`, `temperature`, `color`, `velocity`. Cycles dành các tên này cho khói/lửa thể tích, shader đọc ra 0 mà không báo lỗi. Đặt có tiền tố (`flame_heat`). Nghi ngờ thì render thẳng thuộc tính ra màu Emission để kiểm.
+- **Vật liệu tối màu trên nền đèn lam:** bóng gương phản trời/đèn viền lam thành xám nhựa hoặc tím. Vải tối dùng `silk_material(spec ≤ 0,25, sheen ≤ 0,06)`, sơn mài nhám ≥ 0,4. Mặt khuất của da đỏ chỉ có đèn viền lam rọi thì ra tím: đèn viền nhạt và vừa phải.
+- **Đồ ôm chi (giáp, vòng tay) phải đo da:** đắp mỡ sau khi đặt bán kính cố định thì giáp chìm vào da, lộ lốm đốm. Dùng `limb_band(skin=(body, co), pad=…)`.
+- **Phụ kiện nhỏ phải đọc được ở cỡ sprite và có chỗ bám:** khối cầu một màu đọc thành quả bom. Phải là mặt phẳng có nét khắc nổi tương phản (vàng/đen/phát sáng). Đồ treo cần quai/khuyên nối vào vật mang (khoá đai treo vào thừng), không đặt lơ lửng.
+- **Chuỗi, dây, vật xếp hàng: xử lý cả đường, không xử lý từng phần tử** (`japan_kit.drape_chain`).
+  - Đẩy từng hạt riêng lẻ thì chuỗi gãy khúc.
+  - Làm mượt vị trí một vòng kín thì vòng co lại thành vòng siết. Chỉ làm mượt *độ đẩy* để giữ dáng võng.
+  - Số hạt phải vừa chiều dài dây (26 hạt cần 1,6S trên vòng 1,0S nên hạt đè thành cục).
+  - Mặt dây đặt theo hình học (điểm nhô trước nhất), không theo chỉ số.
+- **Đẩy vật ra khỏi thân béo:** điểm lọt trong khối thịt thì "mặt gần nhất" có thể là dưới cằm, vật bị đẩy sai hướng. Tia bắn ngang từ ngoài vào thì lại trúng cơ vai. Chọn cách đẩy theo vị trí, và soát cả hai phía.
+- **Bẫy kỹ thuật:**
+  - `bmesh.from_mesh`/`from_object` trên thân MPFB đã tạo dáng (có shape key) làm Blender sập. Dựng BVH từ đỉnh/mặt (`BVHTree.FromPolygons`, xem `_surface_tree`).
+  - Script `ONI_DEBUG` chạy bằng `exec` trong `main()`: generator/lambda không thấy biến cục bộ. Bọc code soát trong hàm và truyền `scene` vào.
+- **Sửa một chỗ trong kit dùng chung thì soát các nhân vật khác dùng chỗ đó.** Lửa Susanoo vẫn dùng `flame_material` cũ, nhiều khả năng cũng bị kem.
