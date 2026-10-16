@@ -137,9 +137,11 @@ def painted_skin(name, base, dark, tattoo=None, sss=0.15, rough=0.55, lips=None,
     return mat
 
 
-def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6, pattern_scale=3.5, pattern_band=0.9):
+def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6, pattern_scale=3.5, pattern_band=0.9,
+                  spec=None):
     """Lụa / vải dày Nhật: ánh sheen, nếp mềm; [pattern] màu vân mây xoáy
-    (kumo) in chìm; [trim] màu dải viền theo thuộc tính `hem` (0 ở gấu)."""
+    (kumo) in chìm; [trim] màu dải viền theo thuộc tính `hem` (0 ở gấu).
+    [spec] < 0.5 giảm phản xạ: vải tối màu khỏi bạc thành nhựa xám dưới đèn."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -197,6 +199,8 @@ def silk_material(name, base, pattern=None, trim=None, sheen=0.6, rough=0.6, pat
     L(bump.outputs[0], bsdf.inputs["Normal"])
     bsdf.inputs["Roughness"].default_value = rough
     bsdf.inputs["Sheen Weight"].default_value = sheen
+    if spec is not None:
+        bsdf.inputs["Specular IOR Level"].default_value = spec
     L(bsdf.outputs[0], out.inputs["Surface"])
     return mat
 
@@ -235,6 +239,73 @@ def flame_material(name, core, edge, strength=6.0, opacity=1.0):
     L(em.outputs[0], mix.inputs[2])
     L(mix.outputs[0], out.inputs["Surface"])
     return mat
+
+
+def fire_material(name, strength=3.0, opacity=1.0, ramp=None, scale=30.0, solid=2.2):
+    """Lửa thật hơn flame_material: độ nóng theo thuộc tính `flame_heat` của lưới
+    (0 ở gốc/đầu lửa → 1 ở ngọn, flame()/hitodama() ghi sẵn) cộng rìa (hướng
+    máy quay) và nhiễu chập chờn → lõi trắng vàng chói, cam, đỏ, ngọn sẫm và
+    tan dần vào không khí. Màu bão hoà vì AgX làm phai màu sáng thành kem."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    N, L = nt.nodes, nt.links.new
+    out = N.new("ShaderNodeOutputMaterial")
+    attr = N.new("ShaderNodeAttribute")
+    attr.attribute_type = "GEOMETRY"
+    attr.attribute_name = "flame_heat"
+    lw = N.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.45
+    tc = N.new("ShaderNodeTexCoord")
+    noise = N.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = scale
+    noise.inputs["Detail"].default_value = 4
+    noise.inputs["Distortion"].default_value = 1.5
+    L(tc.outputs["Object"], noise.inputs["Vector"])
+
+    def op(kind, a, b):
+        m = N.new("ShaderNodeMath")
+        m.operation = kind
+        for i, v in enumerate((a, b)):
+            if isinstance(v, (int, float)):
+                m.inputs[i].default_value = v
+            else:
+                L(v, m.inputs[i])
+        return m.outputs[0]
+
+    flick = op("MULTIPLY", op("SUBTRACT", noise.outputs["Fac"], 0.5), 0.5)
+    rim = op("MULTIPLY", lw.outputs["Facing"], 0.45)
+    heat = op("ADD", op("ADD", op("MULTIPLY", attr.outputs["Fac"], 0.8), rim), flick)
+    heat = op("MINIMUM", op("MAXIMUM", heat, 0.0), 1.0)
+    cr = N.new("ShaderNodeValToRGB")
+    els = cr.color_ramp.elements
+    stops = ramp or [(0.0, "#FFF4C8"), (0.22, "#FFC21E"), (0.45, "#FF6A00"), (0.7, "#D61A04"), (1.0, "#4A0402")]
+    els[0].position, els[0].color = stops[0][0], srgb(stops[0][1])
+    els[1].position, els[1].color = stops[-1][0], srgb(stops[-1][1])
+    for pos, hx in stops[1:-1]:
+        els.new(pos).color = srgb(hx)
+    L(heat, cr.inputs[0])
+    em = N.new("ShaderNodeEmission")
+    L(cr.outputs[0], em.inputs["Color"])
+    L(op("MULTIPLY", op("SUBTRACT", 1.25, heat), strength), em.inputs["Strength"])
+    # Đục ở lõi, tan ở rìa/ngọn: alpha = min(1, (1 − heat) × solid) × opacity. Lớp
+    # bán trong suốt chồng nhau (mặt trước + sau, nhiều lưỡi) cộng sáng → AgX phai trắng.
+    alpha = op("MULTIPLY", op("MINIMUM", op("MULTIPLY", op("SUBTRACT", 1.0, heat), solid), 1.0), opacity)
+    tr = N.new("ShaderNodeBsdfTransparent")
+    mix = N.new("ShaderNodeMixShader")
+    L(alpha, mix.inputs["Fac"])
+    L(tr.outputs[0], mix.inputs[1])
+    L(em.outputs[0], mix.inputs[2])
+    L(mix.outputs[0], out.inputs["Surface"])
+    return mat
+
+
+def _store_heat(mesh, rings, sides):
+    """Thuộc tính `flame_heat` cho ống raw_tube: vòng i → i/(rings−1). Không
+    đặt tên `heat`: Cycles giữ tên đó cho khói/lửa thể tích, shader đọc ra 0."""
+    a = mesh.attributes.new("flame_heat", "FLOAT", "POINT")
+    a.data.foreach_set("value", [i / (rings - 1) for i in range(rings) for _ in range(sides)])
 
 
 # ---------------------------------------------------------------- thân
@@ -340,6 +411,34 @@ def beads(name, center, rx, ry, drop, n, r, mat, rig, bone, tilt=Vector((0, 0, 1
     return objs
 
 
+def lift_over(objs, cover, gap):
+    """Đẩy từng vật (hạt chuỗi…) ra trước mặt ngoài tấm [cover] (da thú, vải
+    đã bám da) nếu đang nằm dưới/xuyên nó — dây vắt lên trên tấm, không chui
+    vào. Dùng ở dáng hiện tại (sau conform_outside); trả số vật đã đẩy."""
+    from mathutils.bvhtree import BVHTree
+    # Lưới gốc một lớp (pháp tuyến ra ngoài), không lấy bản Solidify: vỏ
+    # trong quay pháp tuyến vào thân, hạt nằm dưới tấm sẽ bị coi là ở trên.
+    bm = bmesh.new()
+    bm.from_mesh(cover.data)
+    bm.transform(cover.matrix_world)
+    bm.normal_update()
+    tree = BVHTree.FromBMesh(bm)
+    moved = 0
+    for o in objs:
+        pts = [o.matrix_world @ Vector(c) for c in o.bound_box]
+        c = sum(pts, Vector()) / 8
+        r = max((p - c).length for p in pts) / 3 ** 0.5
+        hit, nrm, _, dist = tree.find_nearest(c)
+        if hit is None or dist > r * 3:
+            continue
+        depth = (c - hit).dot(nrm)
+        if depth < r + gap:
+            o.matrix_world = Matrix.Translation(nrm * (r + gap - depth)) @ o.matrix_world
+            moved += 1
+    bm.free()
+    return moved
+
+
 def twisted_rope(name, ring, r, mat, twists=26, strands=2):
     """Dây thừng xoắn (shimenawa): [strands] sợi quấn quanh đường vòng [ring]."""
     out = []
@@ -442,7 +541,9 @@ def flame(name, base, height, width, mat, lean=Vector((0, 0, 0)), tongues=3, see
         radii = [(width * 0.5 * (math.sin(math.pi * min(1, t * 1.25)) ** 0.7) * (1 - t) ** 0.6 + 0.0005,) * 2
                  for t in [i / 8 for i in range(9)]]
         radii[0] = (width * 0.18,) * 2
-        out.append(add_object(f"{name}{k}", raw_tube(f"{name}{k}", pts, radii, sides=12), [mat]))
+        me = raw_tube(f"{name}{k}", pts, radii, sides=12)
+        _store_heat(me, len(pts), 12)
+        out.append(add_object(f"{name}{k}", me, [mat]))
     return out
 
 
@@ -470,7 +571,9 @@ def hitodama(name, head, size, trail, mats, seed=0, tails=3, embers=7):
             x = min(1.0, t / cap)
             r = width * size * math.sqrt(max(0.0, 1 - (1 - x) ** 2)) * (1 - t) ** 1.3
             radii.append((r + 0.0004,) * 2)
-        out.append(add_object(f"{name}{tag}", raw_tube(f"{name}{tag}", pts, radii, sides=14), [fire]))
+        me = raw_tube(f"{name}{tag}", pts, radii, sides=14)
+        _store_heat(me, len(pts), 14)
+        out.append(add_object(f"{name}{tag}", me, [fire]))
 
     tongue("Main", 4.5, 1.0, rng.uniform(0, 6.3), 0.9)
     for k in range(tails):  # lưỡi phụ tách từ thân đuôi, uốn ngược chiều nhau
@@ -540,12 +643,34 @@ def hakama(body, co, rig, name, mat, flare=0.11, top_pad=0.03, drape=6, top=0.04
     return o
 
 
-def limb_band(rig, bone, at0, at1, r0, r1, mat, name, sides=24):
-    """Ống giáp/bao tay ôm đoạn xương [bone] từ [at0] tới [at1]."""
+def limb_radius(body, co, rig, bone, at, band=0.006):
+    """Bán kính lớn nhất của da quanh xương [bone] tại [at] (0 gốc → 1 ngọn),
+    đo trên toạ độ nghỉ [co] (cục bộ thân, cùng hệ với xương) — mét thế giới."""
+    w = weights_by_group(body)
+    b = rig.data.bones[bone]
+    p = b.head_local.lerp(b.tail_local, at)
+    ax = (b.tail_local - b.head_local).normalized()
+    near = (bone, b.parent.name if b.parent else bone) + tuple(c.name for c in b.children)
+    r = 0.0
+    for i, q in enumerate(co):
+        d = q - p
+        if abs(d.dot(ax)) < band and sum(w[i].get(g, 0) for g in near) > 0.5 and w[i].get("HelperGeometry", 0) < 0.5:
+            r = max(r, (d - ax * d.dot(ax)).length)
+    return r * body.matrix_world.to_scale().x
+
+
+def limb_band(rig, bone, at0, at1, r0, r1, mat, name, sides=24, skin=None, pad=0.0):
+    """Ống giáp/bao tay ôm đoạn xương [bone] từ [at0] tới [at1]. [skin] =
+    (body, co nghỉ): nới từng vòng ra ngoài da ít nhất [pad] (thân béo to hơn
+    bán kính đặt tay thì giáp chìm vào da, lộ lốm đốm)."""
     a = bone_point(rig, bone, at0)
     b = bone_point(rig, bone, at1)
-    pts = [a.lerp(b, t) for t in (0.0, 0.08, 0.5, 0.92, 1.0)]
-    radii = [(r0 * 0.96,) * 2, (r0,) * 2, ((r0 + r1) / 2,) * 2, (r1,) * 2, (r1 * 0.96,) * 2]
+    ts = (0.0, 0.08, 0.5, 0.92, 1.0)
+    pts = [a.lerp(b, t) for t in ts]
+    radii = [r0 * 0.96, r0, (r0 + r1) / 2, r1, r1 * 0.96]
+    if skin:
+        radii = [max(r, limb_radius(*skin, rig, bone, at0 + (at1 - at0) * t) + pad) for r, t in zip(radii, ts)]
+    radii = [(r,) * 2 for r in radii]
     o = add_object(name, raw_tube(name, pts, radii, sides=sides), [mat])
     parent_to_bone(o, rig, bone)
     return o

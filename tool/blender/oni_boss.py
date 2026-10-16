@@ -27,10 +27,11 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import DrapedSkirt, conform_outside, densify, hitodama, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
+from japan_kit import DrapedSkirt, conform_outside, densify, fire_material, hitodama, lift_over, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~2,6 m
+ROPE_R = 0.04 * S  # bán kính thừng shimenawa (khoá đai treo vào thừng)
 
 ONI_BODY = {
     "stomach-pregnant-incr": 1.0,
@@ -355,8 +356,11 @@ def dress_lower(body, rig, poser, mats):
     parent_posed(skirt.obj, rig, "pelvis")
     out = apron_panel(skirt, fwd, top_z, top_z - (top_z - hem_z) * 0.62, mats["apron"], mats["gold"])
     r0 = max(skirt.radius(0.0, z) for z in skirt.zs)
-    out += buckle(rig, skirt.at(0.0, r0 + 0.035 * S, top_z - 0.08 * S), fwd, mats["gold"], mats["iron"],
-                  mats["iron_eye"], bone=None)
+    # Tâm thừng ở mặt trước: đỉnh thừng nhô xa nhất theo fwd, lùi một bán kính.
+    rope = [o.matrix_world @ v.co for o in bpy.data.objects if o.name.startswith("Shimenawa") for v in o.data.vertices]
+    q = max(rope, key=lambda p_: p_.dot(fwd))
+    rope_c = Vector((q.x, q.y, top_z)) - fwd * ROPE_R * 1.17
+    out += buckle(rope_c, fwd, skirt.at(0.0, r0, top_z), mats)
     for o in out:
         parent_posed(o, rig, "pelvis")
 
@@ -371,6 +375,11 @@ def apron_panel(skirt, fwd, top_z, bot_z, mat, gold, half=0.36, cols=20, rows=26
     for c in range(cols + 1):
         a = -half + 2 * half * c / cols
         rad.append(max(skirt.radius(a, z) for z in skirt.zs if z >= bot_z) + 0.012 * S)
+
+    def fold(u, t):
+        """Nếp rủ: ba sóng lồi ra ngoài (không lõm vào váy), sâu dần về gấu,
+        bằng không ở hai mép (viền vàng thẳng)."""
+        return 0.014 * S * (0.5 + 0.5 * math.cos(u * math.pi * 3)) * t ** 1.2
     bm = bmesh.new()
     grid = []
     for r in range(rows + 1):
@@ -380,7 +389,7 @@ def apron_panel(skirt, fwd, top_z, bot_z, mat, gold, half=0.36, cols=20, rows=26
             zb = bot_z + 0.035 * S * u * u  # gấu cong vòng lên ở hai góc
             z = top_z + 0.01 * S - (top_z + 0.01 * S - zb) * r / rows
             a = u * half
-            row.append(bm.verts.new(skirt.at(a, rad[c] + 0.008 * S * (r / rows) ** 2, z)))
+            row.append(bm.verts.new(skirt.at(a, rad[c] + 0.008 * S * (r / rows) ** 2 + fold(u, r / rows), z)))
         grid.append(row)
     for r in range(rows):
         for c in range(cols):
@@ -398,45 +407,70 @@ def apron_panel(skirt, fwd, top_z, bot_z, mat, gold, half=0.36, cols=20, rows=26
     path = [skirt.at(-half, rad[0] + 0.004 * S, top_z - (top_z - bot_z - 0.035 * S) * r / rows) for r in range(rows + 1)]
     for c in range(cols + 1):
         u = c / cols * 2 - 1
-        path.append(skirt.at(u * half, rad[c] + 0.012 * S, bot_z + 0.035 * S * u * u))
+        path.append(skirt.at(u * half, rad[c] + 0.012 * S + fold(u, 1.0), bot_z + 0.035 * S * u * u))
     path += [skirt.at(half, rad[-1] + 0.004 * S, bot_z + 0.035 * S + (top_z - bot_z - 0.035 * S) * r / rows)
              for r in range(rows + 1)]
     out.append(add_object("ApronTrim", raw_tube("ApronTrim", path, [(0.007 * S, 0.004 * S)] * len(path), sides=8),
                           [gold]))
     zk = top_z - (top_z - bot_z) * 0.38
-    front = skirt.at(0.0, rad[cols // 2] + 0.006 * S + 0.002 * S, zk)
+    front = skirt.at(0.0, rad[cols // 2] + 0.008 * S + fold(0.0, 0.38) + 0.004 * S, zk)
     yaw = math.atan2(fwd.y, fwd.x) + math.pi / 2
     rot = Matrix.Rotation(yaw, 3, "Z") @ Matrix.Rotation(math.radians(90), 3, "X")
     out.append(kanji_plate("Oni", "鬼", front, 0.16 * S, gold, rot=rot, depth=0.003 * S))
     return out
 
 
-def buckle(rig, at, fwd, gold, iron, eye, bone="spine_01"):
-    """Khoá đai mặt quỷ: đĩa sắt đen, viền vàng, hai sừng nhỏ, mắt tím sáng."""
-    out = []
-    side = fwd.cross(Vector((0, 0, 1))).normalized()
-    out.append(add_object("Buckle", raw_ellipsoid("Buckle", at, (0.075 * S, 0.03 * S, 0.065 * S)), [iron]))
-    ring = [at + fwd * 0.012 * S + (side * math.cos(2 * math.pi * k / 32) * 0.075 * S
-                                    + Vector((0, 0, 0.065 * S)) * math.sin(2 * math.pi * k / 32)) for k in range(32)]
-    out.append(add_object("BuckleRim", raw_tube("BuckleRim", ring, [(0.007 * S, 0.007 * S)] * 32, sides=8,
-                                                closed=True), [gold]))
-    for s in (-1, 1):
-        e = at + fwd * 0.03 * S + side * s * 0.026 * S + Vector((0, 0, 0.012 * S))
-        out.append(add_object("BuckleEye", raw_ellipsoid("BuckleEye", e, (0.012 * S, 0.006 * S, 0.008 * S)), [eye]))
-        b0 = at + side * s * 0.045 * S + Vector((0, 0, 0.045 * S))
-        out.append(add_object("BuckleHorn", tapered_world("BuckleHorn", [(b0, b0 + Vector((0, 0, 0.03 * S))
-                                                                          + side * s * 0.01 * S,
-                                                                          b0 + Vector((0, 0, 0.05 * S))
-                                                                          + side * s * 0.03 * S, 0.012 * S)],
-                                                          taper=1.0), [gold]))
-    fang = []
-    for s in (-1, 0, 1):
-        b0 = at + fwd * 0.03 * S + side * s * 0.02 * S - Vector((0, 0, 0.025 * S))
-        fang.append((b0, b0 - Vector((0, 0, 0.012 * S)), b0 - Vector((0, 0, 0.022 * S)), 0.006 * S))
-    out.append(add_object("BuckleFangs", tapered_world("BuckleFangs", fang, taper=1.0), [gold]))
-    for o in out:
-        if bone:
-            parent_to_bone(o, rig, bone)
+def buckle(rope_c, fwd, skirt_front, mats):
+    """Khoá đai mặt quỷ: tấm sắt dẹt khắc mặt (mày vàng xếch, hốc mắt sâu có
+    mắt tím sáng, mũi, miệng đen hai nanh trên hai nanh dưới, sừng vàng),
+    viền vàng; hai khuyên vàng quấn qua thừng shimenawa giữ khoá — khoá treo
+    vào đai, không lơ lửng trước tạp dề. Đọc rõ ở cỡ sprite: khối to, tương
+    phản vàng/đen/tím."""
+    gold, iron, eye = mats["gold"], mats["iron"], mats["iron_eye"]
+    hole = skin_material("BuckleMouth", "#100306", rough=0.6)
+    up = Vector((0, 0, 1))
+    side = fwd.cross(up).normalized()
+    rot = math.atan2(side.y, side.x)  # raw_ellipsoid: trục x → side, y → fwd
+    loop_r = ROPE_R * 1.25
+    hw, hd, hh = 0.085 * S, 0.022 * S, 0.08 * S
+    f_off = max(ROPE_R * 0.6, (skirt_front - rope_c).dot(fwd) + hd + 0.008 * S)
+    at = rope_c + fwd * f_off
+    at.z = rope_c.z - loop_r + 0.012 * S - hh
+
+    def P(s_, f, u):
+        return at + side * s_ * S + fwd * f * S + up * u * S
+
+    def blob(tag, c, radii, mat):
+        return add_object(f"Buckle{tag}", raw_ellipsoid(f"Buckle{tag}", c, [r * S for r in radii], rot_z=rot), [mat])
+
+    out = [add_object("Buckle", raw_ellipsoid("Buckle", at, (hw, hd, hh), rot_z=rot), [iron])]
+    ring = [P(0.085 * math.cos(a), 0.008, 0.08 * math.sin(a)) for a in (2 * math.pi * k / 40 for k in range(40))]
+    out.append(add_object("BuckleRim", raw_tube("BuckleRim", ring, [(0.008 * S, 0.008 * S)] * 40, sides=8, closed=True),
+                          [gold]))
+    feats = []
+    for sg in (-1, 1):
+        out.append(blob(f"Socket{sg}", P(sg * 0.03, 0.013, 0.0), (0.021, 0.011, 0.013), hole))
+        out.append(blob(f"Eye{sg}", P(sg * 0.03, 0.02, -0.002), (0.013, 0.005, 0.0075), eye))
+        # Mày dày ngoài, thon vào giữa, xếch xuống mũi → mặt giận.
+        feats.append(("brow", (P(sg * 0.064, 0.016, 0.034), P(sg * 0.036, 0.028, 0.03), P(sg * 0.006, 0.026, 0.01),
+                               0.012 * S)))
+        feats.append(("fang", (P(sg * 0.022, 0.022, -0.038), P(sg * 0.022, 0.026, -0.05), P(sg * 0.02, 0.027, -0.062),
+                               0.0075 * S)))
+        feats.append(("tusk", (P(sg * 0.042, 0.02, -0.066), P(sg * 0.045, 0.026, -0.052), P(sg * 0.05, 0.028, -0.036),
+                               0.0085 * S)))
+        feats.append(("horn", (P(sg * 0.05, 0.0, 0.06), P(sg * 0.08, 0.006, 0.1), P(sg * 0.068, 0.012, 0.14),
+                               0.018 * S)))
+        # Khuyên vàng quấn qua thừng, chân khuyên cắm vào mép trên tấm sắt.
+        loop = [rope_c + side * sg * 0.042 * S + (fwd * math.cos(a) + up * math.sin(a)) * loop_r
+                for a in (2 * math.pi * k / 24 for k in range(24))]
+        out.append(add_object(f"BuckleLoop{sg}", raw_tube(f"BuckleLoop{sg}", loop, [(0.009 * S, 0.009 * S)] * 24,
+                                                          sides=8, closed=True), [gold]))
+    out.append(blob("Nose", P(0.0, 0.024, -0.02), (0.016, 0.012, 0.013), iron))
+    out.append(blob("Mouth", P(0.0, 0.014, -0.05), (0.046, 0.011, 0.018), hole))
+    for kind in ("brow", "fang", "tusk", "horn"):
+        out.append(add_object(f"Buckle{kind.title()}", tapered_world(
+            f"Buckle{kind.title()}", [st for k_, st in feats if k_ == kind], taper=0.5 if kind == "brow" else 1.0),
+            [gold]))
     return out
 
 
@@ -589,7 +623,7 @@ def pelt_fur(o, rig):
     rows = len(vs) // cols
     sc = rig.matrix_world.to_scale().x
     rng = random.Random(12)
-    fur = hair_material("PeltFur", "#9A5A1A", "#D88A30", "#F0C080", rough=0.5)
+    fur = hair_material("PeltFur", "#6A3810", "#B86A22", "#E2A458", rough=0.5)
     guides = []
     for i in range(rows):
         for c, nb in ((0, 1), (cols - 1, cols - 2)):
@@ -601,8 +635,9 @@ def pelt_fur(o, rig):
                 t = j / 4
                 g.append(edge + out_d * ln * t + Vector((0, 0, -1)) * ln * 0.6 * t * t)
             guides.append(g)
-    fo = strand_locks("PeltFur", guides, fur, per_lock=30, spread=0.012 * sc, clump=0.3, frizz=0.004 * sc,
-                      root_radius=0.0012 * sc, seed=14)
+    # Dày, sợi to: lông thưa để lộ da đỏ bên dưới thành vệt hồng nhoè.
+    fo = strand_locks("PeltFur", guides, fur, per_lock=80, spread=0.012 * sc, clump=0.35, frizz=0.003 * sc,
+                      root_radius=0.0019 * sc, seed=14)
     # Lông dựng theo toạ độ thế giới của dáng hiện tại: gắn xương theo ma
     # trận xương ĐANG tạo dáng (parent_to_bone tính theo dáng nghỉ).
     from mathutils import Matrix
@@ -1055,17 +1090,20 @@ def build():
 
     iron = skin_material("Iron", "#202026", rough=0.35, metallic=0.85, noise_scale=40)
     gold = gold_material("OniGold", "#E0AE48", rough=0.3)
-    black = skin_material("Lacquer", "#0E0C10", rough=0.15)
+    # Sơn mài đen ánh đỏ, nhám vừa: bóng gương phản trời lam thành mảng tím xám.
+    black = skin_material("Lacquer", "#1E0A0C", rough=0.42)
     claw_m = skin_material("Claw", "#121010", rough=0.2)
     bead_m = skin_material("Bead", "#16141A", rough=0.12)
     rope_m = skin_material("Rope", "#E6DCC4", rough=0.85, noise_scale=120)
-    navy = silk_material("Hakama", "#22284A", pattern="#3A3860", trim="#B08A3C", sheen=0.15)
-    apron_m = silk_material("ApronCloth", "#1A1E3A", pattern="#2C3058", sheen=0.15)
+    navy = silk_material("Hakama", "#22284A", pattern="#3A3860", trim="#B08A3C", sheen=0.06, rough=0.8, spec=0.25)
+    # Vải chàm dày, mờ: ít ánh lụa và phản xạ (khỏi thành tấm nhựa xám), vân chìm.
+    apron_m = silk_material("ApronCloth", "#121632", pattern="#1C2248", sheen=0.03, rough=0.9, spec=0.12,
+                            pattern_band=0.93)
     tassel = skin_material("Tassel", "#A01C1C", rough=0.7)
-    fire = flame_material("Onibi", "#FFD27A", "#E0200A", strength=1.8)  # lõi vàng nóng, rìa đỏ
+    fire = fire_material("Onibi", strength=1.4, solid=2.5)  # lõi trắng vàng → cam → đỏ, ngọn tan
     halo = flame_material("OnibiHalo", "#FF5A20", "#8A0804", strength=1.2, opacity=0.07)
-    spark = glow_material("OnibiSpark", "#FFB040", strength=4, base="#FF6010")
-    eye_purple = glow_material("BuckleEyeGlow", "#C060FF", strength=6, base="#6020A0")
+    spark = glow_material("OnibiSpark", "#FF9020", strength=1.6, base="#FF6010")
+    eye_purple = glow_material("BuckleEyeGlow", "#B040FF", strength=2.2, base="#6020A0")
 
     # ---- sừng: mọc trên trán hai bên, cong ra sau và ra ngoài
     horn_m = painted_skin("Horn", "#7A1A16", "#2A0808", sss=0.0, rough=0.35)
@@ -1087,7 +1125,7 @@ def build():
     waist_z = bl["pelvis"].head_local.z - 0.02  # đai thấp, nằm dưới nếp bụng chờm
     c, rx, ry = body_ring(body, co, waist_z, ("pelvis", "spine_01", "spine_02"), pad=0.035)
     ring = ellipse_ring(c, rx, ry, n=72)
-    for o in twisted_rope("Shimenawa", ring, 0.04 * S, rope_m):
+    for o in twisted_rope("Shimenawa", ring, ROPE_R, rope_m):
         parent_to_bone(o, rig, "spine_01")
     # Khoá đai, tạp dề, hakama và vuốt chân dựng sau khi tạo dáng (dress_lower).
 
@@ -1096,9 +1134,11 @@ def build():
 
     # ---- giáp tay vàng–đen, vòng cổ tay
     for s in ("l", "r"):
-        limb_band(rig, f"lowerarm_{s}", 0.42, 0.92, 0.062 * S, 0.05 * S, black, f"Bracer{s}")
+        limb_band(rig, f"lowerarm_{s}", 0.42, 0.92, 0.062 * S, 0.05 * S, black, f"Bracer{s}", skin=(body, co),
+                  pad=0.009 * S)
         for t in (0.45, 0.9):
-            limb_band(rig, f"lowerarm_{s}", t - 0.02, t + 0.02, 0.066 * S, 0.066 * S, gold, f"BracerBand{s}")
+            limb_band(rig, f"lowerarm_{s}", t - 0.02, t + 0.02, 0.066 * S, 0.066 * S, gold, f"BracerBand{s}",
+                      skin=(body, co), pad=0.014 * S)
         limb_band(rig, f"upperarm_{s}", 0.2, 0.3, 0.104 * S, 0.1 * S, gold, f"Armlet{s}")  # trùm bắp tay béo
         claws(rig, s, claw_m, length=0.035 * S, radius=0.007 * S)
     toe_claws(body, co, rig, claw_m, 0.032 * S, 0.008 * S)
@@ -1141,9 +1181,10 @@ def pose_and_props(rig, mats):
     flat_l = (fa_l - up * fa_l.dot(up)).normalized()
     poser.palm("l", (flat_l - up * 0.1).normalized(), up)
     fist(rig, "l", curl=0.45)
-    palm = (poser.world("hand_l", 0.0) + poser.world("middle_01_l", 0.0)) / 2 + up * 0.06 * S
-    flame("Onibi", palm, 0.26 * S, 0.12 * S, mats["fire"], lean=-fwd * 0.05 * S + up * 0.02, tongues=5, seed=1)
-    add_object("OnibiHalo", raw_ellipsoid("OnibiHalo", palm + up * 0.1 * S, (0.1 * S, 0.1 * S, 0.14 * S)),
+    # Gốc lửa nổi trên lòng bàn tay, cao hơn đầu ngón quặp (ngón không cắm vào lửa).
+    palm = (poser.world("hand_l", 0.0) + poser.world("middle_01_l", 0.0)) / 2 + up * 0.1 * S
+    flame("Onibi", palm, 0.28 * S, 0.12 * S, mats["fire"], lean=-fwd * 0.05 * S + up * 0.02, tongues=5, seed=1)
+    add_object("OnibiHalo", raw_ellipsoid("OnibiHalo", palm + up * 0.11 * S, (0.1 * S, 0.1 * S, 0.14 * S)),
                [mats["halo"]])
     rng = random.Random(4)
     for k in range(8):  # tàn lửa bốc lên từ lòng bàn tay
@@ -1193,7 +1234,8 @@ def look_at(scene, p, width, height, ppm, yaw, pitch):
 
 def lights(scene):
     add_sun(scene, "Key", (0.35, 0.75, -0.55), 3.6, "#FFE2C2", angle=3)
-    add_sun(scene, "Rim", (-0.75, -0.3, -0.25), 3.2, "#9EC0FF", angle=4)
+    # Viền lam nhạt, vừa phải: lam đậm phủ lên da đỏ ở mặt khuất thành mảng tím xám.
+    add_sun(scene, "Rim", (-0.75, -0.3, -0.25), 2.6, "#C4D2F2", angle=4)
     add_sun(scene, "Fill", (0.2, 0.9, 0.2), 0.6, "#FFB0A0", angle=20)
 
 
@@ -1204,6 +1246,8 @@ def main():
     # Tấm da hổ bám da trong dáng thật (vai trái nâng tay làm cơ delta nhô).
     conform_outside(mats["pelt"], body, 0.006 * S, 0.02 * S)
     pelt_fur(mats["pelt"], rig)
+    # Chuỗi hạt vắt lên trên tấm da hổ (không chui dưới mép da).
+    lift_over([o for o in bpy.data.objects if o.name.startswith("Bead")], mats["pelt"], 0.01 * S)
     dress_lower(body, rig, poser, mats)
     lights(scene)
     shadow_catcher()
