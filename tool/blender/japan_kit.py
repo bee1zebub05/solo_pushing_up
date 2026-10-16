@@ -7,6 +7,7 @@ phải sân khấu nên quay mặt về −X (về phía người chơi) và ch�
 """
 
 import math
+import random
 
 import bmesh
 import bpy
@@ -983,6 +984,221 @@ def conform_outside(obj, body, gap, reach):
             moved += 1
     obj.data.update()
     return moved
+
+
+def posed_points(body, groups, min_w=0.5):
+    """Đỉnh thân SAU khi tạo dáng (toạ độ thế giới; tắt tạm mọi modifier trừ
+    xương — subsurf, mask ẩn lưới phụ — để chỉ số đỉnh khớp nhóm đỉnh) có tổng
+    trọng số [groups] ≥ [min_w]."""
+    subs = [m for m in body.modifiers if m.type != "ARMATURE" and m.show_viewport]
+    for m in subs:
+        m.show_viewport = False
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg)
+    me = ev.to_mesh()
+    mw = body.matrix_world
+    w = weights_by_group(body)
+    assert len(me.vertices) == len(w)
+    pts = [mw @ v.co for i, v in enumerate(me.vertices)
+           if sum(w[i].get(k, 0) for k in groups) >= min_w and w[i].get("HelperGeometry", 0) < 0.5]
+    ev.to_mesh_clear()
+    for m in subs:
+        m.show_viewport = True
+    bpy.context.view_layer.update()
+    return pts
+
+
+def parent_posed(o, rig, bone):
+    """Gắn vật dựng SAU khi tạo dáng vào xương theo dáng hiện tại (giữ nguyên
+    vị trí thế giới)."""
+    bpy.context.view_layer.update()
+    pb = rig.pose.bones[bone]
+    o.parent = rig
+    o.parent_type = "BONE"
+    o.parent_bone = bone
+    o.matrix_parent_inverse = (rig.matrix_world @ pb.matrix @ Matrix.Translation((0, pb.bone.length, 0))).inverted()
+
+
+def _hull(pts):
+    """Bao lồi 2D (chuỗi đơn điệu), ngược chiều kim đồng hồ."""
+    pts = sorted(set(pts))
+    if len(pts) < 3:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lo, hi = [], []
+    for p in pts:
+        while len(lo) >= 2 and cross(lo[-2], lo[-1], p) <= 0:
+            lo.pop()
+        lo.append(p)
+    for p in reversed(pts):
+        while len(hi) >= 2 and cross(hi[-2], hi[-1], p) <= 0:
+            hi.pop()
+        hi.append(p)
+    return lo[:-1] + hi[:-1]
+
+
+def _hull_radius(hull, c, s):
+    """Khoảng cách từ gốc theo hướng (c, s) tới mép bao lồi [hull]."""
+    best = 0.0
+    n = len(hull)
+    for i in range(n):
+        (x0, y0), (x1, y1) = hull[i], hull[(i + 1) % n]
+        ex, ey = x1 - x0, y1 - y0
+        den = c * ey - s * ex
+        if abs(den) < 1e-12:
+            continue
+        t = (x0 * ey - y0 * ex) / den
+        u = (x0 * s - y0 * c) / den
+        if t > 0 and -1e-6 <= u <= 1 + 1e-6:
+            best = max(best, t)
+    return best
+
+
+class DrapedSkirt:
+    """Váy / hakama dạng váy (andon-bakama) dựng SAU khi tạo dáng: mỗi tầng lấy
+    bao lồi mọi đỉnh thân từ mép trên xuống tới tầng đó — vải rủ từ chỗ rộng
+    nhất rồi buông thẳng, căng qua khe hai chân, không ôm khối mông/đùi; loe
+    nhẹ ở gấu, xếp ly dọc. Trục đứng qua [axis], góc 0 = hướng [fwd]. [unit]
+    = tỉ lệ boss (độ dày vải, dải viền gấu theo thuộc tính `hem`). Chỉ xét
+    đỉnh thân dưới [start] (bỏ bụng chờm trên đai); các tầng trên [start]
+    dùng bao lồi dải đỉnh cao nhất."""
+
+    def __init__(self, name, pts, axis, fwd, top_z, hem_z, mat, pad=0.03, flare=0.08, pleats=18,
+                 pleat_depth=0.014, n_a=144, n_z=40, unit=1.0, start=None, folds=0.02, seed=3):
+        self.axis = Vector((axis.x, axis.y, 0))
+        self.fwd = Vector((fwd.x, fwd.y, 0)).normalized()
+        self.side = self.fwd.cross(Vector((0, 0, 1))).normalized()
+        self.top_z, self.hem_z = top_z, hem_z
+        self.zs = [top_z - (top_z - hem_z) * k / n_z for k in range(n_z + 1)]
+        self.angles = [2 * math.pi * j / n_a for j in range(n_a)]
+        flat = sorted(((p.z, (round((p - self.axis).dot(self.fwd), 5), round((p - self.axis).dot(self.side), 5)))
+                       for p in pts if p.z <= (top_z + 0.01 if start is None else start)), key=lambda q: -q[0])
+        zmax = flat[0][0]
+        hull = _hull([q[1] for q in flat if q[0] >= zmax - 0.03 * unit])
+        i = 0
+        self.rings = []
+        for k, z in enumerate(self.zs):
+            new = []
+            while i < len(flat) and flat[i][0] >= z:
+                new.append(flat[i][1])
+                i += 1
+            if new:
+                hull = _hull(hull + new)
+            t = k / n_z
+            radii = []
+            rng = random.Random(seed)
+            waves = [(rng.choice((2, 3, 5)), rng.uniform(0, 6.3), rng.uniform(0.5, 1.0)) for _ in range(3)]
+            for a in self.angles:
+                r = _hull_radius(hull, math.cos(a), math.sin(a)) if len(hull) >= 3 else 0.05
+                tri = abs((pleats * a / (2 * math.pi)) % 1 - 0.5) * 2  # nếp ly: sống – rãnh
+                # Nếp vải lớn mềm (sóng tần số thấp) sâu dần về gấu: chất vải rủ, không như chao đèn.
+                fold = sum(w * math.sin(f * a + ph) for f, ph, w in waves) / 2.2
+                radii.append(r + pad + flare * t ** 1.6 + pleat_depth * (0.35 + 0.65 * t) * tri
+                             + folds * t ** 1.3 * fold)
+            self.rings.append(radii)
+        n = len(self.angles)
+        verts, faces, hem = [], [], []
+        for k, z in enumerate(self.zs):
+            for j, a in enumerate(self.angles):
+                zz = z + (0.006 * unit * math.sin(pleats * a) if k == n_z else 0.0)
+                verts.append(self.at(a, self.rings[k][j], zz))
+                hem.append((zz - hem_z) / unit)
+        for k in range(n_z):
+            for j in range(n):
+                a0, a1 = k * n + j, k * n + (j + 1) % n
+                faces.append((a0, a1, a1 + n, a0 + n))  # pháp tuyến hướng ra ngoài
+        me = bpy.data.meshes.new(name)
+        me.from_pydata(verts, [], faces)
+        me.polygons.foreach_set("use_smooth", [True] * len(faces))
+        o = add_object(name, me, [mat])
+        from human_kit import store_point_attr
+        store_point_attr(o, "hem", hem)
+        sol = o.modifiers.new("Thick", "SOLIDIFY")
+        sol.thickness = 0.007 * unit
+        sol.offset = -1.0
+        sub = o.modifiers.new("Sub", "SUBSURF")
+        sub.levels = sub.render_levels = 1
+        self.obj = o
+
+    def at(self, a, r, z):
+        p = self.axis + (self.fwd * math.cos(a) + self.side * math.sin(a)) * r
+        return Vector((p.x, p.y, z))
+
+    def radius(self, a, z):
+        """Bán kính váy ở góc [a], độ cao [z] (nội suy)."""
+        n = len(self.angles)
+        fj = (a % (2 * math.pi)) / (2 * math.pi) * n
+        j0 = int(fj) % n
+        j1 = (j0 + 1) % n
+        fk = (self.top_z - z) / (self.top_z - self.hem_z) * (len(self.zs) - 1)
+        k0 = min(len(self.zs) - 1, max(0, int(fk)))
+        k1 = min(len(self.zs) - 1, k0 + 1)
+        u, v = fj - int(fj), min(1.0, max(0.0, fk - k0))
+        r0 = self.rings[k0][j0] * (1 - u) + self.rings[k0][j1] * u
+        r1 = self.rings[k1][j0] * (1 - u) + self.rings[k1][j1] * u
+        return r0 * (1 - v) + r1 * v
+
+
+def toe_claws(body, co, rig, mat, length, radius):
+    """Móng vuốt trên đúng đầu từng ngón chân, dò ở dáng nghỉ ([co] toạ độ nghỉ
+    cục bộ; bàn chân hướng −Y, các ngón xếp ngang theo X): mép trước bàn chân
+    trừ độ chéo của hàng ngón (ngón cái dài, ngón út lùi) rồi lấy 5 cực đại —
+    khe giữa các ngón là chỗ lõm. Gốc móng trên mu đầu ngón, cong quặp xuống
+    đất; ngón cái (phía trong) to nhất. Gắn xương bàn chân trước."""
+    out = []
+    w = weights_by_group(body)
+    mw = body.matrix_world
+    d = (mw.to_3x3() @ Vector((0, -1, 0))).normalized()
+    up = Vector((0, 0, 1))
+    for s in ("l", "r"):
+        hb = rig.data.bones[f"ball_{s}"].head_local
+        pts = [p for i, p in enumerate(co) if w[i].get(f"ball_{s}", 0) + w[i].get(f"foot_{s}", 0) >= 0.3
+               and w[i].get("HelperGeometry", 0) < 0.5 and p.y < hb.y - 0.003]
+        xs = [p.x for p in pts]
+        lo, hi = min(xs), max(xs)
+        width = hi - lo
+        nb = 60
+        best = [None] * nb
+        for p in pts:
+            b = min(nb - 1, int((p.x - lo) / (width + 1e-9) * nb))
+            if best[b] is None or p.y < best[b].y:
+                best[b] = p
+        bins = [b for b in range(nb) if best[b] is not None]
+        # Bỏ độ chéo của hàng ngón: trừ đường thẳng khớp qua mép trước.
+        n = len(bins)
+        mx = sum(best[b].x for b in bins) / n
+        my = sum(best[b].y for b in bins) / n
+        sxx = sum((best[b].x - mx) ** 2 for b in bins)
+        slope = sum((best[b].x - mx) * (best[b].y - my) for b in bins) / sxx
+        res = {b: best[b].y - (my + slope * (best[b].x - mx)) for b in bins}
+        peaks = [b for b in bins if res[b] <= min(res[c] for c in bins if abs(c - b) <= 2)]
+        chosen = []
+        for b in sorted(peaks, key=lambda b: res[b]):
+            if all(abs(b - c) >= nb * 0.11 for c in chosen):
+                chosen.append(b)
+            if len(chosen) == 5:
+                break
+        # Ngoài → trong (ngón cái gần đường giữa thân, |x| nhỏ).
+        chosen.sort(key=lambda b: -abs(best[b].x))
+        for k, b in enumerate(chosen):
+            tip = best[b]
+            top = max((p for p in pts if abs(p.x - tip.x) < width * 0.05 and p.y < tip.y + 0.012), key=lambda p: p.z)
+            size = (0.75, 0.8, 0.85, 0.92, 1.35)[k + 5 - len(chosen)]
+            L, r = length * size, radius * size
+            tw, topw = mw @ tip, mw @ top
+            root = topw.lerp(tw, 0.35) + up * 0.002
+            mid = tw + d * L * 0.45 + up * L * 0.12
+            end = tw + d * L * 0.7
+            end.z = max(0.003, tw.z - L * 0.75)
+            o = add_object(f"ToeClaw{s}{k}", curve_strand(bezier_pts(root, mid, tw + d * L * 0.8 - up * L * 0.1, end, 10),
+                                                         r, taper=1.0, sides=10), [mat])
+            parent_to_bone(o, rig, f"ball_{s}")
+            out.append(o)
+    return out
 
 
 def kamon_material(name, base, crest, scale=10.0, sheen=0.5, rough=0.6, trim=None, size=1.0):

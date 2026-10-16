@@ -27,7 +27,7 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import conform_outside, densify, hitodama, limb_fat, ridge, skin_snapper, snap_rest  # noqa: E402
+from japan_kit import DrapedSkirt, conform_outside, densify, hitodama, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~2,6 m
@@ -333,53 +333,85 @@ def fusa(hang, d, mats):
     return out
 
 
-def apron(rig, center, rx, ry, waist_z, knee_z, fwd, mat, gold):
-    """Tạp dề vải dày rủ trước bụng từ đai tới gối, thêu chữ 鬼 vàng."""
+def dress_lower(body, rig, poser, mats):
+    """Sau khi tạo dáng: hakama dạng váy rủ thẳng từ chỗ rộng nhất của hông –
+    mông (DrapedSkirt), tạp dề chàm ôm mặt trước rủ thẳng từ đai có viền vàng
+    và chữ 鬼, khoá đai mặt quỷ treo trên đầu tạp dề (ra khỏi bóng bụng chờm),
+    (vuốt chân dựng ở dáng nghỉ: japan_kit.toe_claws)."""
+    fwd = poser.frame()[0]
+    fwd = Vector((fwd.x, fwd.y, 0)).normalized()
+    mw = rig.matrix_world
+    legs = ("pelvis", "spine_01", "thigh_l", "thigh_r", "calf_l", "calf_r")
+    pts = posed_points(body, legs)
+    axis = mw @ rig.pose.bones["pelvis"].head
+    rz = [(o.matrix_world @ v.co).z for o in bpy.data.objects if o.name.startswith("Shimenawa")
+          for v in o.data.vertices]
+    top_z = (min(rz) + max(rz)) / 2
+    hem_z = min((mw @ rig.pose.bones[f"foot_{s}"].head).z for s in "lr") + 0.05 * S
+    # Vải bắt đầu dưới đai: bỏ phần bụng chờm phía trên (vải nằm dưới nếp bụng).
+    skirt = DrapedSkirt("Hakama", pts, axis, fwd, top_z, hem_z, mats["navy"], pad=0.016 * S, flare=0.06 * S,
+                        pleat_depth=0.018 * S, folds=0.045 * S,
+                        unit=S, start=top_z - 0.03 * S)
+    parent_posed(skirt.obj, rig, "pelvis")
+    out = apron_panel(skirt, fwd, top_z, top_z - (top_z - hem_z) * 0.62, mats["apron"], mats["gold"])
+    r0 = max(skirt.radius(0.0, z) for z in skirt.zs)
+    out += buckle(rig, skirt.at(0.0, r0 + 0.035 * S, top_z - 0.08 * S), fwd, mats["gold"], mats["iron"],
+                  mats["iron_eye"], bone=None)
+    for o in out:
+        parent_posed(o, rig, "pelvis")
+
+
+def apron_panel(skirt, fwd, top_z, bot_z, mat, gold, half=0.36, cols=20, rows=26):
+    """Tạp dề vải dày treo trước hakama: mỗi cột rủ thẳng đứng chạm chỗ nhô
+    nhất của váy bên dưới (không xuyên, không bay như tấm ván), mép dưới cong
+    vòng, viền vàng hai bên và gấu, chữ 鬼 thêu vàng."""
     import bmesh
+    from mathutils import Matrix
+    rad = []
+    for c in range(cols + 1):
+        a = -half + 2 * half * c / cols
+        rad.append(max(skirt.radius(a, z) for z in skirt.zs if z >= bot_z) + 0.012 * S)
     bm = bmesh.new()
-    cols, rows = 12, 10
-    width = rx * 1.0
-    verts = []
+    grid = []
     for r in range(rows + 1):
-        z = waist_z - (waist_z - knee_z) * r / rows
         row = []
         for c in range(cols + 1):
-            u = (c / cols - 0.5) * 2
-            # Ôm cong bụng phía trên, phẳng dần, phồng nhẹ ra trước.
-            ang = u * 0.9
-            k = 1 - r / rows
-            y = -(ry + 0.03 * S) * math.cos(ang) * (0.7 + 0.3 * k) - 0.17 * S * (1 - k) ** 0.8
-            x = width * math.sin(ang) * (0.85 + 0.15 * k)
-            row.append(bm.verts.new(center + Vector((x, y, z - center.z))))
-        verts.append(row)
+            u = c / cols * 2 - 1
+            zb = bot_z + 0.035 * S * u * u  # gấu cong vòng lên ở hai góc
+            z = top_z + 0.01 * S - (top_z + 0.01 * S - zb) * r / rows
+            a = u * half
+            row.append(bm.verts.new(skirt.at(a, rad[c] + 0.008 * S * (r / rows) ** 2, z)))
+        grid.append(row)
     for r in range(rows):
         for c in range(cols):
-            bm.faces.new((verts[r][c], verts[r][c + 1], verts[r + 1][c + 1], verts[r + 1][c]))
-    mesh = bpy.data.meshes.new("Apron")
-    bm.to_mesh(mesh)
+            bm.faces.new((grid[r][c], grid[r + 1][c], grid[r + 1][c + 1], grid[r][c + 1]))
+    me = bpy.data.meshes.new("Apron")
+    bm.to_mesh(me)
     bm.free()
-    o = add_object("Apron", mesh, [mat])
+    me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
+    o = add_object("Apron", me, [mat])
     sol = o.modifiers.new("Thick", "SOLIDIFY")
     sol.thickness = 0.008 * S
-    parent_to_bone(o, rig, "pelvis")
-    from mathutils import Matrix
-    # Chữ dán đúng mặt tạp dề ở giữa (cùng công thức với lưới trên, u = 0).
-    zk = (waist_z + knee_z) / 2 + 0.04 * S
-    kk = 1 - (waist_z - zk) / (waist_z - knee_z)
-    yk = -(ry + 0.03 * S) * (0.7 + 0.3 * kk) - 0.17 * S * (1 - kk) ** 0.8
-    front = center + Vector((0, yk - 0.008 * S - 0.006 * S, zk - center.z))
-    rot = Matrix.Rotation(math.radians(90), 3, "X")
-    k = kanji_plate("Oni", "鬼", front, 0.14 * S, gold, rot=rot, depth=0.003 * S)
-    k.parent = rig
-    k.parent_type = "BONE"
-    k.parent_bone = "pelvis"
-    b = rig.data.bones["pelvis"]
-    from mathutils import Matrix as M
-    k.matrix_parent_inverse = (rig.matrix_world @ b.matrix_local @ M.Translation((0, b.length, 0))).inverted()
-    return [o, k]
+    o.modifiers.new("Sub", "SUBSURF").render_levels = 1
+    out = [o]
+    # Viền vàng: hai mép dọc + gấu cong.
+    path = [skirt.at(-half, rad[0] + 0.004 * S, top_z - (top_z - bot_z - 0.035 * S) * r / rows) for r in range(rows + 1)]
+    for c in range(cols + 1):
+        u = c / cols * 2 - 1
+        path.append(skirt.at(u * half, rad[c] + 0.012 * S, bot_z + 0.035 * S * u * u))
+    path += [skirt.at(half, rad[-1] + 0.004 * S, bot_z + 0.035 * S + (top_z - bot_z - 0.035 * S) * r / rows)
+             for r in range(rows + 1)]
+    out.append(add_object("ApronTrim", raw_tube("ApronTrim", path, [(0.007 * S, 0.004 * S)] * len(path), sides=8),
+                          [gold]))
+    zk = top_z - (top_z - bot_z) * 0.38
+    front = skirt.at(0.0, rad[cols // 2] + 0.006 * S + 0.002 * S, zk)
+    yaw = math.atan2(fwd.y, fwd.x) + math.pi / 2
+    rot = Matrix.Rotation(yaw, 3, "Z") @ Matrix.Rotation(math.radians(90), 3, "X")
+    out.append(kanji_plate("Oni", "鬼", front, 0.16 * S, gold, rot=rot, depth=0.003 * S))
+    return out
 
 
-def buckle(rig, at, fwd, gold, iron, eye):
+def buckle(rig, at, fwd, gold, iron, eye, bone="spine_01"):
     """Khoá đai mặt quỷ: đĩa sắt đen, viền vàng, hai sừng nhỏ, mắt tím sáng."""
     out = []
     side = fwd.cross(Vector((0, 0, 1))).normalized()
@@ -403,7 +435,8 @@ def buckle(rig, at, fwd, gold, iron, eye):
         fang.append((b0, b0 - Vector((0, 0, 0.012 * S)), b0 - Vector((0, 0, 0.022 * S)), 0.006 * S))
     out.append(add_object("BuckleFangs", tapered_world("BuckleFangs", fang, taper=1.0), [gold]))
     for o in out:
-        parent_to_bone(o, rig, "spine_01")
+        if bone:
+            parent_to_bone(o, rig, bone)
     return out
 
 
@@ -1026,8 +1059,8 @@ def build():
     claw_m = skin_material("Claw", "#121010", rough=0.2)
     bead_m = skin_material("Bead", "#16141A", rough=0.12)
     rope_m = skin_material("Rope", "#E6DCC4", rough=0.85, noise_scale=120)
-    navy = silk_material("Hakama", "#22284A", pattern="#3A3860", trim="#B08A3C", sheen=0.5)
-    apron_m = silk_material("ApronCloth", "#1A1E3A", pattern="#2C3058", sheen=0.4)
+    navy = silk_material("Hakama", "#22284A", pattern="#3A3860", trim="#B08A3C", sheen=0.15)
+    apron_m = silk_material("ApronCloth", "#1A1E3A", pattern="#2C3058", sheen=0.15)
     tassel = skin_material("Tassel", "#A01C1C", rough=0.7)
     fire = flame_material("Onibi", "#FFD27A", "#E0200A", strength=1.8)  # lõi vàng nóng, rìa đỏ
     halo = flame_material("OnibiHalo", "#FF5A20", "#8A0804", strength=1.2, opacity=0.07)
@@ -1056,15 +1089,10 @@ def build():
     ring = ellipse_ring(c, rx, ry, n=72)
     for o in twisted_rope("Shimenawa", ring, 0.04 * S, rope_m):
         parent_to_bone(o, rig, "spine_01")
-    buckle(rig, c - Vector((0, ry + 0.035 * S, 0)), fwd, gold, iron, eye_purple)
-    knee_z = bl["calf_l"].head_local.z * S + 0.05 * S
-    apron(rig, c, rx * 0.55, ry, c.z - 0.06 * S, knee_z, fwd, apron_m, gold)
+    # Khoá đai, tạp dề, hakama và vuốt chân dựng sau khi tạo dáng (dress_lower).
 
     # ---- da hổ vắt vai trái (trang phục kinh điển của oni)
     pelt_o = pelt(body, co, rig, tiger_material("TigerPelt"), tuck_z)
-
-    # ---- quần hakama chàm, gấu viền vàng
-    hakama(body, co, rig, "Hakama", navy, flare=0.13 * S, top_pad=0.05, drape=24, top=-0.01)
 
     # ---- giáp tay vàng–đen, vòng cổ tay
     for s in ("l", "r"):
@@ -1073,8 +1101,9 @@ def build():
             limb_band(rig, f"lowerarm_{s}", t - 0.02, t + 0.02, 0.066 * S, 0.066 * S, gold, f"BracerBand{s}")
         limb_band(rig, f"upperarm_{s}", 0.2, 0.3, 0.104 * S, 0.1 * S, gold, f"Armlet{s}")  # trùm bắp tay béo
         claws(rig, s, claw_m, length=0.035 * S, radius=0.007 * S)
-        claws(rig, s, claw_m, length=0.04 * S, radius=0.01 * S, toes=True)
-    return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire, "halo": halo, "spark": spark, "eyes": eyes, "pelt": pelt_o}
+    toe_claws(body, co, rig, claw_m, 0.032 * S, 0.008 * S)
+    return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire, "halo": halo, "spark": spark, "eyes": eyes, "pelt": pelt_o,
+                       "navy": navy, "apron": apron_m, "iron_eye": eye_purple, "claw": claw_m}
 
 
 def pose_and_props(rig, mats):
@@ -1171,10 +1200,11 @@ def lights(scene):
 def main():
     scene = reset_scene(samples=32 if "--quick" in sys.argv else 96, world_hex="#C9C4C0", world_strength=0.7, keep_prefs=True)
     body, rig, mats = build()
-    pose_and_props(rig, mats)
+    poser = pose_and_props(rig, mats)
     # Tấm da hổ bám da trong dáng thật (vai trái nâng tay làm cơ delta nhô).
     conform_outside(mats["pelt"], body, 0.006 * S, 0.02 * S)
     pelt_fur(mats["pelt"], rig)
+    dress_lower(body, rig, poser, mats)
     lights(scene)
     shadow_catcher()
     out = os.path.join(ROOT, "build", "blender", "oni")
