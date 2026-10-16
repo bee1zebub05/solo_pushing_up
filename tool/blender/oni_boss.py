@@ -1258,6 +1258,19 @@ def main():
     os.makedirs(out, exist_ok=True)
     pb = rig.pose.bones["head"]
     head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)
+    if "--review" in sys.argv:  # bộ soát cố định + kiểm tra tự động (review_kit), không lưu .blend
+        from review_kit import review
+        aim_pupils(mats["eyes"], camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 100, yaw=-8, pitch=6))
+        review(scene, body, rig, "oni_boss", S, poser.frame()[0],
+               clothes=[r"^Hakama", r"^Apron", r"^TigerPelt", r"^PeltFur"],
+               important={"khoá đai": [r"^Buckle"], "chữ Quỷ (kanji)": [r"^Oni$"], "chuỗi hạt": [r"^Bead\d+$"],
+                          "lửa tay trái": [r"^Onibi\d+$"], "chuỳ": [r"^Kanabo"]},
+               free=[r"^Wisp", r"^Onibi", r"^Kanabo"],
+               # Cố ý cắm vào thân: vuốt tay nắm chuỳ vào lòng bàn tay, khuyên khoá vòng sau thừng.
+               embedded=[r"^Claw.*_r$", r"^BuckleLoop"],
+               targets={"chân/chiều cao": (0.42, 0.52)},
+               samples=16 if "--quick" in sys.argv else 32)
+        return
     if "--dry" in sys.argv:  # dựng cảnh không render; ONI_DEBUG = script soát chạy thêm
         aim_pupils(mats["eyes"], camera(scene, head.x, head.z, 0.4 * S, 0.4 * S, 100, yaw=-44, pitch=3))
         if os.environ.get("ONI_DEBUG"):
