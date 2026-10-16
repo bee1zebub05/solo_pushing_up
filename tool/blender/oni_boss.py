@@ -30,7 +30,7 @@ from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claw
 from japan_kit import DrapedSkirt, conform_outside, densify, fire_material, hitodama, drape_chain, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
-S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~2,6 m
+S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~3,4 m (đỉnh đầu, đo bằng --review)
 ROPE_R = 0.04 * S  # bán kính thừng shimenawa (khoá đai treo vào thừng)
 BEAD_PENDANT = 19  # hạt vàng to giữa ngực trong chuỗi 26 hạt
 
@@ -1268,7 +1268,7 @@ def main():
                free=[r"^Wisp", r"^Onibi", r"^Kanabo"],
                # Cố ý cắm vào thân: vuốt tay nắm chuỳ vào lòng bàn tay, khuyên khoá vòng sau thừng.
                embedded=[r"^Claw.*_r$", r"^BuckleLoop"],
-               targets={"chân/chiều cao": (0.42, 0.52)},
+               targets={"chân (khớp háng)/chiều cao": (0.48, 0.58)},  # bản duyệt 0,56
                samples=16 if "--quick" in sys.argv else 32)
         return
     if "--dry" in sys.argv:  # dựng cảnh không render; ONI_DEBUG = script soát chạy thêm

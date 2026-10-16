@@ -15,7 +15,7 @@ quan trọng. Kiểm tra tự động (in cảnh báo, không sửa gì):
 - da xuyên qua vải;
 - đồ gắn lơ lửng không chạm thân / đồ khác (khoá đai, vuốt, mặt dây);
 - lưới kín có pháp tuyến ngược (mép trông mờ như kính);
-- bảng tỉ lệ thân (chân/chiều cao, hông/vai, bụng/mông nhô) so với [targets].
+- bảng tỉ lệ thân (chân tới khớp háng/chiều cao, hông/vai, bụng/mông nhô) so với [targets].
 """
 
 import json
@@ -30,6 +30,8 @@ from mathutils.bvhtree import BVHTree
 from boss_kit import ROOT, render_to
 
 UP = Vector((0, 0, 1))
+# Lưới mắt phụ MPFB (iris/eye helper) nằm sẵn trong hốc mắt — không phải đồ chìm.
+ALWAYS_EMBEDDED = [r"(?i)irishelper"]
 
 
 # ---------------------------------------------------------------- hình học
@@ -120,6 +122,43 @@ def _inside_fraction(tree, pts, tol):
     return n / max(1, len(pts))
 
 
+def _segments(rig):
+    """Đoạn thế giới (tên, đầu, đuôi) của mọi xương biến dạng trong dáng hiện tại."""
+    mw = rig.matrix_world
+    return [(b.name, mw @ b.head, mw @ b.tail) for b in rig.pose.bones if b.bone.use_deform]
+
+
+def _nearest_bone(segs, p):
+    def d(seg):
+        _, a, b = seg
+        ab = b - a
+        t = max(0.0, min(1.0, (p - a).dot(ab) / max(ab.length_squared, 1e-12)))
+        return (p - (a + ab * t)).length
+
+    return min(segs, key=d)[0]
+
+
+def _sunk_split(tree, pts, tol, rig, segs, own):
+    """Tỉ lệ điểm chìm dưới da quá [tol], tách hai loại: chìm vào chính chi
+    vật bám ([own]: tên xương cha + xương kề) — vòng nhỏ hơn bắp tay, lộ đứt
+    quãng = lỗi; và ép vào phần thân khác (tay béo áp sườn, cằm chạm ngực) =
+    chỗ tiếp xúc, tự nhiên."""
+    mine = other = 0
+    bones = {}
+    for p in pts:
+        hit, nrm, _, _ = tree.find_nearest(p)
+        if hit is None or (p - hit).dot(nrm) >= -tol:
+            continue
+        b = _nearest_bone(segs, hit)
+        bones[b] = bones.get(b, 0) + 1
+        if b in own:
+            mine += 1
+        else:
+            other += 1
+    n = max(1, len(pts))
+    return mine / n, other / n, bones
+
+
 def _signed_volume(obj):
     """Thể tích có dấu của lưới gốc (âm = pháp tuyến quay vào trong) nếu lưới
     kín (mọi cạnh thuộc đúng 2 mặt); None nếu lưới hở."""
@@ -168,9 +207,12 @@ def _proportions(verts, rig, fwd, S):
     torso = [p for p in verts if pelvis.z - 0.15 * S < p.z < sh_z]
     belly = max((p - pelvis).dot(fwd) for p in torso) if torso else 0.0
     butt = max((pelvis - p).dot(fwd) for p in band(hip_z, 0.12 * S)) if torso else 0.0
+    # Chân đo tới khớp háng (đầu xương đùi), người thường ~0,50–0,53 H. Đầu
+    # xương pelvis MPFB nằm cao hơn khớp háng nên không dùng.
+    hip_joint = sum((mw @ pb[f"thigh_{s}"].head).z for s in "lr") / 2
     return {
         "cao (m)": round(H, 3),
-        "chân/chiều cao": round((pelvis.z - floor) / H, 3),
+        "chân (khớp háng)/chiều cao": round((hip_joint - floor) / H, 3),
         "hông (da)/khớp vai": round(hip / sh, 3) if sh else None,
         "bụng nhô trước xương chậu /H": round(belly / H, 3),
         "mông nhô sau xương chậu /H": round(butt / H, 3),
@@ -312,15 +354,30 @@ def review(scene, body, rig, name, S, fwd, *, clothes=(), important=None, free=(
         owner += [o.name] * len(p)
         data[o.name] = smp
     world_tree = BVHTree.FromPolygons(all_v, all_p)
-    sunk, floating, flipped = [], [], []
+    segs = _segments(rig)
+    sunk, pressed, floating, flipped = [], [], [], []
     for o in parts:
         smp = data[o.name]
         if not smp:
             continue
-        f = 0.0 if _matches(o, embedded) else _inside_fraction(body_tree, smp, 0.002 * S)
-        if f > 0.3:
-            sunk.append((o.name, f))
+        if not _matches(o, list(embedded) + ALWAYS_EMBEDDED):
+            if o.parent is rig and o.parent_type == "BONE" and o.parent_bone in pb:
+                bone = pb[o.parent_bone]
+                # Chi = xương cha + xương con (cẳng tay, xương xoắn); không lấy xương
+                # ông (xương đòn): da sườn/nách gần xương đòn nhất.
+                own = {bone.name} | {c.name for c in bone.children}
+                mine, other, bones = _sunk_split(body_tree, smp, 0.002 * S, rig, segs, own)
+                if max(mine, other) > 0.15:
+                    lines.append(f"  {o.name}: điểm chìm theo xương gần nhất {bones}")
+            else:
+                mine, other = _inside_fraction(body_tree, smp, 0.002 * S), 0.0
+            # Ngưỡng 15%: vòng tay oni phải chìm 22% vào bắp tay gồng → thấy đứt quãng ở ảnh sau lưng.
+            if mine > 0.15:
+                sunk.append((o.name, mine))
+            if other > 0.15:
+                pressed.append((o.name, other))
         near = False
+        gap = math.inf
         for q in smp:
             for _, _, idx, _ in world_tree.find_nearest_range(q, 0.012 * S):
                 if owner[idx] != o.name:
@@ -328,8 +385,11 @@ def review(scene, body, rig, name, S, fwd, *, clothes=(), important=None, free=(
                     break
             if near:
                 break
+            hit = body_tree.find_nearest(q)
+            if hit[0] is not None:
+                gap = min(gap, hit[3])
         if not near:
-            floating.append(o.name)
+            floating.append((o.name, gap))
         vol = _signed_volume(o)
         if vol is not None and vol < 0:
             flipped.append(o.name)
@@ -345,9 +405,11 @@ def review(scene, body, rig, name, S, fwd, *, clothes=(), important=None, free=(
         return ", ".join(out_)
 
     for n_, f in sunk:
-        warn(f"{n_} chìm {100 * f:.0f}% vào da (giáp/vòng nhỏ hơn chi? khoá lún vào bụng?)")
-    if floating:
-        warn(f"Lơ lửng, không chạm thân/đồ khác trong {0.012 * S * 100:.1f} cm: {group(floating)}")
+        warn(f"{n_} chìm {100 * f:.0f}% vào chính chi nó bám (vòng nhỏ hơn bắp gồng? khoá lún vào bụng?)")
+    for n_, f in pressed:
+        lines.append(f"  (i) {n_}: {100 * f:.0f}% ép vào phần thân khác (tay áp sườn) — tiếp xúc, thường ổn")
+    for n_, g in floating:
+        warn(f"{n_} lơ lửng: cách da {100 * g:.1f} cm, không chạm đồ khác trong {0.012 * S * 100:.1f} cm")
     if not (sunk or floating):
         lines.append("  không có lỗi")
     if flipped:  # vô hại với vật đục; chỉ hỏng vật trong suốt/vải sheen/lửa (Facing)
