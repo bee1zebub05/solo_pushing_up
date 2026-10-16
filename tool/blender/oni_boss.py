@@ -27,7 +27,7 @@ from human_kit import camera, group_center, raw_ellipsoid, raw_tube, rest_coords
 from japan_kit import StandPoser, beads, body_ring, boss_human, bone_point, claws, ellipse_ring, fist, flame, \
     flame_material, hakama, head_frame, horn, inflate, belly_ball, hero_muscles, kanji_plate, limb_band, muscle_bulge, painted_skin, \
     silk_material, twisted_rope  # noqa: E402
-from japan_kit import DrapedSkirt, conform_outside, densify, fire_material, hitodama, drape_chain, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
+from japan_kit import DrapedSkirt, band_fit, conform_outside, densify, fire_material, hitodama, drape_chain, limb_fat, parent_posed, posed_points, toe_claws, ridge, skin_snapper, snap_rest  # noqa: E402
 from boss_kit import srgb  # noqa: E402
 
 S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~3,4 m (đỉnh đầu, đo bằng --review)
@@ -1140,7 +1140,9 @@ def build():
         for t in (0.45, 0.9):
             limb_band(rig, f"lowerarm_{s}", t - 0.02, t + 0.02, 0.066 * S, 0.066 * S, gold, f"BracerBand{s}",
                       skin=(body, co), pad=0.014 * S)
-        limb_band(rig, f"upperarm_{s}", 0.2, 0.3, 0.104 * S, 0.1 * S, gold, f"Armlet{s}")  # trùm bắp tay béo
+        # Giữa bắp tay (khối trụ rõ); sát vai (0,2–0,3) thịt vai lệch trục, dính sườn → vòng chìm/bung méo.
+        limb_band(rig, f"upperarm_{s}", 0.42, 0.52, 0.104 * S, 0.1 * S, gold, f"Armlet{s}",
+                  skin=(body, co), pad=0.012 * S)
         claws(rig, s, claw_m, length=0.035 * S, radius=0.007 * S)
     toe_claws(body, co, rig, claw_m, 0.032 * S, 0.008 * S)
     return body, rig, {"iron": iron, "gold": gold, "tassel": tassel, "fire": fire, "halo": halo, "spark": spark, "eyes": eyes, "pelt": pelt_o,
@@ -1247,6 +1249,9 @@ def main():
     # Tấm da hổ bám da trong dáng thật (vai trái nâng tay làm cơ delta nhô).
     conform_outside(mats["pelt"], body, 0.006 * S, 0.02 * S)
     pelt_fur(mats["pelt"], rig)
+    # Vòng bắp tay: tay béo thiết diện bầu dục, thịt xệ lệch trục → ôm theo viền da ở dáng thật.
+    for s_ in "lr":
+        band_fit(bpy.data.objects[f"Armlet{s_}"], body, rig, f"upperarm_{s_}", 0.008 * S)
     # Chuỗi hạt vắt lên trên tấm da hổ như một sợi dây liền, hạt cách đều.
     import re
     bead_objs = sorted((o for o in bpy.data.objects if re.fullmatch(r"Bead\d+", o.name)), key=lambda o: int(o.name[4:]))

@@ -404,3 +404,13 @@ Người dùng phóng to ảnh duyệt và thấy lỗi mà ảnh toàn thân ch
   - `bmesh.from_mesh`/`from_object` trên thân MPFB đã tạo dáng (có shape key) làm Blender sập. Dựng BVH từ đỉnh/mặt (`BVHTree.FromPolygons`, xem `_surface_tree`).
   - Script `ONI_DEBUG` chạy bằng `exec` trong `main()`: generator/lambda không thấy biến cục bộ. Bọc code soát trong hàm và truyền `scene` vào.
 - **Sửa một chỗ trong kit dùng chung thì soát các nhân vật khác dùng chỗ đó.** Lửa Susanoo vẫn dùng `flame_material` cũ, nhiều khả năng cũng bị kem.
+
+### Bổ sung sau khi hiệu chỉnh `--review` (bản 10c, 16/10 đêm)
+Bộ soát tự động (`bash tool/blender/render.sh <script> --review --quick`, ra `build/blender/review/<script>/sheet.png`) bắt được hai lỗi thật trên oni đã duyệt. Cả hai bị ảnh góc game che.
+- **Góc game che lỗi bên hông.** Vòng tay chìm và vuốt hở chỉ lộ khi nhìn nghiêng, nhìn sau hoặc nhìn cận. Đọc đủ bộ ảnh soát, không chỉ ảnh toàn thân.
+- **Có luật chưa chắc đã áp.** "Giáp đo da" đã ghi từ bản 10, nhưng vòng bắp tay oni vẫn không truyền `skin=`. Kiểm tự động đáng tin hơn danh sách nhắc.
+- **Đừng tin ghi chú, hãy đo.** Ghi chú cũ nói oni cao ~2,6 m, đo thật ra 3,4 m. Tỉ lệ chân đo tới **khớp háng** (đầu xương `thigh`), không tới đầu xương `pelvis` MPFB (nằm cao hơn). Người thường khoảng 0,50–0,53; oni duyệt ở 0,56.
+- **Dò trên lưới thô, hiện trên lưới mịn.** Subsurf làm ngón nhỏ co lại, nên vật gắn đặt theo lưới thô có thể hở (vuốt ngón thứ 4 hở 2,8 cm). Gắn xong thì kéo vật vào mặt da đã đánh giá (`toe_claws` đã làm việc này).
+- **Vòng ôm chi béo: ôm theo viền da, không theo vòng tròn quanh xương.** Thiết diện tay béo là bầu dục và thịt xệ lệch trục. Vòng tròn hoặc chìm một phía, hoặc nới ra thì bung lỏng phía kia; nới theo tia hay nới vô hạn còn làm vòng bung ngang người. Dùng `japan_kit.band_fit` sau khi tạo dáng: nó đo viền da thật (chỉ đỉnh thuộc xương đó), làm mượt quanh chu vi rồi dựng vòng theo viền. Đặt vòng ở giữa đoạn chi; sát vai, sát hông thịt dính thân nên không có thiết diện riêng.
+- **Số liệu đẹp chưa đủ, phải nhìn ảnh.** Một lần nới vòng tay cho kết quả "0% chìm" vì vòng đã phình to gấp đôi. Mỗi lần sửa theo số liệu, render ảnh cận vật vừa sửa.
+- Bộ soát tự bỏ qua lưới mắt phụ MPFB (Irishelper). Đồ cố ý cắm vào thân (vuốt tay nắm, khuyên vòng sau thừng) thì khai báo qua `embedded=`.

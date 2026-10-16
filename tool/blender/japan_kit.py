@@ -1202,6 +1202,55 @@ def conform_outside(obj, body, gap, reach):
     return moved
 
 
+def band_fit(obj, body, rig, bone, gap, sides=24):
+    """Sau khi tạo dáng: cho vòng ôm chi [obj] (raw_tube của limb_band, [sides]
+    đỉnh mỗi vòng) ôm đúng thiết diện da thật của đoạn xương [bone], cách da
+    [gap] m. Tay béo có thiết diện bầu dục, thịt xệ lệch khỏi trục xương:
+    vòng tròn quanh trục chìm một phía, nới thì bung phía kia (oni) — nên đo
+    viền da theo từng hướng quanh tâm khối thịt (chỉ đỉnh thuộc xương đó, bỏ
+    sườn/vai áp sát), làm mượt quanh chu vi rồi dựng lại vòng theo viền."""
+    side = bone.rsplit("_", 1)[-1]
+    groups = [g.name for g in body.vertex_groups if g.name.startswith(bone.rsplit("_", 1)[0]) and g.name.endswith("_" + side)]
+    flesh = posed_points(body, groups, min_w=0.6)
+    pb = rig.pose.bones[bone]
+    a, b = rig.matrix_world @ pb.head, rig.matrix_world @ pb.tail
+    ax = (b - a).normalized()
+    om = obj.matrix_world
+    inv = om.inverted()
+    vs = obj.data.vertices
+    pts = [om @ v.co for v in vs]
+    rings = len(pts) // sides
+    slab = (b - a).length * 0.05
+    for i in range(rings):
+        ring = pts[i * sides:(i + 1) * sides]
+        c = sum(ring, Vector()) / sides
+        near = [q for q in flesh if abs((q - c).dot(ax)) < slab]
+        if len(near) < sides:
+            continue
+        m = sum(near, Vector()) / len(near)
+        m = m - ax * (m - c).dot(ax)  # tâm khối thịt trên mặt phẳng vòng
+        dirs = []
+        for q in ring:
+            d = (q - c) - ax * (q - c).dot(ax)
+            dirs.append(d.normalized())
+        rad = [0.0] * sides
+        for q in near:
+            rel = (q - m) - ax * (q - m).dot(ax)
+            k = max(range(sides), key=lambda k: rel.dot(dirs[k]))
+            rad[k] = max(rad[k], rel.length)
+        for _ in range(sides):  # hướng trống: lấy theo hai bên
+            if all(rad):
+                break
+            rad = [r or max(rad[k - 1], rad[(k + 1) % sides]) for k, r in enumerate(rad)]
+        for _ in range(3):  # lấy lớn nhất với hai bên rồi làm mượt: tròn đều, không lõm
+            wide = [max(rad[k - 1], rad[k], rad[(k + 1) % sides]) for k in range(sides)]
+            rad = [(wide[k - 1] + 2 * wide[k] + wide[(k + 1) % sides]) / 4 for k in range(sides)]
+        tuck = 0.04 * sum(rad) / sides if i in (0, rings - 1) else 0.0  # mép vòng thu vào như limb_band
+        for k in range(sides):
+            vs[i * sides + k].co = inv @ (m + dirs[k] * (rad[k] + gap - tuck))
+    obj.data.update()
+
+
 def posed_points(body, groups, min_w=0.5):
     """Đỉnh thân SAU khi tạo dáng (toạ độ thế giới; tắt tạm mọi modifier trừ
     xương — subsurf, mask ẩn lưới phụ — để chỉ số đỉnh khớp nhóm đỉnh) có tổng
@@ -1370,6 +1419,9 @@ def toe_claws(body, co, rig, mat, length, radius):
     mw = body.matrix_world
     d = (mw.to_3x3() @ Vector((0, -1, 0))).normalized()
     up = Vector((0, 0, 1))
+    # Mặt da sau subsurf: ngón nhỏ co lại so với lưới thô [co] → gốc móng dò
+    # trên lưới thô có thể hở khỏi da (oni: ngón thứ 4 hở 2,8 cm).
+    skin = _surface_tree(body, True)
     for s in ("l", "r"):
         hb = rig.data.bones[f"ball_{s}"].head_local
         pts = [p for i, p in enumerate(co) if w[i].get(f"ball_{s}", 0) + w[i].get(f"foot_{s}", 0) >= 0.3
@@ -1410,6 +1462,11 @@ def toe_claws(body, co, rig, mat, length, radius):
             mid = tw + d * L * 0.45 + up * L * 0.12
             end = tw + d * L * 0.7
             end.z = max(0.003, tw.z - L * 0.75)
+            hit, nrm, _, _ = skin.find_nearest(root)
+            if hit is not None and (root - hit).dot(nrm) > r * 0.3:  # gốc hở → kéo cả móng vào da
+                shift = hit - nrm * r * 0.3 - root
+                root, mid, end = root + shift, mid + shift, end + shift
+                tw = tw + shift
             o = add_object(f"ToeClaw{s}{k}", curve_strand(bezier_pts(root, mid, tw + d * L * 0.8 - up * L * 0.1, end, 10),
                                                          r, taper=1.0, sides=10), [mat])
             parent_to_bone(o, rig, f"ball_{s}")
