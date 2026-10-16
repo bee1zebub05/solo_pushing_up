@@ -351,3 +351,37 @@ Oni bản 3 (14/10): mặt Hannya bằng target biểu cảm MPFB (`human_kit.ta
 Đêm 14→15/10 (người dùng giao tự làm oni + Susanoo): bụng oni kiểu Gragas bằng `japan_kit.belly_ball` (chiếu đỉnh lên mặt elip theo tia từ tâm, hợp smooth-max — đẩy theo pháp tuyến `inflate` cho bụng nhọn); bờm mọc từ đỉnh nhóm `scalp`; `hair_kit.combed_material` (Wave của Blender tự nhân toạ độ ×20, scale chỉ 3–5); `hero_muscles(k)` dùng chung; `painted_skin(tattoo_attr=…)` giới hạn vùng xăm; `skin_snapper` dán mày lên mặt da; `flat_band` (đã chuyển vào japan_kit, có `widths`) cho tấm da hổ vắt vai + viền lông `strand_locks`; Susanoo: target biểu cảm `expression/units/caucasian/*`, nắm kiếm `fist`+`palm`, sét `lightning` (dời điểm giữa) — emission ánh màu cần strength ≈2, cao hơn bị cháy trắng. Cờ soát: oni `--belly --grip --clay`, Susanoo `--hand --clay`.
 
 Oni bản 7 (15/10, theo nhận xét người dùng): `japan_kit.densify` gộp shape key MPFB rồi áp một bậc subsurf vào lưới gốc (75k đỉnh) — nếp nhăn/gân mảnh hơn khoảng cách đỉnh MPFB (~5–10 mm) không hiện; `weights_by_group` có nhớ đệm. `ridge` (gờ/rãnh dọc đường gấp khúc: gân xanh, nếp nhăn, sẹo, thớ cơ), `snap_rest`, `inflate(groups=…)` để khối ngực không lan sang nách (nâng tay sẽ kéo thành mẩu nhọn). `conform_outside` ép tấm da/vải bám mặt da SAU khi tạo dáng (tấm phải chia nhiều đỉnh theo bề ngang); vật dựng sau khi tạo dáng phải gắn xương theo `pose_bone.matrix` hiện tại, `parent_to_bone` tính theo dáng nghỉ. `painted_skin(paints=[(thuộc tính, màu)])` cho kumadori, đỏ rượu, sẹo, gan chân. Máy quay vừa tạo cần `view_layer.update()` trước khi đọc `matrix_world` (đồng tử nhắm nhầm lên trời). `human_kit.camera` đặt tâm ở mặt phẳng y = 0 — góc quay lớn dùng `look_at` trong oni_boss. Eo béo: bỏ `torso-muscle-dorsi-incr`, macro cơ 0,7 / mỡ 0,9, đắp mỡ sườn–lưng–bụng trên. Cờ mới: `--face`, `--checks`, `--quick`, `--dry` (+ biến `ONI_DEBUG`).
+
+## 11. Bài học sau khi dựng oni (bản 3 → 9, 14–16/10/2026)
+
+Oni mất ~7 vòng nhận xét. Phần lớn vòng sửa là lỗi có thể bắt trước khi đưa người dùng xem. Thứ tự làm và cách soát dưới đây áp cho mọi nhân vật hình người sau.
+
+### Thứ tự dựng: khối trước, chi tiết sau
+1. **Xin ảnh tham khảo dáng người ngay từ đầu** (cả nhìn nghiêng), không chỉ tranh phong cách. Oni chỉ đúng tỉ lệ béo phì sau khi người dùng gửi ảnh 5 dáng người gầy → béo.
+2. **Chốt tỉ lệ khung (chiều dài chân, thân) trước khi đắp khối.** Rút ngắn chân cho "lùn bè" rồi đắp mỡ thì thân dưới thành cái chuông úp; người béo vẫn cần chân dài bình thường.
+3. **Bóng (silhouette) ba hướng: trước, nghiêng, sau.** Người béo phì nhìn nghiêng: bụng trễ chờm qua cạp, mông là điểm nhô ra sau xa nhất, lưng chảy liền xuống mông, đùi trên dày gần bằng thân rồi thon về gối, hai đùi áp sát.
+4. Rồi mới tới mặt, gân, vuốt, hiệu ứng.
+
+### Soát thân trần dưới quần áo
+- **Quần áo sao từ thân thừa hưởng mọi lỗi của thân.** Luôn render một ảnh ẩn quần áo (hakama, tạp dề…) trước khi chỉnh vải. Oni sửa hakama hai vòng mà bên trong vẫn là hông lép, đùi thon.
+- Đắp mỡ quanh chi: dùng `japan_kit.limb_fat` (đẩy ra xa trục xương, khối tròn đều). `inflate` đẩy theo pháp tuyến dễ ra cục, chỉ hợp cho khối nhỏ (ngực, đệm gối). Vòng eo béo: đẩy toàn vòng ra xa trục thân (`WaistFill` trong `oni_boss.lower_fat`), không đắp từng cục.
+
+### Vải và đồ dựng theo thân
+- **Vải rộng (hakama, váy, áo choàng) dựng SAU khi tạo dáng, theo bao lồi:** `japan_kit.DrapedSkirt`. Vải rủ từ chỗ rộng nhất rồi buông thẳng, căng qua khe chân. Bản sao lưới thân + đẩy pháp tuyến (`hakama`, `garment`) chỉ hợp đồ ôm sát; với thân béo nó thành quần bó lộ từng khối.
+- **Đồ gắn lên thân (khoá đai, phù hiệu, chữ thêu) phải soát lại mỗi khi khối thân đổi.** Bụng trễ xuống đã che mất khoá đai. Đặt chúng theo lớp ngoài cùng (mặt tạp dề, mặt quần) chứ không theo vòng thân gốc.
+- Lưới tự dựng: kiểm tra pháp tuyến hướng ra ngoài. Ngược thì mép vải trông mờ như kính. Lụa nhiều sheen cũng loé trắng ở mép trên nền sáng; vải dày để sheen ≤ 0,2.
+- Đồ dựng sau khi tạo dáng chỉ đúng cho dáng đó; sprite nhiều dáng phải dựng lại theo từng dáng.
+
+### Dò điểm trên lưới
+- **Dò ở dáng nghỉ, không ở dáng đã tạo** (vuốt chân lệch hai lần): trục xương sau khi tạo dáng không trùng hướng thật của bàn chân. Dò xong thì `parent_to_bone` (tính theo dáng nghỉ) là vật tự đi theo dáng.
+- Hàng ngón chân/tay xếp chéo: trừ đường thẳng khớp qua mép trước rồi mới tìm cực đại (`toe_claws`). Chia bề ngang theo tỉ lệ cố định sẽ trượt khỏi ngón thật.
+- Đọc lưới đã tạo dáng (`posed_points`): tắt tạm mọi modifier trừ Armature. MPFB có Mask ẩn lưới phụ, subsurf thì đổi số đỉnh.
+
+### Hiệu ứng và phụ kiện nhỏ
+- Lửa ma: quầng sáng opacity ≤ 0,1, nếu không thành quả bóng che mất lửa. Đuôi lửa cần thành phần hướng lên, vì đuôi theo tiếp tuyến quỹ đạo sẽ chĩa vào máy quay ở hai bên và bị ngắn lại. Bỏ ngọn nào rơi trước bụng/mặt nhìn từ máy quay.
+- Tua, dây, lông: dựng đúng cấu trúc vật thật (dây treo → nút → chóp → đai → sợi), sợi đều nét và cắt bằng. Vuốt nhọn đầu là kiểu "kim".
+
+### Quy trình nhanh
+- Mỗi vòng thử dùng `--dry --quick` + biến `ONI_DEBUG` trỏ tới script soát (khoảng 1,5 phút) render đúng góc cần xem, ghép thành một ảnh lưới. Chỉ render đầy đủ (khoảng 9 phút) khi đã ưng.
+- **Bộ ảnh soát cố định trước khi đưa người dùng xem:** toàn thân · nghiêng trần (ẩn quần áo) · nghiêng mặc đồ · sau lưng · cận bàn chân (trước + trên xuống) · cận mặt. Tự hỏi: bóng có giống tham khảo không, đồ gắn có bị che không, chỗ tiếp xúc (đai–thân, vải–chân, vuốt–ngón) có khớp không.
+- Sau mỗi lần chạy có lưu file vẫn phải xoá `art_src/blender/<tên>.blend@` (lỗi "Cannot change old file" của `boss_kit.save_blend`, chưa sửa).
