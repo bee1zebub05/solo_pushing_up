@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -117,15 +118,17 @@ class _CounterScreenState extends State<CounterScreen>
             ),
             onTap: () => Navigator.of(context).pop(evaluate),
           ),
-          ListTile(
-            leading: const Icon(Icons.science),
-            title: const Text('Đánh giá ML Kit (model accurate)'),
-            subtitle: const Text(
-              'Như trên nhưng dùng model chính xác hơn/chậm hơn, '
-              'lưu vào files/recordings_eval_accurate để so sánh',
+          // Bản release không mang model accurate (android/app/build.gradle.kts).
+          if (!kReleaseMode)
+            ListTile(
+              leading: const Icon(Icons.science),
+              title: const Text('Đánh giá ML Kit (model accurate)'),
+              subtitle: const Text(
+                'Như trên nhưng dùng model chính xác hơn/chậm hơn, '
+                'lưu vào files/recordings_eval_accurate để so sánh',
+              ),
+              onTap: () => Navigator.of(context).pop(evaluateAccurate),
             ),
-            onTap: () => Navigator.of(context).pop(evaluateAccurate),
-          ),
         ],
       ),
     );

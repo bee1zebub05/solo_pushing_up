@@ -631,8 +631,7 @@ class FafnirBossArt extends BossArt {
     canvas.restore();
     if (tint != null) canvas.restore();
     // Hơi băng chỉ phun lúc ra đòn; pha lấy đà chỉ ngóc đầu (báo trước).
-    final striking =
-        f.attackPhase < 0 || f.attackPhase >= AttackPose.windupEnd;
+    final striking = f.attackPhase < 0 || f.attackPhase >= AttackPose.windupEnd;
     if (f.attack > 0.05 && f.defeat == 0 && striking) _frostBreath(canvas, f);
   }
 

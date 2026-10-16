@@ -39,6 +39,12 @@ android {
     }
 }
 
+// Bản phát hành không mang model ML Kit "accurate" (~6 MB): app chơi dùng
+// model base; accurate chỉ để so sánh trong công cụ đánh giá (debug/profile).
+configurations.matching { it.name.startsWith("release") }.configureEach {
+    exclude(group = "com.google.mlkit", module = "pose-detection-accurate")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

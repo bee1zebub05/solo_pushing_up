@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui show Gradient;
 import 'dart:ui' show PlatformDispatcher;
@@ -9,8 +10,11 @@ import 'package:flame/particles.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
 
+import '../game/battle.dart';
+import '../game/items.dart';
 import 'hero_art.dart';
 import 'hero_pose.dart';
+import 'hero_sprite.dart';
 import 'horse_art.dart';
 import 'motion.dart';
 import 'nemea_scene.dart';
@@ -42,6 +46,19 @@ class StageBattleState {
 
   /// Số túi vàng Harpy đã cướp.
   int goldStolen = 0;
+
+  /// Chép trạng thái trận vừa tính ([Battle.view]).
+  void sync(BattleView view) {
+    water = view.water ?? 0;
+    headsLeft = view.headsLeft;
+    totalHeads = view.heads;
+    headHp = view.headHp / view.headMaxHp;
+    cold = view.cold;
+    bossHp = view.hpFraction;
+    charge = view.charge;
+    revives = view.revives;
+    goldStolen = view.goldStolen;
+  }
 }
 
 /// Tín hiệu âm thanh sân khấu gửi ra màn trận ([BattleStageGame.onCue]).
@@ -145,6 +162,10 @@ abstract class BossArt {
   /// Màu viền cảnh khi boss sắp gục và nổi giận (pha cuối, máu < 40%).
   Color get rageColor => const Color(0xFFC62828);
 
+  /// Nạp tài nguyên trước khi vào trận (sprite Blender…); sân khấu chờ
+  /// xong rồi mới dựng cảnh, để không loé bản vector rồi mới đổi hình.
+  Future<void> preload() async {}
+
   /// Trả tài nguyên GPU riêng của hình (lớp shader…) khi rời trận.
   void dispose() {}
 
@@ -200,6 +221,23 @@ class BattleStageGame extends FlameGame {
            height: stageSize.height,
          ),
        );
+
+  /// Sân khấu với nhân vật mang các vật phẩm người chơi đã có.
+  factory BattleStageGame.equipped({
+    required BossArt boss,
+    required Iterable<Item> items,
+    HeroLook look = const HeroLook(),
+  }) {
+    bool has(Item item) => items.any((i) => i.id == item.id);
+    return BattleStageGame(
+      boss: boss,
+      cloak: has(nemeanPelt),
+      shield: has(dragonScaleShield),
+      sword: has(kusanagi),
+      horse: has(nineManeHorse),
+      look: look,
+    );
+  }
 
   final BossArt boss;
 
@@ -263,7 +301,11 @@ class BattleStageGame extends FlameGame {
 
   @override
   void onRemove() {
-    // Rời trận: trả bộ nhớ GPU của mọi ảnh chụp sẵn (vào trận sau chụp lại).
+    // Rời trận: Flame chỉ gọi onRemove của game, không gỡ cây component —
+    // phải tự gỡ để onRemove của từng phần chạy (trả sprite, lớp shader,
+    // phông chụp sẵn), nếu không mỗi trận giữ lại atlas của quái trước.
+    dispose();
+    // Trả bộ nhớ GPU của mọi ảnh chụp sẵn (vào trận sau chụp lại).
     RasterBudget.shared.purge();
     super.onRemove();
   }
@@ -287,6 +329,9 @@ class BattleStageGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await StageShaders.load();
+    await boss.preload();
+    // Không chờ: chưa nạp xong thì nhân vật vẽ bản vector vài khung đầu.
+    unawaited(HeroSprites.load(_hero.look));
     camera.viewfinder.anchor = Anchor.topLeft;
     world.addAll([
       _SceneComponent(boss, battle),
@@ -329,6 +374,16 @@ class BattleStageGame extends FlameGame {
       count: 40,
       colors: const [Color(0xFFFFD54F), Color(0xFFFFF59D), Color(0xFFFF8A65)],
     );
+  }
+
+  /// Vừa nhận [item] (lần đầu qua kỳ công): diễn ngay trên sân khấu nếu
+  /// vật phẩm có hiệu ứng riêng.
+  void receive(Item item) {
+    if (item.id == nemeanPelt.id) {
+      equipCloak();
+    } else if (item.id == nineManeHorse.id) {
+      arriveHorse();
+    }
   }
 
   /// Lần đầu nhận Ngựa chín hồng mao: cho ngựa phi vào ngay.
@@ -551,12 +606,7 @@ class _SceneComponent extends Component {
 }
 
 class _BossComponent extends PositionComponent {
-  _BossComponent(
-    this.art,
-    this.battle, {
-    this.onAttackStart,
-    this.onStrike,
-  });
+  _BossComponent(this.art, this.battle, {this.onAttackStart, this.onStrike});
 
   final void Function()? onAttackStart;
 
@@ -659,8 +709,7 @@ class _BossComponent extends PositionComponent {
 void _stagnationLeaving(Canvas canvas, Offset origin, double t, double a) {
   for (var i = 0; i < 7; i++) {
     final phase = (t * 0.35 + i / 7) % 1;
-    final x =
-        origin.dx - 54 + i * 18.0 + math.sin(t * 1.3 + i * 2) * 8 * phase;
+    final x = origin.dx - 54 + i * 18.0 + math.sin(t * 1.3 + i * 2) * 8 * phase;
     final y = origin.dy + 20 - phase * 100;
     final r = 6 + phase * 13;
     canvas.drawCircle(
@@ -770,11 +819,16 @@ class _ImpactLight extends PositionComponent {
       r,
       Paint()
         ..blendMode = BlendMode.plus
-        ..shader = ui.Gradient.radial(Offset.zero, r, [
-          color.withValues(alpha: (critical ? 0.55 : 0.38) * fade),
-          color.withValues(alpha: 0.12 * fade),
-          const Color(0x00000000),
-        ], const [0, 0.45, 1]),
+        ..shader = ui.Gradient.radial(
+          Offset.zero,
+          r,
+          [
+            color.withValues(alpha: (critical ? 0.55 : 0.38) * fade),
+            color.withValues(alpha: 0.12 * fade),
+            const Color(0x00000000),
+          ],
+          const [0, 0.45, 1],
+        ),
     );
   }
 }
@@ -874,6 +928,14 @@ class _HeroComponent extends Component {
   HeroPose? _from;
   double _blend = 1;
   Object? _poseKey;
+  HeroSpriteFrame _sprite = const HeroSpriteFrame('stand', 0);
+  HeroSpriteFrame? _spriteFrom;
+
+  @override
+  void onRemove() {
+    HeroSprites.evict(look);
+    super.onRemove();
+  }
 
   /// Ngực nhân vật: điểm xuất phát của đòn đánh, điểm khoác áo.
   Vector2 get chest {
@@ -904,6 +966,7 @@ class _HeroComponent extends Component {
     if (mode != _mode) {
       _mode = mode;
       _from = _shown;
+      _spriteFrom = _sprite;
       _blend = 0;
     }
 
@@ -921,6 +984,11 @@ class _HeroComponent extends Component {
       _HeroMode.standing => ('s', breath),
       _HeroMode.plank => ('p', qAngle, onKnees),
       _HeroMode.victory => ('v', pump),
+    };
+    final sprite = switch (_mode) {
+      _HeroMode.standing => const HeroSpriteFrame('stand', 0),
+      _HeroMode.plank => HeroSpriteFrame.plank(_angle, onKnees: onKnees),
+      _HeroMode.victory => const HeroSpriteFrame('victory', 0),
     };
     final from = _from;
     if (from != null && _blend < 1) {
@@ -940,7 +1008,19 @@ class _HeroComponent extends Component {
     } else {
       _shown = pose;
     }
+    _sprite = sprite.blendFrom(
+      _spriteFrom,
+      Curves.easeInOut.transform(_blend.clamp(0.0, 1.0)),
+    );
   }
+
+  /// Sprite Blender chưa có lớp cho khiên, kiếm và lớp băng giá (áo da sư tử
+  /// thì có): khi đó vẽ bản vector.
+  bool get _spriteOk =>
+      (!cloak || HeroSprites.peltReady(look)) &&
+      !shield &&
+      !sword &&
+      cold < 0.02;
 
   @override
   void render(Canvas canvas) {
@@ -960,7 +1040,23 @@ class _HeroComponent extends Component {
     });
   }
 
-  void _paint(Canvas canvas) => paintHero(
+  void _paint(Canvas canvas) {
+    if (_spriteOk && HeroSprites.ready(look)) {
+      paintHeroGlow(canvas, _shown, look: look, glow: glow);
+      // Ăn mừng: nảy theo nhịp nắm tay giơ lên.
+      final bob = _mode == _HeroMode.victory
+          ? -(math.sin(_time / 1.2 * 2 * math.pi)).abs() * 3
+          : 0.0;
+      canvas.save();
+      canvas.translate(0, bob);
+      HeroSprites.paint(canvas, look, _sprite, pelt: cloak);
+      canvas.restore();
+      return;
+    }
+    _paintVector(canvas);
+  }
+
+  void _paintVector(Canvas canvas) => paintHero(
     canvas,
     _shown,
     look: look,

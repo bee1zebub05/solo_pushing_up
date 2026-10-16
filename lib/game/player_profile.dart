@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
-import '../art/hero_art.dart';
 import '../rep/pushup_counter.dart';
+import 'appearance.dart';
 
 /// Phân loại BMI theo ngưỡng WHO cho người châu Á (WHO/IASO/IOTF 2000).
 enum BmiClass {
@@ -36,7 +36,7 @@ class PlayerProfile {
   double heightCm;
   double weightKg;
 
-  /// Chỉ số trong [skinTones] / [hairColors].
+  /// Chỉ số trong bảng màu da / màu tóc (lib/art/hero_art.dart).
   int skinTone;
   HairStyle hairStyle;
   int hairColor;
@@ -70,20 +70,6 @@ class PlayerProfile {
   /// ≈ 49% (Ebben và cộng sự, J Strength Cond Res 2011).
   double liftPerRepKg(PushupMode mode) =>
       weightKg * (mode == PushupMode.knee ? 0.49 : 0.64);
-
-  /// Ngoại hình để vẽ nhân vật.
-  HeroLook get look {
-    // Mức mỡ "gọn" khác nhau giữa nam và nữ; quy về 0–1 cho hình vẽ.
-    final lean = sex == HeroSex.male ? 8.0 : 16.0;
-    return HeroLook(
-      sex: sex,
-      skin: skinTones[skinTone.clamp(0, skinTones.length - 1)],
-      hair: hairColors[hairColor.clamp(0, hairColors.length - 1)],
-      hairStyle: hairStyle,
-      fat: ((bodyFat - lean) / 30).clamp(0.0, 1.0),
-      height: (1 + (heightCm - 170) / 250).clamp(0.85, 1.15),
-    );
-  }
 
   Map<String, Object?> toJson() => {
     'name': name,

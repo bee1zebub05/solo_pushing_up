@@ -6,6 +6,8 @@ import 'package:flame/components.dart';
 import '../battle_stage.dart';
 import '../greek_monsters.dart';
 import '../nemea_scene.dart';
+import '../nemea_backdrop.dart';
+import '../sprite_atlas.dart';
 import 'nemea_boss.dart';
 
 /// Loại quái của các màn thường Kỳ công 1.
@@ -26,6 +28,45 @@ enum NemeaMonster {
 /// hiện lên hình: Spartoi trồi dậy, lợn rừng lấy đà, Harpy quắp vàng.
 class NemeaMonsterArt extends NemeaBossArt {
   NemeaMonsterArt(this.kind);
+
+  /// Chỉ nạp sprite khi vào trận (chân dung ở màn chọn màn vẫn vẽ vector,
+  /// không giữ ảnh 2048² của mọi quái trong bộ nhớ).
+  @override
+  Future<void> preload() async {
+    await NemeaBackdrop.load();
+    await SpriteAtlas.load(NemeaBossArt.birdSprite);
+    for (final name in _spritesOf(kind)) {
+      await SpriteAtlas.load(name);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final name in _spritesOf(kind)) {
+      SpriteAtlas.evict(name);
+    }
+    super.dispose();
+  }
+
+  /// Sprite Blender (assets/sprites/) mà mỗi loại quái dùng.
+  static List<String> _spritesOf(NemeaMonster kind) => switch (kind) {
+    NemeaMonster.birds || NemeaMonster.swarm => const ['stymphalian_bird'],
+    NemeaMonster.spartoi => const ['spartoi'],
+    NemeaMonster.stone || NemeaMonster.guard => const ['stone_soldier'],
+    NemeaMonster.boar => const ['erymanthian_boar'],
+    NemeaMonster.harpy => const ['harpy'],
+    NemeaMonster.pack => const ['spartoi', 'stymphalian_bird'],
+    NemeaMonster.hydra => const ['young_hydra'],
+  };
+
+  /// Nạp mọi sprite quái chương 1 (xem trước, kiểm thử).
+  static Future<void> preloadSprites() async {
+    for (final kind in NemeaMonster.values) {
+      for (final name in _spritesOf(kind)) {
+        await SpriteAtlas.load(name);
+      }
+    }
+  }
 
   final NemeaMonster kind;
 
@@ -96,13 +137,15 @@ class NemeaMonsterArt extends NemeaBossArt {
       case NemeaMonster.swarm:
         _birds(canvas, f, 5);
       case NemeaMonster.spartoi:
-        _at(canvas, _x, 1.35, () => _spartoi(canvas, f));
+        _spartoiAt(canvas, f, _x, 1.35);
       case NemeaMonster.stone:
       case NemeaMonster.guard:
+        final scale = kind == NemeaMonster.guard ? 1.5 : 1.35;
+        if (_sprite(canvas, 'stone_soldier', f, _x, scale / 1.35)) break;
         _at(
           canvas,
           _x,
-          kind == NemeaMonster.guard ? 1.5 : 1.35,
+          scale,
           () => paintStoneSoldier(
             canvas,
             time: f.time,
@@ -113,6 +156,15 @@ class NemeaMonsterArt extends NemeaBossArt {
       case NemeaMonster.boar:
         _boar(canvas, f);
       case NemeaMonster.harpy:
+        // Vừa cướp vàng: diễn lại đòn quắp dù không tới lượt đe doạ.
+        final steal = (f.time - _stealAt) / 1.5;
+        final phase = f.attackPhase >= 0
+            ? f.attackPhase
+            : steal >= 0 && steal < 1
+            ? steal
+            : -1.0;
+        // Sprite Harpy nhỏ hơn bản vector một chút: phóng cho cân với nhân vật.
+        if (_sprite(canvas, 'harpy', f, _x, 1.3, attackPhase: phase)) break;
         _at(
           canvas,
           _x,
@@ -126,9 +178,21 @@ class NemeaMonsterArt extends NemeaBossArt {
           ),
         );
       case NemeaMonster.pack:
-        _at(canvas, _x + 10, 1.3, () => _spartoi(canvas, f));
+        _spartoiAt(canvas, f, _x + 10, 1.3);
         _birds(canvas, f, 2, offset: const Offset(-70, -38));
       case NemeaMonster.hydra:
+        final heads = math.max(1, b.headsLeft).clamp(1, 3);
+        if (_sprite(
+          canvas,
+          'young_hydra',
+          f,
+          _x,
+          1,
+          idle: 'idle_h$heads',
+          attack: 'attack_h$heads',
+        )) {
+          break;
+        }
         _at(
           canvas,
           _x,
@@ -161,12 +225,68 @@ class NemeaMonsterArt extends NemeaBossArt {
     canvas.restore();
   }
 
-  void _spartoi(Canvas canvas, BossFrame f) {
-    // Trồi lên từ đất lúc mở màn và mỗi lần đứng dậy.
+  /// Vẽ quái [name] bằng sprite Blender tại ([x], mặt đất), phóng [scale] so
+  /// với cỡ đã render; `false` khi sprite chưa nạp (vẽ bản vector thay).
+  bool _sprite(
+    Canvas canvas,
+    String name,
+    BossFrame f,
+    double x,
+    double scale, {
+    double? attackPhase,
+    String idle = 'idle',
+    String attack = 'attack',
+    String? anim,
+    double animT = 0,
+  }) {
+    final sprite = SpriteAtlas.get(name);
+    if (sprite == null) return false;
+    canvas.save();
+    canvas.translate(x + 4 * f.hurt, stageGroundY);
+    canvas.scale(scale);
+    if (anim != null && sprite.has(anim)) {
+      sprite.draw(canvas, anim, animT, flash: f.hurt);
+    } else {
+      _spriteMonster(
+        canvas,
+        sprite,
+        f,
+        time: f.time,
+        attackPhase: attackPhase ?? f.attackPhase,
+        idle: idle,
+        attack: attack,
+      );
+    }
+    canvas.restore();
+    return true;
+  }
+
+  /// Trồi lên từ đất lúc mở màn và mỗi lần đứng dậy (0–1).
+  double _rise(BossFrame f) {
     final sinceRevive = f.time - _reviveAt;
-    final rise = sinceRevive < 1.4
+    return sinceRevive < 1.4
         ? (sinceRevive / 1.4).clamp(0.0, 1.0)
         : (f.time / 1.2).clamp(0.0, 1.0);
+  }
+
+  void _spartoiAt(Canvas canvas, BossFrame f, double x, double scale) {
+    final rise = _rise(f);
+    if (_sprite(
+      canvas,
+      'spartoi',
+      f,
+      x,
+      scale / 1.35,
+      anim: rise < 1 ? 'rise' : null,
+      animT: rise,
+    )) {
+      return;
+    }
+    _at(canvas, x, scale, () => _spartoi(canvas, f));
+  }
+
+  void _spartoi(Canvas canvas, BossFrame f) {
+    final rise = _rise(f);
     paintSpartoi(
       canvas,
       time: f.time,
@@ -181,6 +301,25 @@ class NemeaMonsterArt extends NemeaBossArt {
     // Lấy đà: lùi dần; tới 1 thì lao về phía người chơi rồi quay lại.
     final lunge = charge >= 0.98 ? 1.0 : 0.0;
     final x = _x + 14 * charge - 120 * lunge;
+    // Sprite: lấy đà = nửa đầu chuỗi ra đòn, lao húc = khung ra đòn.
+    final phase = f.attackPhase >= 0
+        ? f.attackPhase
+        : lunge > 0
+        ? 0.6
+        : charge > 0.05
+        ? 0.5 * charge
+        : -1.0;
+    // Thân sprite dài hơn bản vector: thu nhỏ, lùi vào trong khung.
+    if (_sprite(
+      canvas,
+      'erymanthian_boar',
+      f,
+      x - 22,
+      0.82,
+      attackPhase: phase,
+    )) {
+      return;
+    }
     _at(
       canvas,
       x,
@@ -209,7 +348,22 @@ class NemeaMonsterArt extends NemeaBossArt {
           Offset(math.cos(a) * (18 + i * 6), math.sin(a * 1.4) * (10 + i * 3));
       canvas.save();
       canvas.translate(at.dx + 6 * f.hurt, at.dy);
-      canvas.scale(i == 0 ? 1.15 : 0.9 - i * 0.04);
+      final scale = i == 0 ? 1.15 : 0.9 - i * 0.04;
+      final sprite = SpriteAtlas.get('stymphalian_bird');
+      if (sprite != null) {
+        // Sprite tính sẵn theo đơn vị sân khấu, ứng với con đầu đàn (1,15).
+        canvas.scale(scale / 1.15);
+        _spriteMonster(
+          canvas,
+          sprite,
+          f,
+          time: f.time + i * 0.37,
+          attackPhase: i == 0 ? f.attackPhase : -1,
+        );
+        canvas.restore();
+        continue;
+      }
+      canvas.scale(scale);
       paintStymphalianBirdFast(
         canvas,
         time: f.time + i * 0.37,
@@ -217,6 +371,29 @@ class NemeaMonsterArt extends NemeaBossArt {
         hurt: f.hurt,
       );
       canvas.restore();
+    }
+  }
+
+  /// Vẽ quái bằng sprite Blender: đang ra đòn thì theo tiến độ đòn
+  /// ([attackPhase] 0–1), gục thì chuỗi `defeat` (nếu có), còn lại lặp `idle`
+  /// theo chu kỳ ghi trong atlas. [idle] đổi tên chuỗi chờ (biến thể).
+  void _spriteMonster(
+    Canvas canvas,
+    SpriteAtlas sprite,
+    BossFrame f, {
+    required double time,
+    double attackPhase = -1,
+    String idle = 'idle',
+    String attack = 'attack',
+  }) {
+    final flash = f.hurt;
+    if (f.defeat > 0 && sprite.has('defeat')) {
+      sprite.draw(canvas, 'defeat', f.defeat, flash: flash);
+    } else if (attackPhase >= 0 && sprite.has(attack)) {
+      sprite.draw(canvas, attack, attackPhase, flash: flash);
+    } else {
+      final period = sprite.metaDouble('idlePeriod', 2.4);
+      sprite.draw(canvas, idle, time / period, loop: true, flash: flash);
     }
   }
 

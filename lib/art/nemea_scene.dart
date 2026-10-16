@@ -185,16 +185,7 @@ void paintNemeaDustExtras(
     case NemeaLayer.far:
       break;
     case NemeaLayer.mid:
-      // Màn sương xám đặc dần về phía chân trời.
-      canvas.drawRect(
-        Offset.zero & stageSize,
-        Paint()
-          ..shader =
-              Gradient.linear(const Offset(0, 40), Offset(0, stageGroundY), [
-                const Color(0x405E5868).withValues(alpha: 0.25 * opacity),
-                const Color(0x8C77707E).withValues(alpha: 0.55 * opacity),
-              ]),
-      );
+      paintNemeaDustMist(canvas, opacity: opacity);
       // Mạng nhện giăng trên đền.
       _cobweb(canvas, const Offset(166, 129), 14, math.pi * 0.05, opacity);
       _cobweb(canvas, const Offset(226, 129), 12, math.pi * 0.55, opacity);
@@ -214,6 +205,18 @@ void paintNemeaDustExtras(
         );
       }
   }
+}
+
+/// Màn sương xám Trì Trệ đặc dần về phía chân trời (sau tầng đồi giữa).
+void paintNemeaDustMist(Canvas canvas, {double opacity = 1}) {
+  canvas.drawRect(
+    const Rect.fromLTRB(-30, 0, 430, 260),
+    Paint()
+      ..shader = Gradient.linear(const Offset(0, 40), Offset(0, stageGroundY), [
+        const Color(0x405E5868).withValues(alpha: 0.25 * opacity),
+        const Color(0x8C77707E).withValues(alpha: 0.55 * opacity),
+      ]),
+  );
 }
 
 void _cobweb(
@@ -1790,14 +1793,20 @@ void _ruins(Canvas canvas) {
 /// Phần động của phông nền theo [time] (giây): mây trôi, đàn chim xa,
 /// lá ô liu đung đưa, cỏ lay. [dust] 0–1: hạt bụi xám Trì Trệ trôi lơ lửng;
 /// bụi tan thì thay bằng hạt nắng vàng lấp lánh.
-void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
+/// [realistic]: phông Blender (nemea_backdrop.dart) — bỏ mây cel-shading và
+/// nét cỏ vẽ tay (lệch phong cách tả thực), giữ chim, sương, nắng, hạt bụi.
+void paintNemeaAmbient(
+  Canvas canvas, {
+  double time = 0,
+  double dust = 0,
+  bool realistic = false,
+}) {
   final w = stageSize.width;
   // Mây cel-shading: đáy phẳng tối, đỉnh sáng.
-  for (final (x0, y, s) in [
-    (30.0, 30.0, 1.0),
-    (230.0, 22.0, 0.75),
-    (330.0, 44.0, 0.55),
-  ]) {
+  for (final (x0, y, s)
+      in realistic
+          ? const <(double, double, double)>[]
+          : [(30.0, 30.0, 1.0), (230.0, 22.0, 0.75), (330.0, 44.0, 0.55)]) {
     final x = (x0 + time * 4 * s) % (w + 90) - 45;
     _cloud(canvas, Offset(x, y), s);
   }
@@ -1853,7 +1862,7 @@ void paintNemeaAmbient(Canvas canvas, {double time = 0, double dust = 0}) {
     ..strokeWidth = 1.6
     ..strokeCap = StrokeCap.round;
   final rnd = math.Random(7);
-  for (var i = 0; i < 26; i++) {
+  for (var i = 0; i < (realistic ? 0 : 26); i++) {
     final x = rnd.nextDouble() * w;
     final sway = math.sin(time * 1.5 + i) * 1.5;
     canvas.drawLine(

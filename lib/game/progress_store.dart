@@ -2,11 +2,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'progress.dart';
 
-/// Lưu/đọc tiến trình người chơi trên máy.
+/// Lưu/đọc tiến trình người chơi trên máy. Màn hình nhận store qua
+/// constructor, test thay bằng bản giữ trong bộ nhớ (`implements`).
 class ProgressStore {
+  const ProgressStore();
+
   static const _key = 'player_progress_v1';
 
-  static Future<PlayerProgress> load() async {
+  Future<PlayerProgress> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     if (raw == null) return PlayerProgress();
@@ -18,7 +21,7 @@ class ProgressStore {
     }
   }
 
-  static Future<void> save(PlayerProgress progress) async {
+  Future<void> save(PlayerProgress progress) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, progress.encode());
   }

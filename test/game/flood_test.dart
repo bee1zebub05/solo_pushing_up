@@ -22,7 +22,7 @@ void main() {
       final battle = Battle(enemy: thuyTinh)..apply([rep(0)]);
       battle.tick(20000);
       // Rep đầu ở giây 0 không hạ được nước đang ở 0.
-      expect(battle.water, closeTo(70, 0.01));
+      expect(battle.mechanic<RisingFlood>()!.water, closeTo(70, 0.01));
 
       final events = battle.tick(40000);
       expect(events.whereType<Defeat>().single.reason, DefeatReason.flooded);
@@ -33,27 +33,27 @@ void main() {
     test('mỗi rep đẩy nước lùi', () {
       final battle = Battle(enemy: thuyTinh)..apply([rep(0)]);
       battle.tick(10000);
-      final before = battle.water;
+      final before = battle.mechanic<RisingFlood>()!.water;
       battle.apply([rep(10500)]);
 
-      expect(battle.water, closeTo(before - 8, 0.01));
+      expect(battle.mechanic<RisingFlood>()!.water, closeTo(before - 8, 0.01));
     });
 
     test('đúng kiểu đợt sóng: sát thương ×1,5 và đẩy nước nhiều hơn', () {
       final battle = Battle(enemy: thuyTinh)..apply([rep(0)]);
       battle.tick(8000);
-      final before = battle.water;
+      final before = battle.mechanic<RisingFlood>()!.water;
       // 12 giây đầu là đợt ⚡; rep thường không khớp, rep nhanh thì khớp.
       final hit = battle.apply([rep(8000, fast: true)]).single as Hit;
 
       expect(hit.matched, isTrue);
       expect(hit.damage, 15);
-      expect(battle.water, closeTo(before - 16, 0.01));
+      expect(battle.mechanic<RisingFlood>()!.water, closeTo(before - 16, 0.01));
     });
 
     test('rep chậm chỉ khớp ở đợt 🐢', () {
       final battle = Battle(enemy: thuyTinh)..apply([rep(0)]);
-      expect(battle.currentWave(13000)!.action, WaveAction.slow);
+      expect(battle.view(13000).wave!.action, WaveAction.slow);
 
       final hit = battle.apply([rep(13000, slow: true)]).single as Hit;
       expect(hit.matched, isTrue);
@@ -97,7 +97,7 @@ void main() {
     test('kẻ thù khác không có nước dâng', () {
       final battle = Battle(enemy: nemeanLion)..apply([rep(0)]);
       expect(battle.tick(60000), isEmpty);
-      expect(battle.currentWave(60000), isNull);
+      expect(battle.view(60000).wave, isNull);
     });
   });
 }

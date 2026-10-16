@@ -130,7 +130,7 @@ class _StageTile extends StatelessWidget {
         enabled: unlocked,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: art != null
-            ? BossPortrait(art: art, size: boss ? 64 : 52)
+            ? BossPortrait(enemy: stage.enemy, size: boss ? 64 : 52)
             : SizedBox.square(
                 dimension: 52,
                 child: Center(
@@ -222,6 +222,7 @@ class _StageMapState extends State<_StageMap>
   void initState() {
     super.initState();
     _ticker.start();
+    NemeaMapImage.load();
   }
 
   @override

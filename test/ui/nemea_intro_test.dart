@@ -16,6 +16,9 @@ void main() {
     addTearDown(tester.view.reset);
     var done = false;
     final key = GlobalKey();
+    // Nạp thật phông, nhân vật, Hercules Blender trước khi dựng màn (trong
+    // thời gian giả của test, ảnh không giải mã được).
+    await tester.runAsync(() => preloadNemeaIntro(const HeroLook()));
     await tester.pumpWidget(
       MaterialApp(
         home: RepaintBoundary(
@@ -33,7 +36,7 @@ void main() {
       await tester.runAsync(() async {
         final boundary =
             key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-        final image = await boundary.toImage();
+        final image = await boundary.toImage(pixelRatio: 3);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         File('build/art_preview/intro_screen.png')
           ..createSync(recursive: true)

@@ -1,6 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'dart:ui';
 
+import 'package:flutter/services.dart' show rootBundle;
+
+import 'art_mode.dart';
 import 'vector_style.dart';
 
 /// Kích thước bản đồ Thung lũng Nemea (đơn vị vẽ).
@@ -34,10 +38,22 @@ void paintNemeaMap(
 }) {
   final w = nemeaMapSize.width;
   final h = nemeaMapSize.height;
-  // Phần tĩnh chụp sẵn thành ảnh; mỗi khung chỉ vẽ sông, đường, các điểm.
-  _mapGround.paint(canvas);
-  _river(canvas, time);
-  _mapProps.paint(canvas);
+  final image = NemeaMapImage.image;
+  if (image != null) {
+    // Sa bàn dựng bằng Blender (sông, cầu, đền, hang đã có trong ảnh).
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      Offset.zero & nemeaMapSize,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    _riverGlints(canvas, time);
+  } else {
+    // Phần tĩnh chụp sẵn thành ảnh; mỗi khung chỉ vẽ sông, đường, các điểm.
+    _mapGround.paint(canvas);
+    _river(canvas, time);
+    _mapProps.paint(canvas);
+  }
   _path(canvas, states);
   for (var i = 0; i < nemeaMapNodes.length; i++) {
     _node(
@@ -64,6 +80,68 @@ void paintNemeaMap(
 }
 
 Path _poly(List<Offset> pts) => Path()..addPolygon(pts, true);
+
+/// Bản đồ Thung lũng Nemea dựng bằng Blender (tool/blender/nemea_map.py),
+/// nạp khi mở màn chọn màn; chưa có thì vẽ bản vector.
+abstract final class NemeaMapImage {
+  static ui.Image? _image;
+  static Future<void>? _loading;
+
+  /// Ảnh đã nạp; chế độ 2.5D ([ArtMode.vector]) luôn null.
+  static ui.Image? get image => ArtModeSetting.blender ? _image : null;
+
+  static Future<void> load() => _loading ??= () async {
+    try {
+      final data = await rootBundle.load('assets/backdrops/nemea_map.webp');
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      _image = (await codec.getNextFrame()).image;
+    } catch (_) {
+      // Chưa render: giữ bản vector.
+    }
+  }();
+}
+
+/// Nước lấp lánh trôi trên sông của ảnh Blender.
+void _riverGlints(Canvas canvas, double time) {
+  final glint = Paint()
+    ..color = const Color(0x66E8F4FF)
+    ..strokeWidth = 0.9
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i < 12; i++) {
+    final u = (i / 12 + time * 0.02) % 1;
+    // Theo đường tâm sông (trung bình hai bờ của _river).
+    final p = u < 0.55
+        ? _cubic(
+            const Offset(0, 143),
+            const Offset(65, 134),
+            const Offset(123, 213),
+            const Offset(190, 209),
+            u / 0.55,
+          )
+        : _cubic(
+            const Offset(190, 209),
+            const Offset(260, 206),
+            const Offset(272, 255),
+            const Offset(313, 300),
+            (u - 0.55) / 0.45,
+          );
+    final a = math.sin(time * 2 + i * 1.7);
+    if (a < 0.2) continue;
+    canvas.drawLine(
+      p + Offset(-3, (i % 3) - 1.0),
+      p + Offset(3, (i % 3) - 1.0),
+      glint,
+    );
+  }
+}
+
+Offset _cubic(Offset a, Offset b, Offset c, Offset d, double t) {
+  final u = 1 - t;
+  return a * (u * u * u) +
+      b * (3 * u * u * t) +
+      c * (3 * u * t * t) +
+      d * (t * t * t);
+}
 
 /// Nền đất, đồi, núi đá (dưới sông).
 final _mapGround = RasterLayer((canvas) {

@@ -6,6 +6,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:solo_pushing_up/art/hero_art.dart';
+import 'package:solo_pushing_up/art/home_banner_art.dart';
+import 'package:solo_pushing_up/art/nemea_map_art.dart';
 import 'package:solo_pushing_up/game/labors.dart';
 import 'package:solo_pushing_up/game/progress.dart';
 import 'package:solo_pushing_up/ui/character_creator_screen.dart';
@@ -51,6 +54,23 @@ Future<void> _shot(WidgetTester tester, GlobalKey key, String name) async {
   });
 }
 
+/// Nạp thật (ngoài thời gian giả của test) bản đồ, khung trang chủ
+/// Blender trước khi dựng màn — nếu màn gọi nạp trước thì future kẹt lại.
+Future<void> _preloadImages(WidgetTester tester) async {
+  await tester.runAsync(NemeaMapImage.load);
+  await tester.runAsync(
+    () => HomeBannerArt.load(const HeroLook(), cloak: false, freed: false),
+  );
+}
+
+/// Chờ ảnh asset trên màn giải mã xong rồi mới chụp.
+Future<void> _settleImages(WidgetTester tester) async {
+  for (final e in find.byType(Image).evaluate()) {
+    await tester.runAsync(() => precacheImage((e.widget as Image).image, e));
+  }
+  await tester.pump();
+}
+
 void main() {
   setUpAll(_loadFonts);
 
@@ -80,6 +100,7 @@ void main() {
 
   testWidgets('màn chọn màn Nemea (iPhone dọc)', (tester) async {
     final nemea = labors.firstWhere((l) => l.id == 'nemea');
+    await _preloadImages(tester);
     final key = await pumpScreen(
       tester,
       StageSelectScreen(
@@ -91,16 +112,19 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 500));
+    await _settleImages(tester);
     await _shot(tester, key, 'stage_select');
   });
 
   testWidgets('màn chính (iPhone dọc)', (tester) async {
     SharedPreferences.setMockInitialValues({});
+    await _preloadImages(tester);
     final key = await pumpScreen(tester, const HomeScreen());
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 200)),
     );
     await tester.pump(const Duration(milliseconds: 500));
+    await _settleImages(tester);
     await _shot(tester, key, 'home');
   });
 

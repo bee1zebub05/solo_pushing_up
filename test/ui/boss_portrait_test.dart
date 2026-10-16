@@ -13,7 +13,11 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Row(children: [for (final art in arts) BossPortrait(art: art!)]),
+        home: Row(
+          children: [
+            for (final labor in labors) BossPortrait(enemy: labor.enemy),
+          ],
+        ),
       ),
     );
 

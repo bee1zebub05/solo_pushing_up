@@ -21,7 +21,7 @@ CountedRep rep(
   formWarning: formWarning,
 );
 
-const dummy = EnemySpec(name: 'Bù nhìn', maxHp: 100);
+const dummy = EnemySpec(id: 'dummy', name: 'Bù nhìn', maxHp: 100);
 
 void main() {
   test('mỗi rep gây sát thương, combo tăng dần', () {
@@ -91,7 +91,9 @@ void main() {
   });
 
   test('hạ hết máu thì thắng, rep sau đó bị bỏ qua', () {
-    final battle = Battle(enemy: const EnemySpec(name: 'Chuột', maxHp: 25));
+    final battle = Battle(
+      enemy: const EnemySpec(id: 'mouse', name: 'Chuột', maxHp: 25),
+    );
     final events = battle.apply([rep(0), rep(500), rep(1000), rep(1500)]);
 
     expect(battle.status, BattleStatus.won);
@@ -103,7 +105,12 @@ void main() {
 
   test('trận có giới hạn thời gian: hết giờ thì thua', () {
     final battle = Battle(
-      enemy: const EnemySpec(name: 'Rồng', maxHp: 1000, timeLimitMs: 30000),
+      enemy: const EnemySpec(
+        id: 'dragon',
+        name: 'Rồng',
+        maxHp: 1000,
+        timeLimitMs: 30000,
+      ),
     );
     battle.apply([rep(0)]);
 
@@ -132,10 +139,10 @@ void main() {
     test('mức lạnh tăng dần khi nghỉ, chạm 1 lúc sắp bị đóng băng', () {
       final battle = Battle(enemy: fafnir)..apply([rep(0)]);
 
-      expect(battle.coldAt(500), 0);
-      expect(battle.coldAt(2000), closeTo(0.5, 0.01));
-      expect(battle.coldAt(3000), 1);
-      expect(Battle(enemy: dummy).coldAt(5000), 0);
+      expect(battle.view(500).cold, 0);
+      expect(battle.view(2000).cold, closeTo(0.5, 0.01));
+      expect(battle.view(3000).cold, 1);
+      expect(Battle(enemy: dummy).view(5000).cold, 0);
     });
 
     test('kẻ thù khác không có giá lạnh', () {
@@ -230,5 +237,21 @@ void main() {
 
       expect(hit.damage, 5);
     });
+  });
+
+  test('một kẻ thù ghép được nhiều cơ chế', () {
+    const frostLion = EnemySpec(
+      id: 'frost_lion',
+      name: 'Sư tử băng',
+      maxHp: 100,
+      mechanics: [ImpenetrableHide.new, FreezingCold.new],
+    );
+    final battle = Battle(enemy: frostLion);
+
+    expect(battle.apply([rep(0, formWarning: true)]).single, isA<Blocked>());
+    final hits = battle.apply([rep(1000), rep(6000)]).cast<Hit>().toList();
+    expect(hits.last.frozen, isTrue);
+    // Mỗi trận có bản cơ chế riêng: trận mới chưa bị đóng băng.
+    expect(Battle(enemy: frostLion).view(5000).cold, 0);
   });
 }

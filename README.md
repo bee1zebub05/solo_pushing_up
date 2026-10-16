@@ -20,11 +20,15 @@ lib/
   art/lion_art.dart         Vẽ Sư tử Nemea (thở, đuôi, gầm, trúng đòn, da loé sáng, gục)
   art/nemea_scene.dart      Phông nền Thung lũng Nemea
   art/nemea_stage.dart      Sân khấu Flame: nhân vật, đòn đánh (Effect), hạt (Particle)
-  game/battle.dart          Logic trận đấu (Dart thuần): máu, combo, chí mạng, giáp
+  game/battle.dart          Logic trận đấu (Dart thuần): máu, combo, chí mạng, nhiều đầu; BattleView để vẽ
+  game/battle_mechanic.dart Giao diện cơ chế riêng của kẻ thù (hook vào trận)
+  game/mechanics/           Mỗi cơ chế một file: da không xuyên thủng, giá lạnh, nước dâng, húc, cướp vàng…
+  game/items.dart           Vật phẩm (lưu theo id)
   game/labors.dart          Danh sách kỳ công: kẻ thù, cơ chế, phần thưởng
   game/progress.dart        XP, cấp, vật phẩm, mở khoá (Dart thuần)
   game/progress_store.dart  Lưu tiến trình vào shared_preferences
   session/workout_session.dart  Phiên tập: camera/giả lập → bộ đếm → âm báo, quyền camera
+  session/battle_controller.dart  Điều phối trận: phiên tập → Battle → BattleView/sự kiện cho màn trận
   ui/home_screen.dart       Màn hình chính: chọn chế độ, vào trận, vào chế độ đếm (debug)
   ui/battle_screen.dart     Màn chiến đấu thô
   pose/pose_frame.dart      Khớp, toạ độ, độ tin cậy (không phụ thuộc ML Kit)

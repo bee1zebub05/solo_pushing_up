@@ -1,4 +1,7 @@
 import 'battle.dart';
+import 'items.dart';
+
+export 'items.dart';
 
 /// Một kỳ công (chương) trong hành trình 12 Kỳ Công (rules/cottruyen.md mục 3).
 class Labor {
@@ -27,7 +30,7 @@ class Labor {
   final String mechanic;
 
   /// Vật phẩm nhận được khi thắng lần đầu.
-  final String reward;
+  final Item reward;
 
   /// Các màn trong kỳ công (1.1 … 1.10), màn cuối là boss. Rỗng = chỉ có
   /// trận boss.
@@ -78,45 +81,65 @@ class Stage {
 
 /// Kỳ công 1 — Hy Lạp, thung lũng Nemea (tutorial).
 const nemeanLion = EnemySpec(
+  id: 'nemean_lion',
   name: 'Sư tử Nemea',
   maxHp: 150,
-  armor: BattleArmor.impenetrableHide,
+  mechanics: [ImpenetrableHide.new],
 );
 
 // Quái thường Kỳ công 1 (rules/cottruyen.md mục 3b.1). Số liệu tạm.
-const stymphalianFlock = EnemySpec(name: 'Đàn chim Stymphalia', maxHp: 60);
-const stymphalianSwarm = EnemySpec(name: 'Bầy chim Stymphalia', maxHp: 90);
+const stymphalianFlock = EnemySpec(
+  id: 'stymphalian_flock',
+  name: 'Đàn chim Stymphalia',
+  maxHp: 60,
+);
+const stymphalianSwarm = EnemySpec(
+  id: 'stymphalian_swarm',
+  name: 'Bầy chim Stymphalia',
+  maxHp: 90,
+);
 const spartoi = EnemySpec(
+  id: 'spartoi',
   name: 'Spartoi',
   maxHp: 80,
-  armor: BattleArmor.reviveOnce,
+  mechanics: [ReviveOnce.new],
 );
 const stoneSoldier = EnemySpec(
+  id: 'stone_soldier',
   name: 'Lính đá',
   maxHp: 90,
-  armor: BattleArmor.impenetrableHide,
+  mechanics: [ImpenetrableHide.new],
 );
 const erymanthianBoar = EnemySpec(
+  id: 'erymanthian_boar',
   name: 'Lợn rừng Erymanthus',
   maxHp: 120,
-  armor: BattleArmor.chargingBoar,
+  mechanics: [ChargingBoar.new],
 );
-const harpy = EnemySpec(name: 'Harpy', maxHp: 90, armor: BattleArmor.goldThief);
+const harpy = EnemySpec(
+  id: 'harpy',
+  name: 'Harpy',
+  maxHp: 90,
+  mechanics: [GoldThief.new],
+);
 const spartoiPack = EnemySpec(
+  id: 'spartoi_pack',
   name: 'Chim và Spartoi',
   maxHp: 110,
-  armor: BattleArmor.reviveOnce,
+  mechanics: [ReviveOnce.new],
 );
 const youngHydra = EnemySpec(
+  id: 'young_hydra',
   name: 'Hydra non',
   maxHp: 120,
   heads: 3,
-  armor: BattleArmor.regrowingHeads,
+  mechanics: [RegrowingHeads.new],
 );
 const stoneGuard = EnemySpec(
+  id: 'stone_guard',
   name: 'Lính đá canh hang',
   maxHp: 120,
-  armor: BattleArmor.impenetrableHide,
+  mechanics: [ImpenetrableHide.new],
 );
 
 /// 10 màn của Kỳ công 1: quái thường dạy dần từng kỹ năng, 1.5 tinh anh,
@@ -223,24 +246,27 @@ const nemeaStages = <Stage>[
 
 /// Kỳ công 2 — Bắc Âu, rừng băng.
 const fafnir = EnemySpec(
+  id: 'fafnir',
   name: 'Rồng Fafnir',
   maxHp: 220,
-  armor: BattleArmor.freezingCold,
+  mechanics: [FreezingCold.new],
 );
 
 /// Kỳ công 5 — Nhật Bản, sông Hi. 8 đầu × 40 HP.
 const orochi = EnemySpec(
+  id: 'orochi',
   name: 'Yamata no Orochi',
   maxHp: 320,
   heads: 8,
-  armor: BattleArmor.regrowingHeads,
+  mechanics: [RegrowingHeads.new],
 );
 
 /// Kỳ công 12 — Việt Nam, núi Tản Viên (chương cuối).
 const thuyTinh = EnemySpec(
+  id: 'thuy_tinh',
   name: 'Thuỷ Tinh',
   maxHp: 600,
-  armor: BattleArmor.risingFlood,
+  mechanics: [RisingFlood.new],
 );
 
 /// Các kỳ công đã chơi được, theo thứ tự mở khoá (không nhất thiết liên tiếp
@@ -254,7 +280,7 @@ const labors = <Labor>[
     emoji: '🦁',
     enemy: nemeanLion,
     mechanic: 'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương',
-    reward: 'Áo choàng da sư tử',
+    reward: nemeanPelt,
     stages: nemeaStages,
   ),
   Labor(
@@ -265,7 +291,7 @@ const labors = <Labor>[
     emoji: '🐉',
     enemy: fafnir,
     mechanic: 'Giá lạnh: nghỉ quá 3 giây giữa hai rep thì đòn sau bị đóng băng',
-    reward: 'Khiên vảy rồng',
+    reward: dragonScaleShield,
   ),
   Labor(
     number: 5,
@@ -277,7 +303,7 @@ const labors = <Labor>[
     mechanic:
         '8 cái đầu: chém mỗi đầu bằng một chuỗi rep liền mạch, '
         'đứt combo thì đầu đó mọc lại',
-    reward: 'Kiếm Kusanagi',
+    reward: kusanagi,
   ),
   Labor(
     number: 12,
@@ -289,7 +315,7 @@ const labors = <Labor>[
     mechanic:
         'Núi dâng, nước dâng: nước dâng liên tục, mỗi rep đẩy nước lùi. '
         'Làm đúng kiểu đợt sóng đang đòi (⚡ 🐢 ⏸ 💥) thì mạnh gấp rưỡi',
-    reward: 'Ngựa chín hồng mao',
+    reward: nineManeHorse,
   ),
 ];
 
@@ -309,6 +335,7 @@ Labor? nextLabor(Labor labor) {
 
 /// Trận luyện tập có giới hạn thời gian (không thuộc cốt truyện).
 const trainingDummy = EnemySpec(
+  id: 'training_dummy',
   name: 'Bù nhìn luyện tập',
   maxHp: 300,
   timeLimitMs: 30000,
