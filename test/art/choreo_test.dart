@@ -23,9 +23,14 @@ void main() {
         if (e.value.moves[m.key]!.holdEnd) continue;
         final end = m.value.at(1.5);
         e.value.ready.forEach((k, v) {
-          expect(end[k], closeTo(v, 1e-9), reason: '${e.key} ${m.key} $k');
+          // Kênh góc (độ) chỉ cần cùng hướng: chuỳ thu vòng dưới về vai kết thúc ở
+          // −212° ≡ 148° (rules/dohoa.md mục 16).
+          final d = _angles.contains(k) ? ((end[k]! - v) % 360 + 540) % 360 - 180 : end[k]! - v;
+          expect(d, closeTo(0, 1e-9), reason: '${e.key} ${m.key} $k');
         });
       }
     }
   });
 }
+
+const _angles = {'club', 'fan', 'hand', 'sweep'};
