@@ -1658,8 +1658,8 @@ def main():
         aim_pupils(mats["eyes"], cam, look=poser.frame()[0])
         # Tư thế khoá của từng đòn (biên đạo) — soát trước khi xuất sprite.
         # ONI_MOVE=attack|attack2|defeat chỉ render một đòn.
-        keys = [("attack", t) for t in (0.12, 0.38, 0.48, 0.53, 0.575, 0.62, 0.72, 0.8, 0.88, 0.92)]
-        keys += [("attack2", t) for t in (0.14, 0.36, 0.48, 0.555, 0.61, 0.7, 0.78, 0.92)]
+        keys = [("attack", t) for t in (0.12, 0.38, 0.48, 0.53, 0.575, 0.62, 0.69, 0.72, 0.8, 0.88, 0.92)]
+        keys += [("attack2", t) for t in (0.14, 0.36, 0.48, 0.52, 0.54, 0.555, 0.61, 0.7, 0.78, 0.86, 0.92)]
         keys += [("drink", t) for t in (0.03, 0.08, 0.16, 0.5, 0.94)]
         keys += [("stagger", t) for t in (0.06, 0.2, 0.28, 0.36, 0.6, 0.72, 0.9)]
         keys += [("defeat", 0.5), ("defeat", 1.0)]

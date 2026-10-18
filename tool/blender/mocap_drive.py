@@ -353,7 +353,9 @@ def apply(info, T, ik_objects, palm=None, look=None, foot_flat=True):
     for s in SIDES:
         pbf = rig.pose.bones[f"foot_{s}"]
         f = T["foot"][s].copy()
-        if T["contact"].get(s) and foot_flat:
+        # Phẳng khi chạm đất HOẶC mắt cá sát đất (mocap bước nhón gót kiểu múa — critic v7).
+        low = T["ik"][f"leg_{s}"][0].z < info.ground + info.ankle_h * 1.35
+        if (T["contact"].get(s) or low) and foot_flat:
             f.z = 0
         if f.length < 1e-6:
             continue
@@ -543,7 +545,7 @@ def twist_add(info, deg):
     bpy.context.view_layer.update()
 
 
-def look_at(info, look, yaw_w=0.85, pitch_w=0.85, limit=55):
+def look_at(info, look, yaw_w=0.85, pitch_w=1.0, limit=55):
     """Mắt khoá về đối thủ — chạy SAU mọi lớp cộng (vặn/gập thân): đo hướng mặt
     thật của xương đầu, xoay cổ (40 %) + đầu cho mặt nhìn [look] theo phương
     ngang, và kéo đầu về gần ngang tầm (thế ngả lưng làm mặt ngửa trời)."""
