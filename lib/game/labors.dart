@@ -261,6 +261,23 @@ const orochi = EnemySpec(
   mechanics: [RegrowingHeads.new],
 );
 
+/// Chương Nhật — kỳ công Izumo (mini-boss) và Heian (boss), CHƯA xếp vào
+/// [labors] (chờ level-spec). Cơ chế: rules/thietke/boss-nhat-shuten-sutoku.md;
+/// máu tạm, chốt bằng balance-reps.
+final shutenDoji = EnemySpec(
+  id: 'shuten_doji',
+  name: 'Shuten-dōji',
+  maxHp: 260,
+  mechanics: [ShutenMechanic.new],
+);
+
+final sutokuTengu = EnemySpec(
+  id: 'tengu_sutoku',
+  name: 'Thiên hoàng Sutoku',
+  maxHp: 420,
+  mechanics: [SutokuMechanic.new],
+);
+
 /// Kỳ công 12 — Việt Nam, núi Tản Viên (chương cuối).
 const thuyTinh = EnemySpec(
   id: 'thuy_tinh',

@@ -9,6 +9,27 @@ Không có hoạ sĩ: mọi hình vẽ bằng `Canvas` trong `lib/art/`. Mục t
 hình đủ chất lượng lên store: **cartoon trưởng thành**, không phải tranh
 thiếu nhi. Đọc `rules/dohoa.md` (nguyên tắc dự án) trước khi vẽ.
 
+## 0. Tờ spec trước khi vẽ (bắt buộc cho mọi hình MỚI)
+
+LLM thực thi một bản mô tả DÀY rất tốt, nhưng tự nghĩ ra thì ra "trung bình"
+nhạt. Vì vậy **không vẽ từ một câu** ("vẽ con rồng dữ tợn"): trước khi mở
+`lib/art/`, viết tờ spec 12–20 dòng và **xin người dùng chốt** (hoặc chốt dựa
+trên ảnh tham khảo họ đưa). Gu nằm ở tờ này, không nằm ở lúc vẽ.
+
+Tờ spec phải có:
+- **Silhouette một dòng:** khối tổng đọc được khi tô đen (vd "tam giác ngược,
+  vai gai, đầu thụt thấp hơn vai").
+- **3 hình khối chữ ký** khiến con này khác mọi con cùng loài — không phải
+  "con rồng" chung, mà: sừng mấy nhánh cong kiểu gì, pattern vảy, bất đối xứng ở đâu.
+- **Bảng màu — mã hex cụ thể** cho thân / điểm nhấn / ánh viền, khớp màu-có-nghĩa mục 7.
+- **Tỉ lệ** (số đầu, Loomis ≥ 5,5) và **tư thế / mood** (rình, gầm, thủ thế).
+- **Ảnh tham khảo thật:** ≥ 3 ảnh đặt ở `art_src/ref/<tên>/` (ghi nguồn + giấy
+  phép). Không có ảnh thật → agent đang so với tưởng tượng → ra ngô nghê.
+- **"Điểm khác biệt":** một câu nói con này độc ở đâu so với bản generic.
+
+Thiếu tờ spec → dừng, viết trước. Spec là đầu vào của bảng tự chấm mục 3 và
+của critic mắt-lạ ở mục 1.
+
 ## 1. Quy trình bắt buộc (vòng lặp nhìn–sửa)
 
 1. **Tham khảo trước khi vẽ.** Với nhân vật thần thoại: nhớ lại hình tượng
@@ -21,15 +42,24 @@ thiếu nhi. Đọc `rules/dohoa.md` (nguyên tắc dự án) trước khi vẽ.
    rồi chạy
    `ART_PREVIEW=1 flutter test test/art/art_preview_test.dart --plain-name "<tên>"`.
    PNG nằm ở `build/art_preview/`. **Mở PNG bằng Read để tự nhìn.**
-4. **Tự chấm theo bảng ở mục 3.** Mỗi mục "chưa đạt" → sửa → xuất lại.
-   Ít nhất 2 vòng cho hình mới.
-5. **Hiệu năng** (rules/dohoa.md mục 6): ngân sách chính là đo trên máy
+4. **Tự chấm theo bảng ở mục 3** so với tờ spec (mục 0) và ảnh tham khảo.
+   Mỗi mục "chưa đạt" → sửa → xuất lại.
+5. **Critic mắt-lạ — bắt buộc cho hình mới (đây là thuốc chữa "ngô nghê").**
+   Người vẽ luôn khoan dung với hình của mình → tự chấm hay dừng non. Gọi một
+   reviewer ĐỘC LẬP (tool Agent, `general-purpose`) và đưa ĐÚNG: (a) đường dẫn
+   PNG vừa xuất, (b) đường dẫn ≥ 1 ảnh tham khảo thật, (c) tờ spec mục 0,
+   (d) bảng tự chấm mục 3. **Không nói rằng mình vừa vẽ nó.** Yêu cầu: "Chấm
+   1–10 so với ảnh tham khảo và chuẩn cartoon trưởng thành; liệt kê ≥ 6 điểm
+   trông nghiệp dư/ngô nghê theo từng vùng; chỉ khen khi thật sự đạt." Sửa
+   theo nhận xét → xuất lại → gọi critic MỚI. **Lặp tới khi critic cho ≥ 8/10**,
+   đừng dừng ở "mình thấy ổn" (oni cần ~9 vòng).
+6. **Hiệu năng** (rules/dohoa.md mục 6): ngân sách chính là đo trên máy
    thật bằng `lib/dev/perf_bench_main.dart` — GPU tô ≤ 16 ms/khung, ghi lệnh
    ≤ 5 ms. `flutter test test/art/perf_budget_test.dart` (< 3 ms ghi lệnh
    trên PC) chỉ là lưới chặn hồi quy. Phần tĩnh → `RasterLayer` (ảnh chụp
    sẵn, xem bờm/thân sư tử trong `lion_art.dart`); phần lặp đổi theo khung →
    `Picture` (khung chim trong `greek_monsters.dart`).
-6. `flutter analyze`, `flutter test`, commit riêng từng hạng mục.
+7. `flutter analyze`, `flutter test`, commit riêng từng hạng mục.
 
 ## Lý thuyết mỹ thuật làm nền (giáo trình kinh điển)
 

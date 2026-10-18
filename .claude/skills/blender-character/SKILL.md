@@ -29,6 +29,11 @@ mục Tripo cũ khi người dùng bảo giữ.
    bảng ở dohoa.md mục 7.
 3. Kami / nhân vật nhạy cảm: kiểm `rules/cottruyen.md` (ngoại lệ đã chốt
    thì không hỏi lại).
+4. **Viết tờ spec và xin người dùng chốt trước khi dựng** — gu nằm ở đây, không
+   ở lúc dựng. Spec gồm: silhouette một dòng, 3 khối chữ ký khác con generic,
+   tỉ lệ mục tiêu (điền thẳng vào `targets` của `--review`), phụ kiện + chất
+   liệu, "điểm khác biệt". Thiếu spec → dừng, viết trước; đây là đầu vào của
+   cổng soát mục 4.
 
 ## 2. Thứ tự dựng: khối → bóng → chi tiết
 
@@ -82,7 +87,13 @@ Không gửi ảnh duyệt nào khi chưa qua bước này.
 4. Mọi cảnh báo: sửa, hoặc chứng minh báo nhầm bằng ảnh cận rồi hiệu chỉnh
    `review_kit` (ghi lý do). "0 cảnh báo" mà vật phình gấp đôi vẫn là lỗi —
    mỗi lần sửa theo số liệu, render ảnh cận vật vừa sửa.
-5. Chỉ khi sheet sạch mới render ảnh duyệt đầy đủ (`--still`) và đưa người dùng.
+5. **Critic mắt-lạ trước khi đưa người dùng (thuốc chữa "ngô nghê"):** máy
+   `--review` bắt lỗi số đo; còn "trông ngố" thì cần mắt khác. Gọi một reviewer
+   ĐỘC LẬP (tool Agent, `general-purpose`), đưa sheet.png + ảnh tham khảo + tờ
+   spec mục 1, KHÔNG nói mình vừa dựng. Hỏi: "Chấm 1–10 so với tham khảo; liệt
+   kê ≥ 6 chỗ trông nghiệp dư (tỉ lệ, dáng, chất liệu, độ đáng sợ)." Sửa →
+   render lại → critic mới, lặp tới ≥ 8/10.
+6. Chỉ khi sheet sạch mới render ảnh duyệt đầy đủ (`--still`) và đưa người dùng.
    Khi đưa, nói rõ còn cảnh báo nào (nếu có) và vì sao chấp nhận.
 
 ## 5. Dáng ra đòn và sprite

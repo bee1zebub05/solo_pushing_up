@@ -8,3 +8,4 @@ export 'impenetrable_hide.dart';
 export 'regrowing_heads.dart';
 export 'revive_once.dart';
 export 'rising_flood.dart';
+export 'telegraphed_boss.dart';

@@ -56,6 +56,9 @@ abstract interface class BattleHost {
   /// Lúc rep đánh trúng gần nhất kết thúc.
   int? get lastHitMs;
 
+  /// Lần cuối camera còn thấy người (khung không mất dấu); null = chưa thấy.
+  int? get lastSeenMs;
+
   /// Hồi máu (tối đa đầy máu); trả lượng thực sự hồi.
   int heal(int amount);
 
@@ -85,4 +88,7 @@ class Strike {
 
   /// Đúng kiểu hành động đợt sóng đang đòi ([Hit.matched]).
   bool matched = false;
+
+  /// Phản đòn sau khi né được đòn của boss ([Hit.countered]).
+  bool countered = false;
 }

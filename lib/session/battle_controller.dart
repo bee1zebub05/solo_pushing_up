@@ -81,7 +81,11 @@ class BattleController extends ChangeNotifier {
     _descentStartMs = inRep ? (_descentStartMs ?? _nowMs) : null;
     final events = [
       ..._battle.apply(snapshot.events),
-      ..._battle.tick(_nowMs, plankHoldMs: snapshot.plankHoldMs),
+      ..._battle.tick(
+        _nowMs,
+        plankHoldMs: snapshot.plankHoldMs,
+        tracking: !snapshot.trackingLost,
+      ),
     ];
     _view = _battle.view(_nowMs, restEndMs: _descentStartMs);
     if (events.isNotEmpty) _handle(events);
@@ -94,6 +98,18 @@ class BattleController extends ChangeNotifier {
     for (final wave in events.whereType<WaveStarted>()) {
       session.feedback.announce('Sóng mới. ${wave.wave.action.label}');
     }
+    // Người chơi đang nhìn sàn: đòn báo trước phải nghe được (trụ 3).
+    for (final e in events) {
+      switch (e) {
+        case BossTell(:final dodge):
+          session.feedback.announce(dodge == DodgeBy.hold ? 'Giữ tay!' : 'Xuống sâu!');
+        case SakeDrinking():
+          session.feedback.announce('Ngắt! Đánh liên tục');
+        case CurseCast():
+          session.feedback.announce('Ấn nguyền. Xuống chậm');
+        default:
+      }
+    }
     onEvents?.call(events);
     if (!_reported && events.any((e) => e is Victory || e is Defeat)) {
       _reported = true;
@@ -104,6 +120,13 @@ class BattleController extends ChangeNotifier {
   /// Sự kiện đổi cục diện (húc, đứng dậy, chém đứt / mọc đầu…) quan trọng
   /// hơn con số sát thương.
   static BattleEvent _pickHeadline(List<BattleEvent> events) =>
+      events.whereType<BossTell>().firstOrNull ??
+      events.whereType<BossStruck>().firstOrNull ??
+      events.whereType<SakeDrinking>().firstOrNull ??
+      events.whereType<SakeInterrupted>().firstOrNull ??
+      events.whereType<SakeFinished>().firstOrNull ??
+      events.whereType<CurseCast>().firstOrNull ??
+      events.whereType<CurseLifted>().firstOrNull ??
       events.whereType<ChargeWarning>().firstOrNull ??
       events.whereType<ChargeLanded>().firstOrNull ??
       events.whereType<Revived>().firstOrNull ??
