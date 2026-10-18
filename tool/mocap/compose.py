@@ -106,7 +106,8 @@ def compose(spec, ready, model, n=37):
     filled = model.fill(pos, known)
     filled = refit(filled, lengths)
     meta = {"strike": spec["strike"], "events": ev, "eff": seg.meta["eff"], "src": seg.meta.get("src"),
-            "clip": seg.meta.get("clip"), "turn": spec.get("turn", 0.0), "lean": spec.get("lean", 0.0)}
+            "clip": seg.meta.get("clip"), "turn": spec.get("turn", 0.0), "lean": spec.get("lean", 0.0),
+            "twist": spec.get("twist", 0.0), "yaw_keep": spec.get("yaw_keep", 1.0), "shift": spec.get("shift", 0.0)}
     return filled, phases, meta, model.score(filled)
 
 

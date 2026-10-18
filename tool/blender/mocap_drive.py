@@ -83,8 +83,9 @@ class MocapDrive:
     [origin] = điểm đất dưới hông boss ở dáng chờ.
     """
 
-    def __init__(self, info, motion, basis, origin, lock_feet=True, travel=0.35, pelvis_z=None):
+    def __init__(self, info, motion, basis, origin, lock_feet=True, travel=0.35, pelvis_z=None, yaw_keep=1.0):
         self.info, self.m = info, motion
+        self.yaw_keep = yaw_keep
         fwd, left, up = basis
         self.B = Matrix((fwd, left, up)).transposed()
         self.origin = origin.copy()
@@ -146,6 +147,20 @@ class MocapDrive:
         info = self.info
         T = {"rot": {}, "ik": {}, "hand": {}, "foot": {}}
         rp, rc, rh = self.rot_pelvis(q), self.rot_chest(q), self.rot_head(q)
+        if self.yaw_keep < 1.0:
+            # Sân khấu nhìn ngang: đòn tay sau karate "mở hông" xoay thân ra máy quay
+            # — chỉ giữ một phần độ xoay quanh trục đứng (biên đạo `twist` lo phần còn lại).
+            up = Vector((0, 0, 1))
+            fwd = self.B.col[0]
+
+            def unyaw(r):
+                f = r.to_matrix() @ fwd
+                f2 = Vector((f.x, f.y, 0))
+                if f2.length < 1e-6:
+                    return r
+                yaw = math.atan2(fwd.cross(f2).z, fwd.dot(f2))
+                return Quaternion(up, -yaw * (1 - self.yaw_keep)) @ r
+            rp, rc, rh = unyaw(rp), unyaw(rc), unyaw(rh)
         T["rot"]["pelvis"] = rp
         for b, u in SPINE:
             T["rot"][b] = rp.slerp(rc, u)
@@ -457,7 +472,8 @@ class Track:
         if turn:  # thế tấn karate mở ngực ra máy quay → xoay thân về phía đối thủ
             q = Quaternion(Vector((0, 0, 1)), math.radians(turn))
             basis = (q @ basis[0], q @ basis[1], basis[2])
-        self.drive = MocapDrive(info, m, basis, origin, pelvis_z=pelvis_z)
+        self.drive = MocapDrive(info, m, basis, origin, pelvis_z=pelvis_z,
+                                yaw_keep=float(self.meta.get("yaw_keep", 1.0)))
         self.Ts = self.drive.lock([self.drive.targets(m.pos[i], i) for i in range(len(m))])
 
     def __call__(self, phase):
@@ -498,6 +514,23 @@ def lean_add(info, deg, left):
         pb = rig.pose.bones[b]
         bpy.context.view_layer.update()
         ax = (info.Ai @ left).normalized()
+        h = pb.head.copy()
+        pb.matrix = Matrix.Translation(h) @ Matrix.Rotation(math.radians(deg * k), 4, ax) @ Matrix.Translation(-h) @ pb.matrix
+    bpy.context.view_layer.update()
+
+
+def twist_add(info, deg):
+    """Vặn thân thêm [deg] độ quanh trục đứng (hông 40 % → lưng 35 % → ngực
+    25 %, hông dẫn trước), đầu bù ngược để mắt giữ đích — lớp biên đạo cộng
+    lên thân mocap cho đòn quét bằng hông."""
+    if abs(deg) < 1e-3:
+        return
+    rig = info.rig
+    up = Vector((0, 0, 1))
+    for b, k in (("pelvis", 0.4), ("spine_02", 0.35), ("spine_03", 0.25), ("head", -0.5)):
+        pb = rig.pose.bones[b]
+        bpy.context.view_layer.update()
+        ax = (info.Ai @ up).normalized()
         h = pb.head.copy()
         pb.matrix = Matrix.Translation(h) @ Matrix.Rotation(math.radians(deg * k), 4, ax) @ Matrix.Translation(-h) @ pb.matrix
     bpy.context.view_layer.update()

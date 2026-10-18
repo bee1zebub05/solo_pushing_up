@@ -434,6 +434,8 @@ class TenguMotion:
             self.mready = md.capture(self.minfo, self.mocap_ik())
             tr = md.Track(self.minfo, "tengu_sutoku", move, self.basis(), origin, pelvis_z=pz)
             self.mlean = float(tr.meta.get("lean", 0.0))
+            self.mtwist = float(tr.meta.get("twist", 0.0))
+            self.mshift = float(tr.meta.get("shift", 0.0))
         cache[move] = tr
         return tr
 
@@ -452,7 +454,10 @@ class TenguMotion:
             if s == "l":
                 md.set_hand(self.minfo, "l", d, n)
 
+        if self.mshift:  # dồn trọng tâm theo biên đạo cộng lên hông mocap
+            T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * (v["drop"] - v["lift"])) * self.mshift)
         md.apply(self.minfo, T, iko, palm=palm, look=fwd)
+        md.twist_add(self.minfo, v["twist"] * self.mtwist)
         md.lean_add(self.minfo, v["lean"] * self.mlean, left)
         self._wings(v)
         # Tay quạt theo biên đạo trong khung rig (không bù độ vặn thân mocap).

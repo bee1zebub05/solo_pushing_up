@@ -1443,6 +1443,8 @@ class OniMotion:
             self.mready = md.capture(self.minfo, self.mocap_ik())
             tr = md.Track(self.minfo, "shuten_doji", move, self.poser.frame(), origin, pelvis_z=pz)
             self.mlean = float(tr.meta.get("lean", 0.0))
+            self.mtwist = float(tr.meta.get("twist", 0.0))
+            self.mshift = float(tr.meta.get("shift", 0.0))
         self._mtracks[move] = tr
         return tr
 
@@ -1463,14 +1465,19 @@ class OniMotion:
             if s == "l":  # lòng bàn tay trái ngửa nâng lửa ma
                 poser.palm("l", d, (n * 0.35 + up * 0.65).normalized())
 
-        md.apply(self.minfo, T, iko, palm=palm, look=fwd)
-        # Gập/ngả thân theo biên đạo cộng lên mocap (đòn nện gập người, lấy đà ngả sau).
+        iko.pop("arm_l")  # tay lửa theo biên đạo: vươn ra trước ngắm = thế báo (critic v2)
+        if self.mshift:  # dồn trọng tâm theo biên đạo (dậm, hạ tấn) cộng lên hông mocap
+            T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * v["drop"]) * S * self.mshift)
+        md.apply(self.minfo, T, iko, palm=None, look=fwd)
+        # Gập/ngả + vặn thân theo biên đạo cộng lên mocap (karate giữ thân thẳng,
+        # đòn nện cần gập người, đòn quét cần hông xoay).
+        md.twist_add(self.minfo, v["twist"] * self.mtwist)
         md.lean_add(self.minfo, v["lean"] * self.mlean, left)
+        fire_arm(poser, drop=self.defeat, aim=v["aim"], drink=v.get("drink", 0.0), face=v.get("face", 0.0))
         # Vị trí tay chuỳ trong biên đạo tính theo khung CỐ ĐỊNH (không theo độ vặn
         # thân) — giữ nguyên, chỉ gốc vai đi theo thân mocap.
         club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
                  sign=poser.club_sign, sweep=v["sweep"], cant=v.get("cant", 0.32))
-        md.fingers(self.rig, "l", 0.45)
         self.redress()
         bpy.context.view_layer.update()
 
