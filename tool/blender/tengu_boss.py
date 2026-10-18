@@ -4,8 +4,13 @@ dài, kimono xanh lá hoa tròn vàng, hakama lam, cánh đại bàng nâu; Trip
 dáng chữ T, không xương → xương gắn ở đây (tripo_kit.build_rig), khớp đọc
 trên ảnh lưới toạ độ cao 2 m. Cánh to ×1,25 và rũ xuống (dáng nền, mọi dáng).
 
-    bash tool/blender/render.sh tengu_boss --still           # ảnh duyệt + dáng thử xương
-    bash tool/blender/render.sh tengu_boss --review --quick  # bộ soát nhân vật
+Đòn đánh: quạt lông hauchiwa (tay phải, như bản MPFB cũ) giơ cao sau đầu,
+cánh dựng xoè (lấy đà) → quạt chém xuống về phía người chơi, cánh đập tới
+(ra đòn) — nhịp AttackPose của game (lib/art/motion.dart).
+
+    bash tool/blender/render.sh tengu_boss --still           # ảnh duyệt + dáng đòn + dáng thử xương
+    bash tool/blender/render.sh tengu_boss --review --quick  # bộ soát nhân vật (+ --strike: khung ra đòn)
+    bash tool/blender/render.sh tengu_boss                   # xuất sprite → assets/sprites/tengu_sutoku.*
 """
 
 import math
@@ -17,14 +22,19 @@ import numpy as np
 from mathutils import Quaternion, Vector
 
 sys.path.insert(0, os.path.dirname(__file__))
-from boss_kit import ROOT, render_to, reset_scene  # noqa: E402
+from bird_kit import feather_material  # noqa: E402
+from boss_kit import ROOT, gold_material, render_to, reset_scene, skin_material  # noqa: E402
 from human_kit import camera, shadow_catcher  # noqa: E402
+from japan_kit import feather_fan, parent_posed  # noqa: E402
 import tripo_kit  # noqa: E402
 
 NAME = "tengu_001"
 H = 2.0  # cao tới đỉnh búi tóc, như bản MPFB cũ (S = 1,15)
 WING_SCALE = 1.25  # người dùng duyệt: cánh to hơn bản Tripo gốc
 WING_DROOP = (14, 6, 10)
+# Sân khấu: boss đứng bên phải nhìn sang trái (người chơi) — xoay ¾.
+FACING = -24  # vừa đủ ¾: xoay mạnh hơn thì cánh gần che mất cánh xa
+UNITS_PER_M = 78  # cao 2 m ≈ 156 đơn vị sân khấu (lính đá ~145)
 # Mon vàng mặt sau (người dùng yêu cầu): khuôn = mon trên ống hakama phải
 # (tâm x, z; bán kính, m — đọc trên front_map có lưới), đóng tại các tâm (x, z)
 # nhìn từ sau, so le như bố cục mặt trước.
@@ -97,11 +107,11 @@ def build():
 
 
 def rot(rig, bone, axis, deg):
-    """Xoay [bone] [deg]° quanh trục THẾ GIỚI [axis] (dáng nghỉ) — khỏi đoán
+    """Xoay [bone] [deg]° quanh trục THẾ GIỚI [axis] (dáng nghỉ, rig chưa xoay) — khỏi đoán
     trục cục bộ của từng xương. Cộng dồn nếu gọi nhiều lần."""
     pb = rig.pose.bones[bone]
     pb.rotation_mode = "QUATERNION"
-    local = (rig.matrix_world.to_3x3() @ pb.bone.matrix_local.to_3x3()).inverted() @ Vector(axis)
+    local = pb.bone.matrix_local.to_3x3().inverted() @ Vector(axis)  # trục theo khung rig (rig xoay được)
     pb.rotation_quaternion = pb.rotation_quaternion @ Quaternion(local.normalized(), math.radians(deg))
 
 
@@ -111,6 +121,7 @@ def rest(rig):
         pb.rotation_mode = "QUATERNION"
         pb.rotation_quaternion = (1, 0, 0, 0)
         pb.scale = (1, 1, 1)
+        pb.location = (0, 0, 0)
     for s, k in (("l", 1), ("r", -1)):
         rig.pose.bones[f"wing_01_{s}"].scale = (WING_SCALE,) * 3  # đốt con thừa hưởng
         for i, deg in enumerate(WING_DROOP):
@@ -120,15 +131,88 @@ def rest(rig):
 X, Y, Z = (1, 0, 0), (0, 1, 0), (0, 0, 1)
 
 
-def idle(rig):
-    """Dáng chờ trận: tay hạ xuống (bỏ chữ T), khuỷu hơi gập ra trước, gối hơi chùng."""
+def attack_pose(phase):
+    """(lấy đà, ra đòn, thu về) 0–1 — bản Python của AttackPose.at (motion.dart)."""
+    if phase < 0 or phase > 1:
+        return 0.0, 0.0, 0.0
+    if phase < 0.5:
+        t = phase / 0.5
+        return 1 - (1 - t) ** 2, 0.0, 0.0
+    if phase < 0.65:
+        t = (phase - 0.5) / 0.15
+        return 1 - t, math.sin(t * math.pi / 2), 0.0
+    t = (phase - 0.65) / 0.35
+    return 0.0, 1 - t, math.sin(t * math.pi)
+
+
+def pose(rig, t=0.0, attack=-1.0, defeat=0.0):
+    """Dáng tại nhịp thở [t] (0–1, lặp), tiến độ đòn [attack] (âm = không
+    đánh), gục [defeat] 0–1. Mọi góc là hàm liên tục để sprite hoà khung mượt."""
     rest(rig)
-    for s, k in (("l", 1), ("r", -1)):
-        rot(rig, f"upperarm_{s}", Y, 62 * k)       # +x quanh +Y = hạ xuống
-        rot(rig, f"lowerarm_{s}", Z, -25 * k)      # cẳng tay gập ra trước (−Y)
-        rot(rig, f"thigh_{s}", X, -6)              # đùi ra trước
-        rot(rig, f"calf_{s}", X, 12)               # gối chùng
+    w, s_, _ = attack_pose(attack)
+    d = defeat
+    br = math.sin(2 * math.pi * t)  # thở: ngực phồng, cánh khẽ nâng
+    # Thân: lấy đà ngả ra sau, ra đòn đổ tới; gục thì gập hẳn.
+    rot(rig, "spine_02", X, -9 * w + 14 * s_ + 12 * d + 1.2 * br)
+    rot(rig, "spine_03", X, -5 * w + 6 * s_ + 6 * d)
+    rot(rig, "spine_02", Z, -10 * w + 14 * s_)  # vặn vai phải ra sau rồi quất tới
+    rot(rig, "head", X, 6 * w - 10 * s_ + 30 * d)
+    rot(rig, "neck_01", X, -4 * w)
+    # Tay phải cầm quạt: hạ (chờ) → giơ cao sau đầu (lấy đà) → chém xuống trước (ra đòn).
+    idle_r = 1 - max(w, s_, d)
+    rot(rig, "upperarm_r", Y, -62 * idle_r + 80 * w - 18 * s_ - 70 * d)
+    rot(rig, "upperarm_r", Z, -22 * w + 62 * s_)  # −: ra sau, +: ra trước (về phía người chơi)
+    rot(rig, "lowerarm_r", Z, 25 * idle_r - 12 * w + 10 * s_ + 15 * d)
+    # Cổ tay bẻ: quạt ngả ra sau trên đầu (lấy đà, phải lộ rõ — đây là dấu
+    # hiệu đòn) rồi quất; gục thì quạt trĩu xuống theo tay buông.
+    rot(rig, "hand_r", Y, 20 * w - 30 * s_ - 40 * d)
+    rot(rig, "hand_r", X, -65 * idle_r + 70 * w - 95 * s_)  # lật cổ tay: quạt dựng / ngả sau / quất tới
+    # Tay trái: đưa tới giữ thăng bằng khi lấy đà, kéo về khi chém.
+    rot(rig, "upperarm_l", Y, 62 * (1 - w * 0.55) + 8 * d)
+    rot(rig, "upperarm_l", Z, 35 * w - 20 * s_)
+    rot(rig, "lowerarm_l", Z, -25 - 30 * w + 10 * s_)
+    # Cánh: dựng xoè lên (lấy đà) → đập xuống và tới (ra đòn) → rũ cụp (gục).
+    for sd, k in (("l", 1), ("r", -1)):
+        # Gục: thân gập tới làm cánh (chĩa ra sau) vểnh lên → hạ bù mạnh.
+        rot(rig, f"wing_01_{sd}", Y, (-38 * w + 26 * s_ + 72 * d - 3 * br) * k)
+        rot(rig, f"wing_01_{sd}", Z, (-10 * w - 30 * s_ - 15 * d) * k)  # −k: tới trước
+        rot(rig, f"wing_02_{sd}", Y, (-16 * w + 14 * s_ + 30 * d) * k)
+        rot(rig, f"wing_03_{sd}", Y, (-8 * w + 18 * s_ + 22 * d) * k)
+    # Chân: tấn hơi chùng; ra đòn khuỵu sâu; gục quỵ gối (hông hạ theo góc gối).
+    knee = 6 + 4 * w + 10 * s_ + 44 * d
+    for sd in ("l", "r"):
+        rot(rig, f"thigh_{sd}", X, -knee)
+        rot(rig, f"calf_{sd}", X, 2 * knee)
+        rot(rig, f"foot_{sd}", X, -knee)
+    drop = 0.87 * (1 - math.cos(math.radians(knee))) - 0.87 * (1 - math.cos(math.radians(6)))
+    rig.pose.bones["pelvis"].location = (0, -drop, -0.04 * d)  # xương pelvis dọc +Z: y cục bộ = lên
     bpy.context.view_layer.update()
+
+
+def idle(rig):
+    """Dáng chờ trận (ảnh duyệt, bộ soát)."""
+    pose(rig)
+
+
+def fan(rig):
+    """Quạt lông hauchiwa trong tay phải — dựng ở dáng nền (chữ T), gắn xương tay."""
+    rest(rig)
+    bpy.context.view_layer.update()
+    pb = rig.pose.bones["hand_r"]
+    mw = rig.matrix_world
+    grip = mw @ pb.head.lerp(pb.tail, 0.4)
+    # Lông sẫm: quạt nâu nhạt chìm vào cánh nâu ở khung ra đòn.
+    feather = feather_material("FanFeather", "#141010", "#4A3C34", sheen="#C8A060", metallic=0.2, rough=0.45)
+    black = skin_material("Lacquer", "#0C0A0C", rough=0.4)
+    gold = gold_material("TenguGold", "#D8A848", rough=0.3)
+    # Cán vuông góc với ngón, xuyên lòng bàn tay (dáng chữ T úp bàn tay: cán
+    # chĩa ra trước); quạt dựng lên nhờ xoay cổ tay quanh trục cánh tay (pose).
+    up = mw.to_3x3() @ Vector((0, -1, 0.1))
+    face = mw.to_3x3() @ Vector((0, 0, 1))
+    objs = feather_fan("Fan", grip, up, face, (feather, black, gold), scale=1.15)
+    for o in objs:
+        parent_posed(o, rig, "hand_r")
+    return objs
 
 
 def test_poses(rig):
@@ -147,34 +231,75 @@ def test_poses(rig):
     bpy.context.view_layer.update()
 
 
+def face_game(rig, on=True):
+    """Xoay rig ¾ quanh trục đứng qua chân (thân ở y ≈ −0,38, không ở gốc) —
+    chân giữ nguyên ở (0, 0): điểm neo sprite."""
+    a = math.radians(FACING if on else 0)
+    body = Vector((0, -0.38, 0))
+    rig.rotation_euler.z = a
+    rig.location = -(Quaternion(Z, a) @ body) + (Vector() if on else body)
+    bpy.context.view_layer.update()
+
+
+def game_camera(scene, ppm):
+    """Góc sân khấu: rig xoay ¾ nhìn sang trái màn hình, máy quay hơi chúc
+    như các quái khác; khung đủ cho cánh dựng cao và quạt chém ra trước."""
+    return camera(scene, -0.15, 1.2, 3.4, 2.75, ppm, yaw=-8, pitch=6)
+
+
 def main():
     quick = "--quick" in sys.argv
     scene = reset_scene(samples=16 if quick else 64, world_hex="#C9C4C0", world_strength=0.7)
     m, rig, unweighted = build()
+    fan(rig)
     tripo_kit.default_lights(scene)
     shadow_catcher()
     out = os.path.join(ROOT, "build", "blender", "tengu")
     os.makedirs(out, exist_ok=True)
     if "--review" in sys.argv:  # bộ soát cố định + kiểm tra tự động (review_kit), không lưu .blend
         from review_kit import review
-        idle(rig)
-        review(scene, m.body, rig, "tengu_boss", H / 1.75, tripo_kit.forward(), free=[r"^wing"],
+        pose(rig, attack=0.55) if "--strike" in sys.argv else idle(rig)
+        review(scene, m.body, rig, "tengu_boss", H / 1.75, tripo_kit.forward(), free=[r"^wing", r"^Fan"],
+               important={"quạt lông": [r"^Fan"]}, embedded=[r"^FanHandle"],
                targets={"chân (khớp háng)/chiều cao": (0.44, 0.52)}, samples=16 if quick else 32)
         return
-    # Ảnh duyệt (như bản MPFB cũ) + dáng thử xương.
-    idle(rig)
-    camera(scene, 0.0, 1.1, 3.1, 2.4, 260, yaw=-8, pitch=6)
-    render_to(scene, os.path.join(out, "still_full.png"))
-    pb = rig.pose.bones["head"]
-    head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)
-    camera(scene, head.x - 0.05, head.z, 0.7, 0.7, 900, yaw=-8, pitch=4)
-    render_to(scene, os.path.join(out, "still_face.png"))
-    for tag, yaw in (("test", -8), ("test_side", -60)):
-        test_poses(rig)
-        camera(scene, 0.0, 1.1, 3.1, 2.4, 260, yaw=yaw, pitch=6)
-        render_to(scene, os.path.join(out, f"check_pose_{tag}.png"))
-    print(f"[tengu_boss] đỉnh không trọng số: {unweighted}")
-    from boss_kit import save_blend
-    save_blend("tengu_boss")
+    if "--still" in sys.argv:
+        # Ảnh duyệt chính diện (như bản MPFB cũ) + dáng thử xương.
+        idle(rig)
+        camera(scene, 0.0, 1.1, 3.1, 2.4, 260, yaw=-8, pitch=6)
+        render_to(scene, os.path.join(out, "still_full.png"))
+        pb = rig.pose.bones["head"]
+        head = rig.matrix_world @ pb.head.lerp(pb.tail, 0.5)
+        camera(scene, head.x - 0.05, head.z, 0.7, 0.7, 900, yaw=-8, pitch=4)
+        render_to(scene, os.path.join(out, "still_face.png"))
+        for tag, yaw in (("test", -8), ("test_side", -60)):
+            test_poses(rig)
+            camera(scene, 0.0, 1.1, 3.1, 2.4, 260, yaw=yaw, pitch=6)
+            render_to(scene, os.path.join(out, f"check_pose_{tag}.png"))
+        # Góc sân khấu: chờ, lấy đà, ra đòn, thu về, gục.
+        face_game(rig)
+        game_camera(scene, 200)
+        for tag, kw in (("idle", {}), ("windup", dict(attack=0.48)), ("strike", dict(attack=0.6)),
+                        ("recover", dict(attack=0.8)), ("defeat", dict(defeat=1))):
+            pose(rig, **kw)
+            render_to(scene, os.path.join(out, f"game_{tag}.png"))
+        face_game(rig, False)
+        idle(rig)
+        print(f"[tengu_boss] đỉnh không trọng số: {unweighted}")
+        from boss_kit import save_blend
+        save_blend("tengu_boss")
+        return
+    # Sprite: thở (lặp), đòn theo tiến độ 0–1, gục.
+    from sprite_kit import export_sprites
+    scene.cycles.samples = 16 if quick else 64
+    face_game(rig)
+    cam = game_camera(scene, 3.0 * UNITS_PER_M)
+    anims = {
+        "idle": [lambda k=k: pose(rig, t=k / 6) for k in range(6)],
+        "attack": [lambda k=k: pose(rig, attack=k / 11) for k in range(12)],
+        "defeat": [lambda k=k: pose(rig, defeat=k / 5) for k in range(6)],
+    }
+    export_sprites(scene, cam, "tengu_sutoku", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.2})
+
 
 main()
