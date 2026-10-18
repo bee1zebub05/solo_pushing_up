@@ -545,7 +545,7 @@ def twist_add(info, deg):
     bpy.context.view_layer.update()
 
 
-def look_at(info, look, yaw_w=0.85, pitch_w=1.0, limit=55):
+def look_at(info, look, yaw_w=0.85, pitch_w=1.0, limit=55, pitch_bias=-10.0):
     """Mắt khoá về đối thủ — chạy SAU mọi lớp cộng (vặn/gập thân): đo hướng mặt
     thật của xương đầu, xoay cổ (40 %) + đầu cho mặt nhìn [look] theo phương
     ngang, và kéo đầu về gần ngang tầm (thế ngả lưng làm mặt ngửa trời)."""
@@ -574,7 +574,8 @@ def look_at(info, look, yaw_w=0.85, pitch_w=1.0, limit=55):
     f = face()
     h2 = Vector((f.x, f.y, 0))
     if h2.length > 1e-6:
-        pitch = math.atan2(f.z, h2.length)
+        # Cằm hơi cúi ([pitch_bias] độ): võ sĩ nhìn đối thủ dưới hàng mày, không ngửa cổ.
+        pitch = math.atan2(f.z, h2.length) - math.radians(pitch_bias)
         side = h2.normalized().cross(up)
         # Xoay quanh side = ngang × lên theo chiều dương thì mặt NGẨNG thêm → dùng −pitch.
         turn("head", Quaternion(side.normalized(), -pitch * pitch_w))
