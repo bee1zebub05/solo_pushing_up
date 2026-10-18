@@ -1,0 +1,295 @@
+{
+ "_doc": "Biên đạo đòn tengu Sutoku (rules/dohoa.md mục 14). t = tiến độ đòn 0–1 (AttackPose). Khung rig của model (mặt quay −Y): shift/drop/lift/step/tuck = m; góc = độ. hand = góc vị trí cầm quạt quanh vai phải trong mặt phẳng trước–lên (0 trước, 90 lên), reach/side = m, sweep = xoay cả tay + quạt quanh trục đứng qua vai (+ = sang trái nhân vật: đường chém chéo kesa kết thúc bên trái), fan = hướng cán quạt cùng mặt phẳng, guard = tay trái giơ ra trước đỡ (tessen, 1) / kéo về (−), wing = cánh dựng (+) / đập xuống (−), wingFwd = cánh quạt ra trước, wingFold = đốt ngoài cụp (+) / duỗi (−), lift = cả người bay lên, tuck = co chân khi bay. lag: hông → thân → tay → quạt → cánh → mút cánh (trễ nhất).",
+ "ready": {
+  "shift": 0,
+  "drop": 0,
+  "lift": 0,
+  "lean": 0,
+  "twist": 0,
+  "step": 0,
+  "tuck": 0,
+  "hand": -75,
+  "reach": 0.42,
+  "side": 0.12,
+  "sweep": 0,
+  "fan": 80,
+  "poleF": -0.1,
+  "poleU": -0.3,
+  "guard": 0,
+  "wing": 0,
+  "wingFwd": 0,
+  "wingFold": 0,
+  "head": 0
+ },
+ "lag": {
+  "lean": 0.006,
+  "twist": 0.004,
+  "head": 0.015,
+  "hand": 0.008,
+  "reach": 0.008,
+  "sweep": 0.008,
+  "fan": 0.014,
+  "guard": 0.01,
+  "wing": 0.012,
+  "wingFwd": 0.02,
+  "wingFold": 0.035
+ },
+ "attacks": {
+  "attack": {
+   "_name": "Phong kesa — thế hassō (quạt dựng cạnh đầu, tay trái đỡ kiểu tessen, cánh dựng) rồi chém chéo kesa xuống trái, cánh đập xuống cùng nhịp tạo gió",
+   "events": {
+    "impact": 0.6
+   },
+   "keys": [
+    {
+     "t": 0.14,
+     "v": {
+      "drop": 0.03,
+      "hand": -40,
+      "fan": 95,
+      "wing": 8,
+      "guard": 0.3
+     }
+    },
+    {
+     "t": 0.36,
+     "v": {
+      "shift": -0.08,
+      "lean": -6,
+      "twist": -20,
+      "hand": 70,
+      "reach": 0.32,
+      "side": 0.22,
+      "sweep": -25,
+      "fan": 100,
+      "poleF": 0.1,
+      "poleU": -0.1,
+      "guard": 1,
+      "wing": 30,
+      "wingFold": -12,
+      "head": -4
+     }
+    },
+    {
+     "t": 0.48,
+     "v": {
+      "shift": -0.09,
+      "twist": -24,
+      "hand": 76,
+      "fan": 108,
+      "wing": 36,
+      "guard": 1
+     }
+    },
+    {
+     "t": 0.55,
+     "v": {
+      "shift": 0.08,
+      "lean": 8,
+      "twist": 0,
+      "step": 0.22,
+      "hand": 25,
+      "reach": 0.5,
+      "side": 0.12,
+      "sweep": 0,
+      "fan": 30,
+      "guard": 0.3,
+      "wing": 4,
+      "wingFwd": 18
+     }
+    },
+    {
+     "t": 0.6,
+     "v": {
+      "shift": 0.16,
+      "drop": 0.1,
+      "lean": 16,
+      "twist": 22,
+      "step": 0.3,
+      "hand": -25,
+      "reach": 0.58,
+      "side": 0.0,
+      "sweep": 18,
+      "fan": -30,
+      "poleF": 0.0,
+      "poleU": -0.35,
+      "guard": -0.3,
+      "wing": -28,
+      "wingFwd": 32,
+      "wingFold": 16,
+      "head": 6
+     }
+    },
+    {
+     "t": 0.72,
+     "v": {
+      "drop": 0.12,
+      "hand": -30,
+      "fan": -36,
+      "wing": -24,
+      "wingFold": 12
+     }
+    },
+    {
+     "t": 0.86,
+     "v": {
+      "shift": 0.04,
+      "drop": 0.03,
+      "lean": 4,
+      "twist": 6,
+      "step": 0.12,
+      "hand": -55,
+      "sweep": 10,
+      "fan": 40,
+      "guard": 0,
+      "wing": -6,
+      "wingFwd": 6,
+      "wingFold": 2
+     }
+    }
+   ]
+  },
+  "attack2": {
+   "_name": "Thiên cẩu phi — thu người, cánh dựng cao, vỗ cánh bật lên, lơ lửng ở đỉnh với quạt giơ sau đầu, rồi bổ quạt xuống khi đáp, cánh xoè hãm",
+   "events": {
+    "impact": 0.61
+   },
+   "keys": [
+    {
+     "t": 0.25,
+     "v": {
+      "drop": 0.2,
+      "lean": 14,
+      "wing": 46,
+      "wingFold": -14,
+      "hand": 30,
+      "reach": 0.4,
+      "fan": 90,
+      "guard": 0.4
+     }
+    },
+    {
+     "t": 0.4,
+     "v": {
+      "drop": 0.0,
+      "lift": 0.3,
+      "tuck": 0.18,
+      "lean": -6,
+      "twist": -12,
+      "wing": -24,
+      "wingFwd": 10,
+      "wingFold": 4,
+      "hand": 105,
+      "reach": 0.4,
+      "side": 0.15,
+      "fan": 165,
+      "guard": 0.8
+     }
+    },
+    {
+     "t": 0.48,
+     "v": {
+      "lift": 0.42,
+      "tuck": 0.22,
+      "lean": -8,
+      "wing": 38,
+      "wingFwd": 0,
+      "wingFold": -10,
+      "hand": 112,
+      "fan": 180
+     }
+    },
+    {
+     "t": 0.56,
+     "v": {
+      "lift": 0.2,
+      "tuck": 0.12,
+      "lean": 10,
+      "twist": 0,
+      "shift": 0.14,
+      "wing": -6,
+      "hand": 40,
+      "fan": 70
+     }
+    },
+    {
+     "t": 0.61,
+     "v": {
+      "lift": 0.0,
+      "tuck": 0.0,
+      "drop": 0.22,
+      "shift": 0.22,
+      "lean": 26,
+      "step": 0.25,
+      "hand": -45,
+      "reach": 0.55,
+      "fan": -55,
+      "poleU": -0.35,
+      "guard": -0.3,
+      "wing": -36,
+      "wingFwd": 20,
+      "wingFold": 22,
+      "head": 8
+     }
+    },
+    {
+     "t": 0.74,
+     "v": {
+      "drop": 0.2,
+      "lean": 24,
+      "wing": -30,
+      "wingFold": 18
+     }
+    },
+    {
+     "t": 0.88,
+     "v": {
+      "drop": 0.05,
+      "shift": 0.06,
+      "lean": 5,
+      "step": 0.1,
+      "wing": -8,
+      "wingFwd": 4,
+      "wingFold": 4,
+      "hand": -50,
+      "fan": 50,
+      "guard": 0
+     }
+    }
+   ]
+  },
+  "defeat": {
+   "_name": "Gục: quạt rời tay trĩu xuống, cánh rũ sụp, quỵ gối, đầu cúi",
+   "hold_end": true,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": {
+      "drop": 0.12,
+      "lean": 10,
+      "hand": -80,
+      "fan": 60,
+      "wing": -30,
+      "wingFold": 10,
+      "head": 10
+     }
+    },
+    {
+     "t": 1.0,
+     "v": {
+      "drop": 0.45,
+      "lean": 24,
+      "step": 0.1,
+      "hand": -90,
+      "reach": 0.5,
+      "fan": 10,
+      "wing": -55,
+      "wingFold": 25,
+      "head": 30,
+      "guard": -0.5
+     }
+    }
+   ]
+  }
+ }
+}

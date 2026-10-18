@@ -1170,11 +1170,15 @@ CLUB_KEYS = {
 }
 
 
-def club_arm(poser, ang, dist, side, club_ang, pole, sign=None):
+def club_arm(poser, ang, dist, side, club_ang, pole, sign=None, sweep=0.0):
     """Đặt tay phải nắm chuỳ: IK tới vị trí nắm, xoay bàn tay sao cho trục
-    đốt ngón (trỏ → út) chỉ về đuôi chuỳ, ngón cái về đầu chuỳ. Trả về
-    (chiều lòng bàn tay đã chọn, hướng chuỳ)."""
+    đốt ngón (trỏ → út) chỉ về đuôi chuỳ, ngón cái về đầu chuỳ. [sweep] xoay
+    cả vị trí nắm, hướng khuỷu và hướng chuỳ quanh trục đứng qua vai (độ, +
+    = sang trái nhân vật) — đòn quét ngang. Trả về (chiều lòng bàn tay, hướng chuỳ)."""
+    from mathutils import Quaternion
     fwd, left, up = poser.frame()
+    q = Quaternion(up, math.radians(sweep))
+    fwd, left = q @ fwd, q @ left
     right = -left
     sh_r = poser.world("upperarm_r", 0.0)
     a = math.radians(ang)
@@ -1190,15 +1194,33 @@ def club_arm(poser, ang, dist, side, club_ang, pole, sign=None):
         knuckle = poser.world("pinky_01_r", 0.0) - poser.world("index_01_r", 0.0)
         if knuckle.dot(cd) < 0:
             break
+    if sign:
+        # palm() coi trục đốt ngón vuông góc hướng ngón ở dáng nghỉ — sai với
+        # bàn tay MPFB đã nắm (lệch tới 30–60° khi tay duỗi ra trước): đo trục
+        # chuỳ thật rồi xoay bù cổ tay quanh cổ tay cho khớp hướng mong muốn.
+        h = poser.ik["r"][2]
+        for _ in range(2):
+            actual = -(poser.world("pinky_01_r", 0.0) - poser.world("index_01_r", 0.0)).normalized()
+            fix = actual.rotation_difference(want).to_matrix().to_4x4()
+            loc = h.matrix_world.to_translation()
+            h.matrix_world = Matrix.Translation(loc) @ fix @ Matrix.Translation(-loc) @ h.matrix_world
+            bpy.context.view_layer.update()
+        knuckle = poser.world("pinky_01_r", 0.0) - poser.world("index_01_r", 0.0)
     return sg, -knuckle.normalized()
 
 
-def fire_arm(poser, drop=0.0):
-    """Tay trái chìa ra trước, ngửa bàn tay nâng lửa ma; [drop] 0–1 buông xuống (gục)."""
+def fire_arm(poser, drop=0.0, aim=0.0):
+    """Tay trái chìa ra trước, ngửa bàn tay nâng lửa ma; [drop] 0–1 buông
+    xuống (gục); [aim] 1 = vươn thẳng ra trước ngắm đích lúc lấy đà (tay
+    "găng" của người ném), âm = kéo về sát sườn lúc ra đòn (xoay ngược chiều vai)."""
     fwd, left, up = poser.frame()
     sh_l = poser.world("upperarm_l", 0.0)
     reach = poser.a + poser.b
-    hand = sh_l + left * reach * (0.6 - 0.25 * drop) + fwd * reach * (0.45 - 0.3 * drop) - up * reach * (0.38 + 0.5 * drop)
+    a = max(0.0, aim)
+    back = min(0.0, aim)
+    hand = (sh_l + left * reach * (0.6 - 0.25 * drop - 0.4 * a + 0.1 * back)
+            + fwd * reach * (0.45 - 0.3 * drop + 0.55 * a + 0.5 * back)
+            - up * reach * (0.38 + 0.5 * drop - 0.4 * a))
     poser.arm("l", hand, sh_l + left * 0.3 - up * 0.8 - fwd * 0.1)
     # Ngửa lòng bàn tay, ngón vuốt quặp nhẹ ôm lửa.
     fa_l = (poser.world("hand_l", 0.0) - poser.world("lowerarm_l", 0.0)).normalized()
@@ -1315,59 +1337,122 @@ def attach_props(rig):
 
 
 class OniMotion:
-    """Dáng sprite tại nhịp thở [t] (0–1, lặp), tiến độ đòn [attack] (âm =
-    không đánh), gục [defeat] 0–1 — chỉ thân trên, chân giữ thế đứng bản duyệt."""
+    """Dáng sprite theo biên đạo (tool/blender/choreo/shuten_doji.json): nhịp
+    thở [t] (0–1, lặp) hoặc đòn [move] tại tiến độ [phase]. Chân IK bám đất
+    (bàn chân phải bước theo `step`/`lift`), hông dịch/hạ trọng tâm, độ vặn
+    chia hông → lưng → ngực (hông đi trước), chuỳ vung theo góc quanh vai,
+    hakama/tạp dề/khoá đai dựng lại theo dáng từng khung."""
 
-    SPINE = ("spine_02", "spine_03", "neck_01", "head")
+    SPINE = ("pelvis", "spine_02", "spine_03", "neck_01", "head")
 
-    def __init__(self, poser):
+    def __init__(self, poser, body, mats):
         import re
-        self.poser = poser
-        self.rig = poser.rig
-        self.rest = {b: self.rig.pose.bones[b].rotation_euler.copy() for b in self.SPINE}
+        from choreo import Choreo
+        self.poser, self.body, self.mats = poser, body, mats
+        self.rig = rig = poser.rig
+        self.choreo = Choreo("shuten_doji")
+        bpy.context.view_layer.update()
+        self.basis = {b: rig.pose.bones[b].matrix_basis.copy() for b in self.SPINE}
         self.wisps = [(o, o.matrix_world.copy(), int(re.match(r"Wisp(\d+)", o.name).group(1)))
                       for o in bpy.data.objects if o.name.startswith("Wisp")]
         self.fire = [o for o in bpy.data.objects if o.name.startswith("Onibi")]
+        # IK chân: đích = bàn chân dáng duyệt, gối hướng ra trước.
+        fwd, left, up = poser.frame()
+        self.feet = {}
+        for s_ in "lr":
+            pb = rig.pose.bones[f"foot_{s_}"]
+            head = rig.matrix_world @ pb.head
+            knee = rig.matrix_world @ rig.pose.bones[f"calf_{s_}"].head
+            tgt = bpy.data.objects.new(f"LegIK_{s_}", None)
+            pole = bpy.data.objects.new(f"LegPole_{s_}", None)
+            for o in (tgt, pole):
+                bpy.context.scene.collection.objects.link(o)
+            tgt.location = head
+            pole.location = knee + fwd * 1.5 * S
+            c = rig.pose.bones[f"calf_{s_}"].constraints.new("IK")
+            c.target, c.pole_target, c.chain_count = tgt, pole, 2
+            c.pole_angle = math.radians(-90)
+            self.feet[s_] = (tgt, pole, head.copy(), knee - head, pb.matrix.copy())
+        bpy.context.view_layer.update()
+        self.dress = None
+        self.defeat = 0.0
 
-    def pose(self, t=0.0, attack=-1.0, defeat=0.0):
+    def apply(self, v):
         rig, poser = self.rig, self.poser
-        for b, e in self.rest.items():
-            rig.pose.bones[b].rotation_euler = e
+        for b, m in self.basis.items():
+            rig.pose.bones[b].matrix_basis = m
         bpy.context.view_layer.update()
         fwd, left, up = poser.frame()
-        w, s_, _ = attack_pose(attack)
-        if attack > 0.65:  # chuỳ nằm trên đất một nhịp rồi mới nhấc (holdStrike, japan_sprite_boss.dart)
-            s_ = min(1.0, s_ * 1.5)
-        d = defeat
-        br = math.sin(2 * math.pi * t)
-        # +quanh `left` = đổ tới trước; +quanh `up` = vặn sang trái nhân vật.
-        lean = -7 * w + 11 * s_ + 16 * d + 1.2 * br
+        # Hông: dịch trước/sau, hạ trọng tâm (chân IK tự gập gối).
+        pb = rig.pose.bones["pelvis"]
+        d = (fwd * v["shift"] - up * v["drop"]) * S
+        pb.matrix = Matrix.Translation(rig.matrix_world.inverted().to_3x3() @ d) @ pb.matrix
+        bpy.context.view_layer.update()
+        # Bàn chân phải bước tới (lift = nhấc khỏi đất giữa bước); bàn chân trái bám đất.
+        for s_ in "lr":
+            tgt, pole, head, knee_off, _ = self.feet[s_]
+            step = (fwd * v["step"] + up * v["lift"]) * S if s_ == "r" else Vector()
+            tgt.location = head + step
+            pole.location = head + step + knee_off + fwd * 1.5 * S
+        bpy.context.view_layer.update()
+        # Vặn: hông dẫn trước, rồi lưng, rồi ngực; ngả thân trước/sau.
+        tw, lean = v["twist"], v["lean"]
+        rot_world(rig, "pelvis", up, tw * 0.4)
+        rot_world(rig, "spine_02", up, tw * 0.35)
+        rot_world(rig, "spine_03", up, tw * 0.25)
         rot_world(rig, "spine_02", left, lean * 0.6)
         rot_world(rig, "spine_03", left, lean * 0.4)
-        rot_world(rig, "spine_02", up, -12 * w + 12 * s_)
-        rot_world(rig, "head", left, -0.5 * lean + 20 * d)
-        k = CLUB_KEYS["carry"]
-        for key, u in (("windup", w), ("strike", s_), ("defeat", d)):
-            k = _lerp_key(k, CLUB_KEYS[key], u)
-        k = (k[0] + 2.5 * br,) + k[1:]  # thở: chuỳ nhấp theo vai
-        club_arm(poser, *k, sign=poser.club_sign)
-        fire_arm(poser, drop=d)
-        for o in self.fire:
-            o.hide_render = d > 0.6  # lửa tắt khi gục
-        for o, m0, i in self.wisps:
-            o.matrix_world = Matrix.Translation(up * 0.03 * S * math.sin(2 * math.pi * t + i * 0.8)) @ m0
-            o.hide_render = d > 0.6
+        rot_world(rig, "head", left, v["head"] - 0.45 * lean)
+        rot_world(rig, "head", up, -0.5 * tw)  # mắt giữ nhìn đích khi thân vặn
+        # Bàn chân phẳng như dáng duyệt (IK làm bàn chân nghiêng theo cẳng chân).
+        for s_ in "lr":
+            pbf = rig.pose.bones[f"foot_{s_}"]
+            cur = pbf.matrix.to_translation()
+            pbf.matrix = Matrix.Translation(cur) @ self.feet[s_][4].to_3x3().to_4x4()
+        bpy.context.view_layer.update()
+        club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
+                 sign=poser.club_sign, sweep=v["sweep"])
+        fire_arm(poser, drop=self.defeat, aim=v["aim"])
+        self.redress()
         bpy.context.view_layer.update()
 
+    def redress(self):
+        """Dựng lại hakama, tạp dề, khoá đai theo dáng hiện tại (vải rủ từ chỗ rộng nhất)."""
+        if self.dress is None:  # lần đầu: bỏ bộ dựng theo dáng duyệt
+            self.dress = [o for o in bpy.data.objects
+                          if o.name.startswith(("Hakama", "Apron", "Buckle")) or o.name == "Oni"]
+        for o in self.dress:
+            bpy.data.objects.remove(o, do_unlink=True)
+        before = set(bpy.data.objects)
+        dress_lower(self.body, self.rig, self.poser, self.mats)
+        self.dress = [o for o in bpy.data.objects if o not in before]
 
-def _lerp_key(a, b, u):
-    out = [x + (y - x) * u for x, y in zip(a[:4], b[:4])]
-    return tuple(out) + (tuple(x + (y - x) * u for x, y in zip(a[4], b[4])),)
+    def pose(self, t=0.0, move=None, phase=0.0):
+        r = self.choreo.ready
+        self.defeat = 0.0
+        if move is None:  # thở: hơi nhún, ngực phồng, chuỳ nhấp theo vai, đầu khẽ gật
+            w = 2 * math.pi * t
+            v = dict(r)
+            v.update(drop=0.012 * (1 - math.cos(w)), lean=1.2 * math.sin(w), hand=r["hand"] + 2.5 * math.sin(w),
+                     head=-1.0 * math.sin(w), aim=0.06 * math.sin(w), twist=1.5 * math.sin(w + 1))
+        else:
+            v = self.choreo[move](phase)
+            if move == "defeat":
+                self.defeat = phase
+        self.apply(v)
+        gone = self.defeat > 0.6
+        for o in self.fire:
+            o.hide_render = gone  # lửa tắt khi gục
+        up = Vector((0, 0, 1))
+        for o, m0, i in self.wisps:
+            o.matrix_world = Matrix.Translation(up * 0.03 * S * math.sin(2 * math.pi * t + i * 0.8)) @ m0
+            o.hide_render = gone
+        bpy.context.view_layer.update()
 
 
 def game_camera(scene, ppm):
     """Góc sân khấu như ảnh duyệt; khung rộng đủ chuỳ giơ cao sau đầu và nện ra trước."""
-    return camera(scene, -0.2 * S, 1.35 * S, 3.4 * S, 3.0 * S, ppm, yaw=-8, pitch=6)
+    return camera(scene, -0.3 * S, 1.55 * S, 3.9 * S, 3.4 * S, ppm, yaw=-8, pitch=6)
 
 
 def main():
@@ -1415,24 +1500,36 @@ def main():
         # Sprite: thở (lặp), đòn theo tiến độ 0–1, gục.
         from sprite_kit import export_sprites
         scene.cycles.samples = 16 if "--quick" in sys.argv else 64
-        motion = OniMotion(poser)
+        motion = OniMotion(poser, body, mats)
         cam = game_camera(scene, 3.0 * UNITS_PER_M)
         aim_pupils(mats["eyes"], cam)
         anims = {
-            "idle": [lambda k=k: motion.pose(t=k / 6) for k in range(6)],
-            "attack": [lambda k=k: motion.pose(attack=k / 11) for k in range(12)],
-            "defeat": [lambda k=k: motion.pose(defeat=k / 5) for k in range(6)],
+            "idle": [lambda k=k: motion.pose(t=k / 8) for k in range(8)],
+            "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
+            "attack2": [lambda k=k: motion.pose(move="attack2", phase=k / 19) for k in range(20)],
+            "defeat": [lambda k=k: motion.pose(move="defeat", phase=k / 5) for k in range(6)],
         }
         export_sprites(scene, cam, "shuten_doji", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.4})
         return
     if "--game" in sys.argv:  # góc sân khấu các pha đòn (soát trước khi xuất sprite)
-        motion = OniMotion(poser)
-        cam = game_camera(scene, 200)
+        motion = OniMotion(poser, body, mats)
+        cam = game_camera(scene, 160)
         aim_pupils(mats["eyes"], cam)
-        for tag, kw in (("idle", {}), ("windup", dict(attack=0.48)), ("strike", dict(attack=0.6)),
-                        ("recover", dict(attack=0.8)), ("defeat", dict(defeat=1))):
-            motion.pose(**kw)
-            render_to(scene, os.path.join(out, f"game_{tag}.png"))
+        # Tư thế khoá của từng đòn (biên đạo) — soát trước khi xuất sprite.
+        # ONI_MOVE=attack|attack2|defeat chỉ render một đòn.
+        keys = [("attack", t) for t in (0.12, 0.38, 0.48, 0.535, 0.58, 0.62, 0.71, 0.82, 0.93)]
+        keys += [("attack2", t) for t in (0.14, 0.36, 0.48, 0.555, 0.61, 0.7, 0.76, 0.88)]
+        keys += [("defeat", 0.5), ("defeat", 1.0)]
+        only = os.environ.get("ONI_MOVE")
+        import time
+        for move, t in keys:
+            if only and move != only:
+                continue
+            t0 = time.time()
+            motion.pose(move=move, phase=t)
+            t1 = time.time()
+            render_to(scene, os.path.join(out, "keys", f"{move}_{round(t * 1000):04d}.png"))
+            print(f"[oni_keys] {move} {t}: dáng {t1 - t0:.1f}s, render {time.time() - t1:.1f}s")
         return
     if "--grip-only" not in sys.argv and "--checks" not in sys.argv:
         cam = camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 260, yaw=-8, pitch=6)

@@ -19,7 +19,7 @@ import sys
 
 import bpy
 import numpy as np
-from mathutils import Quaternion, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 sys.path.insert(0, os.path.dirname(__file__))
 from bird_kit import feather_material  # noqa: E402
@@ -212,7 +212,15 @@ def fan(rig):
     objs = feather_fan("Fan", grip, up, face, (feather, black, gold), scale=1.15)
     for o in objs:
         parent_posed(o, rig, "hand_r")
+    global FAN_HANDLE, FAN_FACE
+    inv = rig.data.bones["hand_r"].matrix_local.to_3x3().inverted()
+    FAN_HANDLE = (inv @ Vector((0, -1, 0.1))).normalized()
+    FAN_FACE = (inv @ Vector((0, 0, 1))).normalized()  # pháp tuyến mặt quạt (feather_fan: face)
     return objs
+
+
+FAN_HANDLE = Vector((0, 0, 1))  # hướng cán quạt trong khung xương hand_r (fan() đặt lại)
+FAN_FACE = Vector((1, 0, 0))  # pháp tuyến mặt quạt trong khung xương hand_r
 
 
 def test_poses(rig):
@@ -229,6 +237,124 @@ def test_poses(rig):
     rot(rig, "spine_02", Z, 15)
     rot(rig, "head", X, -12)
     bpy.context.view_layer.update()
+
+
+# Góc pole IK theo khung xương tự gắn (roll 0): đo bằng TENGU_POLE (in độ nhô
+# của gối/khuỷu ra trước ở dáng khuỵu), không đoán.
+# Xương gương roll 0 → hai bên cần góc ngược nhau (đo 18/10: chân trái 0°, phải 180°; tay trái 180°, phải 0°).
+POLE_ANGLE = {"leg_l": 0, "leg_r": 180, "arm_l": 180, "arm_r": 0}
+if os.environ.get("TENGU_POLE"):
+    POLE_ANGLE["arm_l"] = POLE_ANGLE["arm_r"] = float(os.environ["TENGU_POLE"])
+
+
+class TenguMotion:
+    """Dáng sprite theo biên đạo (tool/blender/choreo/tengu_sutoku.json).
+
+    Mọi hướng tính trong khung rig (mặt quay −Y) nên rig xoay ¾ (face_game)
+    không ảnh hưởng. Hông dịch/hạ/bay lên; chân IK bám đất (chân phải bước,
+    co chân khi bay); tay phải IK tới vị trí cầm quạt quanh vai rồi xoay bàn
+    tay theo hai vector (cán quạt đúng hướng `fan`, ngón nối cẳng tay); tay
+    trái IK giơ đỡ kiểu tessen; cánh dựng/đập/quạt tới/cụp đốt ngoài."""
+
+    FWD, UP, LEFT = Vector((0, -1, 0)), Vector((0, 0, 1)), Vector((1, 0, 0))
+
+    def __init__(self, rig):
+        from choreo import Choreo
+        self.rig = rig
+        self.choreo = Choreo("tengu_sutoku")
+        bl = rig.data.bones
+        self.ik = {}
+        for name, chain_bone in (("arm_l", "lowerarm_l"), ("arm_r", "lowerarm_r"), ("leg_l", "calf_l"), ("leg_r", "calf_r")):
+            t = bpy.data.objects.new(f"IK_{name}", None)
+            pole = bpy.data.objects.new(f"Pole_{name}", None)
+            for o in (t, pole):
+                bpy.context.scene.collection.objects.link(o)
+            c = rig.pose.bones[chain_bone].constraints.new("IK")
+            c.target, c.pole_target, c.chain_count = t, pole, 2
+            c.pole_angle = math.radians(POLE_ANGLE[name])
+            self.ik[name] = (t, pole, c)
+        self.foot = {s_: bl[f"foot_{s_}"].head_local.copy() for s_ in "lr"}
+        self.knee = {s_: bl[f"calf_{s_}"].head_local.copy() for s_ in "lr"}
+
+    def _set(self, name, target, pole):
+        mw = self.rig.matrix_world
+        t, p, _ = self.ik[name]
+        t.location = mw @ target
+        p.location = mw @ pole
+
+    def apply(self, v):
+        rig = self.rig
+        F, U, L = self.FWD, self.UP, self.LEFT
+        R = -L
+        rest(rig)
+        # Hông: dịch tới/lui, hạ trọng tâm, bay lên (khung rig).
+        pb = rig.pose.bones["pelvis"]
+        bpy.context.view_layer.update()
+        pb.matrix = Matrix.Translation(F * v["shift"] + U * (v["lift"] - v["drop"])) @ pb.matrix
+        bpy.context.view_layer.update()
+        # Thân: hông vặn trước, rồi lưng, ngực; ngả tới (+X) / ra sau.
+        tw, lean = v["twist"], v["lean"]
+        rot(rig, "pelvis", Z, tw * 0.4)
+        rot(rig, "spine_02", Z, tw * 0.35)
+        rot(rig, "spine_03", Z, tw * 0.25)
+        rot(rig, "spine_02", X, lean * 0.6)
+        rot(rig, "spine_03", X, lean * 0.4)
+        rot(rig, "head", X, v["head"] - 0.45 * lean)
+        rot(rig, "head", Z, -0.5 * tw)  # mắt giữ nhìn đích khi thân vặn
+        # Cánh: dựng (+) / đập xuống (−), quạt ra trước, đốt ngoài cụp.
+        for sd, k in (("l", 1), ("r", -1)):
+            rot(rig, f"wing_01_{sd}", Y, -v["wing"] * k)
+            rot(rig, f"wing_01_{sd}", Z, -v["wingFwd"] * k)
+            rot(rig, f"wing_02_{sd}", Y, v["wingFold"] * k)
+            rot(rig, f"wing_03_{sd}", Y, v["wingFold"] * 1.2 * k)
+        bpy.context.view_layer.update()
+        # Chân: bàn chân bám đất (chân phải bước tới), co lên khi bay.
+        air = U * max(0.0, v["lift"] - v["tuck"])
+        for s_ in "lr":
+            step = F * v["step"] if s_ == "r" else Vector()
+            self._set(f"leg_{s_}", self.foot[s_] + step + air, self.knee[s_] + step + air + F * 1.2)
+        # Tay phải cầm quạt: vị trí quanh vai theo góc, cả tay xoay `sweep` quanh trục đứng.
+        q = Quaternion(U, math.radians(v["sweep"]))
+        f2, r2 = q @ F, q @ R
+        sh = rig.pose.bones["upperarm_r"].head
+        a = math.radians(v["hand"])
+        grip = sh + (f2 * math.cos(a) + U * math.sin(a)) * v["reach"] + r2 * v["side"]
+        self._set("arm_r", grip, sh + f2 * v["poleF"] + r2 * 0.35 + U * v["poleU"])
+        # Tay trái: buông (0) → giơ ra trước đỡ (1) / kéo về sát sườn (−).
+        shl = rig.pose.bones["upperarm_l"].head
+        g = v["guard"]
+        hang = shl + U * -0.5 + F * 0.1 + L * 0.06
+        aim = shl + F * 0.5 + U * 0.04 + R * 0.06 if g >= 0 else shl + U * -0.38 - F * 0.12 + L * 0.1
+        self._set("arm_l", hang.lerp(aim, abs(g)), shl + L * 0.4 + U * -0.2 - F * 0.2)
+        bpy.context.view_layer.update()
+        # Bàn tay phải: cán quạt chĩa đúng `fan`, mặt quạt quay về máy quay
+        # (giữ ngón nối cẳng tay thì quạt hay quay cạnh, thành cái que).
+        c = math.radians(v["fan"])
+        H1 = (f2 * math.cos(c) + U * math.sin(c)).normalized()
+        hb = rig.pose.bones["hand_r"]
+        cam = bpy.context.scene.camera
+        view = -(cam.matrix_world.to_3x3() @ Vector((0, 0, -1))) if cam else Vector((0, -1, 0))
+        N1 = (rig.matrix_world.inverted().to_3x3() @ view).normalized()
+        N1 = N1 - H1 * N1.dot(H1)
+        if N1.length > 0.2:
+            N1.normalize()
+            h = FAN_HANDLE
+            n = (FAN_FACE - h * FAN_FACE.dot(h)).normalized()
+            src = Matrix((h, n, h.cross(n))).transposed()
+            dst = Matrix((H1, N1, H1.cross(N1))).transposed()
+            hb.matrix = Matrix.Translation(hb.head) @ (dst @ src.inverted()).to_4x4()
+        bpy.context.view_layer.update()
+
+    def pose(self, t=0.0, move=None, phase=0.0):
+        if move is None:  # thở: cánh khẽ nâng hạ, quạt phe phẩy, đầu nghiêng
+            w = 2 * math.pi * t
+            v = dict(self.choreo.ready)
+            v.update(drop=0.01 * (1 - math.cos(w)), wing=4 * math.sin(w), wingFold=-3 * math.sin(w - 0.6),
+                     fan=v["fan"] + 10 * math.sin(2 * w), hand=v["hand"] + 4 * math.sin(w), head=-2 * math.sin(w),
+                     lean=1.0 * math.sin(w))
+        else:
+            v = self.choreo[move](phase)
+        self.apply(v)
 
 
 def face_game(rig, on=True):
@@ -258,7 +384,10 @@ def main():
     os.makedirs(out, exist_ok=True)
     if "--review" in sys.argv:  # bộ soát cố định + kiểm tra tự động (review_kit), không lưu .blend
         from review_kit import review
-        pose(rig, attack=0.55) if "--strike" in sys.argv else idle(rig)
+        if "--strike" in sys.argv:
+            TenguMotion(rig).pose(move="attack", phase=0.6)
+        else:
+            idle(rig)
         review(scene, m.body, rig, "tengu_boss", H / 1.75, tripo_kit.forward(), free=[r"^wing", r"^Fan"],
                important={"quạt lông": [r"^Fan"]}, embedded=[r"^FanHandle"],
                targets={"chân (khớp háng)/chiều cao": (0.44, 0.52)}, samples=16 if quick else 32)
@@ -276,15 +405,31 @@ def main():
             test_poses(rig)
             camera(scene, 0.0, 1.1, 3.1, 2.4, 260, yaw=yaw, pitch=6)
             render_to(scene, os.path.join(out, f"check_pose_{tag}.png"))
-        # Góc sân khấu: chờ, lấy đà, ra đòn, thu về, gục.
+        # Tư thế khoá của từng đòn (biên đạo), góc sân khấu. TENGU_MOVE = một đòn.
         face_game(rig)
-        game_camera(scene, 200)
-        for tag, kw in (("idle", {}), ("windup", dict(attack=0.48)), ("strike", dict(attack=0.6)),
-                        ("recover", dict(attack=0.8)), ("defeat", dict(defeat=1))):
-            pose(rig, **kw)
-            render_to(scene, os.path.join(out, f"game_{tag}.png"))
+        game_camera(scene, 160)
+        motion = TenguMotion(rig)
+        keys = [("attack", t) for t in (0.14, 0.36, 0.48, 0.55, 0.6, 0.72, 0.86)]
+        keys += [("attack2", t) for t in (0.25, 0.4, 0.48, 0.56, 0.61, 0.74, 0.88)]
+        keys += [("defeat", 0.4), ("defeat", 1.0)]
+        only = os.environ.get("TENGU_MOVE")
+        for move, t in keys:
+            if only and move != only.split("@")[0] or "@" in (only or "") and abs(t - float(only.split("@")[1])) > 1e-6:
+                continue
+            motion.pose(move=move, phase=t)
+            bl = rig.pose.bones
+            for s_ in "lr":  # gối nhô ra trước (+) hay choãi ngang: số đo cho POLE_ANGLE
+                hip, knee, ank = (bl[f"thigh_{s_}"].head, bl[f"calf_{s_}"].head, bl[f"foot_{s_}"].head)
+                off = knee - (hip + ank) / 2
+                print(f"[tengu_knee] {move} {t} {s_}: trước {-off.y:.3f} ngang {off.x:.3f}")
+                sh, el, wr = (bl[f"upperarm_{s_}"].head, bl[f"lowerarm_{s_}"].head, bl[f"hand_{s_}"].head)
+                pole = rig.matrix_world.inverted() @ motion.ik[f"arm_{s_}"][1].location
+                mid = (sh + wr) / 2
+                print(f"[tengu_elbow] {s_}: khuỷu theo pole {(el - mid).normalized().dot((pole - mid).normalized()):.2f}")
+            render_to(scene, os.path.join(out, "keys", f"{move}_{round(t * 1000):04d}.png"))
+        if only:
+            return
         face_game(rig, False)
-        idle(rig)
         print(f"[tengu_boss] đỉnh không trọng số: {unweighted}")
         from boss_kit import save_blend
         save_blend("tengu_boss")
@@ -294,10 +439,12 @@ def main():
     scene.cycles.samples = 16 if quick else 64
     face_game(rig)
     cam = game_camera(scene, 3.0 * UNITS_PER_M)
+    motion = TenguMotion(rig)
     anims = {
-        "idle": [lambda k=k: pose(rig, t=k / 6) for k in range(6)],
-        "attack": [lambda k=k: pose(rig, attack=k / 11) for k in range(12)],
-        "defeat": [lambda k=k: pose(rig, defeat=k / 5) for k in range(6)],
+        "idle": [lambda k=k: motion.pose(t=k / 8) for k in range(8)],
+        "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
+        "attack2": [lambda k=k: motion.pose(move="attack2", phase=k / 19) for k in range(20)],
+        "defeat": [lambda k=k: motion.pose(move="defeat", phase=k / 5) for k in range(6)],
     }
     export_sprites(scene, cam, "tengu_sutoku", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.2})
 
