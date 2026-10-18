@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../../game/battle.dart' show DodgeBy;
 import '../battle_stage.dart';
 import '../nemea_scene.dart' show stageGroundY;
 import '../sprite_atlas.dart';
 import 'choreo.dart';
 import 'choreo_data.dart';
+import '../vector_style.dart' show fillPaint;
 
 /// Boss hình người chương Nhật dựng bằng Blender (`tool/blender/<tên>_boss.py`,
 /// atlas `idle` / `attack` / `attack2` / `defeat`): chế độ 3D vẽ sprite, chế độ
@@ -33,6 +35,16 @@ abstract class JapanSpriteBoss extends BossArt {
   /// và nảy khi trúng đòn, không ngả/lao thân chồng lên.
   @override
   bool get ownsAttackMotion => true;
+
+  /// Đòn do cơ chế trận điều khiển (lib/game/mechanics/telegraphed_boss.dart).
+  @override
+  bool get scriptedAttacks => true;
+
+  /// Độ dài choáng của boss (ShutenMechanic.stunMs) để chạy cử chỉ sặc.
+  static const stunTotalMs = 3000;
+
+  /// Một giây chiếu của biên đạo = độ dài đòn trên sân khấu (1,2 s).
+  static const moveMs = 1200;
 
   @override
   Future<void> preload() => SpriteAtlas.load(spriteName);
@@ -76,11 +88,53 @@ abstract class JapanSpriteBoss extends BossArt {
 
   double impactOf(String move) => choreo.moves[move]?.events['impact'] ?? 0.62;
 
+  /// Tiến độ biên đạo khi còn [tellMs] tới lúc chạm (âm = đã chạm), báo
+  /// trước dài [warnMs]: lấy đà theo tốc độ thật tới thế (`hold_from`), GIỮ
+  /// thế và nén dần tới `hold_to` suốt phần báo trước còn lại, rồi ra đòn
+  /// theo tốc độ thật để chạm đúng mốc `impact` của cơ chế.
+  double phaseFromTell(String move, int tellMs, int warnMs) {
+    final ev = choreo.moves[move]!.events;
+    final hit = ev['impact'] ?? 0.62;
+    final hf = ev['hold_from'] ?? 0.38, ht = ev['hold_to'] ?? 0.48;
+    if (tellMs <= 0) return math.min(1, hit - tellMs / moveMs);
+    final lead = (hit - ht) * moveMs;
+    if (tellMs <= lead) return hit - tellMs / moveMs;
+    final e = warnMs - tellMs;
+    final reach = hf * moveMs;
+    if (e < reach) return e / moveMs;
+    final u = ((e - reach) / math.max(1, warnMs - reach - lead)).clamp(0.0, 1.0);
+    return hf + (ht - hf) * (0.5 - 0.5 * math.cos(math.pi * u));
+  }
+
+  double? _curseAt;
+  double _lastCurse = 0;
+
+  /// (đòn/cử chỉ, tiến độ) theo trạng thái cơ chế; null = không có (chờ).
+  (String, double)? scriptedMove(BossFrame f) {
+    final b = f.battle;
+    final moves = choreo.moves;
+    if (b.curse > 0 && _lastCurse == 0) _curseAt = f.time;
+    _lastCurse = b.curse;
+    if (b.drinking > 0 && moves.containsKey('drink')) return ('drink', b.drinking);
+    if (b.stunMs > 0 && moves.containsKey('stagger')) {
+      return ('stagger', (1 - b.stunMs / stunTotalMs).clamp(0.0, 1.0));
+    }
+    if (_curseAt case final at? when moves.containsKey('write') && f.time - at < 1.6) {
+      return ('write', (f.time - at) / 1.6);
+    }
+    final m = b.bossMove;
+    if (m == null || !moves.containsKey(m)) return null;
+    return (m, phaseFromTell(m, b.bossTellMs, b.bossWarnMs));
+  }
+
   @override
   void paintBoss(Canvas canvas, BossFrame f) {
     final fall = f.defeat.clamp(0.0, 1.0);
-    final phase = f.attackPhase;
-    final move = moveFor(phase);
+    // Cơ chế điều khiển đòn; không có (ảnh xem trước, test) thì theo tiến độ
+    // sân khấu và luân phiên A/B.
+    final scripted = fall > 0 ? null : scriptedMove(f);
+    final phase = scripted?.$2 ?? f.attackPhase;
+    final move = scripted?.$1 ?? moveFor(phase);
     groundShadow(
       canvas,
       feet + const Offset(6, 3),
@@ -106,7 +160,7 @@ abstract class JapanSpriteBoss extends BossArt {
       } else if (attacking && sprite.has(move)) {
         // Quanh cú chạm hai khung kề nhau cách xa: không hoà (bóng ma kép).
         final hit = impactOf(move);
-        final fast = phase > hit - 0.1 && phase < hit + 0.1;
+        final fast = move.startsWith('attack') && phase > hit - 0.1 && phase < hit + 0.1;
         sprite.draw(canvas, move, phase, flash: f.hurt, snap: fast);
       } else {
         final period = sprite.metaDouble('idlePeriod', 3);
@@ -134,7 +188,68 @@ abstract class JapanSpriteBoss extends BossArt {
     canvas.restore();
     if (fall > 0) canvas.restore();
     canvas.restore();
-    if (attacking) paintStrike(canvas, f, move, phase - impactOf(move));
+    if (attacking && move.startsWith('attack')) {
+      paintStrike(canvas, f, move, phase - impactOf(move));
+    }
+    paintMechanic(canvas, f);
+    final b = f.battle;
+    if (fall == 0 && b.bossMove != null && b.bossTellMs > 0) {
+      paintTell(canvas, b.bossDodge, 1 - b.bossTellMs / b.bossWarnMs);
+    }
+  }
+
+  /// Phần cơ chế riêng vẽ trên sân khấu (ấn nguyền…), cả hai chế độ.
+  void paintMechanic(Canvas canvas, BossFrame f) {}
+
+  /// Báo đòn (game feel, trụ "đọc được khi hít đất"): viền đỏ đậm dần tới
+  /// lúc chạm + biểu tượng cách né ngay trên đầu nhân vật (chỗ mắt người
+  /// chơi liếc tới): hai tay thẳng = giữ plank, mũi tên xuống = rep sâu.
+  static void paintTell(Canvas canvas, DodgeBy? dodge, double urgency) {
+    final u = urgency.clamp(0.0, 1.0);
+    final pulse = 0.75 + 0.25 * math.sin(u * math.pi * (6 + 10 * u));
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, 400, 260),
+      Paint()
+        ..shader = Gradient.radial(
+          const Offset(200, 130),
+          260,
+          [const Color(0x00C62828), Color.fromRGBO(198, 40, 40, 0.45 * u * pulse)],
+          const [0.55, 1],
+        ),
+    );
+    const c = Offset(98, 58);
+    final r = 15 + 3 * pulse;
+    canvas.drawCircle(c, r + 3, fillPaint(Color.fromRGBO(120, 14, 14, 0.75)));
+    canvas.drawCircle(
+      c,
+      r + 3,
+      Paint()
+        ..color = Color.fromRGBO(255, 210, 200, 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+    final ink = Paint()
+      ..color = const Color(0xFFFFF4EC)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    if (dodge == DodgeBy.hold) {
+      // Hai tay thẳng chống sàn đỡ một thanh ngang (đòn từ trên).
+      canvas.drawLine(c.translate(-9, -6), c.translate(9, -6), ink);
+      canvas.drawLine(c.translate(-6, -6), c.translate(-6, 8), ink);
+      canvas.drawLine(c.translate(6, -6), c.translate(6, 8), ink);
+    } else {
+      // Hai mũi tên xuống (rạp người: rep sâu).
+      for (final dy in const [-6.0, 1.0]) {
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - 7, c.dy + dy)
+            ..lineTo(c.dx, c.dy + dy + 6)
+            ..lineTo(c.dx + 7, c.dy + dy),
+          ink,
+        );
+      }
+    }
   }
 }
 

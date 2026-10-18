@@ -47,6 +47,21 @@ class StageBattleState {
   /// Số túi vàng Harpy đã cướp.
   int goldStolen = 0;
 
+  /// Đòn có báo trước (chương Nhật, [TelegraphedBoss]): khoá đòn, còn bấy
+  /// nhiêu ms tới lúc chạm (âm = đã chạm), độ dài báo trước, cách né.
+  String? bossMove;
+  int bossTellMs = 0;
+  int bossWarnMs = 2500;
+  DodgeBy? bossDodge;
+
+  /// Shuten uống rượu 0–1, choáng còn bấy nhiêu ms; ấn nguyền Sutoku 0–1.
+  double drinking = 0;
+  int stunMs = 0;
+  double curse = 0;
+
+  /// Rep kế tiếp được phản đòn.
+  bool counterReady = false;
+
   /// Chép trạng thái trận vừa tính ([Battle.view]).
   void sync(BattleView view) {
     water = view.water ?? 0;
@@ -58,6 +73,14 @@ class StageBattleState {
     charge = view.charge;
     revives = view.revives;
     goldStolen = view.goldStolen;
+    bossMove = view.bossMove;
+    bossTellMs = view.bossTellMs;
+    if (view.bossWarnMs > 0) bossWarnMs = view.bossWarnMs;
+    bossDodge = view.bossDodge;
+    drinking = view.drinking;
+    stunMs = view.stunMs;
+    curse = view.curse;
+    counterReady = view.counterReady;
   }
 }
 
@@ -65,6 +88,10 @@ class StageBattleState {
 enum StageCue {
   /// Boss bắt đầu lấy đà: người chơi đang nhìn sàn phải nghe được đòn tới.
   tell,
+
+  /// Như [tell] cho đòn thứ hai của boss có hai đòn (âm khác để phân biệt
+  /// cách né khi không nhìn màn hình).
+  tellAlt,
 
   /// Đòn của người chơi trúng boss.
   hit,
@@ -153,6 +180,10 @@ abstract class BossArt {
 
   /// `true` khi hình tự vẽ khói Trì Trệ rời xác lúc gục (sư tử).
   bool get ownsDefeatSmoke => false;
+
+  /// `true` khi đòn do cơ chế trận điều khiển ([StageBattleState.bossMove]):
+  /// sân khấu không tự đánh ngẫu nhiên, chỉ phát âm báo / rung theo cơ chế.
+  bool get scriptedAttacks => false;
 
   /// Sương Trì Trệ (shader GPU) sát mặt đất: màu (a = độ đậm tối đa) và hệ
   /// số mật độ. Sương tan theo máu boss — vùng đất được giải phóng dần.
@@ -247,7 +278,7 @@ class BattleStageGame extends FlameGame {
   late final _BossComponent _boss = _BossComponent(
     boss,
     battle,
-    onAttackStart: () => onCue?.call(StageCue.tell),
+    onAttackStart: (alt) => onCue?.call(alt ? StageCue.tellAlt : StageCue.tell),
     onStrike: _struck,
   );
 
@@ -608,7 +639,10 @@ class _SceneComponent extends Component {
 class _BossComponent extends PositionComponent {
   _BossComponent(this.art, this.battle, {this.onAttackStart, this.onStrike});
 
-  final void Function()? onAttackStart;
+  /// [alt]: đòn thứ hai của boss hai đòn (âm báo khác).
+  final void Function(bool alt)? onAttackStart;
+  int _prevTellMs = 0;
+  String? _prevMove;
 
   /// Mốc trúng của đòn (tiến độ 0–1): sư tử và [AttackPose] đều chạm ở ~0,55.
   static const strikePhase = 0.55;
@@ -661,6 +695,11 @@ class _BossComponent extends PositionComponent {
         ? math.min(1, _defeat + dt / 0.9)
         : math.max(0, _defeat - dt / 0.5);
 
+    if (art.scriptedAttacks) {
+      _scripted();
+      motion.update(dt, attackPhase: -1, defeated: defeated);
+      return;
+    }
     _nextAttack -= dt;
     final before = _attackAge / _attackLength;
     _attackAge += dt;
@@ -671,7 +710,7 @@ class _BossComponent extends PositionComponent {
     if (_nextAttack <= 0 && !defeated) {
       _nextAttack = 7 + _random.nextDouble() * 5;
       _attackAge = 0;
-      onAttackStart?.call();
+      onAttackStart?.call(false);
     }
     _attack = !defeated && _attackAge < _attackLength
         ? math.sin(math.pi * _attackAge / _attackLength)
@@ -681,6 +720,22 @@ class _BossComponent extends PositionComponent {
       attackPhase: art.ownsAttackMotion ? -1 : frame.attackPhase,
       defeated: defeated,
     );
+  }
+
+  /// Đòn do cơ chế điều khiển: báo đòn khi bắt đầu báo trước, rung lúc chạm.
+  void _scripted() {
+    final move = battle.bossMove;
+    final tell = battle.bossTellMs;
+    if (!defeated && move != null) {
+      final fresh = _prevMove == null || (tell > 0 && _prevTellMs <= 0);
+      if (fresh && tell > 0) onAttackStart?.call(move == 'attack2');
+      if (_prevMove != null && _prevTellMs > 0 && tell <= 0) onStrike?.call();
+    }
+    _attack = move != null && tell > 0
+        ? (1 - tell / battle.bossWarnMs).clamp(0.0, 1.0)
+        : 0;
+    _prevMove = move;
+    _prevTellMs = move == null ? 0 : tell;
   }
 
   @override

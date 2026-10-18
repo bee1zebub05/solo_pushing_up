@@ -132,7 +132,9 @@ class RepFeedback {
 
   /// Nạp bộ âm của boss (`assets/sounds/boss_<key>_tell|hit.wav`).
   Future<void> loadBossSounds(String key) async {
-    for (final cue in ['tell', 'hit', 'defeat']) {
+    // `tell2`: âm báo đòn thứ hai (chỉ boss hai đòn có; thiếu thì playBoss
+    // dùng `tell`).
+    for (final cue in ['tell', 'tell2', 'hit', 'defeat']) {
       try {
         _bossPools['${key}_$cue'] = await AudioPool.createFromAsset(
           // Tiếng gục dùng chung mọi boss.
@@ -152,7 +154,9 @@ class RepFeedback {
   /// đòn trúng (nhỏ hơn, nằm dưới tiếng đếm rep).
   void playBoss(String key, String cue) {
     if (soundMode == SoundMode.off) return;
-    _bossPools['${key}_$cue']?.start(volume: cue == 'hit' ? 0.6 : 1.0);
+    final pool = _bossPools['${key}_$cue'] ??
+        (cue == 'tell2' ? _bossPools['${key}_tell'] : null);
+    pool?.start(volume: cue == 'hit' ? 0.6 : 1.0);
   }
 
   /// Đọc một thông báo của trận (ví dụ đợt sóng mới); không có giọng thì rung.

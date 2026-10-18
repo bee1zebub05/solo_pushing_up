@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flutter/animation.dart' show Curves;
 
 import '../battle_stage.dart';
 import '../nemea_scene.dart' show stageGroundY, stageSize;
@@ -32,6 +33,9 @@ abstract final class TenguColors {
 class TenguBossArt extends JapanSpriteBoss {
   @override
   String get spriteName => 'tengu_sutoku';
+
+  @override
+  String get soundKey => 'tengu';
 
   @override
   Offset get feet => const Offset(316, stageGroundY);
@@ -336,7 +340,8 @@ class TenguBossArt extends JapanSpriteBoss {
   /// Cẳng chân đỏ từ ống hakama xuống bàn chân: chân phải (xa) bước tới,
   /// cả hai co lên khi bay (`lift` − `tuck` = độ cao bàn chân).
   void _legs(Canvas canvas, Map<String, double> v, Offset bo) {
-    final air = -math.max(0.0, v['lift']! - v['tuck']!) * _k;
+    // Bay: bàn chân lên theo hông và co thêm lên ngực (khớp tengu_boss.py).
+    final air = -(math.max(0.0, v['lift']!) + 0.55 * v['tuck']!) * _k;
     for (final (knee, foot) in [
       (const Offset(-12, -34), Offset(-15 - 0.8 * v['step']! * _k, -3 + air)),
       (const Offset(13, -34), Offset(15, -3 + air)),
@@ -361,6 +366,10 @@ class TenguBossArt extends JapanSpriteBoss {
     var hand = _body(v, const Offset(30, -84));
     if (g > 0) hand = Offset.lerp(hand, _body(v, const Offset(-22, -116)), g)!;
     if (g < 0) hand = Offset.lerp(hand, _body(v, const Offset(20, -92)), -g)!;
+    // Cắn ngón tay, rồi vạch ấn trên đầu (khớp tengu_boss.py: ngang → chéo → chấm → ấn tay).
+    final mouth = v['mouth'] ?? 0, sigil = v['sigil'] ?? 0;
+    if (mouth > 0) hand = Offset.lerp(hand, _body(v, const Offset(-16, -136)), mouth)!;
+    if (sigil > 0) hand = Offset.lerp(hand, _body(v, _sigilAt(v['stroke'] ?? 0)), sigil)!;
     final el = joint2(sh, hand, 18, 18, -1);
     final sleeve = Path()
       ..addPath(capsulePath(sh, el, 8, 9), Offset.zero)
@@ -378,6 +387,77 @@ class TenguBossArt extends JapanSpriteBoss {
     final r = PictureRecorder();
     draw(Canvas(r));
     return r.endRecording();
+  }
+
+  /// Đầu ngón tay khi vạch ấn (toạ độ thân, quanh trên đầu) theo tiến độ nét.
+  static Offset _sigilAt(double st) {
+    const o = Offset(-6, -176);
+    if (st < 0.33) return o + Offset(-16 + 32 * st / 0.33, 0);
+    if (st < 0.66) {
+      final u = (st - 0.33) / 0.33;
+      return o + Offset(14 - 26 * u, 22 * u);
+    }
+    if (st < 0.85) return o + const Offset(0, 8);
+    return o + Offset(-10 * (st - 0.85) / 0.15, 6);
+  }
+
+  // Ấn nguyền: chữ máu vạch dần trước tengu lúc viết, rồi bay tới lơ lửng
+  // trước nhân vật; mờ theo thời gian sống còn lại (cơ chế SutokuMechanic).
+  double? _castAt;
+  double _lastCurse = 0;
+
+  @override
+  void paintMechanic(Canvas canvas, BossFrame f) {
+    final b = f.battle;
+    if (b.curse > 0 && _lastCurse == 0) _castAt = f.time;
+    _lastCurse = b.curse;
+    final at = _castAt;
+    if (at == null || (b.curse == 0 && f.time - at > 1.6)) return;
+    final age = f.time - at;
+    // 0–1,6 s: vạch nét trên đầu tengu; 1,6–2,2 s: bay tới trước nhân vật.
+    final writeU = (age / 1.6).clamp(0.0, 1.0);
+    final fly = ((age - 1.6) / 0.6).clamp(0.0, 1.0);
+    final from = feet.translate(-6, -176);
+    const to = Offset(118, 118);
+    final c = Offset.lerp(from, to, Curves.easeInOut.transform(fly))!;
+    final life = fly < 1 ? 1.0 : b.curse.clamp(0.0, 1.0);
+    final alpha = (0.35 + 0.65 * life) * (0.85 + 0.15 * math.sin(f.time * 6));
+    final s = 0.7 + 0.5 * fly;
+    canvas.drawCircle(
+      c,
+      22 * s,
+      Paint()
+        ..shader = Gradient.radial(c, 22 * s, [
+          Color.fromRGBO(200, 20, 30, 0.35 * alpha),
+          const Color(0x00C8141E),
+        ]),
+    );
+    final ink = Paint()
+      ..color = Color.fromRGBO(170, 10, 20, alpha)
+      ..strokeWidth = 2.6 * s
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    // Ba nét theo thứ tự viết: ngang, chéo, chấm; vòng ấn quanh.
+    final strokes = [
+      [const Offset(-12, -6), const Offset(12, -6)],
+      [const Offset(10, -10), const Offset(-8, 10)],
+      [const Offset(2, 6), const Offset(3, 9)],
+    ];
+    final shown = fly > 0 ? 3.0 : writeU * 3.4;
+    for (var i = 0; i < 3; i++) {
+      final u = (shown - i).clamp(0.0, 1.0);
+      if (u <= 0) continue;
+      final a = c + strokes[i][0] * s, e = c + strokes[i][1] * s;
+      canvas.drawLine(a, Offset.lerp(a, e, u)!, ink);
+    }
+    if (shown >= 3) {
+      canvas.drawCircle(c, 15 * s, ink..strokeWidth = 1.6 * s);
+    }
+    // Giọt máu nhỏ rơi.
+    for (var k = 0; k < 3; k++) {
+      final ph = (f.time * 0.8 + k / 3) % 1;
+      canvas.drawCircle(c + Offset(-6 + 6.0 * k, 10 * s + 14 * ph), 1.1, fillPaint(Color.fromRGBO(150, 10, 18, alpha * (1 - ph))));
+    }
   }
 
   /// Cánh đại bàng dựng theo khung cục bộ (gốc ở vai, cánh vươn ra +x):

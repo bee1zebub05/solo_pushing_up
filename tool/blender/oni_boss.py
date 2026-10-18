@@ -1171,7 +1171,7 @@ CLUB_KEYS = {
 }
 
 
-def club_arm(poser, ang, dist, side, club_ang, pole, sign=None, sweep=0.0):
+def club_arm(poser, ang, dist, side, club_ang, pole, sign=None, sweep=0.0, cant=0.32):
     """Đặt tay phải nắm chuỳ: IK tới vị trí nắm, xoay bàn tay sao cho trục
     đốt ngón (trỏ → út) chỉ về đuôi chuỳ, ngón cái về đầu chuỳ. [sweep] xoay
     cả vị trí nắm, hướng khuỷu và hướng chuỳ quanh trục đứng qua vai (độ, +
@@ -1186,7 +1186,8 @@ def club_arm(poser, ang, dist, side, club_ang, pole, sign=None, sweep=0.0):
     grip = sh_r + (fwd * math.cos(a) + up * math.sin(a)) * dist * S + right * side * S
     poser.arm("r", grip, sh_r + fwd * pole[0] + right * pole[1] + up * pole[2])
     c = math.radians(club_ang)
-    want = (fwd * math.cos(c) + up * math.sin(c) + right * 0.32).normalized()
+    # [cant]: chuỳ nghiêng ra phía phải (vác vai cần ~0,32; chống như trượng = 0).
+    want = (fwd * math.cos(c) + up * math.sin(c) + right * cant).normalized()
     fist(poser.rig, "r")
     fa = (poser.world("hand_r", 0.0) - poser.world("lowerarm_r", 0.0)).normalized()
     cd = (want - fa * want.dot(fa)).normalized()
@@ -1210,24 +1211,34 @@ def club_arm(poser, ang, dist, side, club_ang, pole, sign=None, sweep=0.0):
     return sg, -knuckle.normalized()
 
 
-def fire_arm(poser, drop=0.0, aim=0.0):
+def fire_arm(poser, drop=0.0, aim=0.0, drink=0.0, face=0.0):
     """Tay trái chìa ra trước, ngửa bàn tay nâng lửa ma; [drop] 0–1 buông
     xuống (gục); [aim] 1 = vươn thẳng ra trước ngắm đích lúc lấy đà (tay
-    "găng" của người ném), âm = kéo về sát sườn lúc ra đòn (xoay ngược chiều vai)."""
+    "găng" của người ném), âm = kéo về sát sườn lúc ra đòn (xoay ngược chiều
+    vai); [drink] 1 = đưa vò sake lên miệng, lòng bàn tay ngửa về sau cho vò
+    nghiêng rót; [face] 1 = bàn tay bịt miệng (sặc rượu)."""
     fwd, left, up = poser.frame()
     sh_l = poser.world("upperarm_l", 0.0)
     reach = poser.a + poser.b
     a = max(0.0, aim)
     back = min(0.0, aim)
-    hand = (sh_l + left * reach * (0.6 - 0.25 * drop - 0.4 * a + 0.1 * back)
-            + fwd * reach * (0.45 - 0.3 * drop + 0.55 * a + 0.5 * back)
-            - up * reach * (0.38 + 0.5 * drop - 0.4 * a))
+    # Ngắm: vươn thẳng về phía người chơi, cao ngang vai (critic: tay lửa co trước ngực).
+    hand = (sh_l + left * reach * (0.6 - 0.25 * drop - 0.55 * a + 0.1 * back)
+            + fwd * reach * (0.45 - 0.3 * drop + 0.5 * a + 0.5 * back)
+            - up * reach * (0.38 + 0.5 * drop - 0.38 * a))
+    head = poser.world("head", 0.35)
+    mouth = head + fwd * 0.16 * S - up * 0.04 * S
+    if drink > 0:
+        hand = hand.lerp(mouth - fwd * 0.02 * S + left * 0.05 * S, drink)
+    if face > 0:
+        hand = hand.lerp(mouth + fwd * 0.03 * S, face)
     poser.arm("l", hand, sh_l + left * 0.3 - up * 0.8 - fwd * 0.1)
-    # Ngửa lòng bàn tay, ngón vuốt quặp nhẹ ôm lửa.
+    # Ngửa lòng bàn tay, ngón vuốt quặp nhẹ ôm lửa; uống thì ngửa về sau, bịt miệng thì úp vào mặt.
     fa_l = (poser.world("hand_l", 0.0) - poser.world("lowerarm_l", 0.0)).normalized()
     flat_l = (fa_l - up * fa_l.dot(up)).normalized()
-    poser.palm("l", (flat_l - up * 0.1).normalized(), up)
-    fist(poser.rig, "l", curl=0.45)
+    palm_dir = up.lerp((-fwd * 0.8 + up * 0.6).normalized(), drink).lerp(-fwd, face)
+    poser.palm("l", (flat_l - up * 0.1).normalized(), palm_dir.normalized())
+    fist(poser.rig, "l", curl=0.45 + 0.3 * max(drink, face))
 
 
 def pose_and_props(rig, mats):
@@ -1256,8 +1267,28 @@ def pose_and_props(rig, mats):
         r = rng.uniform(0.005, 0.009) * S
         add_object(f"OnibiEmber{k}", raw_ellipsoid(f"OnibiEmber{k}", p, (r, r, r * 1.6), segments=8, rings=6),
                    [mats["spark"]])
+    sake_jar(palm - up * 0.08 * S, up)
     wisps(poser, mats)
     return poser
+
+
+def sake_jar(base, up):
+    """Vò sake (tokkuri) sứ trắng ngà, vành chàm, cổ thắt: Shuten nghiện rượu
+    (truyền thuyết: Raikō chuốc rượu độc). Ẩn sẵn, chỉ hiện khi uống."""
+    from boss_kit import skin_material
+    porcelain = skin_material("Tokkuri", "#E9E1CF", rough=0.28)
+    glaze = skin_material("TokkuriGlaze", "#26346E", rough=0.25)
+    # ×1,6 cỡ vò thật: oni cao 3,4 m, vò cỡ người thường trông như chén nhỏ ở cỡ sprite.
+    prof = [(h * 1.6, r * 1.6) for h, r in
+            [(0.0, 0.05), (0.03, 0.075), (0.09, 0.085), (0.15, 0.07), (0.2, 0.035), (0.25, 0.026), (0.28, 0.034)]]
+    pts = [base + up * h * S for h, _ in prof]
+    rad = [(r * S, r * S) for _, r in prof]
+    jar = add_object("SakeJar", raw_tube("SakeJar", pts, rad, sides=20), [porcelain])
+    band = add_object("SakeJarBand", raw_tube("SakeJarBand", [base + up * 0.176 * S, base + up * 0.224 * S],
+                                              [(0.139 * S,) * 2, (0.131 * S,) * 2], sides=20), [glaze])
+    for o in (jar, band):
+        o.hide_render = True
+    return jar, band
 
 
 def wisps(poser, mats, n=8):
@@ -1333,7 +1364,7 @@ def attach_props(rig):
         if o.parent is None and o.type == "MESH":
             if o.name.startswith(("Kanabo", "Fusa")):
                 parent_posed(o, rig, "hand_r")
-            elif o.name.startswith("Onibi"):
+            elif o.name.startswith(("Onibi", "SakeJar")):
                 parent_posed(o, rig, "hand_l")
 
 
@@ -1357,6 +1388,8 @@ class OniMotion:
         self.wisps = [(o, o.matrix_world.copy(), int(re.match(r"Wisp(\d+)", o.name).group(1)))
                       for o in bpy.data.objects if o.name.startswith("Wisp")]
         self.fire = [o for o in bpy.data.objects if o.name.startswith("Onibi")]
+        self.jar = [o for o in bpy.data.objects if o.name.startswith("SakeJar")]
+        self.move = None
         # IK chân: đích = bàn chân dáng duyệt, gối hướng ra trước.
         fwd, left, up = poser.frame()
         self.feet = {}
@@ -1412,8 +1445,8 @@ class OniMotion:
             pbf.matrix = Matrix.Translation(cur) @ self.feet[s_][4].to_3x3().to_4x4()
         bpy.context.view_layer.update()
         club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
-                 sign=poser.club_sign, sweep=v["sweep"])
-        fire_arm(poser, drop=self.defeat, aim=v["aim"])
+                 sign=poser.club_sign, sweep=v["sweep"], cant=v.get("cant", 0.32))
+        fire_arm(poser, drop=self.defeat, aim=v["aim"], drink=v.get("drink", 0.0), face=v.get("face", 0.0))
         self.redress()
         bpy.context.view_layer.update()
 
@@ -1440,10 +1473,20 @@ class OniMotion:
             v = self.choreo[move](phase)
             if move == "defeat":
                 self.defeat = phase
+            if move == "drink" and 0.18 < phase < 0.88:
+                # Tu ừng ực 4 ngụm: đầu ngửa thêm, vai + bụng nảy theo từng ngụm.
+                g = max(0.0, math.sin((phase - 0.18) / 0.7 * 2 * math.pi * 4))
+                v["head"] = v["head"] - 8 * g
+                v["lean"] = v["lean"] - 4 * g
+                v["drop"] = v["drop"] - 0.02 * g
+        self.move = move
         self.apply(v)
         gone = self.defeat > 0.6
+        drinking = move == "drink" and 0.05 < phase < 0.9  # đổi lửa → vò ở đầu, vò → lửa ở cuối
         for o in self.fire:
-            o.hide_render = gone  # lửa tắt khi gục
+            o.hide_render = gone or drinking or move == "stagger"  # lửa tắt khi gục / cầm vò / sặc
+        for o in self.jar:
+            o.hide_render = not drinking
         up = Vector((0, 0, 1))
         for o, m0, i in self.wisps:
             o.matrix_world = Matrix.Translation(up * 0.03 * S * math.sin(2 * math.pi * t + i * 0.8)) @ m0
@@ -1530,8 +1573,10 @@ def main():
         aim_pupils(mats["eyes"], cam)
         # Tư thế khoá của từng đòn (biên đạo) — soát trước khi xuất sprite.
         # ONI_MOVE=attack|attack2|defeat chỉ render một đòn.
-        keys = [("attack", t) for t in (0.12, 0.38, 0.48, 0.535, 0.58, 0.62, 0.71, 0.82, 0.93)]
-        keys += [("attack2", t) for t in (0.14, 0.36, 0.48, 0.555, 0.61, 0.7, 0.76, 0.88)]
+        keys = [("attack", t) for t in (0.12, 0.38, 0.48, 0.53, 0.575, 0.62, 0.72, 0.8, 0.88, 0.92)]
+        keys += [("attack2", t) for t in (0.14, 0.36, 0.48, 0.555, 0.61, 0.7, 0.78, 0.92)]
+        keys += [("drink", t) for t in (0.03, 0.08, 0.16, 0.5, 0.94)]
+        keys += [("stagger", t) for t in (0.06, 0.2, 0.28, 0.36, 0.6, 0.72, 0.9)]
         keys += [("defeat", 0.5), ("defeat", 1.0)]
         only = os.environ.get("ONI_MOVE")
         import time
@@ -1542,7 +1587,9 @@ def main():
             motion.pose(move=move, phase=t)
             t1 = time.time()
             render_to(scene, os.path.join(out, "keys", f"{move}_{round(t * 1000):04d}.png"))
-            print(f"[oni_keys] {move} {t}: dáng {t1 - t0:.1f}s, render {time.time() - t1:.1f}s")
+            club = bpy.data.objects["Kanabo"]
+            low = min((club.matrix_world @ vv.co).z for vv in club.data.vertices)
+            print(f"[oni_keys] {move} {t}: dáng {t1 - t0:.1f}s, render {time.time() - t1:.1f}s, đầu chuỳ thấp nhất {low:.2f} m")
         return
     if "--grip-only" not in sys.argv and "--checks" not in sys.argv:
         cam = camera(scene, -0.1 * S, 1.3 * S, 2.6 * S, 2.9 * S, 260, yaw=-8, pitch=6)

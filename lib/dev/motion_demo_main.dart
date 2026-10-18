@@ -113,6 +113,7 @@ class _DemoScreenState extends State<_DemoScreen>
         _feedback.playBoss(act.key, switch (cue) {
           StageCue.hit => 'hit',
           StageCue.defeat => 'defeat',
+          StageCue.tellAlt => 'tell2',
           StageCue.tell || StageCue.rage => 'tell',
         });
       };

@@ -19,7 +19,8 @@
   "wing": 0,
   "wingFwd": 0,
   "wingFold": 0,
-  "head": 0
+  "head": 0,
+  "turn": 0
  },
  "lag": {
   "lean": 0.006,
@@ -32,117 +33,142 @@
   "guard": 0.01,
   "wing": 0.012,
   "wingFwd": 0.02,
-  "wingFold": 0.035
+  "wingFold": 0.035,
+  "mouth": 0.01,
+  "stroke": 0.0,
+  "sigil": 0.01,
+  "turn": 0.002
  },
  "attacks": {
   "attack": {
-   "_name": "Phong kesa — thế hassō (quạt dựng cạnh đầu, tay trái đỡ kiểu tessen, cánh dựng) rồi chém chéo kesa xuống trái, cánh đập xuống cùng nhịp tạo gió",
+   "_name": "Phong kesa — kéo quạt nằm ngang ra sau ở tầm vai (không giơ trên đầu: luật 'vũ khí trên đầu = giữ plank'), tay trái dựng đỡ, cánh duỗi phẳng căng hết cỡ → xoay người bước tới quạt ngang về phía người chơi ở tầm ngực, cánh đập tới",
    "events": {
-    "impact": 0.6
+    "impact": 0.6,
+    "hold_from": 0.36,
+    "hold_to": 0.48
    },
    "keys": [
     {
      "t": 0.14,
      "v": {
-      "drop": 0.03,
-      "hand": -40,
-      "fan": 95,
-      "wing": 8,
-      "guard": 0.3
+      "drop": 0.04,
+      "hand": -5,
+      "reach": 0.42,
+      "sweep": -60,
+      "fan": 10,
+      "wing": 6,
+      "wingFwd": -10,
+      "guard": 0.4
      }
     },
     {
      "t": 0.36,
      "v": {
-      "shift": -0.08,
-      "lean": -6,
-      "twist": -20,
-      "hand": 70,
-      "reach": 0.32,
-      "side": 0.22,
-      "sweep": -25,
-      "fan": 100,
-      "poleF": 0.1,
+      "shift": -0.12,
+      "drop": 0.12,
+      "lean": 2,
+      "twist": -26,
+      "turn": -6,
+      "hand": 5,
+      "reach": 0.48,
+      "side": 0.1,
+      "sweep": -125,
+      "fan": 5,
+      "poleF": -0.1,
       "poleU": -0.1,
       "guard": 1,
-      "wing": 30,
-      "wingFold": -12,
-      "head": -4
+      "wing": 4,
+      "wingFwd": -30,
+      "wingFold": -20,
+      "head": -2
      }
     },
     {
      "t": 0.48,
      "v": {
-      "shift": -0.09,
-      "twist": -24,
-      "hand": 76,
-      "fan": 108,
-      "wing": 36,
+      "shift": -0.14,
+      "drop": 0.14,
+      "twist": -30,
+      "turn": -8,
+      "hand": 6,
+      "sweep": -135,
+      "fan": 4,
+      "wing": 4,
+      "wingFwd": -34,
+      "wingFold": -22,
       "guard": 1
      }
     },
     {
      "t": 0.55,
      "v": {
-      "shift": 0.08,
-      "lean": 8,
+      "shift": 0.12,
+      "drop": 0.1,
+      "lean": 10,
       "twist": 0,
-      "step": 0.22,
-      "hand": 25,
-      "reach": 0.5,
-      "side": 0.12,
-      "sweep": 0,
-      "fan": 30,
+      "turn": 10,
+      "step": 0.35,
+      "hand": 4,
+      "reach": 0.55,
+      "sweep": -50,
+      "fan": 2,
       "guard": 0.3,
-      "wing": 4,
-      "wingFwd": 18
+      "wing": 0,
+      "wingFwd": 10
      }
     },
     {
      "t": 0.6,
      "v": {
-      "shift": 0.16,
-      "drop": 0.1,
-      "lean": 16,
-      "twist": 22,
-      "step": 0.3,
-      "hand": -25,
-      "reach": 0.58,
-      "side": 0.0,
-      "sweep": 18,
-      "fan": -30,
+      "shift": 0.26,
+      "drop": 0.16,
+      "lean": 18,
+      "twist": 32,
+      "turn": 24,
+      "step": 0.5,
+      "hand": 2,
+      "reach": 0.62,
+      "side": 0.05,
+      "sweep": 10,
+      "fan": 0,
       "poleF": 0.0,
-      "poleU": -0.35,
+      "poleU": -0.3,
       "guard": -0.3,
-      "wing": -28,
-      "wingFwd": 32,
+      "wing": -10,
+      "wingFwd": 36,
       "wingFold": 16,
-      "head": 6
+      "head": 2
      }
     },
     {
      "t": 0.72,
      "v": {
-      "drop": 0.12,
-      "hand": -30,
-      "fan": -36,
-      "wing": -24,
+      "drop": 0.17,
+      "lean": 18,
+      "twist": 34,
+      "turn": 24,
+      "hand": 0,
+      "sweep": 20,
+      "fan": -4,
+      "wing": -8,
+      "wingFwd": 30,
       "wingFold": 12
      }
     },
     {
      "t": 0.86,
      "v": {
-      "shift": 0.04,
+      "shift": 0.06,
       "drop": 0.03,
-      "lean": 4,
-      "twist": 6,
-      "step": 0.12,
+      "lean": 5,
+      "twist": 8,
+      "turn": 6,
+      "step": 0.15,
       "hand": -55,
-      "sweep": 10,
+      "sweep": -10,
       "fan": 40,
       "guard": 0,
-      "wing": -6,
+      "wing": -4,
       "wingFwd": 6,
       "wingFold": 2
      }
@@ -150,66 +176,98 @@
    ]
   },
   "attack2": {
-   "_name": "Thiên cẩu phi — thu người, cánh dựng cao, vỗ cánh bật lên, lơ lửng ở đỉnh với quạt giơ sau đầu, rồi bổ quạt xuống khi đáp, cánh xoè hãm",
+   "_name": "Thiên cẩu phi — ngồi sâu gối 90°, cánh dựng chữ V, quạt sát vai; vỗ cánh bật cao, co gối lên ngực, quạt giơ sau gáy; bổ thẳng xuống, đáp quỵ một gối, quạt cắm sàn trước mặt",
    "events": {
-    "impact": 0.61
+    "impact": 0.61,
+    "hold_from": 0.25,
+    "hold_to": 0.34
    },
    "keys": [
     {
      "t": 0.25,
      "v": {
-      "drop": 0.2,
-      "lean": 14,
-      "wing": 46,
-      "wingFold": -14,
-      "hand": 30,
-      "reach": 0.4,
-      "fan": 90,
-      "guard": 0.4
+      "drop": 0.45,
+      "lean": 22,
+      "wing": 58,
+      "wingFold": -16,
+      "hand": 60,
+      "reach": 0.25,
+      "fan": 110,
+      "guard": 0.2,
+      "tuck": 0.0,
+      "lift": 0.0
      }
     },
     {
-     "t": 0.4,
+     "t": 0.34,
+     "v": {
+      "drop": 0.48,
+      "lean": 24,
+      "wing": 62,
+      "wingFold": -18,
+      "hand": 62,
+      "reach": 0.25,
+      "fan": 112,
+      "guard": 0.2,
+      "tuck": 0.0,
+      "lift": 0.0
+     }
+    },
+    {
+     "t": 0.42,
      "v": {
       "drop": 0.0,
-      "lift": 0.3,
-      "tuck": 0.18,
+      "lift": 0.8,
+      "tuck": 0.75,
       "lean": -6,
-      "twist": -12,
-      "wing": -24,
+      "twist": -8,
+      "wing": -34,
       "wingFwd": 10,
       "wingFold": 4,
       "hand": 105,
       "reach": 0.4,
       "side": 0.15,
-      "fan": 165,
-      "guard": 0.8
+      "fan": 150,
+      "guard": 0.6
      }
     },
     {
-     "t": 0.48,
+     "t": 0.5,
      "v": {
-      "lift": 0.42,
-      "tuck": 0.22,
-      "lean": -8,
-      "wing": 38,
+      "lift": 1.15,
+      "tuck": 0.95,
+      "lean": -10,
+      "wing": 42,
       "wingFwd": 0,
       "wingFold": -10,
-      "hand": 112,
-      "fan": 180
+      "hand": 115,
+      "fan": 150
      }
     },
     {
      "t": 0.56,
      "v": {
-      "lift": 0.2,
-      "tuck": 0.12,
-      "lean": 10,
-      "twist": 0,
-      "shift": 0.14,
-      "wing": -6,
-      "hand": 40,
-      "fan": 70
+      "lift": 0.5,
+      "tuck": 0.4,
+      "lean": 16,
+      "shift": 0.15,
+      "wing": 24,
+      "hand": 75,
+      "fan": 95
+     }
+    },
+    {
+     "t": 0.585,
+     "v": {
+      "lift": 0.22,
+      "tuck": 0.15,
+      "lean": 26,
+      "shift": 0.22,
+      "hand": 10,
+      "reach": 0.55,
+      "fan": 20,
+      "wing": 0,
+      "wingFwd": 20
      }
     },
     {
@@ -217,40 +275,41 @@
      "v": {
       "lift": 0.0,
       "tuck": 0.0,
-      "drop": 0.22,
-      "shift": 0.22,
-      "lean": 26,
-      "step": 0.25,
-      "hand": -45,
-      "reach": 0.55,
-      "fan": -55,
+      "drop": 0.45,
+      "shift": 0.28,
+      "lean": 36,
+      "step": 0.42,
+      "hand": -70,
+      "reach": 0.6,
+      "side": 0.05,
+      "fan": -80,
       "poleU": -0.35,
       "guard": -0.3,
-      "wing": -36,
-      "wingFwd": 20,
-      "wingFold": 22,
-      "head": 8
+      "wing": -24,
+      "wingFwd": 34,
+      "wingFold": 14,
+      "head": 10
      }
     },
     {
      "t": 0.74,
      "v": {
-      "drop": 0.2,
-      "lean": 24,
-      "wing": -30,
-      "wingFold": 18
+      "drop": 0.43,
+      "lean": 34,
+      "wing": -18,
+      "wingFold": 10
      }
     },
     {
      "t": 0.88,
      "v": {
-      "drop": 0.05,
+      "drop": 0.08,
       "shift": 0.06,
-      "lean": 5,
-      "step": 0.1,
-      "wing": -8,
+      "lean": 6,
+      "step": 0.12,
+      "wing": 0,
       "wingFwd": 4,
-      "wingFold": 4,
+      "wingFold": 2,
       "hand": -50,
       "fan": 50,
       "guard": 0
@@ -287,6 +346,82 @@
       "wingFold": 25,
       "head": 30,
       "guard": -0.5
+     }
+    }
+   ]
+  },
+  "write": {
+   "_name": "Viết ấn nguyền — cắn ngón tay, vạch chữ máu trong không trung (1,6 s, khi ấn nguyền hiện)",
+   "keys": [
+    {
+     "t": 0.15,
+     "v": {
+      "mouth": 1.0,
+      "head": 14,
+      "lean": 8,
+      "hand": -80,
+      "fan": 60
+     }
+    },
+    {
+     "t": 0.28,
+     "v": {
+      "mouth": 1.0,
+      "head": 14
+     }
+    },
+    {
+     "t": 0.4,
+     "v": {
+      "mouth": 0.0,
+      "sigil": 1.0,
+      "stroke": 0.0,
+      "wing": 12,
+      "head": -6,
+      "lean": -4,
+      "turn": -10,
+      "twist": -14
+     }
+    },
+    {
+     "t": 0.55,
+     "v": {
+      "sigil": 1.0,
+      "stroke": 0.33,
+      "turn": 10,
+      "twist": 14,
+      "head": -4
+     }
+    },
+    {
+     "t": 0.7,
+     "v": {
+      "sigil": 1.0,
+      "stroke": 0.66,
+      "turn": 0,
+      "twist": 0,
+      "lean": 10,
+      "head": 4
+     }
+    },
+    {
+     "t": 0.8,
+     "v": {
+      "sigil": 1.0,
+      "stroke": 1.0
+     }
+    },
+    {
+     "t": 0.92,
+     "v": {
+      "sigil": 0.0,
+      "guard": 1.0,
+      "step": 0.3,
+      "shift": 0.12,
+      "lean": 14,
+      "turn": 16,
+      "wing": 34,
+      "wingFold": -16
      }
     }
    ]

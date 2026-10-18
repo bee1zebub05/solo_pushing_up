@@ -313,6 +313,7 @@ class BattleView {
   /// (âm = đã chạm bấy lâu), sân khấu canh tư thế theo mốc này.
   String? bossMove;
   int bossTellMs = 0;
+  int bossWarnMs = 0;
   DodgeBy? bossDodge;
 
   /// Shuten uống rượu: tiến độ 0–1 (0 = không uống), số rep đã đánh trong

@@ -106,6 +106,7 @@ class _BattleScreenState extends State<BattleScreen>
       stage.onCue = (cue) => _session.feedback.playBoss(key, switch (cue) {
         StageCue.hit => 'hit',
         StageCue.defeat => 'defeat',
+        StageCue.tellAlt => 'tell2',
         StageCue.tell || StageCue.rage => 'tell',
       });
     }

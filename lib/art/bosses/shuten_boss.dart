@@ -34,6 +34,9 @@ class ShutenBossArt extends JapanSpriteBoss {
   String get spriteName => 'shuten_doji';
 
   @override
+  String get soundKey => 'shuten';
+
+  @override
   Offset get feet => const Offset(314, stageGroundY);
 
   @override
@@ -363,7 +366,7 @@ class ShutenBossArt extends JapanSpriteBoss {
     canvas.drawPicture(_upper ??= _record(_paintUpper));
     canvas.restore();
     _wisps(canvas, f.time, 1 - d);
-    _fireArm(canvas, v, f.time, d);
+    _fireArm(canvas, v, f.time, d, move);
     if (!behind) _clubArm(canvas, sh, hand, dir);
   }
 
@@ -399,13 +402,18 @@ class ShutenBossArt extends JapanSpriteBoss {
 
   /// Tay trái (gần) nâng lửa: chìa ra trước (chờ) → vươn thẳng ngắm đích
   /// (aim 1, lấy đà) → kéo về sát sườn (aim âm, ra đòn) → buông (gục).
-  void _fireArm(Canvas canvas, Map<String, double> v, double time, double d) {
+  void _fireArm(Canvas canvas, Map<String, double> v, double time, double d, String? move) {
     final aim = v['aim']!;
+    final drink = v['drink'] ?? 0, face = v['face'] ?? 0;
     final sh = _body(v, _nearShoulder);
     var hand = _body(v, const Offset(46, -118));
     if (aim > 0) hand = Offset.lerp(hand, _body(v, const Offset(-6, -138)), aim)!;
     if (aim < 0) hand = Offset.lerp(hand, _body(v, const Offset(32, -110)), -aim)!;
     hand = Offset.lerp(hand, _body(v, const Offset(46, -94)), d)!;
+    // Uống: vò lên miệng; sặc: bàn tay bịt miệng.
+    final mouth = _body(v, const Offset(-20, -150));
+    if (drink > 0) hand = Offset.lerp(hand, mouth.translate(4, -4), drink)!;
+    if (face > 0) hand = Offset.lerp(hand, mouth, face)!;
     final el = joint2(sh, hand, 24, 22, -1);
     final arm = chainPath([(sh, el, 9.5, 8), (el, hand, 8, 6.5)]);
     shadedPath(canvas, arm, OniColors.skin, PartFrame.world, shadow: 4, highlight: 1.4, outlineWidth: 1.4);
@@ -422,7 +430,73 @@ class ShutenBossArt extends JapanSpriteBoss {
       fillPaint(OniColors.gold),
     );
     canvas.drawCircle(hand, 5.6, fillPaint(OniColors.skin));
-    if (d < 0.6) _fire(canvas, hand.translate(0, -6), time);
+    if (move == 'drink' && drink > 0.05) {
+      _jar(canvas, hand, drink);
+    } else if (d < 0.6 && move != 'stagger') {
+      _fire(canvas, hand.translate(0, -6), time);
+    }
+  }
+
+  /// Vò sake sứ trắng vành chàm, nghiêng rót vào miệng theo [tilt] 0–1.
+  static void _jar(Canvas canvas, Offset hand, double tilt) {
+    canvas.save();
+    canvas.translate(hand.dx, hand.dy);
+    canvas.rotate(-0.9 * tilt);
+    final body = Path()
+      ..moveTo(-5, 0)
+      ..quadraticBezierTo(-9, -8, -6, -14)
+      ..lineTo(-2.4, -19)
+      ..lineTo(-3, -22)
+      ..lineTo(3, -22)
+      ..lineTo(2.4, -19)
+      ..lineTo(6, -14)
+      ..quadraticBezierTo(9, -8, 5, 0)
+      ..close();
+    shadedPath(canvas, body, const Color(0xFFEDE6D6), PartFrame.world, shadow: 1.6, highlight: 0.8, outlineWidth: 1);
+    canvas.drawLine(const Offset(-8, -9), const Offset(8, -9), Paint()..color = const Color(0xFF26346E)..strokeWidth = 2);
+    canvas.restore();
+  }
+
+  // Lúc vò vỡ (uống → choáng): toé mảnh sứ + rượu; sao choáng quanh đầu.
+  double? _shatterAt;
+  bool _wasDrinking = false;
+
+  @override
+  void paintMechanic(Canvas canvas, BossFrame f) {
+    final b = f.battle;
+    if (_wasDrinking && b.drinking == 0 && b.stunMs > 0) _shatterAt = f.time;
+    _wasDrinking = b.drinking > 0;
+    final head = feet.translate(-12, -158);
+    if (_shatterAt case final at? when f.time - at < 0.7) {
+      final u = (f.time - at) / 0.7;
+      for (var k = 0; k < 12; k++) {
+        final a = -math.pi * (0.1 + 0.8 * k / 11);
+        final p = head + Offset(math.cos(a) * 46 * u - 8, math.sin(a) * 30 * u + 60 * u * u);
+        canvas.drawRect(
+          Rect.fromCenter(center: p, width: 3, height: 2),
+          fillPaint(Color.fromRGBO(240, 234, 220, 1 - u)),
+        );
+        canvas.drawCircle(p.translate(4, 3), 1.2, fillPaint(Color.fromRGBO(220, 230, 255, 0.7 * (1 - u))));
+      }
+    }
+    if (b.stunMs > 0 && f.defeat == 0) {
+      for (var k = 0; k < 3; k++) {
+        final a = f.time * 4 + k * 2 * math.pi / 3;
+        final p = head.translate(4, -26) + Offset(math.cos(a) * 16, math.sin(a) * 5);
+        _star(canvas, p, 3.2, const Color(0xFFFFE27A));
+      }
+    }
+  }
+
+  static void _star(Canvas canvas, Offset c, double r, Color color) {
+    final path = Path();
+    for (var i = 0; i < 10; i++) {
+      final a = -math.pi / 2 + i * math.pi / 5;
+      final rr = i.isEven ? r : r * 0.45;
+      final p = c + Offset(math.cos(a), math.sin(a)) * rr;
+      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    canvas.drawPath(path..close(), fillPaint(color));
   }
 
   static Picture _record(void Function(Canvas) draw) {

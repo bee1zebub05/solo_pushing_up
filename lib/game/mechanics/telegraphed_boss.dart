@@ -157,6 +157,7 @@ abstract class TelegraphedBoss extends BattleMechanic {
     view
       ..bossMove = shown.attack.move
       ..bossDodge = shown.attack.dodge
+      ..bossWarnMs = warnMs
       ..bossTellMs = shown.impactAt - nowMs;
   }
 }

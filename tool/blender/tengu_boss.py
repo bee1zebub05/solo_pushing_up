@@ -274,6 +274,7 @@ class TenguMotion:
             c.pole_angle = math.radians(POLE_ANGLE[name])
             self.ik[name] = (t, pole, c)
         self.foot = {s_: bl[f"foot_{s_}"].head_local.copy() for s_ in "lr"}
+        self.facing = None  # đặt True khi đang ở góc sân khấu (face_game)
         self.knee = {s_: bl[f"calf_{s_}"].head_local.copy() for s_ in "lr"}
 
     def _set(self, name, target, pole):
@@ -287,6 +288,9 @@ class TenguMotion:
         F, U, L = self.FWD, self.UP, self.LEFT
         R = -L
         rest(rig)
+        # Xoay cả người quanh chân về phía người chơi (+ = sang trái màn hình), chồng lên ¾ sân khấu.
+        if self.facing is not None:
+            face_game(rig, True, extra=v.get("turn", 0.0))
         # Hông: dịch tới/lui, hạ trọng tâm, bay lên (khung rig).
         pb = rig.pose.bones["pelvis"]
         bpy.context.view_layer.update()
@@ -309,7 +313,8 @@ class TenguMotion:
             rot(rig, f"wing_03_{sd}", Y, v["wingFold"] * 1.2 * k)
         bpy.context.view_layer.update()
         # Chân: bàn chân bám đất (chân phải bước tới), co lên khi bay.
-        air = U * max(0.0, v["lift"] - v["tuck"])
+        # Bay: bàn chân lên theo hông (lift) và co thêm lên ngực (tuck × 0,55): gối gập.
+        air = U * (max(0.0, v["lift"]) + 0.55 * v["tuck"])
         for s_ in "lr":
             step = F * v["step"] if s_ == "r" else Vector()
             self._set(f"leg_{s_}", self.foot[s_] + step + air, self.knee[s_] + step + air + F * 1.2)
@@ -324,8 +329,30 @@ class TenguMotion:
         shl = rig.pose.bones["upperarm_l"].head
         g = v["guard"]
         hang = shl + U * -0.5 + F * 0.1 + L * 0.06
-        aim = shl + F * 0.5 + U * 0.04 + R * 0.06 if g >= 0 else shl + U * -0.38 - F * 0.12 + L * 0.1
-        self._set("arm_l", hang.lerp(aim, abs(g)), shl + L * 0.4 + U * -0.2 - F * 0.2)
+        # Đỡ kiểu tessen: bàn tay dựng trước mặt (ngang mắt), không ngang bụng.
+        aim = shl + F * 0.45 + U * 0.22 + R * 0.08 if g >= 0 else shl + U * -0.38 - F * 0.12 + L * 0.1
+        target = hang.lerp(aim, abs(g))
+        # Cắn ngón tay (`mouth`) rồi vạch ấn máu trong không trung (`stroke` 0–1: hai vòng nét).
+        if v.get("mouth", 0.0) > 0:
+            mouth = rig.pose.bones["head"].head + F * 0.13 + U * 0.03
+            target = target.lerp(mouth, v["mouth"])
+        if v.get("sigil", 0.0) > 0:
+            # Vạch ấn trước mặt hướng về người chơi, cao ngang đầu: nét ngang → nét
+            # chéo xuống → chấm → ấn lòng bàn tay ra trước (stroke 0–1).
+            st = v.get("stroke", 0.0)
+            # Xa phía trước–trên đầu (về phía người chơi) để tay không che mặt ở góc ¾.
+            # Nét vung cả cánh tay quanh trên đầu (tengu quay gần chính diện máy quay,
+            # 'trước' = về phía máy quay): ngang rộng → chéo dài xuống → chấm.
+            o = shl + F * 0.3 + U * 0.58
+            if st < 0.33:
+                pos = o + L * (0.45 - 0.9 * st / 0.33)
+            elif st < 0.66:
+                u = (st - 0.33) / 0.33
+                pos = o + L * (0.4 - 0.7 * u) - U * 0.55 * u
+            else:
+                pos = o - U * 0.15 + F * 0.08 * math.sin((st - 0.66) / 0.34 * math.pi)
+            target = target.lerp(pos, v["sigil"])
+        self._set("arm_l", target, shl + L * 0.4 + U * -0.2 - F * 0.2)
         bpy.context.view_layer.update()
         # Bàn tay phải: cán quạt chĩa đúng `fan`, mặt quạt quay về máy quay
         # (giữ ngón nối cẳng tay thì quạt hay quay cạnh, thành cái que).
@@ -357,10 +384,11 @@ class TenguMotion:
         self.apply(v)
 
 
-def face_game(rig, on=True):
+def face_game(rig, on=True, extra=0.0):
     """Xoay rig ¾ quanh trục đứng qua chân (thân ở y ≈ −0,38, không ở gốc) —
-    chân giữ nguyên ở (0, 0): điểm neo sprite."""
-    a = math.radians(FACING if on else 0)
+    chân giữ nguyên ở (0, 0): điểm neo sprite. [extra]: xoay thêm (độ) theo
+    biên đạo (kênh `turn`)."""
+    a = math.radians((FACING - extra) if on else 0)  # FACING âm = quay trái; turn + = quay thêm sang trái
     body = Vector((0, -0.38, 0))
     rig.rotation_euler.z = a
     rig.location = -(Quaternion(Z, a) @ body) + (Vector() if on else body)
@@ -369,8 +397,9 @@ def face_game(rig, on=True):
 
 def game_camera(scene, ppm):
     """Góc sân khấu: rig xoay ¾ nhìn sang trái màn hình, máy quay hơi chúc
-    như các quái khác; khung đủ cho cánh dựng cao và quạt chém ra trước."""
-    return camera(scene, -0.15, 1.2, 3.4, 2.75, ppm, yaw=-8, pitch=6)
+    như các quái khác; khung đủ cho cánh dựng cao, quạt chém ra trước và cú
+    nhảy Thiên cẩu phi (đỉnh nhảy ~0,8 m)."""
+    return camera(scene, -0.15, 1.65, 3.4, 3.7, ppm, yaw=-8, pitch=6)
 
 
 def main():
@@ -397,6 +426,7 @@ def main():
         game_camera(scene, 150)
         scene.cycles.samples = 24
         motion = TenguMotion(rig)
+        motion.facing = True
         for move in ("attack", "attack2"):
             vdir = os.path.join(out, "video", move)
             os.makedirs(vdir, exist_ok=True)
@@ -421,8 +451,10 @@ def main():
         face_game(rig)
         game_camera(scene, 160)
         motion = TenguMotion(rig)
+        motion.facing = True
         keys = [("attack", t) for t in (0.14, 0.36, 0.48, 0.55, 0.6, 0.72, 0.86)]
-        keys += [("attack2", t) for t in (0.25, 0.4, 0.48, 0.56, 0.61, 0.74, 0.88)]
+        keys += [("attack2", t) for t in (0.25, 0.42, 0.5, 0.56, 0.585, 0.61, 0.74, 0.88)]
+        keys += [("write", t) for t in (0.15, 0.42, 0.55, 0.7, 0.92)]
         keys += [("defeat", 0.4), ("defeat", 1.0)]
         only = os.environ.get("TENGU_MOVE")
         for move, t in keys:
@@ -452,6 +484,7 @@ def main():
     face_game(rig)
     cam = game_camera(scene, 3.0 * UNITS_PER_M)
     motion = TenguMotion(rig)
+    motion.facing = True
     anims = {
         "idle": [lambda k=k: motion.pose(t=k / 8) for k in range(8)],
         "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],

@@ -1,6 +1,6 @@
 """Tạo âm thanh riêng cho từng boss (assets/sounds/boss_*.wav).
 
-Mỗi boss hai tiếng:
+Mỗi boss hai tiếng (boss hai đòn chương Nhật thêm `<boss>_tell2`):
 - `<boss>_tell`: báo đòn, phát lúc boss bắt đầu lấy đà. Người chơi đang nhìn
   sàn nên phải NGHE được đòn sắp tới (trụ cột 3, rules/thietke/tru-cot.md).
 - `<boss>_hit`: đòn của người chơi trúng boss, theo chất liệu boss.
@@ -200,6 +200,82 @@ def thuy_tinh_hit() -> np.ndarray:
     return mix(splash, bubbles, thud)
 
 
+# Chương Nhật — từ vựng âm chung cho cách né (rules/thietke/boss-nhat-shuten-sutoku.md):
+# đòn TỪ TRÊN (giữ plank ⏸) = rít cao vút LÊN; đòn NGANG (rep sâu) = gió quét
+# trầm, dài, KHÔNG lên giọng. `<boss>_tell` = đòn 1, `<boss>_tell2` = đòn 2.
+
+
+def rising_whine(sec: float, f0: float, f1: float) -> np.ndarray:
+    """Tiếng sắt/gió rít trượt lên (đòn từ trên)."""
+    n = int(RATE * sec)
+    return glide(noise(sec), [lambda x, lo=f0 + (f1 - f0) * i / 11: band(x, lo, lo * 1.35) for i in range(12)]) * swell(n, 0.9)
+
+
+def low_sweep(sec: float) -> np.ndarray:
+    """Gió quét ngang trầm: dải lọc thấp đi qua lại hai lần, không lên giọng (đòn ngang)."""
+    n = int(RATE * sec)
+    t = t_axis(sec)
+    lo = band(noise(sec), 140, 700)
+    pan = 0.55 + 0.45 * np.sin(2 * np.pi * 1.6 * t - np.pi / 2)
+    return lo * pan * swell(n, 0.75)
+
+
+def shuten_tell() -> np.ndarray:
+    # Nện đỉnh (⏸): gầm trầm 60 Hz + tiếng sắt rít vút lên khi chuỳ giơ cao.
+    sec = 1.0
+    t = t_axis(sec)
+    growl = low(saw(2 * np.pi * np.cumsum(np.linspace(58, 70, len(t))) / RATE), 500) * (0.6 + 0.4 * np.sin(2 * np.pi * 18 * t))
+    return mix(growl * swell(len(t), 0.5) * 0.8, rising_whine(sec, 600, 2600) * 0.9)
+
+
+def shuten_tell2() -> np.ndarray:
+    # Quét chân ngựa (rep sâu): gầm trầm + gió quét ngang trầm kéo dài.
+    sec = 1.1
+    t = t_axis(sec)
+    growl = low(saw(2 * np.pi * 55 * t), 400) * (0.6 + 0.4 * np.sin(2 * np.pi * 16 * t)) * swell(len(t), 0.4)
+    return mix(growl * 0.7, low_sweep(sec) * 1.4)
+
+
+def shuten_hit() -> np.ndarray:
+    # Đấm vào thân béo: thịch rất trầm 80→35 Hz + vỗ thịt.
+    sec = 0.34
+    n = int(RATE * sec)
+    thump = sweep(80, 35, sec) * env(n, 0.002, 0.11)
+    slap = band(noise(sec), 250, 1800) * env(n, 0.001, 0.02) * 0.55
+    return mix(thump, slap)
+
+
+def tengu_tell() -> np.ndarray:
+    # Phong kesa (rep sâu): vài nhịp vỗ cánh ngắn + gió cuộn quét ngang trầm.
+    sec = 1.0
+    n = int(RATE * sec)
+    flaps = np.zeros(n)
+    for start in (0.0, 0.22):
+        f = band(noise(0.12), 200, 1400) * env(int(RATE * 0.12), 0.01, 0.04)
+        i = int(start * RATE)
+        flaps[i : i + len(f)] += f
+    return mix(flaps * 0.8, low_sweep(sec) * 1.3)
+
+
+def tengu_tell2() -> np.ndarray:
+    # Thiên cẩu phi (⏸): một tiếng vỗ cánh lớn bật lên + tiếng rít vút lên cao.
+    sec = 1.0
+    n = int(RATE * sec)
+    flap = band(noise(0.2), 120, 1100) * env(int(RATE * 0.2), 0.008, 0.07) * 1.6
+    x = np.zeros(n)
+    x[: len(flap)] += flap
+    return mix(x, rising_whine(sec, 900, 3600) * 0.8)
+
+
+def tengu_hit() -> np.ndarray:
+    # Đánh vào áo lông vũ: xoạt lông + thịch vừa.
+    sec = 0.3
+    n = int(RATE * sec)
+    rustle = band(noise(sec), 1500, 6000) * env(n, 0.002, 0.05) * 0.7
+    thud = sweep(130, 60, sec) * env(n, 0.002, 0.06) * 0.7
+    return mix(rustle, thud)
+
+
 def defeat() -> np.ndarray:
     # Boss gục (chung): nổ trầm 70→28 Hz ngân dài + tiếng rít khói tan dần lên
     # cao + chuông sáng nhẹ báo chiến thắng.
@@ -227,6 +303,12 @@ SOUNDS = {
     "orochi_hit": orochi_hit,
     "thuy_tinh_tell": thuy_tinh_tell,
     "thuy_tinh_hit": thuy_tinh_hit,
+    "shuten_tell": shuten_tell,
+    "shuten_tell2": shuten_tell2,
+    "shuten_hit": shuten_hit,
+    "tengu_tell": tengu_tell,
+    "tengu_tell2": tengu_tell2,
+    "tengu_hit": tengu_hit,
 }
 
 SOUNDS["defeat"] = defeat
