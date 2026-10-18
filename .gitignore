@@ -72,3 +72,6 @@ dataset/eval_frames/
 # (nút "Gửi vào repo", art_src/tripo/<tên>/) mới commit (Git LFS)
 /art_src/tripo/_inbox/
 __pycache__/
+# Dữ liệu mocap thô tải lại được bằng tool/mocap/fetch.py
+/art_src/mocap/_cache/
+/tool/.venv-ml/

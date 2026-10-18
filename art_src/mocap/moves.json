@@ -1,0 +1,43 @@
+{
+ "_doc": "Đòn boss nào lấy lớp thân từ đòn mocap nào (rules/dohoa.md mục 16). clip/eff/at = clip nguồn, chi ra đòn, thời điểm chạm (~giây) — khoá bền khi dựng lại thư viện (tool/mocap/segment.py). events = mốc sân khấu, PHẢI trùng biên đạo tool/blender/choreo/<boss>.json để lớp tay vũ khí (biên đạo) chạm cùng lúc với thân (mocap). in/out = khoảng tiến độ mô hình tự điền đoạn nối dáng chờ ↔ đòn. mirror = lật trái/phải. Ghép: tool/.venv-ml/Scripts/python tool/mocap/compose.py",
+ "shuten_doji": {
+  "attack": {
+   "_why": "Nện đỉnh kèm dậm chân: thân oi-zuki (bước dồn chân phải + đấm tay phải, hông đẩy tới) — sức nặng đổ theo bước",
+   "clip": "135_09",
+   "eff": "wrist_r",
+   "at": 2.03,
+   "events": {
+    "impact": 0.62,
+    "hold_from": 0.38,
+    "hold_to": 0.48
+   },
+   "in": [
+    0.04,
+    0.28
+   ],
+   "out": [
+    0.72,
+    0.97
+   ]
+  },
+  "attack2": {
+   "_why": "Quét chân ngựa: thân gyaku-zuki Kyokushin (đứng tấn, vặn hông bật vai phải ra trước) — lực quét đến từ hông",
+   "clip": "k0367S01E01T01",
+   "eff": "wrist_r",
+   "at": 0.0,
+   "events": {
+    "impact": 0.61,
+    "hold_from": 0.36,
+    "hold_to": 0.48
+   },
+   "in": [
+    0.04,
+    0.28
+   ],
+   "out": [
+    0.72,
+    0.97
+   ]
+  }
+ }
+}

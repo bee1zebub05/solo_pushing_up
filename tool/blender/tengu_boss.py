@@ -33,7 +33,9 @@ H = 2.0  # cao tới đỉnh búi tóc, như bản MPFB cũ (S = 1,15)
 WING_SCALE = 1.25  # người dùng duyệt: cánh to hơn bản Tripo gốc
 WING_DROOP = (14, 6, 10)
 # Sân khấu: boss đứng bên phải nhìn sang trái (người chơi) — xoay ¾.
-FACING = -24  # vừa đủ ¾: xoay mạnh hơn thì cánh gần che mất cánh xa
+# Quay gần nghiêng về phía Hercules như game đối kháng (Shadow Fight, Street
+# Fighter); −55° còn ló đầu cánh xa sau lưng (−70° cánh gần che hết). Mục 16.
+FACING = float(os.environ.get("TENGU_FACING", -55))
 UNITS_PER_M = 78  # cao 2 m ≈ 156 đơn vị sân khấu (lính đá ~145)
 # Mon vàng mặt sau (người dùng yêu cầu): khuôn = mon trên ống hakama phải
 # (tâm x, z; bán kính, m — đọc trên front_map có lưới), đóng tại các tâm (x, z)
@@ -103,6 +105,10 @@ def build():
     before, quads = tripo_kit.densify(m)
     print(f"[tengu_boss] lưới: {before} tam giác → {quads} mặt (ghép quad) × subsurf")
     rig, unweighted = tripo_kit.build_rig(m, BONES)
+    # Tripo không có xương ngón: tự tách ngón từ lưới để nắm cán quạt, nắm đấm,
+    # xoè tay chém (rules/dohoa.md mục 16 — khớp ngón tự nhiên).
+    for s_ in "lr":
+        tripo_kit.add_fingers(m, rig, s_)
     return m, rig, unweighted
 
 
@@ -411,6 +417,10 @@ def main():
     shadow_catcher()
     out = os.path.join(ROOT, "build", "blender", "tengu")
     os.makedirs(out, exist_ok=True)
+    if "--dry" in sys.argv:  # dựng cảnh không render; TENGU_DEBUG = script soát chạy thêm
+        if os.environ.get("TENGU_DEBUG"):
+            exec(open(os.environ["TENGU_DEBUG"], encoding="utf-8").read())
+        return
     if "--review" in sys.argv:  # bộ soát cố định + kiểm tra tự động (review_kit), không lưu .blend
         from review_kit import review
         if "--strike" in sys.argv:

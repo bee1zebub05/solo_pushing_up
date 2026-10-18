@@ -41,6 +41,9 @@ S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~3,4 m (
 ROPE_R = 0.04 * S  # bán kính thừng shimenawa (khoá đai treo vào thừng)
 BEAD_PENDANT = 19  # hạt vàng to giữa ngực trong chuỗi 26 hạt
 VIDEO_FRAMES = 60  # khung mỗi đòn cho video soát (--video)
+# Quay gần nghiêng về phía Hercules (bên trái màn hình) như game đối kháng —
+# Shadow Fight, Street Fighter: thân, mặt, đòn đều hướng đối thủ (mục 16).
+FACING = -72
 UNITS_PER_M = 48  # cao ~3,4 m ≈ 163 đơn vị sân khấu; chuỳ giơ cao vẫn dưới mép trên
 
 ONI_BODY = {
@@ -1022,11 +1025,14 @@ def pupils(body, co, rig, fwd):
     return out
 
 
-def aim_pupils(objs, cam, limit_deg=28):
-    """Đồng tử nhìn về máy quay (người chơi), lệch tối đa [limit_deg] so với
-    hướng mặt — ánh mắt khoá vào người xem, không nhìn lạc ra ngoài."""
+def aim_pupils(objs, cam, limit_deg=28, look=None):
+    """Đồng tử nhìn về máy quay, lệch tối đa [limit_deg] so với hướng mặt.
+    [look] (thế giới): nhìn theo hướng này thay vì máy quay — trên sân khấu
+    là về phía Hercules (đối thủ), pha chút về máy quay cho mắt còn đọc được."""
     bpy.context.view_layer.update()  # máy quay vừa tạo: matrix_world chưa tính
     view = (cam.matrix_world.to_3x3() @ Vector((0, 0, 1))).normalized()
+    if look is not None:
+        view = (look.normalized() * 0.8 + view * 0.2).normalized()
     for o in objs:
         M = o.matrix_world @ o.matrix_basis.inverted()
         Mi = M.inverted()
@@ -1242,7 +1248,7 @@ def fire_arm(poser, drop=0.0, aim=0.0, drink=0.0, face=0.0):
 
 
 def pose_and_props(rig, mats):
-    poser = StandPoser(rig, facing_deg=-48, scale=S)
+    poser = StandPoser(rig, facing_deg=float(os.environ.get("ONI_FACING", FACING)), scale=S)
     poser.place(stance=math.radians(9), crouch=math.radians(12))
     fwd, left, up = poser.frame()
     right = -left
@@ -1410,6 +1416,62 @@ class OniMotion:
         bpy.context.view_layer.update()
         self.dress = None
         self.defeat = 0.0
+        self._mtracks = {}
+        self.minfo = None
+
+    # ------------------------------------------------ đòn mocap (rules/dohoa.md mục 16)
+    def anchor(self):
+        """Dáng chờ biên đạo → (gốc đất dưới hông, độ cao hông) — mốc chung để
+        xuất dáng chờ cho compose.py và để đọc lại đòn đã ghép."""
+        import mocap_drive as md
+        self.apply(dict(self.choreo.ready))
+        if self.minfo is None:
+            self.minfo = md.RigInfo(self.rig)
+        pel = self.rig.matrix_world @ self.rig.pose.bones["pelvis"].head
+        return Vector((pel.x, pel.y, self.minfo.ground)), pel.z
+
+    def mocap(self, move):
+        """Đòn ghép từ mocap võ học (art_src/mocap/moves/shuten_doji_<move>.npz)
+        hoặc None (chưa có / ONI_MOCAP=0) → dùng biên đạo cũ."""
+        if move in self._mtracks:
+            return self._mtracks[move]
+        import mocap_drive as md
+        tr = None
+        if move and os.environ.get("ONI_MOCAP", "1") != "0" and os.path.exists(
+                os.path.join(md.MOVES, f"shuten_doji_{move}.npz")):
+            origin, pz = self.anchor()
+            self.mready = md.capture(self.minfo, self.mocap_ik())
+            tr = md.Track(self.minfo, "shuten_doji", move, self.poser.frame(), origin, pelvis_z=pz)
+        self._mtracks[move] = tr
+        return tr
+
+    def mocap_ik(self):
+        return {"arm_l": self.poser.ik["l"][:2], "arm_r": self.poser.ik["r"][:2],
+                "leg_l": self.feet["l"][:2], "leg_r": self.feet["r"][:2]}
+
+    def apply_mocap(self, v, T):
+        """Lớp thân từ mocap (hông, cột sống, đầu, chân, tay lửa) + lớp tay chuỳ
+        theo biên đạo — khung tay chuỳ xoay theo độ vặn ngực của mocap."""
+        import mocap_drive as md
+        poser = self.poser
+        fwd, left, up = poser.frame()
+        iko = self.mocap_ik()
+        iko.pop("arm_r")
+
+        def palm(s, d, n):
+            if s == "l":  # lòng bàn tay trái ngửa nâng lửa ma
+                poser.palm("l", d, (n * 0.35 + up * 0.65).normalized())
+
+        md.apply(self.minfo, T, iko, palm=palm, look=fwd)
+        # Biên đạo đã tính độ vặn thân (twist, cộng dồn hông → ngực) vào vị trí tay
+        # chuỳ; chỉ bù phần ngực mocap vặn khác biên đạo.
+        yaw = md.yaw_of(T["rot"]["spine_03"]) - md.yaw_of(self.mready["rot"]["spine_03"]) - v["twist"]
+        yaw = (yaw + 180) % 360 - 180
+        club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
+                 sign=poser.club_sign, sweep=v["sweep"] + yaw, cant=v.get("cant", 0.32))
+        md.fingers(self.rig, "l", 0.45)
+        self.redress()
+        bpy.context.view_layer.update()
 
     def apply(self, v):
         rig, poser = self.rig, self.poser
@@ -1480,7 +1542,11 @@ class OniMotion:
                 v["lean"] = v["lean"] - 4 * g
                 v["drop"] = v["drop"] - 0.02 * g
         self.move = move
-        self.apply(v)
+        tr = self.mocap(move)
+        if tr is not None:
+            self.apply_mocap(v, tr(phase))
+        else:
+            self.apply(v)
         gone = self.defeat > 0.6
         drinking = move == "drink" and 0.05 < phase < 0.9  # đổi lửa → vò ở đầu, vò → lửa ở cuối
         for o in self.fire:
@@ -1534,6 +1600,12 @@ def main():
                targets={"chân (khớp háng)/chiều cao": (0.48, 0.58)},  # bản duyệt 0,56
                samples=16 if "--quick" in sys.argv else 32)
         return
+    if "--mocap-ready" in sys.argv:  # dáng chờ → art_src/mocap/ready (compose.py ghép đòn mocap)
+        import mocap_drive as md
+        motion = OniMotion(poser, body, mats)
+        origin, _ = motion.anchor()
+        md.dump_ready(motion.minfo, poser.frame(), origin, "shuten_doji")
+        return
     if "--dry" in sys.argv:  # dựng cảnh không render; ONI_DEBUG = script soát chạy thêm
         aim_pupils(mats["eyes"], camera(scene, head.x, head.z, 0.4 * S, 0.4 * S, 100, yaw=-44, pitch=3))
         if os.environ.get("ONI_DEBUG"):
@@ -1542,7 +1614,7 @@ def main():
     if "--video" in sys.argv:  # khung video từng đòn (tool/boss_video.py ghép mp4)
         motion = OniMotion(poser, body, mats)
         cam = game_camera(scene, 150)
-        aim_pupils(mats["eyes"], cam)
+        aim_pupils(mats["eyes"], cam, look=poser.frame()[0])
         scene.cycles.samples = 24
         for move in ("attack", "attack2"):
             vdir = os.path.join(out, "video", move)
@@ -1558,7 +1630,7 @@ def main():
         scene.cycles.samples = 16 if "--quick" in sys.argv else 64
         motion = OniMotion(poser, body, mats)
         cam = game_camera(scene, 3.0 * UNITS_PER_M)
-        aim_pupils(mats["eyes"], cam)
+        aim_pupils(mats["eyes"], cam, look=poser.frame()[0])
         anims = {
             "idle": [lambda k=k: motion.pose(t=k / 8) for k in range(8)],
             "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
@@ -1570,7 +1642,7 @@ def main():
     if "--game" in sys.argv:  # góc sân khấu các pha đòn (soát trước khi xuất sprite)
         motion = OniMotion(poser, body, mats)
         cam = game_camera(scene, 160)
-        aim_pupils(mats["eyes"], cam)
+        aim_pupils(mats["eyes"], cam, look=poser.frame()[0])
         # Tư thế khoá của từng đòn (biên đạo) — soát trước khi xuất sprite.
         # ONI_MOVE=attack|attack2|defeat chỉ render một đòn.
         keys = [("attack", t) for t in (0.12, 0.38, 0.48, 0.53, 0.575, 0.62, 0.72, 0.8, 0.88, 0.92)]

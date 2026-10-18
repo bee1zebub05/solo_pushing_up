@@ -597,3 +597,164 @@ def can_review(m):
         return ["(không có xương)"]
     have = {b.name for b in m.rig.data.bones}
     return [b for b in REVIEW_NEEDS if b not in have]
+
+
+def add_fingers(m, rig, side, min_size=10, palm=None):
+    """Tự dựng xương ngón cho bàn tay lưới Tripo (model chỉ có xương hand_*).
+
+    Tách ngón theo lưới: đỉnh thuộc bàn tay (trọng số hand_[side] > 0,3), cắt
+    dần theo độ sâu dọc trục bàn tay — mức sâu đầu tiên tách ra ≥ 4 cụm là bốn
+    ngón; cụm tách sớm hơn, không chứa đỉnh ngón nào là ngón cái. Mỗi ngón 3 đốt
+    (45/30/25 % chiều dài, gốc lùi vào lòng bàn tay 15 % — khớp đốt bàn), trục
+    Z xương quay về lòng bàn tay nên xoay +X = gập ngón (như MPFB, dùng chung
+    mocap_drive.fingers). Trọng số: chia theo vị trí dọc trục ngón, chuyển mềm
+    từ bàn tay sang đốt gốc. [palm]: hướng lòng bàn tay (thế giới, dáng nghỉ);
+    None = −Z (dáng chữ T của Tripo, lòng bàn tay úp). Trả về tên các xương mới."""
+    import numpy as np
+    from mathutils.kdtree import KDTree
+
+    o = m.body
+    mw = o.matrix_world
+    hb = rig.data.bones[f"hand_{side}"]
+    h0, h1 = rig.matrix_world @ hb.head_local, rig.matrix_world @ hb.tail_local
+    ax = (h1 - h0).normalized()
+    gi = {g.name: g.index for g in o.vertex_groups}
+    hg = gi[f"hand_{side}"]
+    P = np.array([list(mw @ v.co) for v in o.data.vertices])
+    w = np.zeros(len(P))
+    for v in o.data.vertices:
+        for g in v.groups:
+            if g.group == hg:
+                w[v.index] = g.weight
+    sel = np.where(w > 0.3)[0]
+    t = (P[sel] - np.array(h0)) @ np.array(ax)
+    edges = [tuple(e.vertices) for e in o.data.edges]
+    kd = KDTree(len(sel))
+    for k, i in enumerate(sel):
+        kd.insert(P[i], k)
+    kd.balance()
+    near = {}
+    for k, i in enumerate(sel):
+        near[i] = [sel[j] for _, j, _ in kd.find_range(P[i], 0.002)]
+
+    def comps(idx):
+        ids = set(int(i) for i in idx)
+        par = {i: i for i in ids}
+
+        def f(i):
+            while par[i] != i:
+                par[i] = par[par[i]]
+                i = par[i]
+            return i
+        for a, b in edges:
+            if a in ids and b in ids:
+                par[f(a)] = f(b)
+        for i in ids:
+            for j in near[i]:
+                if j in ids:
+                    par[f(i)] = f(int(j))
+        groups = {}
+        for i in ids:
+            groups.setdefault(f(i), []).append(i)
+        return sorted((g for g in groups.values() if len(g) >= min_size), key=len, reverse=True)
+
+    L = (h1 - h0).length
+    fingers, tk = None, None
+    for x in np.linspace(0.3, 1.05, 31):
+        cs = comps(sel[t > x * L])
+        if len(cs) >= 4:
+            fingers, tk = cs[:4], x * L
+            break
+    if fingers is None:
+        print(f"[tripo] add_fingers {side}: không tách được 4 ngón")
+        return []
+    fset = set(i for g in fingers for i in g)
+    thumb = None
+    for x in np.linspace(tk / L, 0.0, 25):
+        cs = comps(sel[t > x * L])
+        cand = [g for g in cs if not (set(g) & fset)]
+        if cand:
+            thumb = max(cand, key=len)
+        elif thumb is not None:
+            break
+    pal = Vector(palm) if palm is not None else Vector((0, 0, -1))
+    # Thứ tự trỏ → út: gần ngón cái nhất là trỏ; không có ngón cái thì theo phía lòng bàn tay.
+    lat = ax.cross(pal).normalized()
+    ref = Vector(P[thumb].mean(0)) if thumb else h0 + lat * (1 if side == "l" else -1)
+
+    def centroid(g):
+        return Vector(P[g].mean(0))
+
+    fingers.sort(key=lambda g: (centroid(g) - ref).length)
+    names = ["index", "middle", "ring", "pinky"]
+    chains = list(zip(names, fingers)) + ([("thumb", thumb)] if thumb else [])
+    bpy.context.view_layer.objects.active = rig
+    for ob in bpy.context.view_layer.objects:
+        ob.select_set(ob is rig)
+    bpy.ops.object.mode_set(mode="EDIT")
+    eb = rig.data.edit_bones
+    inv = rig.matrix_world.inverted()
+    made, spans = [], {}
+    for name, g in chains:
+        Q = P[g]
+        c = Q.mean(0)
+        u, sv, vt = np.linalg.svd(Q - c)
+        d = Vector(vt[0])
+        if d.dot(Vector(c) - h0) < 0:
+            d = -d
+        s = (Q - c) @ np.array(d)
+        base = Vector(c) + d * float(np.percentile(s, 5))
+        tip = Vector(c) + d * float(s.max())
+        length = (tip - base).length
+        if name != "thumb":
+            base = base - d * 0.15 * length  # khớp đốt bàn nằm trong lòng bàn tay
+            length *= 1.15
+        cuts = [0.0, 0.45, 0.75, 1.0]
+        parent = eb[f"hand_{side}"]
+        for k in range(3):
+            b = eb.new(f"{name}_0{k + 1}_{side}")
+            b.head = inv @ (base + d * cuts[k] * length)
+            b.tail = inv @ (base + d * cuts[k + 1] * length)
+            b.align_roll(inv.to_3x3() @ pal)  # trục Z về lòng bàn tay: +X = gập
+            b.parent = parent
+            b.use_connect = k > 0
+            parent = b
+            made.append(b.name)
+        spans[name] = (base, d, length, set(g))
+    bpy.ops.object.mode_set(mode="OBJECT")
+    # Trọng số: đỉnh trong ngón + vùng chuyển trong lòng bàn tay quanh gốc ngón.
+    for n in made:
+        if n not in o.vertex_groups:
+            o.vertex_groups.new(name=n)
+    hand_vg = o.vertex_groups[f"hand_{side}"]
+    for name, (base, d, length, g) in spans.items():
+        cuts = [0.0, 0.45, 0.75, 1.0]
+        vg = [o.vertex_groups[f"{name}_0{k + 1}_{side}"] for k in range(3)]
+        rad = 0.35 * length
+        for i in sel:
+            p = Vector(P[i])
+            s = (p - base).dot(d) / length
+            perp = ((p - base) - d * (p - base).dot(d)).length
+            in_f = i in g
+            if not in_f and not (s > -0.05 and s < 0.3 and perp < rad):
+                continue
+            # Vùng chuyển: gốc ngón (s ≈ 0–0,2) chia dần từ bàn tay.
+            f = 1.0 if in_f and s > 0.2 else max(0.0, min(1.0, (s + 0.05) / 0.25))
+            if not in_f:
+                f *= max(0.0, 1 - perp / rad) * 0.6
+            if f <= 0:
+                continue
+            ww = [0.0, 0.0, 0.0]
+            for k in range(3):
+                a, b = cuts[k], cuts[k + 1]
+                wdt = 0.08
+                ww[k] = max(0.0, min(1.0, (s - a + wdt) / (2 * wdt))) * max(0.0, min(1.0, (b - s + wdt) / (2 * wdt)))
+            tot = sum(ww) or 1.0
+            hw = w[i]
+            for k in range(3):
+                if ww[k] > 0:
+                    vg[k].add([int(i)], hw * f * ww[k] / tot, "REPLACE")
+            hand_vg.add([int(i)], hw * (1 - f), "REPLACE")
+    print(f"[tripo] add_fingers {side}: {len(fingers)} ngón + {'ngón cái' if thumb else 'không ngón cái'}, "
+          f"cắt ở {tk / L:.2f} dài bàn tay")
+    return made
