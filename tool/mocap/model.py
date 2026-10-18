@@ -310,7 +310,7 @@ class Model:
         return errs / np.maximum(cnt, 1) / SCORE_REF
 
 
-SCORE_REF = 0.02  # m — cập nhật sau huấn luyện (eval)
+SCORE_REF = 0.0307  # m — mức che thưa 1/4 trên dữ liệu kiểm định (model.py eval, 15k bước)
 
 
 def _frame(x):
@@ -349,6 +349,10 @@ def losses(pred, target, known):
 
 def train(steps=40000, B=128, lr=3e-4):
     dev = "cuda"
+    # cuDNN trên RTX 3050 laptop lỗi thực thi (CUDNN_STATUS_EXECUTION_FAILED) ở lượt
+    # lùi conv1d bf16 khi dữ liệu lớn
+    # → huấn luyện FP32 (bỏ autocast bf16), cuDNN bật.
+    amp = os.environ.get("MOTION_BF16", "0") == "1"
     torch.manual_seed(0)
     data = Data(DATA, dev)
     print(f"dữ liệu: {data.pos.shape[0]} khung, {len(data.valid)} điểm bắt đầu cửa sổ")
@@ -370,7 +374,7 @@ def train(steps=40000, B=128, lr=3e-4):
         late = (torch.arange(W, device=dev) > W // 2).float()[None, :, None, None]
         xin = xin + shift * late
         inp, base = model.encode_in(xin, known)
-        with torch.autocast("cuda", dtype=torch.bfloat16):
+        with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
             y = net(inp)
         pred = model.decode_out(y.float(), base)
         rec, vel, acc, bone, skate = losses(pred, x, known)
@@ -425,3 +429,28 @@ if __name__ == "__main__":
         train(steps)
     elif cmd == "eval":
         evaluate()
+    elif cmd == "clean":
+        # Khử nhiễu chuyển động từ video (video.py): che khớp tin cậy thấp, cho mô hình
+        # điền; đi hai lượt so le (chẵn/lẻ) để khung nào cũng được làm mượt một lần.
+        src, dst = sys.argv[2], sys.argv[3]
+        d = np.load(src)
+        pos = d["pos"].astype(np.float32)
+        vis = d["vis"] if "vis" in d else np.ones(pos.shape[:2], np.float32)
+        fps = float(d["fps"])
+        # Mô hình học ở 30 fps: nội suy về 30 rồi trả lại nhịp gốc.
+        t0 = np.arange(len(pos)) / fps
+        t1 = np.arange(0, t0[-1] + 1e-9, 1 / 30)
+        rs = lambda a: np.stack([np.interp(t1, t0, a.reshape(len(a), -1)[:, k]) for k in range(a.reshape(len(a), -1).shape[1])], 1)
+        p30 = rs(pos).reshape(len(t1), NJ, 3).astype(np.float32)
+        v30 = rs(vis).reshape(len(t1), NJ)
+        model = Model.load()
+        known = (v30 > 0.6).astype(np.float32)
+        out = p30.copy()
+        for par in (0, 1):
+            k = known.copy()
+            k[par::2] = 0
+            out = np.where(np.arange(len(t1))[:, None, None] % 2 == par, model.fill(out, k, keep_known=True), out)
+        back = np.stack([np.interp(t0, t1, out.reshape(len(t1), -1)[:, k]) for k in range(NJ * 3)], 1).reshape(len(t0), NJ, 3)
+        np.savez_compressed(dst, pos=back.astype(np.float32), fps=fps, vis=vis, meta=d["meta"] if "meta" in d else np.array("{}"))
+        jit = lambda a: np.linalg.norm(np.diff(a, 2, axis=0), axis=-1).mean()
+        print(f"rung (gia tốc trung bình): {jit(pos) * 1000:.1f} → {jit(back) * 1000:.1f} mm/khung²  → {dst}")

@@ -453,6 +453,10 @@ class Track:
         self.phases = d["phases"].astype(np.float64)
         self.meta = json.loads(str(d["meta"]))
         m = Motion(d["pos"].astype(np.float64), (len(self.phases) - 1) / 1.2, self.meta)
+        turn = float(self.meta.get("turn", 0.0))
+        if turn:  # thế tấn karate mở ngực ra máy quay → xoay thân về phía đối thủ
+            q = Quaternion(Vector((0, 0, 1)), math.radians(turn))
+            basis = (q @ basis[0], q @ basis[1], basis[2])
         self.drive = MocapDrive(info, m, basis, origin, pelvis_z=pelvis_z)
         self.Ts = self.drive.lock([self.drive.targets(m.pos[i], i) for i in range(len(m))])
 
@@ -466,3 +470,34 @@ def yaw_of(q):
     """Góc xoay quanh trục đứng (độ) của một xoay thế giới (hướng −Y nghỉ → ?)."""
     v = q.to_matrix() @ Vector((1, 0, 0))
     return math.degrees(math.atan2(v.y, v.x))
+
+
+def set_hand(info, s, d, n, palm_rest_local=Vector((0, 0, -1))):
+    """Xoay xương hand_[s]: ngón theo [d], lòng bàn tay quay về [n] (thế giới).
+    Dáng nghỉ: ngón = trục xương, lòng bàn tay = [palm_rest_local] (khung rig —
+    Tripo chữ T úp bàn tay: −Z). Cho rig không có bộ palm() như StandPoser."""
+    rig = info.rig
+    bpy.context.view_layer.update()
+    bl = rig.data.bones[f"hand_{s}"]
+    rd = (info.A @ (bl.tail_local - bl.head_local)).normalized()
+    rn = (info.A @ palm_rest_local).normalized()
+    F_rest = frame_from(rn.cross(rd), rd)
+    F_new = frame_from(n.normalized().cross(d.normalized()), d.normalized())
+    q = (F_new @ F_rest.transposed()).to_quaternion()
+    set_world_rot(info, f"hand_{s}", q)
+
+
+def lean_add(info, deg, left):
+    """Gập (+) / ngả (−) thân thêm [deg] độ quanh trục ngang [left] (thế giới),
+    chia lưng 60 % / ngực 40 %, đầu bù ngược để mắt giữ đích — lớp biên đạo
+    cộng lên thân mocap (karate giữ thân thẳng; đòn nện cần gập người)."""
+    if abs(deg) < 1e-3:
+        return
+    rig = info.rig
+    for b, k in (("spine_02", 0.6), ("spine_03", 0.4), ("head", -0.45)):
+        pb = rig.pose.bones[b]
+        bpy.context.view_layer.update()
+        ax = (info.Ai @ left).normalized()
+        h = pb.head.copy()
+        pb.matrix = Matrix.Translation(h) @ Matrix.Rotation(math.radians(deg * k), 4, ax) @ Matrix.Translation(-h) @ pb.matrix
+    bpy.context.view_layer.update()

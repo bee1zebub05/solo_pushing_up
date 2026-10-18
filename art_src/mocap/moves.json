@@ -1,5 +1,5 @@
 {
- "_doc": "Đòn boss nào lấy lớp thân từ đòn mocap nào (rules/dohoa.md mục 16). clip/eff/at = clip nguồn, chi ra đòn, thời điểm chạm (~giây) — khoá bền khi dựng lại thư viện (tool/mocap/segment.py). events = mốc sân khấu, PHẢI trùng biên đạo tool/blender/choreo/<boss>.json để lớp tay vũ khí (biên đạo) chạm cùng lúc với thân (mocap). in/out = khoảng tiến độ mô hình tự điền đoạn nối dáng chờ ↔ đòn. mirror = lật trái/phải. Ghép: tool/.venv-ml/Scripts/python tool/mocap/compose.py",
+ "_doc": "Đòn boss nào lấy lớp thân từ đòn mocap nào (rules/dohoa.md mục 16). clip/eff/at = clip nguồn, chi ra đòn, thời điểm chạm (~giây) — khoá bền khi dựng lại thư viện (tool/mocap/segment.py). events = mốc sân khấu, PHẢI trùng biên đạo tool/blender/choreo/<boss>.json để lớp tay vũ khí (biên đạo) chạm cùng lúc với thân (mocap). in/out = khoảng tiến độ mô hình tự điền đoạn nối dáng chờ ↔ đòn. mirror = lật trái/phải. Ghép: tool/.venv-ml/Scripts/python tool/mocap/compose.py turn = xoay thân mocap quanh trục đứng (độ, âm = quay thêm về phía đối thủ — thế tấn karate mở ngực ra máy quay). lean = hệ số cộng kênh lean (gập/ngả) của biên đạo lên thân mocap.",
  "shuten_doji": {
   "attack": {
    "_why": "Nện đỉnh kèm dậm chân: thân oi-zuki (bước dồn chân phải + đấm tay phải, hông đẩy tới) — sức nặng đổ theo bước",
@@ -16,9 +16,11 @@
     0.28
    ],
    "out": [
-    0.72,
+    0.7,
     0.97
-   ]
+   ],
+   "turn": -25,
+   "lean": 0.7
   },
   "attack2": {
    "_why": "Quét chân ngựa: thân gyaku-zuki Kyokushin (đứng tấn, vặn hông bật vai phải ra trước) — lực quét đến từ hông",
@@ -37,7 +39,32 @@
    "out": [
     0.72,
     0.97
-   ]
+   ],
+   "turn": -20,
+   "lean": 0.5
+  }
+ },
+ "tengu_sutoku": {
+  "attack": {
+   "_why": "Phong kesa: thân oi-zuki bước dồn (nhanh, nhẹ hơn oni) — quạt chém ngang tầm vai theo biên đạo, xoay theo ngực",
+   "clip": "135_09",
+   "eff": "wrist_r",
+   "at": 5.83,
+   "events": {
+    "impact": 0.6,
+    "hold_from": 0.36,
+    "hold_to": 0.48
+   },
+   "in": [
+    0.04,
+    0.26
+   ],
+   "out": [
+    0.68,
+    0.97
+   ],
+   "turn": -15,
+   "lean": 0.6
   }
  }
 }

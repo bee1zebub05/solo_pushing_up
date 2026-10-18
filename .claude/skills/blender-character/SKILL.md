@@ -129,3 +129,11 @@ Không gửi ảnh duyệt nào khi chưa qua bước này.
 - Bài học mới (bẫy Blender, luật dựng) → bổ sung dohoa.md mục 11/12, và nếu
   máy kiểm được thì thêm vào `review_kit` thay vì chỉ ghi chữ.
 - Commit riêng từng hạng mục.
+
+## Đòn đánh từ mocap (19/10/2026)
+
+Dáng ra đòn của boss hình người: dùng skill `martial-motion` (thân từ mocap võ
+học thật + tay vũ khí theo biên đạo, `tool/blender/mocap_drive.py`). Góc sân
+khấu: quay gần nghiêng về Hercules (oni −72°, tengu −55°), mắt nhìn đối thủ
+(`aim_pupils(look=…)`), KHÔNG nhìn máy quay. Model Tripo thiếu xương ngón →
+`tripo_kit.add_fingers`. Render khi đang huấn luyện torch: `BLENDER_CPU=1`.

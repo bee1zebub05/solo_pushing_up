@@ -565,3 +565,86 @@ Bài học:
   lớn hơn người thường mới thấy (ngả 16–28°, hạ 0,2–0,25 × S).
 - `exec` của ONI_DEBUG: import trong hàm (đã ghi mục 11) — dính lại lần nữa.
 
+
+## 15. Cơ chế đòn có báo trước + vòng critic biên đạo (18/10/2026 tối)
+
+- Cơ chế (`lib/game/mechanics/telegraphed_boss.dart`, brief
+  `rules/thietke/boss-nhat-shuten-sutoku.md`): mỗi đòn boss có pha báo
+  (viền đỏ + icon cách né: ⏸ hoặc rep sâu), Shuten uống rượu, Sutoku viết ấn
+  nguyền; 11 test mô phỏng. Sân khấu đọc pha từ cơ chế (`phaseFromTell`,
+  `tellAlt`), âm `boss_*_tell/tell2/hit.wav`.
+- Biên đạo lặp critic "mắt lạ" (agent mới mỗi vòng, không nói ai làm): vòng
+  1→3 điểm 3–7/10, chưa đạt 8. Tấm tư thế khoá: `tool/blender/keysheet.py`.
+- Vòng 4 bị thay bằng hướng mới (mục 16): thân lấy từ mocap võ thật, góc quay
+  gần nghiêng — khung cũ không còn dùng.
+
+## 16. Đòn boss từ mocap võ học thật — kiểu Shadow Fight (19/10/2026 đêm)
+
+Yêu cầu: boss đánh như game đối kháng (Shadow Fight, Street Fighter) — nhìn
+và quay về phía Hercules, khớp tự nhiên tới khuỷu, cổ tay, cổ chân, ngón chân,
+ngón tay; được dùng web + máy (RTX 3050 4 GB) để học dữ liệu võ.
+
+**Góc sân khấu.** Boss hình người quay gần nghiêng về đối thủ: oni `FACING =
+−72`, tengu `−55` (−70 thì cánh gần che hết cánh xa). Mắt nhìn đối thủ
+(`aim_pupils(look=…)`, pha 20% về máy quay cho mắt đọc được), KHÔNG nhìn máy
+quay. Boss mới (Susanoo, Tamamo, Orochi) theo luôn.
+
+**Dữ liệu (giấy phép là điều kiện đầu tiên).**
+- CMU Graphics Lab Mocap — dùng được cả thương mại, chỉ cấm bán lại dữ liệu.
+  42 clip chọn tay (`tool/mocap/manifest.json`): karate subject 135 (kata
+  Bassai/Empi/Heian, mae/mawashi/yoko-geri, oi-zuki, shuto-uke, gedan-barai),
+  đấm/đỡ/đá 144, quyền anh, kiếm (nghiệp dư — yếu), đá nhảy.
+- **Kyokushin karate, 37 võ sinh, CC0** (figshare 10.6084/m9.figshare.c.4981073,
+  Szczęsna et al. 2021): 1 411 file C3D, 3 229 đòn gyaku-zuki / mae-geri /
+  mawashi-geri gedan–jodan / ushiro-mawashi-geri, 200 Hz, tâm khớp Plug-in
+  Gait. Tốc độ đỉnh 8–14 m/s — sức võ sinh thật, hơn hẳn CMU. File thiếu tâm
+  khớp thì tự suy từ marker (hông: Bell 1990).
+- Loại: Bandai Namco Research (CC BY-NC-ND — cấm thương mại + phái sinh), AMASS
+  (phi thương mại), UMONS-TAICHI (NC-SA), Mixamo (cần tài khoản, không tự tải).
+
+**Đường ống** (`tool/mocap/`, chạy ngoài Blender; dữ liệu thô ở
+`art_src/mocap/_cache/`, không commit):
+1. `fetch.py` / `karate_prep.py` tải + chuyển → khung xương chuẩn 24 điểm
+   (`skeleton.py`: mét, Z lên, +X = về phía đối thủ; có gốc ngón tay + ngón
+   cái để xoay cổ tay).
+2. `segment.py` tự cắt đòn: đỉnh tốc độ chi → chạm = duỗi xa nhất → lấy đà /
+   thu; đá phải nhấc mắt cá ≥ 0,45 m (loại bước chân); mỗi đòn xoay cho chi
+   bay về +X. Thư viện ~4 200 đòn.
+3. `model.py` — **mô hình học chuyển động**: 1D-UNet 12,6 M tham số, cửa sổ 64
+   khung @30 fps, khử nhiễu có che khung, học PHẦN DƯ trên nền nội suy tuyến
+   tính; mất mát có độ dài xương, chống trượt chân, vận tốc/gia tốc. 215 phút
+   dữ liệu. Dùng để điền đoạn nối dáng chờ boss ↔ đòn mocap, khử nhiễu video,
+   chấm độ "lạ". Chạy trong `tool/.venv-ml` (torch cu128).
+4. `compose.py` + `art_src/mocap/moves.json`: mỗi đòn boss = (clip, chi, thời
+   điểm chạm) + mốc sân khấu (TRÙNG biên đạo). Dáng chờ boss (Blender
+   `--mocap-ready`) chuyển sang xương người diễn, `style.py` nắn nhịp mocap vào
+   nhịp sân khấu (nạp → giữ báo → chạm → dừng lực → thu), mô hình điền hai đoạn
+   nối → `art_src/mocap/moves/<boss>_<move>.npz` (commit; Blender chỉ đọc numpy).
+5. `tool/blender/mocap_drive.py`: retarget TUYỆT ĐỐI (không phụ thuộc trục
+   xương) — khung xoay hông/ngực/đầu dựng từ điểm, chia dần spine_01→03; tay
+   chân IK với pole đúng phía khuỷu/gối; chân tính từ khung chậu (đất ↔ đất),
+   với không tới thì HẠ HÔNG chứ không nhấc chân; khoá chân khi chạm đất; nhón
+   gót thì gập ngón chân bám đất; mắt khoá về đối thủ; ngón tay `fingers()`.
+6. Hai lớp: **thân từ mocap** (hông, cột sống, chân, đầu, tay không cầm vũ
+   khí) + **tay vũ khí theo biên đạo** (chuỳ, quạt — giữ quỹ đạo đã duyệt),
+   tay vũ khí xoay theo phần ngực mocap vặn khác biên đạo
+   (`yaw_mocap − twist`). `ONI_MOCAP=0` / `TENGU_MOCAP=0` = biên đạo cũ.
+7. Tengu (Tripo) không có xương ngón → `tripo_kit.add_fingers`: tách ngón theo
+   lưới (cắt dần theo độ sâu dọc bàn tay, mức đầu ra 4 cụm = 4 ngón, cụm tách
+   sớm không chứa ngón = ngón cái), 3 đốt 45/30/25 %, trục Z về lòng bàn tay
+   (+X = gập), trọng số chuyển mềm từ bàn tay.
+
+Bài học:
+- **Cycles GPU và torch không được chạy cùng lúc trên GPU 4 GB** — cả hai lỗi
+  truy cập bộ nhớ CUDA (trông như lỗi cuDNN). Huấn luyện thì render
+  `BLENDER_CPU=1` hoặc đợi.
+- Trục đứng phải neo đất ↔ đất; neo theo hông dáng chờ thì khi hạ tấn cả
+  người bị đẩy lên, chân hẫng.
+- Hông rig khác hông người diễn → đích chân tính từ khung chậu, không từ khớp
+  hông rig.
+- Kho kiếm CMU là người nghiệp dư — không đủ uy cho đòn nện; võ tay không
+  chuyên nghiệp (karate) + lớp vũ khí biên đạo cho kết quả tốt hơn.
+- Đá nhảy CMU bay quá cao, không kịp tiếp đất trong 1,2 s đòn → Thiên cẩu phi
+  giữ biên đạo cũ.
+- Mã đòn trong thư viện đổi khi dựng lại → `moves.json` tham chiếu bằng (clip,
+  chi, thời điểm chạm).

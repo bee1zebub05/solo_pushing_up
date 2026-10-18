@@ -75,7 +75,9 @@ def reset_scene(samples=64, world_hex="#5A6A8C", world_strength=0.45, glass_alph
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     prefs = bpy.context.preferences.addons["cycles"].preferences
-    for kind in ("OPTIX", "CUDA"):
+    # BLENDER_CPU=1: nhường GPU (4 GB) cho việc khác — Cycles GPU chạy cùng lúc
+    # huấn luyện torch (tool/mocap/model.py) thì cả hai lỗi truy cập bộ nhớ CUDA.
+    for kind in (() if os.environ.get("BLENDER_CPU") == "1" else ("OPTIX", "CUDA")):
         try:
             prefs.compute_device_type = kind
         except TypeError:

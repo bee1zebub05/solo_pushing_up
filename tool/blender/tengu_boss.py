@@ -311,6 +311,14 @@ class TenguMotion:
         rot(rig, "spine_03", X, lean * 0.4)
         rot(rig, "head", X, v["head"] - 0.45 * lean)
         rot(rig, "head", Z, -0.5 * tw)  # mắt giữ nhìn đích khi thân vặn
+        self._wings(v)
+        self._legs(v)
+        self._arms(v)
+
+    def _wings(self, v):
+        rig = self.rig
+        F, U, L = self.FWD, self.UP, self.LEFT
+        R = -L
         # Cánh: dựng (+) / đập xuống (−), quạt ra trước, đốt ngoài cụp.
         for sd, k in (("l", 1), ("r", -1)):
             rot(rig, f"wing_01_{sd}", Y, -v["wing"] * k)
@@ -318,47 +326,59 @@ class TenguMotion:
             rot(rig, f"wing_02_{sd}", Y, v["wingFold"] * k)
             rot(rig, f"wing_03_{sd}", Y, v["wingFold"] * 1.2 * k)
         bpy.context.view_layer.update()
+
+    def _legs(self, v):
+        rig = self.rig
+        F, U, L = self.FWD, self.UP, self.LEFT
+        R = -L
         # Chân: bàn chân bám đất (chân phải bước tới), co lên khi bay.
         # Bay: bàn chân lên theo hông (lift) và co thêm lên ngực (tuck × 0,55): gối gập.
         air = U * (max(0.0, v["lift"]) + 0.55 * v["tuck"])
         for s_ in "lr":
             step = F * v["step"] if s_ == "r" else Vector()
             self._set(f"leg_{s_}", self.foot[s_] + step + air, self.knee[s_] + step + air + F * 1.2)
+
+    def _arms(self, v, yaw=0.0, left_arm=True):
+        """Tay phải cầm quạt (biên đạo; [yaw] = bù độ vặn ngực khi thân do mocap lái), tay trái (nếu [left_arm])."""
+        rig = self.rig
+        F, U, L = self.FWD, self.UP, self.LEFT
+        R = -L
         # Tay phải cầm quạt: vị trí quanh vai theo góc, cả tay xoay `sweep` quanh trục đứng.
-        q = Quaternion(U, math.radians(v["sweep"]))
+        q = Quaternion(U, math.radians(v["sweep"] + yaw))
         f2, r2 = q @ F, q @ R
         sh = rig.pose.bones["upperarm_r"].head
         a = math.radians(v["hand"])
         grip = sh + (f2 * math.cos(a) + U * math.sin(a)) * v["reach"] + r2 * v["side"]
         self._set("arm_r", grip, sh + f2 * v["poleF"] + r2 * 0.35 + U * v["poleU"])
-        # Tay trái: buông (0) → giơ ra trước đỡ (1) / kéo về sát sườn (−).
-        shl = rig.pose.bones["upperarm_l"].head
-        g = v["guard"]
-        hang = shl + U * -0.5 + F * 0.1 + L * 0.06
-        # Đỡ kiểu tessen: bàn tay dựng trước mặt (ngang mắt), không ngang bụng.
-        aim = shl + F * 0.45 + U * 0.22 + R * 0.08 if g >= 0 else shl + U * -0.38 - F * 0.12 + L * 0.1
-        target = hang.lerp(aim, abs(g))
-        # Cắn ngón tay (`mouth`) rồi vạch ấn máu trong không trung (`stroke` 0–1: hai vòng nét).
-        if v.get("mouth", 0.0) > 0:
-            mouth = rig.pose.bones["head"].head + F * 0.13 + U * 0.03
-            target = target.lerp(mouth, v["mouth"])
-        if v.get("sigil", 0.0) > 0:
-            # Vạch ấn trước mặt hướng về người chơi, cao ngang đầu: nét ngang → nét
-            # chéo xuống → chấm → ấn lòng bàn tay ra trước (stroke 0–1).
-            st = v.get("stroke", 0.0)
-            # Xa phía trước–trên đầu (về phía người chơi) để tay không che mặt ở góc ¾.
-            # Nét vung cả cánh tay quanh trên đầu (tengu quay gần chính diện máy quay,
-            # 'trước' = về phía máy quay): ngang rộng → chéo dài xuống → chấm.
-            o = shl + F * 0.3 + U * 0.58
-            if st < 0.33:
-                pos = o + L * (0.45 - 0.9 * st / 0.33)
-            elif st < 0.66:
-                u = (st - 0.33) / 0.33
-                pos = o + L * (0.4 - 0.7 * u) - U * 0.55 * u
-            else:
-                pos = o - U * 0.15 + F * 0.08 * math.sin((st - 0.66) / 0.34 * math.pi)
-            target = target.lerp(pos, v["sigil"])
-        self._set("arm_l", target, shl + L * 0.4 + U * -0.2 - F * 0.2)
+        if left_arm:
+            # Tay trái: buông (0) → giơ ra trước đỡ (1) / kéo về sát sườn (−).
+            shl = rig.pose.bones["upperarm_l"].head
+            g = v["guard"]
+            hang = shl + U * -0.5 + F * 0.1 + L * 0.06
+            # Đỡ kiểu tessen: bàn tay dựng trước mặt (ngang mắt), không ngang bụng.
+            aim = shl + F * 0.45 + U * 0.22 + R * 0.08 if g >= 0 else shl + U * -0.38 - F * 0.12 + L * 0.1
+            target = hang.lerp(aim, abs(g))
+            # Cắn ngón tay (`mouth`) rồi vạch ấn máu trong không trung (`stroke` 0–1: hai vòng nét).
+            if v.get("mouth", 0.0) > 0:
+                mouth = rig.pose.bones["head"].head + F * 0.13 + U * 0.03
+                target = target.lerp(mouth, v["mouth"])
+            if v.get("sigil", 0.0) > 0:
+                # Vạch ấn trước mặt hướng về người chơi, cao ngang đầu: nét ngang → nét
+                # chéo xuống → chấm → ấn lòng bàn tay ra trước (stroke 0–1).
+                st = v.get("stroke", 0.0)
+                # Xa phía trước–trên đầu (về phía người chơi) để tay không che mặt ở góc ¾.
+                # Nét vung cả cánh tay quanh trên đầu (tengu quay gần chính diện máy quay,
+                # 'trước' = về phía máy quay): ngang rộng → chéo dài xuống → chấm.
+                o = shl + F * 0.3 + U * 0.58
+                if st < 0.33:
+                    pos = o + L * (0.45 - 0.9 * st / 0.33)
+                elif st < 0.66:
+                    u = (st - 0.33) / 0.33
+                    pos = o + L * (0.4 - 0.7 * u) - U * 0.55 * u
+                else:
+                    pos = o - U * 0.15 + F * 0.08 * math.sin((st - 0.66) / 0.34 * math.pi)
+                target = target.lerp(pos, v["sigil"])
+            self._set("arm_l", target, shl + L * 0.4 + U * -0.2 - F * 0.2)
         bpy.context.view_layer.update()
         # Bàn tay phải: cán quạt chĩa đúng `fan`, mặt quạt quay về máy quay
         # (giữ ngón nối cẳng tay thì quạt hay quay cạnh, thành cái que).
@@ -377,8 +397,73 @@ class TenguMotion:
             dst = Matrix((H1, N1, H1.cross(N1))).transposed()
             hb.matrix = Matrix.Translation(hb.head) @ (dst @ src.inverted()).to_4x4()
         bpy.context.view_layer.update()
+        # Ngón nắm cán quạt (xương ngón tự dựng — tripo_kit.add_fingers).
+        import mocap_drive as md
+        md.fingers(rig, "r", 0.72, thumb=0.6)
+        if left_arm:
+            md.fingers(rig, "l", 0.25 + 0.4 * max(0.0, v.get("guard", 0.0)))
+
+    # ------------------------------------------------ đòn mocap (rules/dohoa.md mục 16)
+    def basis(self):
+        m3 = self.rig.matrix_world.to_3x3().normalized()
+        return m3 @ self.FWD, m3 @ self.LEFT, Vector((0, 0, 1))
+
+    def anchor(self):
+        """Dáng chờ biên đạo (góc sân khấu) → (gốc đất dưới hông, độ cao hông)."""
+        import mocap_drive as md
+        self.facing = True
+        self.apply(dict(self.choreo.ready))
+        if getattr(self, "minfo", None) is None:
+            self.minfo = md.RigInfo(self.rig)
+        pel = self.rig.matrix_world @ self.rig.pose.bones["pelvis"].head
+        return Vector((pel.x, pel.y, self.minfo.ground)), pel.z
+
+    def mocap_ik(self):
+        return {k: self.ik[k][:2] for k in ("arm_l", "arm_r", "leg_l", "leg_r")}
+
+    def mocap(self, move):
+        """Đòn ghép từ mocap (art_src/mocap/moves/tengu_sutoku_<move>.npz) hoặc None."""
+        cache = self.__dict__.setdefault("_mtracks", {})
+        if move in cache:
+            return cache[move]
+        import mocap_drive as md
+        tr = None
+        if move and os.environ.get("TENGU_MOCAP", "1") != "0" and os.path.exists(
+                os.path.join(md.MOVES, f"tengu_sutoku_{move}.npz")):
+            origin, pz = self.anchor()
+            self.mready = md.capture(self.minfo, self.mocap_ik())
+            tr = md.Track(self.minfo, "tengu_sutoku", move, self.basis(), origin, pelvis_z=pz)
+            self.mlean = float(tr.meta.get("lean", 0.0))
+        cache[move] = tr
+        return tr
+
+    def apply_mocap(self, v, T):
+        """Thân + chân + tay trái từ mocap; cánh + tay quạt theo biên đạo (tay quạt
+        xoay theo phần ngực mocap vặn khác biên đạo); ngón nắm cán quạt."""
+        import mocap_drive as md
+        rig = self.rig
+        rest(rig)
+        face_game(rig, True)  # xoay thêm (turn) do thân mocap lo — giữ khung rig như lúc đo RigInfo
+        fwd, left, up = self.basis()
+        iko = self.mocap_ik()
+        iko.pop("arm_r")
+
+        def palm(s, d, n):
+            if s == "l":
+                md.set_hand(self.minfo, "l", d, n)
+
+        md.apply(self.minfo, T, iko, palm=palm, look=fwd)
+        md.lean_add(self.minfo, v["lean"] * self.mlean, left)
+        self._wings(v)
+        # Tay quạt theo biên đạo trong khung rig (không bù độ vặn thân mocap).
+        self._arms(v, left_arm=False)
+        md.fingers(rig, "l", 0.55)
 
     def pose(self, t=0.0, move=None, phase=0.0):
+        tr = self.mocap(move) if move else None
+        if tr is not None:
+            self.apply_mocap(self.choreo[move](phase), tr(phase))
+            return
         if move is None:  # thở: cánh khẽ nâng hạ, quạt phe phẩy, đầu nghiêng
             w = 2 * math.pi * t
             v = dict(self.choreo.ready)
@@ -405,7 +490,7 @@ def game_camera(scene, ppm):
     """Góc sân khấu: rig xoay ¾ nhìn sang trái màn hình, máy quay hơi chúc
     như các quái khác; khung đủ cho cánh dựng cao, quạt chém ra trước và cú
     nhảy Thiên cẩu phi (đỉnh nhảy ~0,8 m)."""
-    return camera(scene, -0.15, 1.65, 3.4, 3.7, ppm, yaw=-8, pitch=6)
+    return camera(scene, -0.35, 1.65, 4.0, 3.7, ppm, yaw=-8, pitch=6)  # lunge mocap vươn xa hơn
 
 
 def main():
@@ -420,6 +505,12 @@ def main():
     if "--dry" in sys.argv:  # dựng cảnh không render; TENGU_DEBUG = script soát chạy thêm
         if os.environ.get("TENGU_DEBUG"):
             exec(open(os.environ["TENGU_DEBUG"], encoding="utf-8").read())
+        return
+    if "--mocap-ready" in sys.argv:  # dáng chờ → art_src/mocap/ready (compose.py)
+        import mocap_drive as md
+        motion = TenguMotion(rig)
+        origin, _ = motion.anchor()
+        md.dump_ready(motion.minfo, motion.basis(), origin, "tengu_sutoku")
         return
     if "--review" in sys.argv:  # bộ soát cố định + kiểm tra tự động (review_kit), không lưu .blend
         from review_kit import review
@@ -500,6 +591,8 @@ def main():
         "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
         "attack2": [lambda k=k: motion.pose(move="attack2", phase=k / 19) for k in range(20)],
         "defeat": [lambda k=k: motion.pose(move="defeat", phase=k / 5) for k in range(6)],
+        # Cử chỉ cơ chế: viết ấn nguyền (japan_sprite_boss.scriptedMove).
+        "write": [lambda k=k: motion.pose(move="write", phase=k / 9) for k in range(10)],
     }
     export_sprites(scene, cam, "tengu_sutoku", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.2})
 

@@ -1442,6 +1442,7 @@ class OniMotion:
             origin, pz = self.anchor()
             self.mready = md.capture(self.minfo, self.mocap_ik())
             tr = md.Track(self.minfo, "shuten_doji", move, self.poser.frame(), origin, pelvis_z=pz)
+            self.mlean = float(tr.meta.get("lean", 0.0))
         self._mtracks[move] = tr
         return tr
 
@@ -1463,12 +1464,12 @@ class OniMotion:
                 poser.palm("l", d, (n * 0.35 + up * 0.65).normalized())
 
         md.apply(self.minfo, T, iko, palm=palm, look=fwd)
-        # Biên đạo đã tính độ vặn thân (twist, cộng dồn hông → ngực) vào vị trí tay
-        # chuỳ; chỉ bù phần ngực mocap vặn khác biên đạo.
-        yaw = md.yaw_of(T["rot"]["spine_03"]) - md.yaw_of(self.mready["rot"]["spine_03"]) - v["twist"]
-        yaw = (yaw + 180) % 360 - 180
+        # Gập/ngả thân theo biên đạo cộng lên mocap (đòn nện gập người, lấy đà ngả sau).
+        md.lean_add(self.minfo, v["lean"] * self.mlean, left)
+        # Vị trí tay chuỳ trong biên đạo tính theo khung CỐ ĐỊNH (không theo độ vặn
+        # thân) — giữ nguyên, chỉ gốc vai đi theo thân mocap.
         club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
-                 sign=poser.club_sign, sweep=v["sweep"] + yaw, cant=v.get("cant", 0.32))
+                 sign=poser.club_sign, sweep=v["sweep"], cant=v.get("cant", 0.32))
         md.fingers(self.rig, "l", 0.45)
         self.redress()
         bpy.context.view_layer.update()
@@ -1562,7 +1563,8 @@ class OniMotion:
 
 def game_camera(scene, ppm):
     """Góc sân khấu như ảnh duyệt; khung rộng đủ chuỳ giơ cao sau đầu và nện ra trước."""
-    return camera(scene, -0.3 * S, 1.55 * S, 3.9 * S, 3.4 * S, ppm, yaw=-8, pitch=6)
+    # Quay nghiêng −72° + lunge mocap: chuỳ nện vươn xa về bên trái, giơ cao hơn đầu.
+    return camera(scene, -0.85 * S, 1.75 * S, 5.2 * S, 3.9 * S, ppm, yaw=-8, pitch=6)
 
 
 def main():
@@ -1636,6 +1638,9 @@ def main():
             "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
             "attack2": [lambda k=k: motion.pose(move="attack2", phase=k / 19) for k in range(20)],
             "defeat": [lambda k=k: motion.pose(move="defeat", phase=k / 5) for k in range(6)],
+            # Cử chỉ cơ chế (japan_sprite_boss.scriptedMove): uống rượu, sặc.
+            "drink": [lambda k=k: motion.pose(move="drink", phase=k / 9) for k in range(10)],
+            "stagger": [lambda k=k: motion.pose(move="stagger", phase=k / 9) for k in range(10)],
         }
         export_sprites(scene, cam, "shuten_doji", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.4})
         return

@@ -23,6 +23,9 @@ Ba lỗi gốc — tránh cả ba:
    (§hoạt hình: 12 nguyên lý Disney).
 3. **Tự nghĩ, không tra nguồn** → ra đòn generic. Như mục 14 đã tra kiếm đạo /
    kanabō / tessen: mỗi đòn phải truy được về một nguồn hoặc nguyên lý thật.
+   Tốt nhất: lấy cơ học thân từ **mocap võ thật** (skill `martial-motion`,
+   `dohoa.md` mục 16) — boss quay về Hercules, thân/chân/ngón từ võ sinh,
+   tay vũ khí theo biên đạo.
 
 ## 1. Brief trước khi code (xin người dùng chốt)
 
