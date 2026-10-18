@@ -69,15 +69,15 @@
       "lean": -12,
       "twist": -26,
       "turn": -6,
-      "hand": 45,
+      "hand": 40,
       "reach": 0.48,
       "side": 0.1,
-      "sweep": -60,
-      "fan": 50,
-      "poleF": -0.3,
+      "sweep": -120,
+      "fan": 100,
+      "poleF": 0.4,
       "poleU": 0.6,
       "guard": 1,
-      "wing": 40,
+      "wing": 25,
       "wingFwd": 15,
       "wingFold": -10,
       "head": -2
@@ -90,16 +90,24 @@
       "drop": 0.14,
       "twist": -30,
       "turn": -8,
-      "hand": 48,
-      "sweep": -62,
-      "fan": 52,
-      "wing": 42,
+      "hand": 42,
+      "sweep": -125,
+      "fan": 102,
+      "wing": 26,
       "wingFwd": 16,
       "wingFold": -10,
       "guard": 1,
       "poleU": 0.62,
-      "poleF": -0.3,
+      "poleF": 0.4,
       "lean": -14
+     }
+    },
+    {
+     "t": 0.52,
+     "v": {
+      "sweep": -60,
+      "hand": 50,
+      "fan": 70
      }
     },
     {
@@ -111,13 +119,22 @@
       "twist": 0,
       "turn": 10,
       "step": 0.35,
-      "hand": 10,
+      "hand": 20,
       "reach": 0.7,
-      "sweep": 0,
+      "sweep": -10,
       "fan": 2,
       "guard": 0.3,
       "wing": 20,
       "wingFwd": 35
+     }
+    },
+    {
+     "t": 0.58,
+     "v": {
+      "hand": -10,
+      "sweep": 0,
+      "reach": 0.8,
+      "fan": 0
      }
     },
     {

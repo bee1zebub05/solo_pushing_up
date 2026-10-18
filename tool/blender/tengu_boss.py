@@ -559,7 +559,7 @@ def main():
         game_camera(scene, 160)
         motion = TenguMotion(rig)
         motion.facing = True
-        keys = [("attack", t) for t in (0.14, 0.36, 0.48, 0.55, 0.6, 0.72, 0.86)]
+        keys = [("attack", t) for t in (0.14, 0.36, 0.48, 0.52, 0.55, 0.58, 0.6, 0.72, 0.86)]
         keys += [("attack2", t) for t in (0.25, 0.42, 0.5, 0.56, 0.585, 0.61, 0.74, 0.88)]
         keys += [("write", t) for t in (0.15, 0.42, 0.55, 0.7, 0.92)]
         keys += [("defeat", 0.4), ("defeat", 1.0)]

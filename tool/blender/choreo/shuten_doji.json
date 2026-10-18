@@ -56,11 +56,11 @@
       "shift": -0.16,
       "drop": -0.02,
       "lean": -30,
-      "twist": -28,
+      "twist": -30,
       "hand": 132,
       "reach": 0.56,
       "side": 0.3,
-      "club": 96,
+      "club": 118,
       "aim": 1.0,
       "head": -8,
       "poleF": -0.3,
@@ -72,9 +72,9 @@
      "v": {
       "shift": -0.2,
       "lean": -34,
-      "twist": -30,
+      "twist": -34,
       "hand": 134,
-      "club": 102,
+      "club": 126,
       "aim": 1.0,
       "head": -9,
       "poleU": 0.8,
@@ -85,12 +85,12 @@
      "t": 0.53,
      "v": {
       "shift": 0.02,
-      "lean": -6,
-      "twist": -8,
+      "lean": -36,
+      "twist": -36,
       "step": 0.3,
       "lift": 0.16,
-      "hand": 112,
-      "club": 78,
+      "hand": 128,
+      "club": 132,
       "aim": 0.6
      }
     },
@@ -100,12 +100,12 @@
       "shift": 0.2,
       "drop": 0.1,
       "lean": 14,
-      "twist": 0,
+      "twist": -10,
       "step": 0.75,
       "lift": 0.08,
-      "hand": 40,
+      "hand": 70,
       "reach": 0.52,
-      "club": 20,
+      "club": 60,
       "aim": 0.1,
       "head": 2,
       "poleF": 0.1,
@@ -113,11 +113,20 @@
      }
     },
     {
+     "t": 0.6,
+     "v": {
+      "club": 0,
+      "hand": 10,
+      "twist": 0,
+      "lean": 20
+     }
+    },
+    {
      "t": 0.62,
      "v": {
       "shift": 0.34,
       "drop": 0.36,
-      "lean": 42,
+      "lean": 36,
       "twist": 0,
       "step": 0.78,
       "lift": 0.0,
@@ -162,7 +171,7 @@
       "twist": 0,
       "hand": -30,
       "reach": 0.48,
-      "club": -100,
+      "club": -115,
       "aim": -0.2
      }
     },
@@ -174,7 +183,7 @@
       "lean": 22,
       "hand": -30,
       "reach": 0.3,
-      "club": -130,
+      "club": -140,
       "cant": 0.0
      }
     },
@@ -262,7 +271,7 @@
      "v": {
       "shift": -0.12,
       "drop": 0.4,
-      "lean": 28,
+      "lean": 5,
       "twist": -60,
       "hand": -40,
       "reach": 0.52,
@@ -270,7 +279,7 @@
       "club": -10,
       "sweep": -165,
       "cant": 0.05,
-      "aim": 0.9,
+      "aim": 0.5,
       "head": 6,
       "poleF": -0.2,
       "poleU": -0.4
@@ -281,19 +290,19 @@
      "v": {
       "shift": -0.13,
       "drop": 0.42,
-      "lean": 30,
+      "lean": 6,
       "twist": -62,
       "club": -8,
       "sweep": -170,
-      "aim": 1.0
+      "aim": 0.5
      }
     },
     {
      "t": 0.52,
      "v": {
-      "sweep": -110,
+      "sweep": -95,
       "hand": -65,
-      "club": -5,
+      "club": -20,
       "twist": -10,
       "drop": 0.44
      }
@@ -305,14 +314,14 @@
       "hand": -68,
       "club": -10,
       "twist": 0,
-      "drop": 0.45
+      "drop": 0.5
      }
     },
     {
      "t": 0.555,
      "v": {
       "shift": 0.12,
-      "drop": 0.45,
+      "drop": 0.52,
       "lean": 18,
       "twist": -20,
       "step": 0.65,
@@ -329,7 +338,7 @@
      "t": 0.61,
      "v": {
       "shift": 0.24,
-      "drop": 0.46,
+      "drop": 0.52,
       "lean": 32,
       "twist": 25,
       "step": 0.7,
@@ -346,7 +355,7 @@
      "t": 0.7,
      "v": {
       "shift": 0.26,
-      "drop": 0.35,
+      "drop": 0.45,
       "lean": 20,
       "twist": 40,
       "hand": -60,
@@ -382,6 +391,15 @@
       "club": -20,
       "sweep": 200,
       "aim": 0
+     }
+    },
+    {
+     "t": 0.89,
+     "v": {
+      "sweep": 290,
+      "club": 60,
+      "hand": 0,
+      "reach": 0.3
      }
     },
     {

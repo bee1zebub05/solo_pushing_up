@@ -23,7 +23,7 @@
    "lean": 1.0,
    "twist": 0.3,
    "yaw_keep": 0.3,
-   "shift": 0.6
+   "shift": 0.8
   },
   "attack2": {
    "_why": "Quét chân ngựa: thân gyaku-zuki Kyokushin (đứng tấn, vặn hông bật vai phải ra trước) — lực quét đến từ hông",
@@ -72,7 +72,7 @@
    "turn": -32,
    "lean": 0.8,
    "twist": 0.3,
-   "yaw_keep": 0.3,
+   "yaw_keep": 0.15,
    "shift": 0.6
   }
  }
