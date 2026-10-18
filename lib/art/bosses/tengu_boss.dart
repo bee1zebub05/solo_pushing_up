@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../battle_stage.dart';
-import '../motion.dart';
 import '../nemea_scene.dart' show stageGroundY, stageSize;
 import '../vector_style.dart';
 import 'japan_sprite_boss.dart';
@@ -253,32 +252,126 @@ class TenguBossArt extends JapanSpriteBoss {
   }
 
   // ------------------------------------------------------------ boss (2.5D)
-  /// Thân tĩnh (chân, hakama, kimono, tay trái, đầu) ghi một lần.
-  Picture? _body;
+  /// Hông dưới (hakama) và thân trên (kimono, đai, đầu) ghi một lần; mỗi
+  /// khung biến đổi theo kênh biên đạo và vẽ động cẳng chân, cánh, hai tay.
+  Picture? _lower, _upper;
 
   @override
   void dispose() {
-    _body?.dispose();
-    _body = null;
+    _lower?.dispose();
+    _upper?.dispose();
+    _lower = _upper = null;
     super.dispose();
   }
 
+  /// Đơn vị sân khấu cho 1 m (tengu_boss.py UNITS_PER_M).
+  static const _k = 78.0;
+  static const _hip = Offset(0, -64);
   static const _shoulder = Offset(-18, -124);
+  static const _nearShoulder = Offset(16, -124);
 
   @override
-  void paintVector(Canvas canvas, BossFrame f, AttackPose p) {
-    final d = f.defeat.clamp(0.0, 1.0);
-    final breath = math.sin(f.time * 2 * math.pi / 3.2);
-    // Cánh: + = dựng lên. Lấy đà dựng xoè, ra đòn đập xuống, gục rũ cụp.
-    final raise = 26 * p.windup - 34 * p.strike - 50 * d + 3 * breath;
-    _wing(canvas, const Offset(-4, -122), -1, raise, 0.86);
-    _wing(canvas, const Offset(10, -124), 1, raise, 1);
-    canvas.drawPicture(_body ??= _record(_paintBody));
-    // Chờ: quạt dựng ở ngang hông phía trước (cao hơn thì che mặt).
-    final handAng = phaseLerp(125, 285, 175, 100, p, d);
-    final handR = phaseLerp(34, 40, 38, 32, p, d);
-    final fanAng = phaseLerp(-80, 10, -160, 60, p, d);
-    _fanArm(canvas, handAng, handR, fanAng);
+  Map<String, double> idleChannels(double time) {
+    final w = 2 * math.pi * time / 3.2;
+    final r = choreo.ready;
+    return {
+      ...r,
+      'drop': 0.01 * (1 - math.cos(w)),
+      'wing': 4 * math.sin(w),
+      'wingFold': -3 * math.sin(w - 0.6),
+      'fan': r['fan']! + 10 * math.sin(2 * w),
+      'hand': r['hand']! + 4 * math.sin(w),
+      'lean': math.sin(w),
+    };
+  }
+
+  Offset _bo(Map<String, double> v) =>
+      Offset(-0.8 * v['shift']! * _k, (v['drop']! - v['lift']!) * _k);
+
+  /// Điểm thân trên theo kênh: dịch hông rồi xoay quanh hông khi ngả.
+  Offset _body(Map<String, double> v, Offset p) {
+    // Trong 3D lưng cong dần qua nhiều đốt; xoay cứng cả thân trên quanh hông
+    // bằng đúng góc ngả thì gãy gập → chỉ ~55%.
+    final a = -v['lean']! * 0.55 * math.pi / 180;
+    final q = p - _hip;
+    return _hip + _bo(v) + Offset(q.dx * math.cos(a) - q.dy * math.sin(a), q.dx * math.sin(a) + q.dy * math.cos(a));
+  }
+
+  /// (vai, tay cầm, hướng cán quạt trên màn hình).
+  (Offset, Offset, Offset) _fan(Map<String, double> v) {
+    final sh = _body(v, _shoulder.translate(-v['twist']! * 0.2, 0));
+    final sweep = v['sweep']!;
+    final hand = sh +
+        planeDir(v['hand']!, sweep) * v['reach']! * _k +
+        const Offset(-0.6, -0.15) * v['side']! * _k * 0.5;
+    var dir = planeDir(v['fan']!, sweep);
+    if (dir.distance < 0.4) dir = dir / dir.distance * 0.4;
+    return (sh, hand, dir);
+  }
+
+  @override
+  void paintVector(Canvas canvas, BossFrame f, Map<String, double> v, String? move) {
+    final bo = _bo(v);
+    // Cánh (sau thân): dựng/đập theo `wing`, quạt tới thì co ngang, đốt ngoài cụp theo `wingFold`.
+    final raise = v['wing']!, fwd = v['wingFwd']!, fold = v['wingFold']!;
+    _wing(canvas, _body(v, const Offset(-4, -122)), -1, raise, 0.86, fwd, fold);
+    _wing(canvas, _body(v, const Offset(10, -124)), 1, raise, 1, fwd, fold);
+    _legs(canvas, v, bo);
+    canvas.save();
+    canvas.translate(bo.dx, bo.dy);
+    canvas.drawPicture(_lower ??= _record(_paintLower));
+    canvas.restore();
+    canvas.save();
+    final c = _hip + bo;
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(-v['lean']! * 0.55 * math.pi / 180);
+    canvas.translate(-_hip.dx, -_hip.dy);
+    canvas.drawPicture(_upper ??= _record(_paintUpper));
+    canvas.restore();
+    _guardArm(canvas, v);
+    final (sh, hand, dir) = _fan(v);
+    _fanArm(canvas, sh, hand, dir);
+  }
+
+  /// Cẳng chân đỏ từ ống hakama xuống bàn chân: chân phải (xa) bước tới,
+  /// cả hai co lên khi bay (`lift` − `tuck` = độ cao bàn chân).
+  void _legs(Canvas canvas, Map<String, double> v, Offset bo) {
+    final air = -math.max(0.0, v['lift']! - v['tuck']!) * _k;
+    for (final (knee, foot) in [
+      (const Offset(-12, -34), Offset(-15 - 0.8 * v['step']! * _k, -3 + air)),
+      (const Offset(13, -34), Offset(15, -3 + air)),
+    ]) {
+      final k = knee + bo;
+      final leg = capsulePath(k, foot, 5.6, 4.2);
+      shadedPath(canvas, leg, TenguColors.skin, PartFrame.world, shadow: 2, highlight: 0.8, outlineWidth: 1.1);
+      final f = Path()
+        ..moveTo(foot.dx + 4, foot.dy - 2)
+        ..quadraticBezierTo(foot.dx - 4, foot.dy - 4, foot.dx - 10, foot.dy + 1)
+        ..lineTo(foot.dx + 5, foot.dy + 3)
+        ..close();
+      shadedPath(canvas, f, TenguColors.skin, PartFrame.world, shadow: 1.5, highlight: 0.6, outlineWidth: 1);
+    }
+  }
+
+  /// Tay trái (gần): ống tay áo rộng; buông (0) → giơ ra trước đỡ kiểu
+  /// tessen, bàn tay dựng (1) → kéo về sát sườn (âm).
+  void _guardArm(Canvas canvas, Map<String, double> v) {
+    final g = v['guard']!;
+    final sh = _body(v, _nearShoulder);
+    var hand = _body(v, const Offset(30, -84));
+    if (g > 0) hand = Offset.lerp(hand, _body(v, const Offset(-22, -116)), g)!;
+    if (g < 0) hand = Offset.lerp(hand, _body(v, const Offset(20, -92)), -g)!;
+    final el = joint2(sh, hand, 18, 18, -1);
+    final sleeve = Path()
+      ..addPath(capsulePath(sh, el, 8, 9), Offset.zero)
+      ..addPath(capsulePath(el, el + const Offset(1, 12), 9, 6), Offset.zero);
+    shadedPath(canvas, sleeve, TenguColors.kimono, PartFrame.world, shadow: 2.6, highlight: 1, outlineWidth: 1.2);
+    _mon(canvas, Offset.lerp(sh, el, 0.6)!, 4);
+    final forearm = capsulePath(el, hand, 3.6, 3.2);
+    shadedPath(canvas, forearm, TenguColors.skin, PartFrame.world, shadow: 1.6, highlight: 0.6, outlineWidth: 1);
+    // Bàn tay xoè dựng đứng khi đỡ.
+    final palm = Path()..addOval(Rect.fromCenter(center: hand.translate(0, -2 * g.clamp(0, 1)), width: 6.5, height: 6.5 + 3 * g.clamp(0, 1)));
+    shadedPath(canvas, palm, TenguColors.skin, PartFrame.world, shadow: 1.4, highlight: 0.5, outlineWidth: 1);
   }
 
   static Picture _record(void Function(Canvas) draw) {
@@ -290,15 +383,16 @@ class TenguBossArt extends JapanSpriteBoss {
   /// Cánh đại bàng dựng theo khung cục bộ (gốc ở vai, cánh vươn ra +x):
   /// xương cánh → lông bay sơ cấp xoè từ cổ tay → lông thứ cấp rủ dọc cánh →
   /// lông phủ xếp vảy. [side] −1 = cánh xa (bên trái màn hình, nhỏ hơn).
-  static void _wing(Canvas canvas, Offset root, double side, double raise, double size) {
+  static void _wing(Canvas canvas, Offset root, double side, double raise, double size, double fwd, double fold) {
     canvas.save();
     canvas.translate(root.dx, root.dy);
-    canvas.scale(side * size, size);
+    // Quạt cánh ra trước = cánh chĩa về máy quay/người chơi: ngắn lại theo phối cảnh.
+    canvas.scale(side * size * (1 - 0.35 * (fwd / 40).clamp(0.0, 1.0)), size);
     canvas.rotate((-28 - raise) * math.pi / 180);
     const frame = PartFrame.world;
     // Lông bay sơ cấp từ cổ tay xoè xuống.
     for (var i = 6; i >= 0; i--) {
-      final a = (8 + i * 13) * math.pi / 180;
+      final a = (8 + i * 13 + fold * (0.6 + i * 0.12)) * math.pi / 180;
       final base = Offset(40 + i * 1.5, -4 + i * 1.2);
       final tip = base + Offset(math.cos(a), math.sin(a)) * (44 - i * 2.6);
       final feather = taperedStroke([base, Offset.lerp(base, tip, 0.5)! + const Offset(0, -2), tip], 8, peak: 0.35, startWidth: 0.7, endWidth: 0.15);
@@ -333,21 +427,7 @@ class TenguBossArt extends JapanSpriteBoss {
     canvas.restore();
   }
 
-  void _paintBody(Canvas canvas) {
-    // Cẳng chân + bàn chân trần đỏ.
-    for (final (top, foot) in const [
-      (Offset(-12, -34), Offset(-15, -3)),
-      (Offset(13, -34), Offset(15, -3)),
-    ]) {
-      final leg = capsulePath(top, foot, 5.6, 4.2);
-      shadedPath(canvas, leg, TenguColors.skin, PartFrame.world, shadow: 2, highlight: 0.8, outlineWidth: 1.1);
-      final f = Path()
-        ..moveTo(foot.dx + 4, foot.dy - 2)
-        ..quadraticBezierTo(foot.dx - 4, foot.dy - 4, foot.dx - 10, foot.dy + 1)
-        ..lineTo(foot.dx + 5, foot.dy + 3)
-        ..close();
-      shadedPath(canvas, f, TenguColors.skin, PartFrame.world, shadow: 1.5, highlight: 0.6, outlineWidth: 1);
-    }
+  void _paintLower(Canvas canvas) {
     // Hakama lam phồng, bó ống ở bắp chân.
     final hakama = Path()
       ..moveTo(-24, -66)
@@ -362,6 +442,9 @@ class TenguBossArt extends JapanSpriteBoss {
     for (final c in const [Offset(-18, -46), Offset(16, -44), Offset(-2, -58)]) {
       _mon(canvas, c, 5);
     }
+  }
+
+  void _paintUpper(Canvas canvas) {
     // Kimono lục: thân, vạt loe, cổ áo chữ V màu nhạt.
     final kimono = Path()
       ..moveTo(-22, -128)
@@ -398,17 +481,6 @@ class TenguBossArt extends JapanSpriteBoss {
       ..addPath(taperedStroke(const [Offset(-8, -86), Offset(-11, -76), Offset(-10, -66)], 3, peak: 0), Offset.zero)
       ..addPath(taperedStroke(const [Offset(-7, -86), Offset(-3, -76), Offset(-4, -68)], 3, peak: 0), Offset.zero);
     shadedPath(canvas, bow, TenguColors.sash, PartFrame.world, shadow: 1.2, highlight: 0.5, outlineWidth: 0.9);
-    // Tay trái (phía gần): ống tay áo rộng rủ, bàn tay đỏ xoè.
-    final sleeve = Path()
-      ..moveTo(14, -128)
-      ..quadraticBezierTo(30, -122, 34, -96)
-      ..lineTo(26, -82)
-      ..quadraticBezierTo(18, -96, 12, -110)
-      ..close();
-    shadedPath(canvas, sleeve, TenguColors.kimono, PartFrame.world, shadow: 3, highlight: 1, outlineWidth: 1.2);
-    _mon(canvas, const Offset(25, -106), 4.4);
-    final hand = chainPath([(const Offset(30, -90), const Offset(32, -78), 3.6, 3)]);
-    shadedPath(canvas, hand, TenguColors.skin, PartFrame.world, shadow: 1.6, highlight: 0.6, outlineWidth: 1);
     _head(canvas);
   }
 
@@ -479,17 +551,16 @@ class TenguBossArt extends JapanSpriteBoss {
 
   /// Tay phải (phía xa) cầm quạt hauchiwa: ống tay áo rộng, cẳng tay đỏ,
   /// quạt lông sẫm đầu vàng.
-  void _fanArm(Canvas canvas, double handAng, double handR, double fanAng) {
-    final hand = polar(_shoulder, handAng, handR);
-    final elbow = joint2(_shoulder, hand, 20, 20, hand.dx < _shoulder.dx ? -1 : 1);
-    final dir = polar(Offset.zero, fanAng, 1);
+  void _fanArm(Canvas canvas, Offset sh, Offset hand, Offset dir) {
+    final elbow = joint2(sh, hand, 20, 20, hand.dx < sh.dx ? -1 : 1);
     final top = hand + dir * 11;
     // Quạt: lông xoè quanh đầu cán, cán sơn đen, nắp vàng.
-    final n = Offset(-dir.dy, dir.dx);
+    final u = dir / dir.distance;
+    final n = Offset(-u.dy, u.dx);
     final fan = Path();
     for (var k = 0; k < 11; k++) {
       final a = -1.35 + 2.7 * k / 10;
-      final d = dir * math.cos(a) + n * math.sin(a);
+      final d = u * math.cos(a) + n * math.sin(a);
       final tip = top + d * 15;
       final side = Offset(-d.dy, d.dx) * 2.6;
       fan
@@ -499,12 +570,12 @@ class TenguBossArt extends JapanSpriteBoss {
         ..lineTo(tip.dx - side.dx, tip.dy - side.dy)
         ..close();
     }
-    shadedPath(canvas, fan, TenguColors.fan, PartFrame(math.atan2(dir.dx, -dir.dy)), shadow: 2, highlight: 1, outlineWidth: 0.9);
+    shadedPath(canvas, fan, TenguColors.fan, PartFrame(math.atan2(u.dx, -u.dy)), shadow: 2, highlight: 1, outlineWidth: 0.9);
     canvas.drawLine(hand - dir * 3, top, Paint()..color = const Color(0xFF0C0A0C)..strokeWidth = 2.2..strokeCap = StrokeCap.round);
     canvas.drawCircle(top, 2.2, fillPaint(TenguColors.gold));
     // Ống tay áo (phần trên) + cẳng tay.
     final sleeve = Path()
-      ..addPath(capsulePath(_shoulder, elbow, 8, 9), Offset.zero)
+      ..addPath(capsulePath(sh, elbow, 8, 9), Offset.zero)
       ..addPath(capsulePath(elbow, elbow + const Offset(2, 12), 8, 6), Offset.zero);
     shadedPath(canvas, sleeve, TenguColors.kimono, PartFrame.world, shadow: 2.6, highlight: 1, outlineWidth: 1.2);
     final forearm = capsulePath(elbow, hand, 3.6, 3.2);
@@ -512,20 +583,50 @@ class TenguBossArt extends JapanSpriteBoss {
     canvas.drawCircle(hand, 3.6, fillPaint(TenguColors.skin));
   }
 
-  // ------------------------------------------------------------ đòn quạt
-  /// Quạt quất: ba vòng gió lưỡi liềm cuốn lá phong bay về phía người chơi.
+  // ------------------------------------------------------------ hiệu ứng đòn
+  /// Vệt quạt theo cung trước lúc chạm. Phong kesa: ba vòng gió lưỡi liềm
+  /// chéo xuống cuốn lá phong về phía người chơi. Thiên cẩu phi: lúc đáp, vòng
+  /// gió dẹt toả trên mặt đất + lông vũ bung, một luồng gió dội thẳng tới.
   @override
-  void paintStrike(Canvas canvas, BossFrame f) {
-    final t = phaseWindow(f.attackPhase, 0.55, 0.42);
-    if (t < 0) return;
-    final from = feet + const Offset(-60, -120);
-    const to = Offset(120, 170);
+  void paintStrike(Canvas canvas, BossFrame f, String move, double t) {
+    if (drawingVector && t > -0.07 && t < 0.03) {
+      final m = choreo.moves[move]!;
+      final arc = <Offset>[];
+      for (var k = 0; k <= 8; k++) {
+        final v = m.at(f.attackPhase - 0.07 + 0.07 * k / 8);
+        final (_, hand, dir) = _fan(v);
+        arc.add(feet + hand + dir * 18);
+      }
+      smearArc(canvas, arc, 9, const Color(0x99DCF0EC));
+    }
+    if (t < 0 || t > 0.4) return;
+    final u = t / 0.4;
+    if (move == 'attack2') {
+      final at = feet.translate(-10, 2);
+      for (final lag in const [0.0, 0.2]) {
+        final w = (u - lag).clamp(0.0, 1.0);
+        canvas.drawOval(
+          Rect.fromCenter(center: at, width: 30 + 230 * w, height: 8 + 26 * w),
+          Paint()
+            ..color = Color.fromRGBO(220, 240, 236, 0.7 * (1 - w))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3 * (1 - w) + 0.6,
+        );
+      }
+      for (var k = 0; k < 10; k++) {
+        final a = math.pi * (1.05 + 0.9 * k / 9);
+        final p = at + Offset(math.cos(a) * 90 * u, math.sin(a) * 50 * u + 30 * u * u);
+        _feather(canvas, p, a + t * 20, 1 - u);
+      }
+    }
+    final from = move == 'attack2' ? feet + const Offset(-50, -40) : feet + const Offset(-60, -110);
+    final to = Offset(120, move == 'attack2' ? 196 : 176);
     for (var k = 0; k < 3; k++) {
-      final u = (t * 1.3 - k * 0.15).clamp(0.0, 1.0);
-      if (u <= 0 || u >= 1) continue;
-      final c = Offset.lerp(from, to, u)! + Offset(0, (k - 1) * 18.0);
-      final r = 10 + 26 * u;
-      final a = (1 - u) * 0.75;
+      final w = (u * 1.3 - k * 0.15).clamp(0.0, 1.0);
+      if (w <= 0 || w >= 1) continue;
+      final c = Offset.lerp(from, to, w)! + Offset(0, (k - 1) * 16.0);
+      final r = 10 + 26 * w;
+      final a = (1 - w) * 0.75;
       canvas.drawArc(
         Rect.fromCircle(center: c, radius: r),
         math.pi * 0.62,
@@ -534,24 +635,25 @@ class TenguBossArt extends JapanSpriteBoss {
         Paint()
           ..color = Color.fromRGBO(220, 240, 236, a)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 3 * (1 - u) + 0.8
+          ..strokeWidth = 3 * (1 - w) + 0.8
           ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: c.translate(4, 0), radius: r * 0.7),
-        math.pi * 0.7,
-        math.pi * 0.6,
-        false,
-        Paint()
-          ..color = Color.fromRGBO(255, 255, 255, a * 0.6)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
       );
     }
     for (var k = 0; k < 7; k++) {
-      final u = (t * 1.2 - k * 0.05).clamp(0.0, 1.0);
-      final p = Offset.lerp(from, to, u)! + Offset(math.sin(k * 2.1 + t * 9) * 14, math.cos(k * 1.7 + t * 7) * 18);
-      _leaf(canvas, p, t * 12 + k, 2.4, Color.fromRGBO(200, 64, 42, 1 - u * 0.7));
+      final w = (u * 1.2 - k * 0.05).clamp(0.0, 1.0);
+      final p = Offset.lerp(from, to, w)! + Offset(math.sin(k * 2.1 + t * 20) * 14, math.cos(k * 1.7 + t * 16) * 18);
+      _leaf(canvas, p, t * 30 + k, 2.4, Color.fromRGBO(200, 64, 42, 1 - w * 0.7));
     }
+  }
+
+  static void _feather(Canvas canvas, Offset p, double a, double alpha) {
+    canvas.save();
+    canvas.translate(p.dx, p.dy);
+    canvas.rotate(a);
+    canvas.drawPath(
+      taperedStroke(const [Offset(-4, 0), Offset(0, -0.6), Offset(4, 0)], 2.2, peak: 0.4),
+      fillPaint(TenguColors.feather.withValues(alpha: alpha.clamp(0.0, 1.0))),
+    );
+    canvas.restore();
   }
 }

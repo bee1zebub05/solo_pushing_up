@@ -87,9 +87,18 @@ Không gửi ảnh duyệt nào khi chưa qua bước này.
 
 ## 5. Dáng ra đòn và sprite
 
-- Dáng theo nhịp game `AttackPose`: lấy đà 0–0,5, ra đòn 0,5–0,65, thu về
-  0,65–1 (`lib/art/motion.dart`). Một hàm `pose(rig, t, attack=…, defeat=…)`
-  liên tục theo tham số, sprite lấy mẫu đều trên đó.
+- **Biên đạo trước, code sau** (dohoa.md mục 14): tra võ thuật của binh
+  khí (thế thủ có tên, bước chân, zanshin), viết khoá vào
+  `tool/blender/choreo/<id>.json` — mỗi boss ≥ 2 đòn, mỗi đòn có dấu hiệu
+  báo trước riêng đọc được ở dạng bóng. Đòn = cả người: trọng tâm dịch/hạ,
+  bước chân (IK bám đất), hông dẫn → thân → tay → vũ khí (`lag`), khựng lúc
+  chạm, zanshin, phần phụ (cánh, tua) theo sau. Chỉ vung tay = "thô".
+- Nhịp theo `AttackPose`: lấy đà 0–0,5, ra đòn 0,5–0,65, thu về 0,65–1
+  (`lib/art/motion.dart`); mốc `impact` trong JSON canh hiệu ứng.
+- Soát bằng tấm tư thế khoá (`--still --game`, ghép có nhãn tiến độ) TRƯỚC
+  khi xuất sprite; hướng vũ khí sai thì in số đo, đừng đoán.
+- Sau khi sửa JSON: `python tool/gen_choreo.py` (bản vector Flutter đọc cùng
+  biên đạo) + `flutter test test/art/choreo_test.dart`.
 - Soát dáng ra đòn như dáng đứng: `--review` trên khung đỉnh đòn (tay, cánh,
   vải duỗi xa nhất) + ảnh `--still` các khung windup/strike/defeat.
 - Xuất: chạy script không `--still` → `sprite_kit.export_sprites(scene, cam,

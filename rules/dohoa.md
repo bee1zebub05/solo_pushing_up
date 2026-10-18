@@ -491,3 +491,77 @@ Bài học:
   vào cánh nâu → đổi lông sẫm.
 - `tengu_boss --review --strike`: bộ soát trên khung ra đòn.
 
+## 14. Biên đạo đòn đánh theo võ thuật (18/10/2026)
+
+Người dùng chê đòn bản đầu (mục 13) "thô": chỉ cánh tay vung, thân đứng
+yên, một đòn duy nhất. Làm lại theo nguyên lý võ thuật dùng binh khí và
+hoạt hình đòn đánh, mỗi boss **hai đòn có dấu hiệu báo trước khác nhau**.
+
+**Nguồn đã tra** (không có tài liệu kata kanabō/tessen chi tiết công khai —
+lấy nguyên lý chung):
+- Kiếm đạo/kiếm thuật: thế **jōdan** (vũ khí trên đầu ngả ra sau, ~70%
+  trọng lượng chân trước), **hassō** (dựng đứng cạnh má), **waki-gamae**
+  (giấu thấp sau hông, mũi chĩa xuống sau); **ki-ken-tai-ichi** (ý–vũ khí–
+  thân chạm cùng lúc), **fumikomi** (bước dậm, lực từ chân sau), **zanshin**
+  (giữ thế, giữ ánh nhìn sau cú đánh) — [Toyama-ryū kamae](https://toyamaryu.org/kihon_fundamentals_kamae.htm),
+  [thế kiếm Nhật](https://swordis.com/blog/japanese-sword-stances/),
+  [fumikomi](https://www.kendo-guide.com/fumikomi-how-to-perform-this-stomping-action.html).
+- Kanabō-jutsu: thăng bằng + sức, đánh vỡ giáp, **quét chân ngựa**; đánh hụt
+  thì hở người — [Kanabō](https://military-history.fandom.com/wiki/Kanab%C5%8D).
+- Tessenjutsu: gạt đỡ một tay, đánh tay kia; Yoshitsune dùng quạt gạt giáo
+  Benkei; tengu núi Kurama dạy Yoshitsune võ —
+  [Tessenjutsu](https://en.wikipedia.org/wiki/Tessenjutsu), [Kurama-tengu](https://en.wikipedia.org/wiki/Kurama-tengu).
+- Hoạt hình đòn nặng: ba tư thế khoá (lấy đà / chạm / thu) phải đọc được ở
+  dạng bóng; người + vũ khí là một khối; quỹ đạo cong; khựng lúc chạm; phần
+  phụ đi theo sau — [80.lv: vũ khí hai tay](https://80.lv/articles/breakdown-animating-tiny-character-with-massive-two-handed-weapon).
+
+**Biên đạo** (`tool/blender/choreo/<id>.json`, một nguồn cho Blender và
+Flutter; `python tool/gen_choreo.py` sinh `lib/art/bosses/choreo_data.dart`;
+`test/art/choreo_test.dart` so bộ nội suy Dart với Python):
+
+| Boss | Đòn | Báo trước (0–0,5) | Ra đòn | Sau đòn |
+|---|---|---|---|---|
+| Shuten-dōji | `attack` Nện đỉnh | Jōdan: chuỳ giơ cao ngả sau đầu, thân ngả ra sau vặn vai phải, tay lửa vươn thẳng ngắm đích, trọng tâm lùi chân sau | Fumikomi chân phải, hông dẫn → thân → tay → chuỳ qua đỉnh đầu nện xuống trước, khuỵu sâu, tay lửa kéo về sườn | Zanshin chuỳ đè đất ~0,1, rồi nặng nề nhấc chuỳ, kéo chân về, vác lên vai |
+| | `attack2` Quét chân ngựa | Waki-gamae: hạ thấp, vặn hông hết cỡ, chuỳ giấu sau hông thò đầu lên, tay lửa ngắm | Bước tới, xoay hông trọn vòng, chuỳ quét ngang thấp từ sau ra trước | Theo đà quét sang trái (quá vòng), rồi vác lại |
+| | `defeat` | | Chuỳ cắm đất làm gậy chống, quỵ gối, đầu gục, lửa tắt | |
+| Tengu Sutoku | `attack` Phong kesa | Hassō: quạt dựng cạnh đầu, tay trái giơ đỡ kiểu tessen, cánh dựng xoè, trọng tâm lùi | Bước tới, chém chéo kesa xuống trái, cánh đập xuống cùng nhịp, tay trái kéo về | Zanshin thấp, cánh hạ chậm (mút cánh trễ nhất) |
+| | `attack2` Thiên cẩu phi | Thu người, cánh dựng cao → vỗ cánh bật lên, lơ lửng ở đỉnh quạt giơ sau đầu, chân co | Bổ quạt xuống khi đáp, khuỵu sâu, cánh xoè hãm | Gió vòng trên đất, lông bung, đứng dậy |
+| | `defeat` | | Quạt trĩu, cánh rũ sụp, quỵ gối, đầu cúi | |
+
+**Bộ máy** (`tool/blender/choreo.py`, `lib/art/bosses/choreo.dart`):
+- Kênh khoá thưa (khoá có thể thiếu kênh), nội suy **cubic đơn điệu
+  Fritsch–Carlson**: mượt nhưng không vọt quá khoá (vọt thì chuỳ xuyên đất).
+- `lag` theo kênh = chuỗi lực hông (0) → thân (0,004–0,006) → tay (0,01) →
+  vũ khí (0,01–0,014) → cánh (0,012–0,02) → mút cánh (0,035).
+- Khoá lặp lại cùng giá trị = giữ (khựng lúc chạm, zanshin, lơ lửng ở đỉnh).
+- Oni: chân **IK bám đất** (chân phải bước theo `step`/`lift`), hông dịch/hạ,
+  vặn chia hông 40% → lưng 35% → ngực 25%, đầu bù ngược để mắt giữ nhìn đích;
+  hakama/tạp dề/khoá **dựng lại mỗi khung** (~1,5 s, rẻ) nên chân cử động
+  được. Tengu (model Tripo): IK tay + chân thêm vào rig tự gắn, bàn tay
+  xoay theo hai vector (cán quạt đúng hướng, ngón nối cẳng tay); bay = dịch
+  hông lên + bàn chân co (`lift` − `tuck`).
+- Sprite: `idle` 8, `attack` 20, `attack2` 20, `defeat` 6 khung; sân khấu
+  luân phiên A/B (`JapanSpriteBoss.moveFor`), không hoà khung ±0,1 quanh mốc
+  `impact`, `ownsAttackMotion` = true (sprite đã có bước, sân khấu không lao
+  thân chồng lên). Vệt vung (`smearArc`) theo cung đầu vũ khí 0,07 trước chạm.
+- Bản vector 2.5D đọc cùng kênh: `planeDir` chiếu mặt phẳng trước–lên ¾ ra
+  màn hình (trước rút ngắn 0,8; `sweep` quay về máy quay); thân trên xoay
+  cứng quanh hông chỉ 55% góc ngả (lưng 3D cong dần, xoay cứng đủ góc thì
+  gãy gập); hakama oni co/nghiêng theo hông, gấu nằm yên trên đất.
+
+Bài học:
+- **Nắm đấm giữ vũ khí vuông góc cẳng tay.** Muốn chuỳ nện xuống trước thì
+  tay phải ở ngang vai, khuỷu hạ (cẳng tay chĩa lên–trước); tay duỗi chĩa
+  xuống thì chuỳ nằm ngang.
+- **`palm()` (StandPoser) chỉ đúng gần dáng duyệt:** nó coi trục đốt ngón
+  vuông góc hướng ngón ở dáng nghỉ — bàn tay MPFB đã nắm lệch 30–60° khi tay
+  duỗi ra trước, chuỳ chĩa sai mà không báo. Sau `palm()` đo trục vũ khí thật
+  rồi xoay bù cổ tay (`club_arm`). Gặp hướng sai: in số đo (hướng mong muốn /
+  cẳng tay / thực tế) trước khi chỉnh khoá.
+- **Thế báo đòn phải đọc được ở dạng bóng từ góc game:** waki-gamae giấu
+  chuỳ kín sau lưng → mất dấu hiệu; chuỳ chĩa thẳng ra sau thì phối cảnh rút
+  ngắn → jōdan trông như không giơ. Cho vũ khí thò ra khỏi bóng thân.
+- Thân béo + hakama che hết chân và nửa độ ngả: chuyển trọng tâm phải làm
+  lớn hơn người thường mới thấy (ngả 16–28°, hạ 0,2–0,25 × S).
+- `exec` của ONI_DEBUG: import trong hàm (đã ghi mục 11) — dính lại lần nữa.
+

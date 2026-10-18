@@ -828,7 +828,7 @@ void main() {
     }
   });
 
-  testWidgets('Shuten-dōji và tengu Sutoku: vector 2.5D và sprite Blender', (
+  testWidgets('Shuten-dōji và tengu Sutoku: hai đòn, vector 2.5D và sprite', (
     tester,
   ) async {
     for (final (tag, make) in <(String, JapanSpriteBoss Function())>[
@@ -841,13 +841,17 @@ void main() {
           await tester.runAsync(art.preload);
           expect(SpriteAtlas.get(art.spriteName), isNotNull, reason: tag);
         }
-        for (final (name, phase, defeat) in const [
-          ('idle', -1.0, 0.0),
-          ('windup', 0.45, 0.0),
-          ('strike', 0.66, 0.0),
-          ('impact', 0.74, 0.0),
-          ('defeat', -1.0, 1.0),
-        ]) {
+        final shots = <(String, String?, double, double)>[
+          ('0idle', null, -1, 0),
+          for (final move in ['attack', 'attack2']) ...[
+            ('${move}_1windup', move, 0.46, 0),
+            ('${move}_2impact', move, art.impactOf(move) + 0.01, 0),
+            ('${move}_3after', move, art.impactOf(move) + 0.12, 0),
+          ],
+          ('9defeat', null, -1, 1),
+        ];
+        for (final (name, move, phase, defeat) in shots) {
+          art.forceMove = move;
           final frame = BossFrame(
             time: 1.3,
             attack: phase < 0 ? 0 : math.sin(math.pi * phase),

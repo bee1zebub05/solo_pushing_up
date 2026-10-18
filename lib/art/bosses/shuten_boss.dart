@@ -1,10 +1,10 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
 import '../battle_stage.dart';
-import '../motion.dart';
 import '../nemea_scene.dart' show stageGroundY, stageSize;
 import '../vector_style.dart';
 import 'japan_sprite_boss.dart';
@@ -280,46 +280,101 @@ class ShutenBossArt extends JapanSpriteBoss {
   }
 
   // ------------------------------------------------------------ boss (2.5D)
-  /// Thân tĩnh (chân, hakama, bụng, da hổ, đầu, tay lửa): sân khấu đã lo
-  /// thở/ngả thân, nên ghi một lần.
-  Picture? _body;
+  /// Hông dưới (hakama, tạp dề, thừng, khoá) và thân trên (bụng, ngực, da
+  /// hổ, chuỗi hạt, đầu) ghi một lần; mỗi khung chỉ biến đổi chúng theo kênh
+  /// biên đạo và vẽ động hai bàn chân, hai tay, chuỳ, lửa.
+  Picture? _lower, _upper;
 
   @override
   void dispose() {
-    _body?.dispose();
-    _body = null;
+    _lower?.dispose();
+    _upper?.dispose();
+    _lower = _upper = null;
     super.dispose();
   }
 
-  /// Vai phải (phía xa) — gốc vung chuỳ.
+  /// Đơn vị sân khấu cho 1 đơn vị kênh (m × S của oni_boss.py, 48 đơn vị/m).
+  static const _k = 1.45 * 48;
+
+  /// Hông (tâm xoay khi ngả người), vai phải (xa, gốc vung chuỳ), vai trái.
+  static const _hip = Offset(-4, -92);
   static const _shoulder = Offset(-26, -144);
+  static const _nearShoulder = Offset(40, -142);
 
   @override
-  void paintVector(Canvas canvas, BossFrame f, AttackPose pose) {
+  Map<String, double> idleChannels(double time) {
+    final w = 2 * math.pi * time / 3.4;
+    final r = choreo.ready;
+    return {
+      ...r,
+      'drop': 0.012 * (1 - math.cos(w)),
+      'lean': 1.2 * math.sin(w),
+      'hand': r['hand']! + 2.5 * math.sin(w),
+      'aim': 0.06 * math.sin(w),
+    };
+  }
+
+  /// Thân trên theo kênh: dịch hông rồi xoay quanh hông khi ngả.
+  Offset _body(Map<String, double> v, Offset p) {
+    final bo = Offset(-0.8 * v['shift']! * _k, v['drop']! * _k);
+    // Trong 3D lưng cong dần qua nhiều đốt; xoay cứng cả thân trên quanh hông
+    // bằng đúng góc ngả thì gãy gập → chỉ ~55%.
+    final a = -v['lean']! * 0.55 * math.pi / 180;
+    final q = p - _hip;
+    return _hip + bo + Offset(q.dx * math.cos(a) - q.dy * math.sin(a), q.dx * math.sin(a) + q.dy * math.cos(a));
+  }
+
+  /// (vai, tay nắm, hướng chuỳ trên màn hình — dài < 1 khi chĩa về máy quay).
+  (Offset, Offset, Offset) _club(Map<String, double> v) {
+    final sh = _body(v, _shoulder.translate(-v['twist']! * 0.25, 0));
+    final sweep = v['sweep']!;
+    final hand = sh +
+        planeDir(v['hand']!, sweep) * v['reach']! * _k +
+        const Offset(-0.6, -0.15) * v['side']! * _k * 0.5;
+    var dir = planeDir(v['club']!, sweep);
+    if (dir.distance < 0.35) dir = dir / dir.distance * 0.35;
+    return (sh, hand, dir);
+  }
+
+  @override
+  void paintVector(Canvas canvas, BossFrame f, Map<String, double> v, String? move) {
     final d = f.defeat.clamp(0.0, 1.0);
-    final p = holdStrike(pose, f.attackPhase);
-    // Khoá theo PHA (nội suy góc, không thẳng — xem CLUB_KEYS trong oni_boss.py).
-    final handAng = phaseLerp(100, 265, 160, 105, p, d);
-    final handR = phaseLerp(12, 40, 46, 44, p, d);
-    final clubAng = phaseLerp(320, 380, 125, 95, p, d) +
-        3 * math.sin(f.time * 2 * math.pi / 3.4);
-    final behind = p.windup > 0.45 && p.strike < 0.3;
-    if (behind) _clubArm(canvas, handAng, handR, clubAng);
-    canvas.drawPicture(_body ??= _record(_paintBody));
+    final (sh, hand, dir) = _club(v);
+    // Chuỳ chĩa ra sau (sang phải màn hình) và cao: nằm sau thân.
+    final behind = dir.dx > 0.25 && hand.dy < sh.dy + 10;
+    if (behind) _clubArm(canvas, sh, hand, dir);
+    _feet(canvas, v);
+    // Hông dưới: thắt lưng theo hông, gấu váy nằm yên trên đất (vải co/nghiêng).
+    final bo = Offset(-0.8 * v['shift']! * _k, v['drop']! * _k);
+    canvas.save();
+    canvas.transform(Float64List.fromList([
+      1, 0, 0, 0, //
+      -bo.dx / 92, (92 - bo.dy) / 92, 0, 0, //
+      0, 0, 1, 0, //
+      0, 0, 0, 1,
+    ]));
+    canvas.drawPicture(_lower ??= _record(_paintLower));
+    canvas.restore();
+    canvas.save();
+    final c = _hip + bo;
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(-v['lean']! * 0.55 * math.pi / 180);
+    canvas.translate(-_hip.dx, -_hip.dy);
+    canvas.drawPicture(_upper ??= _record(_paintUpper));
+    canvas.restore();
     _wisps(canvas, f.time, 1 - d);
-    if (d < 0.6) _fire(canvas, const Offset(46, -124), f.time);
-    if (!behind) _clubArm(canvas, handAng, handR, clubAng);
+    _fireArm(canvas, v, f.time, d);
+    if (!behind) _clubArm(canvas, sh, hand, dir);
   }
 
-  static Picture _record(void Function(Canvas) draw) {
-    final r = PictureRecorder();
-    draw(Canvas(r));
-    return r.endRecording();
-  }
-
-  void _paintBody(Canvas canvas) {
-    // Bàn chân trần đỏ, vuốt đen.
-    for (final x in const [-18.0, 20.0]) {
+  /// Hai bàn chân trần, vuốt đen: chân trái (gần) bám đất, chân phải (xa) bước tới.
+  void _feet(Canvas canvas, Map<String, double> v) {
+    for (final (x, step) in [
+      (-18.0, Offset(-0.8 * v['step']! * _k, -v['lift']! * _k)),
+      (20.0, Offset.zero),
+    ]) {
+      canvas.save();
+      canvas.translate(step.dx, step.dy);
       final foot = Path()
         ..moveTo(x - 9, 0)
         ..quadraticBezierTo(x - 10, -7, x - 2, -8)
@@ -338,7 +393,45 @@ class ShutenBossArt extends JapanSpriteBoss {
           fillPaint(const Color(0xFF141012)),
         );
       }
+      canvas.restore();
     }
+  }
+
+  /// Tay trái (gần) nâng lửa: chìa ra trước (chờ) → vươn thẳng ngắm đích
+  /// (aim 1, lấy đà) → kéo về sát sườn (aim âm, ra đòn) → buông (gục).
+  void _fireArm(Canvas canvas, Map<String, double> v, double time, double d) {
+    final aim = v['aim']!;
+    final sh = _body(v, _nearShoulder);
+    var hand = _body(v, const Offset(46, -118));
+    if (aim > 0) hand = Offset.lerp(hand, _body(v, const Offset(-6, -138)), aim)!;
+    if (aim < 0) hand = Offset.lerp(hand, _body(v, const Offset(32, -110)), -aim)!;
+    hand = Offset.lerp(hand, _body(v, const Offset(46, -94)), d)!;
+    final el = joint2(sh, hand, 24, 22, -1);
+    final arm = chainPath([(sh, el, 9.5, 8), (el, hand, 8, 6.5)]);
+    shadedPath(canvas, arm, OniColors.skin, PartFrame.world, shadow: 4, highlight: 1.4, outlineWidth: 1.4);
+    final mid = Offset.lerp(el, hand, 0.45)!;
+    final fa = (hand - el) / math.max(0.01, (hand - el).distance);
+    final band = Paint()
+      ..color = OniColors.iron
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawLine(mid - fa * 4, mid + fa * 4, band);
+    canvas.drawLine(mid - fa * 4, mid + fa * 4, Paint()..color = OniColors.gold..strokeWidth = 1.2);
+    canvas.drawPath(
+      capsulePath(Offset.lerp(sh, el, 0.4)!, Offset.lerp(sh, el, 0.6)!, 9.8, 9.4),
+      fillPaint(OniColors.gold),
+    );
+    canvas.drawCircle(hand, 5.6, fillPaint(OniColors.skin));
+    if (d < 0.6) _fire(canvas, hand.translate(0, -6), time);
+  }
+
+  static Picture _record(void Function(Canvas) draw) {
+    final r = PictureRecorder();
+    draw(Canvas(r));
+    return r.endRecording();
+  }
+
+  void _paintLower(Canvas canvas) {
     // Hakama chàm rủ thẳng như váy, vân sóng nhạt, viền vàng ở gấu.
     final hakama = Path()
       ..moveTo(-36, -90)
@@ -430,6 +523,9 @@ class ShutenBossArt extends JapanSpriteBoss {
     shadedPath(canvas, buckle, OniColors.gold, PartFrame.world, shadow: 1.6, highlight: 0.8, outlineWidth: 1);
     canvas.drawCircle(const Offset(-15, -85), 1, fillPaint(const Color(0xFFB080FF)));
     canvas.drawCircle(const Offset(-11, -85), 1, fillPaint(const Color(0xFFB080FF)));
+  }
+
+  void _paintUpper(Canvas canvas) {
     // Thân trên: vai rộng, ngực xệ, bụng phệ chờm qua thừng.
     final torso = Path()
       ..moveTo(-34, -96)
@@ -501,17 +597,6 @@ class ShutenBossArt extends JapanSpriteBoss {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2
         ..strokeCap = StrokeCap.round,
-    );
-    // Tay trái (gần) chìa ra trước, ngửa bàn tay nâng lửa; giáp tay vàng–đen.
-    const sh = Offset(40, -142), el = Offset(52, -122), hand = Offset(46, -118);
-    final arm = chainPath([(sh, el, 9.5, 8), (el, hand, 8, 6.5)]);
-    shadedPath(canvas, arm, OniColors.skin, PartFrame.world, shadow: 4, highlight: 1.4, outlineWidth: 1.4);
-    final bracer = Path()..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: const Offset(49, -120), width: 12, height: 7), const Radius.circular(2)));
-    shadedPath(canvas, bracer, OniColors.iron, PartFrame.world, shadow: 1.5, highlight: 0.6, outlineWidth: 1);
-    canvas.drawLine(const Offset(43, -123), const Offset(55, -123), Paint()..color = OniColors.gold..strokeWidth = 1.2);
-    canvas.drawPath(
-      capsulePath(const Offset(42, -136), const Offset(50, -134), 3, 3),
-      fillPaint(OniColors.gold),
     );
     // Chuỗi hạt đen to quanh cổ, mặt đồng vàng giữa ngực.
     for (var k = 0; k < 11; k++) {
@@ -600,15 +685,15 @@ class ShutenBossArt extends JapanSpriteBoss {
     canvas.drawLine(c + const Offset(-7, -5), c + const Offset(1, -8), brow);
   }
 
-  /// Tay phải (phía xa) nắm chuỳ: vị trí nắm quay quanh vai theo góc, khuỷu
-  /// gập xuống; chuỳ sắt bát giác đầu phình, đai vàng, gai vàng, tua đỏ.
-  void _clubArm(Canvas canvas, double handAng, double handR, double clubAng) {
-    final hand = polar(_shoulder, handAng, handR);
-    final elbow = joint2(_shoulder, hand, 26, 24, hand.dx < _shoulder.dx ? 1 : -1);
-    final dir = polar(Offset.zero, clubAng, 1);
+  /// Tay phải (phía xa) nắm chuỳ: khuỷu gập xuống; chuỳ sắt bát giác đầu
+  /// phình, đai vàng, gai vàng, tua đỏ. [dir] hướng chuỳ trên màn hình (độ
+  /// dài < 1 = chĩa về phía máy quay, chuỳ ngắn lại).
+  void _clubArm(Canvas canvas, Offset sh, Offset hand, Offset dir) {
+    final elbow = joint2(sh, hand, 26, 24, hand.dx < sh.dx ? 1 : -1);
     final butt = hand - dir * 12;
     final head = hand + dir * 104;
-    final n = Offset(-dir.dy, dir.dx);
+    final u = dir / dir.distance;
+    final n = Offset(-u.dy, u.dx);
     final club = Path()
       ..moveTo(butt.dx + n.dx * 2.6, butt.dy + n.dy * 2.6)
       ..lineTo(hand.dx + dir.dx * 30 + n.dx * 3.4, hand.dy + dir.dy * 30 + n.dy * 3.4)
@@ -656,10 +741,10 @@ class ShutenBossArt extends JapanSpriteBoss {
       canvas.drawLine(p - n * r, p + n * r, gold);
     }
     // Cánh tay.
-    final arm = chainPath([(_shoulder, elbow, 9, 8), (elbow, hand, 8, 6.5)]);
+    final arm = chainPath([(sh, elbow, 9, 8), (elbow, hand, 8, 6.5)]);
     shadedPath(canvas, arm, OniColors.skin, PartFrame.world, shadow: 3.5, highlight: 1.2, outlineWidth: 1.4);
     canvas.drawPath(
-      capsulePath(Offset.lerp(_shoulder, elbow, 0.45)!, Offset.lerp(_shoulder, elbow, 0.6)!, 9.4, 9),
+      capsulePath(Offset.lerp(sh, elbow, 0.45)!, Offset.lerp(sh, elbow, 0.6)!, 9.4, 9),
       fillPaint(OniColors.gold),
     );
     final fist = Path()..addOval(Rect.fromCircle(center: hand, radius: 6.4));
@@ -721,17 +806,42 @@ class ShutenBossArt extends JapanSpriteBoss {
     }
   }
 
-  // ------------------------------------------------------------ đòn nện
-  /// Chuỳ chạm đất trước mặt: vết nứt toả ra, sóng chấn động lan về phía
-  /// người chơi, bụi đất và đá văng (cùng chỗ với bản sprite và vector).
+  // ------------------------------------------------------------ hiệu ứng đòn
+  /// Vệt vung theo cung đầu chuỳ ngay trước lúc chạm; rồi nện đỉnh: nứt đất,
+  /// sóng chấn động, bụi, đá văng tại chỗ đầu chuỳ chạm đất; quét chân: vệt
+  /// quét thấp ngang gối, bụi cuốn theo hướng quét.
   @override
-  void paintStrike(Canvas canvas, BossFrame f) {
-    // Đầu chuỳ chạm đất ngay trước đỉnh ra đòn (0,65), hiệu ứng tan trong ~0,4 giây.
-    final t = phaseWindow(f.attackPhase, 0.6, 0.36);
-    if (t < 0) return;
-    final hit = Offset(feet.dx - 122, stageGroundY + 2);
-    final fade = 1 - t;
-    // Vết nứt.
+  void paintStrike(Canvas canvas, BossFrame f, String move, double t) {
+    if (drawingVector && t > -0.07 && t < 0.03) {
+      final m = choreo.moves[move]!;
+      final arc = <Offset>[];
+      for (var k = 0; k <= 8; k++) {
+        final v = m.at(f.attackPhase - 0.07 + 0.07 * k / 8);
+        final (_, hand, dir) = _club(v);
+        arc.add(feet + hand + dir * 100);
+      }
+      smearArc(canvas, arc, 10, const Color(0x88FFE6C8));
+    }
+    if (t < 0 || t > 0.36) return;
+    final u = t / 0.36;
+    final fade = 1 - u;
+    if (move == 'attack2') {
+      final c = feet.translate(-96, -18);
+      canvas.drawArc(
+        Rect.fromCenter(center: c, width: 150, height: 34),
+        math.pi * 0.35,
+        math.pi * (0.5 + 0.4 * u),
+        false,
+        Paint()
+          ..color = Color.fromRGBO(255, 230, 200, 0.6 * fade)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5 * fade + 1
+          ..strokeCap = StrokeCap.round,
+      );
+      _dust(canvas, feet.translate(-110 + 50 * u, 0), u, fade, 1.3);
+      return;
+    }
+    final hit = Offset(feet.dx - 116, stageGroundY + 2);
     final crack = Paint()
       ..color = Color.fromRGBO(20, 10, 14, 0.85 * fade)
       ..strokeWidth = 1.4
@@ -748,23 +858,35 @@ class ShutenBossArt extends JapanSpriteBoss {
       canvas.drawLine(mid, end, crack);
       canvas.drawLine(hit, mid, glow);
     }
-    // Sóng chấn động bầu dục lan rộng.
     for (final lag in const [0.0, 0.18]) {
-      final r = 12 + 150 * (t - lag).clamp(0.0, 1.0);
-      final a = (1 - (t - lag).clamp(0.0, 1.0)) * 0.7;
+      final r = 12 + 150 * (u - lag).clamp(0.0, 1.0);
+      final a = (1 - (u - lag).clamp(0.0, 1.0)) * 0.7;
       canvas.drawOval(
         Rect.fromCenter(center: hit, width: r * 2, height: r * 0.34),
         Paint()
           ..color = Color.fromRGBO(255, 214, 160, a)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4 * (1 - t) + 0.5,
+          ..strokeWidth = 2.4 * fade + 0.5,
       );
     }
-    // Bụi đất cuộn lên.
+    _dust(canvas, hit, u, fade, 1);
+    for (var k = 0; k < 8; k++) {
+      final vx = (k - 3.5) * 9.0;
+      final vy = -50.0 - (k * 17) % 30;
+      final p = hit + Offset(vx * u * 1.4, vy * u + 90 * u * u);
+      if (p.dy > stageGroundY + 4) continue;
+      canvas.drawRect(
+        Rect.fromCenter(center: p, width: 2.4, height: 2),
+        fillPaint(Color.fromRGBO(70, 56, 64, fade)),
+      );
+    }
+  }
+
+  static void _dust(Canvas canvas, Offset at, double u, double fade, double spread) {
     for (var k = 0; k < 6; k++) {
-      final dx = (k - 2.5) * 12.0 * (0.4 + t);
-      final p = hit + Offset(dx, -6 - 26 * t * (0.6 + (k % 3) * 0.3));
-      final r = 6 + 12 * t;
+      final dx = (k - 2.5) * 12.0 * (0.4 + u) * spread;
+      final p = at + Offset(dx, -6 - 26 * u * (0.6 + (k % 3) * 0.3));
+      final r = 6 + 12 * u;
       canvas.drawCircle(
         p,
         r,
@@ -773,17 +895,6 @@ class ShutenBossArt extends JapanSpriteBoss {
             Color.fromRGBO(120, 96, 100, 0.5 * fade),
             const Color(0x00786064),
           ]),
-      );
-    }
-    // Đá văng.
-    for (var k = 0; k < 8; k++) {
-      final vx = (k - 3.5) * 9.0;
-      final vy = -50.0 - (k * 17) % 30;
-      final p = hit + Offset(vx * t * 1.4, vy * t + 90 * t * t);
-      if (p.dy > stageGroundY + 4) continue;
-      canvas.drawRect(
-        Rect.fromCenter(center: p, width: 2.4, height: 2),
-        fillPaint(Color.fromRGBO(70, 56, 64, fade)),
       );
     }
   }
