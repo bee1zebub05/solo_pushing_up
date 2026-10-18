@@ -456,13 +456,14 @@ class TenguMotion:
 
         if self.mshift:  # dồn trọng tâm theo biên đạo cộng lên hông mocap
             T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * (v["drop"] - v["lift"])) * self.mshift)
-        md.apply(self.minfo, T, iko, palm=palm, look=fwd)
+        md.apply(self.minfo, T, iko, palm=palm)
         md.twist_add(self.minfo, v["twist"] * self.mtwist)
         md.lean_add(self.minfo, v["lean"] * self.mlean, left)
+        md.look_at(self.minfo, fwd)  # sau mọi lớp cộng: mặt nhìn Hercules
         self._wings(v)
         # Tay quạt theo biên đạo trong khung rig (không bù độ vặn thân mocap).
         self._arms(v, left_arm=False)
-        md.fingers(rig, "l", 0.55)
+        md.fingers(rig, "l", 0.15, thumb=0.2)  # bàn tay trái mở, lòng bàn tay hướng đối thủ
 
     def pose(self, t=0.0, move=None, phase=0.0):
         tr = self.mocap(move) if move else None

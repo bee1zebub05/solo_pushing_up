@@ -331,7 +331,14 @@ def apply(info, T, ik_objects, palm=None, look=None, foot_flat=True):
             yaw = max(-math.radians(55), min(math.radians(55), yaw))
             qn = Quaternion(Vector((0, 0, 1)), yaw * 0.4)
             set_world_rot(info, "neck_01", qn @ T["rot"]["neck_01"])
-            set_world_rot(info, "head", Quaternion(Vector((0, 0, 1)), yaw * 0.85) @ T["rot"]["head"])
+            qh = Quaternion(Vector((0, 0, 1)), yaw * 0.85) @ T["rot"]["head"]
+            # Ngẩng/cúi: đưa mặt về gần ngang tầm nhìn đối thủ (thế ngả lưng làm đầu ngửa trời).
+            f3 = qh.to_matrix() @ (info.A @ Vector((0, -1, 0)))
+            pitch = math.atan2(f3.z, Vector((f3.x, f3.y, 0)).length)
+            side = Vector((f3.x, f3.y, 0)).normalized().cross(Vector((0, 0, 1)))
+            if side.length > 1e-6:
+                qh = Quaternion(side.normalized(), -pitch * 0.7) @ qh
+            set_world_rot(info, "head", qh)
     for k, (t, p) in T["ik"].items():
         if k in ik_objects:
             ik_objects[k][0].location = t
@@ -510,7 +517,7 @@ def lean_add(info, deg, left):
     if abs(deg) < 1e-3:
         return
     rig = info.rig
-    for b, k in (("spine_02", 0.6), ("spine_03", 0.4), ("head", -0.45)):
+    for b, k in (("spine_02", 0.6), ("spine_03", 0.4)):
         pb = rig.pose.bones[b]
         bpy.context.view_layer.update()
         ax = (info.Ai @ left).normalized()
@@ -527,10 +534,45 @@ def twist_add(info, deg):
         return
     rig = info.rig
     up = Vector((0, 0, 1))
-    for b, k in (("pelvis", 0.4), ("spine_02", 0.35), ("spine_03", 0.25), ("head", -0.5)):
+    for b, k in (("pelvis", 0.4), ("spine_02", 0.35), ("spine_03", 0.25)):
         pb = rig.pose.bones[b]
         bpy.context.view_layer.update()
         ax = (info.Ai @ up).normalized()
         h = pb.head.copy()
         pb.matrix = Matrix.Translation(h) @ Matrix.Rotation(math.radians(deg * k), 4, ax) @ Matrix.Translation(-h) @ pb.matrix
     bpy.context.view_layer.update()
+
+
+def look_at(info, look, yaw_w=0.85, pitch_w=0.85, limit=55):
+    """Mắt khoá về đối thủ — chạy SAU mọi lớp cộng (vặn/gập thân): đo hướng mặt
+    thật của xương đầu, xoay cổ (40 %) + đầu cho mặt nhìn [look] theo phương
+    ngang, và kéo đầu về gần ngang tầm (thế ngả lưng làm mặt ngửa trời)."""
+    rig = info.rig
+    up = Vector((0, 0, 1))
+
+    def face():
+        bpy.context.view_layer.update()
+        cur = (info.A @ rig.pose.bones["head"].matrix.to_3x3()).normalized()
+        return (cur @ info.rest_rot["head"].transposed()) @ (info.A @ Vector((0, -1, 0)))
+
+    def turn(bone, q):
+        pb = rig.pose.bones[bone]
+        ax, ang = q.to_axis_angle()
+        h = pb.head.copy()
+        pb.matrix = Matrix.Translation(h) @ Matrix.Rotation(ang, 4, (info.Ai @ ax).normalized()) @ Matrix.Translation(-h) @ pb.matrix
+        bpy.context.view_layer.update()
+
+    f = face()
+    f2, l2 = Vector((f.x, f.y, 0)), Vector((look.x, look.y, 0))
+    if f2.length > 1e-6 and l2.length > 1e-6:
+        yaw = f2.angle(l2) * (1 if f2.cross(l2).z > 0 else -1)
+        yaw = max(-math.radians(limit), min(math.radians(limit), yaw)) * yaw_w
+        turn("neck_01", Quaternion(up, yaw * 0.4))
+        turn("head", Quaternion(up, yaw * 0.6))
+    f = face()
+    h2 = Vector((f.x, f.y, 0))
+    if h2.length > 1e-6:
+        pitch = math.atan2(f.z, h2.length)
+        side = h2.normalized().cross(up)
+        # Xoay quanh side = ngang × lên theo chiều dương thì mặt NGẨNG thêm → dùng −pitch.
+        turn("head", Quaternion(side.normalized(), -pitch * pitch_w))

@@ -44,10 +44,10 @@
     0.97
    ],
    "turn": -20,
-   "lean": 0.8,
-   "twist": 0.8,
+   "lean": 1.0,
+   "twist": 1.0,
    "yaw_keep": 0.3,
-   "shift": 0.6
+   "shift": 1.0
   }
  },
  "tengu_sutoku": {
