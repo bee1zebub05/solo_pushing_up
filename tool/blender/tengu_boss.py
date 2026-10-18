@@ -392,6 +392,18 @@ def main():
                important={"quạt lông": [r"^Fan"]}, embedded=[r"^FanHandle"],
                targets={"chân (khớp háng)/chiều cao": (0.44, 0.52)}, samples=16 if quick else 32)
         return
+    if "--video" in sys.argv:  # khung video từng đòn (tool/boss_video.py ghép mp4)
+        face_game(rig)
+        game_camera(scene, 150)
+        scene.cycles.samples = 24
+        motion = TenguMotion(rig)
+        for move in ("attack", "attack2"):
+            vdir = os.path.join(out, "video", move)
+            os.makedirs(vdir, exist_ok=True)
+            for k in range(60):
+                motion.pose(move=move, phase=k / 59)
+                render_to(scene, os.path.join(vdir, f"f_{k:03d}.png"))
+        return
     if "--still" in sys.argv:
         # Ảnh duyệt chính diện (như bản MPFB cũ) + dáng thử xương.
         idle(rig)

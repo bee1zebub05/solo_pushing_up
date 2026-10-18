@@ -40,6 +40,7 @@ from boss_kit import srgb  # noqa: E402
 S = 1.45  # khổng lồ béo phì, chân dài như người thường, ~3,4 m (đỉnh đầu, đo bằng --review)
 ROPE_R = 0.04 * S  # bán kính thừng shimenawa (khoá đai treo vào thừng)
 BEAD_PENDANT = 19  # hạt vàng to giữa ngực trong chuỗi 26 hạt
+VIDEO_FRAMES = 60  # khung mỗi đòn cho video soát (--video)
 UNITS_PER_M = 48  # cao ~3,4 m ≈ 163 đơn vị sân khấu; chuỳ giơ cao vẫn dưới mép trên
 
 ONI_BODY = {
@@ -1494,6 +1495,18 @@ def main():
         aim_pupils(mats["eyes"], camera(scene, head.x, head.z, 0.4 * S, 0.4 * S, 100, yaw=-44, pitch=3))
         if os.environ.get("ONI_DEBUG"):
             exec(open(os.environ["ONI_DEBUG"], encoding="utf-8").read())
+        return
+    if "--video" in sys.argv:  # khung video từng đòn (tool/boss_video.py ghép mp4)
+        motion = OniMotion(poser, body, mats)
+        cam = game_camera(scene, 150)
+        aim_pupils(mats["eyes"], cam)
+        scene.cycles.samples = 24
+        for move in ("attack", "attack2"):
+            vdir = os.path.join(out, "video", move)
+            os.makedirs(vdir, exist_ok=True)
+            for k in range(VIDEO_FRAMES):
+                motion.pose(move=move, phase=k / (VIDEO_FRAMES - 1))
+                render_to(scene, os.path.join(vdir, f"f_{k:03d}.png"))
         return
     checks = ("--grip-only", "--checks", "--belly", "--grip", "--face", "--game")
     if not STILL and not any(c in sys.argv for c in checks):
