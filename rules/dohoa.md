@@ -334,7 +334,7 @@ Thư viện mới:
 - `tool/blender/hair_kit.py`: tóc theo lọn (`strand_locks` sợi thật, `ribbon_locks` lọn khối), `hair_material`.
 - `tool/blender/japan_kit.py`: da tô màu/xăm (`painted_skin`, có son môi), vải lụa vân mây (`silk_material`), vải hoa tròn (`kamon_material`), lửa ma (`flame_material`, `flame`), áo ôm thân (`garment`), tay áo rộng (`sleeve_bag`), hakama, giáp tay (`limb_band`), sừng có gờ, chuỗi hạt, thừng shimenawa, chữ Hán nổi (font Yu Gothic — máy không có Mincho), vuốt, quạt lông, đắp khối (`inflate` — bụng phệ), ghép khối elip theo mét (`blob`), dáng đứng ¾ (`StandPoser`).
 
-Boss dựng theo tranh người dùng chọn (ảnh duyệt `--still`, CHƯA xuất sprite):
+Boss dựng theo tranh người dùng chọn (ảnh duyệt `--still`; oni và tengu đã xuất sprite + BossArt 18/10 — mục 13):
 
 | Boss | Script | Ảnh |
 |---|---|---|
@@ -443,3 +443,51 @@ Tripo Studio gửi model sang Blender qua addon **Tripo Bridge** (cổng 60600).
   - **Không chép nguyên vị trí trước → sau:** mặt trước bị đai buông, vạt áo, nếp gấp che → hoạ tiết sau khuyết theo.
   - **Xét "là vải" theo màu trung bình cả tam giác:** vải Tripo có đốm nhạt khác màu; xét từng điểm ảnh thì khuôn thủng lỗ chỗ.
   - UV Tripo vỡ thành hàng trăm mảnh nhỏ → mọi thao tác texture phải đi qua toạ độ 3D, không cắt dán trong ảnh UV.
+
+## 13. Sprite + BossArt boss chương Nhật: Shuten-dōji, tengu Sutoku (18/10/2026)
+
+Hai boss đã chốt hình được xuất sprite (`assets/sprites/shuten_doji.*`,
+`tengu_sutoku.*`: idle 6, attack 12, defeat 6 khung, 3 trang WebP mỗi boss,
+~1,1–1,3 MB) và có BossArt Flutter (`lib/art/bosses/shuten_boss.dart`,
+`tengu_boss.dart`, lớp chung `japan_sprite_boss.dart`). Đăng ký trong
+`boss_registry.dart` theo id `shuten_doji` / `tengu_sutoku`, nhưng **chưa có
+EnemySpec hay màn**: máu, cơ chế (Shuten uống rượu hồi máu; Sutoku chưa
+thiết kế) là việc của level-spec/balance-reps khi dựng kỳ công Izumo/Heian.
+
+- **Đòn:** tengu giơ quạt lông hauchiwa cao sau đầu, cánh dựng xoè → quạt
+  quất tới, cánh đập; hiệu ứng ba vòng gió lưỡi liềm cuốn lá phong về phía
+  người chơi. Oni giơ chuỳ cao sau đầu → nện xuống trước mặt; hiệu ứng nứt
+  đất, sóng chấn động, bụi, đá văng. Hiệu ứng vẽ ở cả 2.5D và 3D.
+- **Phông vector** (cả hai chế độ, chưa có bản Blender): núi Ōe đêm trăng có
+  sào huyệt đuốc đỏ, thùng sake; Shiramine giông chiều, cây thông, đèn đá,
+  chớp xa, lá phong bay.
+- **Bản vector 2.5D** vẽ cùng chỗ, cùng cỡ, cùng nhịp đòn; thân tĩnh ghi một
+  `Picture`, mỗi khung chỉ vẽ tay vũ khí, lửa, cánh. Chưa đo trên máy thật.
+- Xem trước: `ART_PREVIEW=1 flutter test test/art/art_preview_test.dart
+  --plain-name "Shuten-dōji và tengu"` (vector + sprite × 5 pha).
+
+Bài học:
+- **Nhân vật có vải dựng sau khi tạo dáng (oni) vẫn làm sprite được mà không
+  dựng lại vải từng khung:** giữ nguyên thế chân của bản duyệt, chỉ cử động
+  thân trên (`OniMotion`). Vật dựng ở thế giới lúc tạo dáng (chuỳ, lửa tay)
+  phải gắn vào xương bàn tay (`attach_props`, `parent_posed`) trước khi tạo
+  dáng khác. Tay IK: đặt lại đích IK + `palm` mỗi khung.
+- **Vung vũ khí: nội suy theo GÓC quanh vai** (`CLUB_KEYS`), không nội suy
+  thẳng vị trí — thẳng thì tay cắt ngang mặt, hướng chuỳ lật đột ngột ở giữa
+  hai khoá. Góc "tháo cuộn" có chủ đích (148 → 178 → −50: qua đỉnh đầu).
+- **Đòn nhanh trong sprite:** pha ra đòn chỉ ~2 khung trên 12; sân khấu hoà
+  hai khung kề nhau ra **hai cây chuỳ chồng nhau**. `SpriteAtlas.draw(snap:)`
+  lấy khung gần nhất quanh cú ra đòn. Giữ đỉnh đòn thêm ⅓ pha thu về
+  (`holdStrike` / `s_ * 1.5`) để hiệu ứng chạm đất có vật chạm thật.
+- **Model Tripo cầm vật:** bàn tay xoè (không có xương ngón) → cán vuông góc
+  ngón, xuyên lòng bàn tay; dựng quạt bằng xoay cổ tay quanh trục cánh tay
+  (sấp/ngửa) theo pha. Đặt cán dọc theo ngón thì cán nằm song song dưới bàn
+  tay — `--review` báo 0 cảnh báo, chỉ ảnh cận bắt được.
+- **Góc sân khấu cho model Tripo:** xoay rig ¾ quanh trục qua CHÂN
+  (`face_game`; thân không nằm ở gốc vì cánh kéo khung ra sau), `rot` đọc trục
+  theo khung rig để rig xoay được. Xoay quá ¾ (−38°) thì cánh gần che mất cánh
+  xa; −24° đủ thấy cả hai cánh.
+- Màu vật cầm phải tách khỏi vật sau nó ở khung ra đòn: quạt nâu nhạt chìm
+  vào cánh nâu → đổi lông sẫm.
+- `tengu_boss --review --strike`: bộ soát trên khung ra đòn.
+

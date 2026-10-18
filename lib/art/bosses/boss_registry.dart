@@ -5,6 +5,8 @@ import 'fafnir_boss.dart';
 import 'nemea_boss.dart';
 import 'nemea_monster_art.dart';
 import 'orochi_boss.dart';
+import 'shuten_boss.dart';
+import 'tengu_boss.dart';
 import 'thuy_tinh_boss.dart';
 
 /// Hình của từng kẻ thù đã vẽ, theo [EnemySpec.id]. Mỗi lần gọi tạo bản
@@ -22,6 +24,10 @@ final Map<String, BossArt Function()> _bossArts = {
   'stone_guard': () => NemeaMonsterArt(NemeaMonster.guard),
   'fafnir': FafnirBossArt.new,
   'orochi': OrochiBossArt.new,
+  // Chương Nhật (rules/cottruyen.md mục 3b.5): hình đã có, chưa có EnemySpec
+  // / màn — kỳ công Izumo (Shuten-dōji) và Heian (Sutoku) dùng đúng id này.
+  'shuten_doji': ShutenBossArt.new,
+  'tengu_sutoku': TenguBossArt.new,
   'thuy_tinh': ThuyTinhBossArt.new,
   'training_dummy': TrainingDummyArt.new,
 };

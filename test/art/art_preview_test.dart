@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -19,9 +20,12 @@ import 'package:solo_pushing_up/art/vector_style.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/dummy_art.dart';
 import 'package:solo_pushing_up/art/bosses/fafnir_boss.dart';
+import 'package:solo_pushing_up/art/bosses/japan_sprite_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_monster_art.dart';
 import 'package:solo_pushing_up/art/bosses/orochi_boss.dart';
+import 'package:solo_pushing_up/art/bosses/shuten_boss.dart';
+import 'package:solo_pushing_up/art/bosses/tengu_boss.dart';
 import 'package:solo_pushing_up/art/bosses/thuy_tinh_boss.dart';
 import 'package:solo_pushing_up/ui/nemea_intro_screen.dart';
 
@@ -372,6 +376,8 @@ void main() {
       FafnirBossArt(),
       OrochiBossArt(),
       ThuyTinhBossArt(),
+      ShutenBossArt(),
+      TenguBossArt(),
     ];
     await render(tester, 'portraits', (c) {
       c.drawRect(
@@ -819,6 +825,57 @@ void main() {
         );
         art.paintForeground(c, frame);
       });
+    }
+  });
+
+  testWidgets('Shuten-dōji và tengu Sutoku: vector 2.5D và sprite Blender', (
+    tester,
+  ) async {
+    for (final (tag, make) in <(String, JapanSpriteBoss Function())>[
+      ('shuten', ShutenBossArt.new),
+      ('tengu', TenguBossArt.new),
+    ]) {
+      for (final sprite in [false, true]) {
+        final art = make();
+        if (sprite) {
+          await tester.runAsync(art.preload);
+          expect(SpriteAtlas.get(art.spriteName), isNotNull, reason: tag);
+        }
+        for (final (name, phase, defeat) in const [
+          ('idle', -1.0, 0.0),
+          ('windup', 0.45, 0.0),
+          ('strike', 0.66, 0.0),
+          ('impact', 0.74, 0.0),
+          ('defeat', -1.0, 1.0),
+        ]) {
+          final frame = BossFrame(
+            time: 1.3,
+            attack: phase < 0 ? 0 : math.sin(math.pi * phase),
+            hurt: 0,
+            glint: -1,
+            defeat: defeat,
+            battle: StageBattleState(),
+            attackPhase: phase,
+          );
+          await render(
+            tester,
+            '${tag}_${sprite ? 'sprite' : 'vector'}_$name',
+            (c) {
+              art.paintBackdrop(c);
+              art.paintScene(c, 1.3, frame.battle);
+              art.paintBoss(c, frame);
+              paintHero(
+                c,
+                defeat > 0 ? HeroPose.victory() : HeroPose.plank(110),
+                look: const HeroLook(hairStyle: HairStyle.bun),
+                joy: defeat > 0 ? 1 : 0,
+                effort: defeat > 0 ? 0 : 0.7,
+              );
+            },
+          );
+        }
+        art.dispose();
+      }
     }
   });
 
