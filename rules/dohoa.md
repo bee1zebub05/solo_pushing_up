@@ -648,3 +648,31 @@ Bài học:
   giữ biên đạo cũ.
 - Mã đòn trong thư viện đổi khi dựng lại → `moves.json` tham chiếu bằng (clip,
   chi, thời điểm chạm).
+
+**Vòng critic "mắt lạ" (19/10 đêm, agent mới mỗi vòng, tấm tư thế khoá):**
+
+| Vòng | Oni Nện đỉnh | Oni Quét | Tengu Phong kesa | Thay đổi chính |
+|---|---|---|---|---|
+| 1 | 3,5 | — | 4,5 | retarget đầu tiên |
+| 2 | 5 | 4 | 6 | bỏ bù vặn ngực cho tay vũ khí (biên đạo theo khung cố định) |
+| 3 | 5,5 | 4 | 5 | lớp gập/vặn thân cộng dồn, tay lửa theo biên đạo |
+| 4 | 5,8 | 4,2 | 6,2 | khoá xoay thân `yaw_keep` 0,3 (ngực không mở ra máy quay) |
+| 5 | 6 | 4,5 | 5,5 | mắt nhìn đối thủ sau mọi lớp |
+| 6 | 6 | 5 | 6,5 | sửa dấu ngẩng đầu, hạ tấn sâu đòn quét |
+| 7 | 6,5 | 6 | 6,5 | chuỳ thu vòng dưới (−212° ≡ 148°), quét song song đất |
+| 8–10 | 5,5–6 | 6–6,5 | 5–6,5 | critic mâu thuẫn nhau (chuỳ dựng / ngả sau) |
+| **11** | **6,8** | **6,2** | **5,6** | đỉnh lấy đà trong pha giữ, cung liền — **bản chốt** |
+| 12 | 6 | 5,5 | 5,5 | (bỏ, quay về v11; giữ cằm hơi cúi) |
+
+Chưa đạt 8/10. Bài học về vòng lặp:
+- Từ vòng 8 điểm bão hoà 6 ± 1, phần lớn là nhiễu giữa các critic (cùng một tư
+  thế bị khen ở vòng này, chê ở vòng sau). Chỉ sửa ý **lặp lại ≥ 2 vòng**;
+  chốt bản điểm cao nhất thay vì bản cuối.
+- Critic chỉ thấy tư thế tĩnh → luôn đòi "thêm khung giữa". Bước tiếp: đưa
+  critic dải 20 khung sprite thật (hoặc GIF người que) để chấm cung chuyển động.
+- Lỗi lặp nhiều nhất đến từ hệ thống, không phải từng khoá: bù vặn sai khung,
+  dấu ngẩng đầu ngược, mắt nhìn tính trước lớp cộng. Gặp lời chê lặp lại ở
+  cả ba đòn → tìm lỗi trong `mocap_drive`, đừng chỉnh khoá.
+- Dư địa còn lại: đòn mocap riêng cho vũ khí nặng (cần dữ liệu kiếm/gậy chuyên
+  nghiệp có giấy phép), tay trái ôm cán chuỳ lúc nện (critic v4), cánh xa tengu
+  điều khiển riêng, bản vector 2.5D vẫn ở góc ¾ cũ (chưa quay nghiêng).
