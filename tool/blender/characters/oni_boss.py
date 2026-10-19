@@ -1329,12 +1329,17 @@ def main():
         if os.environ.get("ONI_DEBUG"):
             exec(open(os.environ["ONI_DEBUG"], encoding="utf-8").read())
         return
+    if "--motion-review" in sys.argv:  # bộ soát chuyển động (tool/motion/motion_review.py), không render
+        from motion_review import review_motion
+        review_motion(OniMotion(poser, body, mats), body, rig, "oni_boss", "shuten_doji",
+                      weapons=[r"^Kanabo"], grip=("hand_r", 0.22))
+        return
     if "--video" in sys.argv:  # khung video từng đòn (tool/render/boss_video.py ghép mp4)
         motion = OniMotion(poser, body, mats)
         cam = game_camera(scene, 150)
         aim_pupils(mats["eyes"], cam, look=poser.frame()[0])
         from video_frames import video_frames
-        video_frames(scene, motion, out, n=VIDEO_FRAMES)
+        video_frames(scene, motion, out, n=VIDEO_FRAMES, quick="--quick" in sys.argv)
         return
     checks = ("--grip-only", "--checks", "--belly", "--grip", "--face", "--game")
     if not STILL and not any(c in sys.argv for c in checks):

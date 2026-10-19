@@ -13,9 +13,9 @@ Render & xuất ──(assets/sprites, backdrops, portraits + mục báo cáo)�
 |---|---|---|---|
 | Chung | [phongcach.md](phongcach.md) | — | `vector-game-art` (phong cách vector) |
 | Dựng hình | [dunghinh.md](dunghinh.md) | `tool/blender/` (`kits/`, `characters/`, `scenes/`, `tripo_view.py`) | `blender-character` |
-| Chuyển động | [chuyendong.md](chuyendong.md) | `tool/motion/` (`choreo*`, `mocap_drive.py`, `<boss>_motion.py`, `mocap/`) | `boss-motion` |
+| Chuyển động | [chuyendong.md](chuyendong.md) | `tool/motion/` (`choreo*`, `mocap_drive.py`, `<boss>_motion.py`, `motion_review.py`, `mocap/`) + phía game: `lib/art/motion.dart`, `lib/art/bosses/choreo*.dart`, tư thế bản vector 2.5D | `boss-motion` |
 | Render & xuất | [xuat.md](xuat.md) | `tool/render/` | `render-export` |
-| Vào game | [vaogame.md](vaogame.md) | `lib/art/`, `lib/game/`, `shaders/` | `boss-mechanic`, `vector-game-art`, `workout-hud` |
+| Vào game | [vaogame.md](vaogame.md) | `lib/art/` (trừ phần chuyển động), `lib/game/`, `shaders/` | `boss-mechanic`, `vector-game-art`, `workout-hud` |
 
 Critic "mắt lạ" (chấm 1–10 ảnh/video mà không biết ai làm) là agent
 `.claude/agents/critic.md` — dùng chung cho cả bốn phòng, mỗi vòng gọi mới.

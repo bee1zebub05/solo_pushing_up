@@ -1,6 +1,7 @@
 """Ghép video soát đòn đánh từ khung Blender (`render.sh <boss> --video`).
 
     python tool/render/boss_video.py            # mọi boss có khung → build/videos/<boss>_<đòn>.mp4
+    python tool/render/boss_video.py --quick oni  # bản nháp (render.sh <boss> --video --quick) → *_quick.mp4
 
 Mỗi video: đứng chờ → tốc độ thật trong trận (đòn 1,2 s) → chiếu chậm 0,5×,
 có tên đòn (lấy từ biên đạo tool/motion/choreo/<id>.json), nhãn pha
@@ -96,13 +97,13 @@ def compose(frame, phase, title, speed, impact, bg):
     return out.convert("RGB")
 
 
-def build(folder, choreo_id, boss_name, move):
+def build(folder, choreo_id, boss_name, move, quick=False):
     frames = sorted(glob.glob(os.path.join(folder, "f_*.png")))
     if not frames:
         return None
     spec = json.load(open(os.path.join(ROOT, "tool", "motion", "choreo", f"{choreo_id}.json"), encoding="utf-8"))
     m = spec["attacks"][move]
-    title = f"{boss_name} — {m['_name'].split('—')[0].strip()}"
+    title = f"{boss_name} — {m['_name'].split('—')[0].strip()}" + (" · nháp" if quick else "")
     impact = m.get("events", {}).get("impact", 0.62)
     n = len(frames)
     probe = Image.open(frames[0])
@@ -127,15 +128,20 @@ def build(folder, choreo_id, boss_name, move):
     for i, (f, ph, sp) in enumerate(seq):
         compose(f, ph, title, sp, impact, bg).save(os.path.join(tmp, f"{i:04d}.png"))
     import imageio_ffmpeg
-    out = os.path.join(ROOT, "build", "videos", f"{choreo_id}_{move}.mp4")
+    out = os.path.join(ROOT, "build", "videos", f"{choreo_id}_{move}{'_quick' if quick else ''}.mp4")
     subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-framerate", str(FPS),
                     "-i", os.path.join(tmp, "%04d.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p",
                     "-crf", "20", "-movflags", "+faststart", out], check=True)
     return out
 
 
+QUICK = "--quick" in sys.argv
+ONLY = [a for a in sys.argv[1:] if not a.startswith("--")]
 for folder, (cid, name) in BOSSES.items():
+    if ONLY and folder not in ONLY:
+        continue
     for move in ("attack", "attack2"):
-        path = build(os.path.join(ROOT, "build", "blender", folder, "video", move), cid, name, move)
+        path = build(os.path.join(ROOT, "build", "blender", folder, "video_quick" if QUICK else "video", move),
+                     cid, name, move, QUICK)
         if path:
             print(f"{os.path.relpath(path, ROOT)}: {os.path.getsize(path) // 1024} KB")

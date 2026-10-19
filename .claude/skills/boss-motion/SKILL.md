@@ -29,6 +29,31 @@ trước, cách né) theo `boss-mechanic`.
 - Soát bằng tấm tư thế khoá TRƯỚC khi xuất sprite (`--still --game` →
   `python -I tool/render/keysheet.py …`); hướng vũ khí sai thì in số đo, đừng đoán.
 
+## A2. Soát nhanh mỗi vòng (trước critic)
+
+```bash
+bash tool/blender/render.sh <boss> --motion-review [--quick] [--moves attack] [--frames 60]
+#   → build/blender/motion_review/<boss>/sheet.png + checks.txt  (tengu ~20 s, oni ~4 phút, không render)
+bash tool/blender/render.sh <boss> --video --quick && python tool/render/boss_video.py --quick <thư mục boss>
+#   → build/videos/<id>_<đòn>_quick.mp4 (20 khung, nửa độ phân giải; tengu ~3 phút)
+```
+- **Mở sheet.png bằng Read.** Mỗi đoạn cảnh báo: sửa, hoặc khai cố ý trong biên đạo
+  (`attacks.<đòn>.review`: `slide`, `weapon_ground`, `weapon_body`, `foot_ground`, `jerk`
+  — khoảng tiến độ 0–1) kèm lý do trong `_why`. Đừng nới ngưỡng trong `motion_review.py`
+  để cho qua.
+- "Khung giật" nhiều khớp cùng lúc ở đầu/cuối đòn = chỗ nối biên đạo ↔ mocap hoặc
+  dáng chờ ↔ đòn: xem `in`/`out` trong `moves.json` trước khi chỉnh khoá.
+- Bản thêm boss mới: thêm nhánh `--motion-review` vào `main()` như oni/tengu
+  (`review_motion(motion, body, rig, "<script>", "<choreo id>", weapons=[regex], grip=(xương, bán kính m))`).
+
+## A3. Phía game (Flutter) — cũng là việc của phòng
+
+- `lib/art/motion.dart` (`AttackPose`, `BossBodyMotion`, `Spring`), `lib/art/bosses/choreo.dart`;
+  sửa thì chạy `flutter test test/art/motion_test.dart test/art/choreo_test.dart test/art/stage_motion_test.dart`.
+- Bản vector 2.5D đọc cùng biên đạo: đổi góc quay / dáng boss bên 3D thì sửa luôn tư
+  thế 2.5D (`planeDir`, xoay thân) và xem bằng `ART_PREVIEW=1 flutter test test/art/art_preview_test.dart`.
+  Việc tồn: oni/tengu 2.5D chưa quay nghiêng (rules/dohoa/chuyendong.md).
+
 ## B. Mocap võ học (boss hình người)
 
 ### 0. Nguyên tắc
@@ -78,6 +103,7 @@ python -I tool/render/keysheet.py build/blender/oni/keys attack out.png 5
 - Tay vũ khí: hướng vũ khí lúc chạm về phía Hercules; nếu lệch, kiểm dấu
   `yaw_mocap − twist`.
 - Ngón: nắm đấm/nắm cán khi lấy đà→chạm, thả lỏng khi thu.
+- `--motion-review` sạch (hoặc mọi đoạn đã khai cố ý) — mục A2.
 - Critic "mắt lạ" (agent `critic` MỚI mỗi vòng, đưa tấm tư thế khoá + video +
   mô tả đòn, không nói ai làm) — lặp tới ≥ 8/10. Chỉ sửa ý lặp lại ≥ 2 vòng;
   chốt bản điểm cao nhất.

@@ -31,6 +31,9 @@ bash tool/blender/render.sh <boss> --video          # 60 khung mỗi đòn → b
 python tool/render/boss_video.py                     # → build/videos/<boss_id>_<đòn>.mp4 (chờ → tốc độ thật → chậm 0,5×)
 python tool/render/report_video.py <mục> build/videos/<file>.mp4="<chú thích>" …
 ```
+- Giữa các vòng sửa dùng bản nháp: `render.sh <boss> --video --quick` (20 khung, 6 mẫu,
+  nửa độ phân giải → `video_quick/`) rồi `boss_video.py --quick <boss>` → `*_quick.mp4`
+  (tengu ~3 phút thay vì ~25). Bản nháp KHÔNG nhúng báo cáo.
 - Hai boss render song song được (mỗi tiến trình ~3,4 GB RAM); ba thì thiếu RAM.
 - Video phải khớp sprite đang commit — đổi biên đạo/mocap là render lại.
 

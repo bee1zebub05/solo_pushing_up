@@ -25,6 +25,7 @@ if [ "$name" = tripo_view ]; then
 else
   case " $* " in
     *" --review "*) python -I tool/blender/kits/review_sheet.py "build/blender/review/$name" ;;
+    *" --motion-review "*) python -I tool/motion/motion_sheet.py "build/blender/motion_review/$name" ;;
   esac
 fi
 # Trang atlas / tầng phông nền mới → nén WebP vào assets/.

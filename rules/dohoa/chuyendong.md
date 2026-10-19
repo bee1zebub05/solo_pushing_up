@@ -16,6 +16,27 @@ cho phòng Render & xuất.
   vũ khí theo biên đạo; quay về Hercules, mắt nhìn đối thủ.
 - Vòng critic: chỉ sửa ý lặp lại ≥ 2 vòng, chốt bản điểm cao nhất.
 - Không chạy Cycles GPU cùng lúc huấn luyện torch trên GPU 4 GB.
+- **Máy soát trước, critic sau:** mỗi lần sửa đòn chạy `--motion-review` (chân xuyên
+  đất, trượt chân, vũ khí xuyên thân/đất, khung giật, lệch dáng chờ) và xem video
+  nháp `--video --quick`; chỉ gọi critic khi sheet sạch hoặc mọi đoạn còn lại đã
+  khai "cố ý" trong biên đạo (`review`).
+
+**Phạm vi (19/10/2026).** Phòng sở hữu MỌI thứ quyết định "cái gì chuyển động thế
+nào", ở cả Blender lẫn game:
+- `tool/motion/` (biên đạo, mocap, lớp `<boss>_motion.py`, bộ soát chuyển động).
+- `lib/art/motion.dart` (`AttackPose`, `BossBodyMotion`, `Spring`), `lib/art/bosses/choreo.dart`
+  + `choreo_data.dart` (sinh), và phần **tư thế** của bản vector 2.5D (đọc kênh biên
+  đạo, dáng tay/cánh/thân trong `shuten_boss.dart`, `tengu_boss.dart`,
+  `japan_sprite_boss.dart`). Phần vẽ (màu, nét, phông, hiệu ứng) là của phòng Vào game.
+- Test: `test/art/motion_test.dart`, `choreo_test.dart`, `stage_motion_test.dart`.
+
+**Việc tồn của phòng:**
+- Bản vector 2.5D của oni/tengu vẫn ở góc ¾ cũ; bản 3D đã quay gần nghiêng về
+  Hercules (−72° / −55°). Đổi `planeDir` + dáng thân 2.5D cho khớp.
+- Lỗi máy soát bắt được ngày 19/10 (sửa sau): tengu Phong kesa bật thân ở khung
+  2→3 và 56→57 (đầu/cuối đòn lệch dáng chờ ~74 cm); oni chân sau lún đất quanh
+  khung 42–43 đòn Nện đỉnh; tengu Thiên cẩu phi (biên đạo cũ) chân lún ~10 cm khi
+  ngồi thụp. Kết quả đầy đủ: `build/blender/motion_review/<boss>/sheet.png`.
 
 ## Chuẩn chuyển động boss (cũ: mục 6)
 

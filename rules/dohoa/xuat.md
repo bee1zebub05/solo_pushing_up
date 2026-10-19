@@ -77,6 +77,7 @@ ghi vào `baocao_dohoa.html` ở gốc repo, cùng commit với thay đổi (ho�
   3. `python tool/render/report_video.py <tên mục> build/videos/<file>.mp4="<chú thích>" …`
      — nén 540p (~150–300 KB mỗi video), chèn khối `<video>` trước
      `<!--<tên>-end-->`; chạy lại thì thay khối cũ.
+- Bản nháp giữa các vòng: `--video --quick` → `*_quick.mp4` (không nhúng báo cáo).
 - Video phải là bản **đúng với sprite đang commit**. Đổi biên đạo / mocap thì
   render lại video, đừng để video cũ trong mục mới (19/10: 4 video ở
   `build/videos/` vẫn là biên đạo trước mocap mà không ai biết).

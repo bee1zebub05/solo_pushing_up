@@ -301,13 +301,20 @@ def main():
                important={"quạt lông": [r"^Fan"]}, embedded=[r"^FanHandle"],
                targets={"chân (khớp háng)/chiều cao": (0.44, 0.52)}, samples=16 if quick else 32)
         return
+    if "--motion-review" in sys.argv:  # bộ soát chuyển động (tool/motion/motion_review.py), không render
+        from motion_review import review_motion
+        face_game(rig)
+        motion = TenguMotion(rig)
+        motion.facing = True
+        review_motion(motion, m.body, rig, "tengu_boss", "tengu_sutoku", weapons=[r"^Fan"], grip=("hand_r", 0.14))
+        return
     if "--video" in sys.argv:  # khung video từng đòn (tool/render/boss_video.py ghép mp4)
         face_game(rig)
         game_camera(scene, 150)
         motion = TenguMotion(rig)
         motion.facing = True
         from video_frames import video_frames
-        video_frames(scene, motion, out)
+        video_frames(scene, motion, out, quick="--quick" in sys.argv)
         return
     if "--still" in sys.argv:
         # Ảnh duyệt chính diện (như bản MPFB cũ) + dáng thử xương.

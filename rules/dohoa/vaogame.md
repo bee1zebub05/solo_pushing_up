@@ -3,6 +3,10 @@
 Code: `lib/art/`, `lib/game/`, `shaders/`, `test/art/`. Skill: `vector-game-art`
 (bản vector 2.5D), `boss-mechanic` (cơ chế + game feel), `workout-hud`.
 
+Chuyển động phía game (`motion.dart`, `choreo*.dart`, tư thế bản vector 2.5D) thuộc
+phòng Chuyển động (`chuyendong.md`, mục Phạm vi); phòng này giữ sân khấu, nạp
+BossArt, hiệu ứng, hitstop và phần vẽ.
+
 **Quy tắc chính**
 - Ngân sách: GPU tô ≤ 16 ms/khung trung bình (p90 ≤ 20 ms) trên máy tầm trung,
   ghi lệnh vẽ ≤ 5 ms; đo bằng `perf_bench_main.dart` trên máy thật.
