@@ -125,7 +125,9 @@ Không gửi ảnh duyệt nào khi chưa qua bước này.
 ## 6. Ghi lại
 
 - `baocao_dohoa.html`: mục mới chèn ngay dưới `<h1>` (kiểu stack), có
-  ngày giờ, commit, việc chờ duyệt. File lớn — chèn bằng script, đừng đọc cả.
+  ngày giờ, commit, việc chờ duyệt. Ảnh **và video** nhúng base64 vào HTML;
+  dáng ra đòn → kèm video (`tool/report_video.py`). Quy tắc đầy đủ: dohoa.md
+  mục 17. File lớn — chèn bằng script, đừng đọc cả.
 - Bài học mới (bẫy Blender, luật dựng) → bổ sung dohoa.md mục 11/12, và nếu
   máy kiểm được thì thêm vào `review_kit` thay vì chỉ ghi chữ.
 - Commit riêng từng hạng mục.

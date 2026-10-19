@@ -58,6 +58,9 @@ python -I tool/blender/keysheet.py build/blender/oni/keys attack out.png 5
 - Ngón: nắm đấm/nắm cán khi lấy đà→chạm, thả lỏng khi thu.
 - Critic "mắt lạ" (agent general-purpose MỚI mỗi vòng, đưa tấm tư thế khoá +
   mô tả đòn, không nói ai làm) — lặp tới ≥ 8/10, như `blender-character`.
+- Bản chốt: render lại video (`render.sh <boss> --video` → `tool/boss_video.py`)
+  và nhúng vào `baocao_dohoa.html` bằng `tool/report_video.py` (dohoa.md mục 17)
+  — video phải khớp sprite đang commit.
 
 ## 4. Huấn luyện lại mô hình
 

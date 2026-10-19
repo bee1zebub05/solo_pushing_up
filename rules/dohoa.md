@@ -676,3 +676,28 @@ Chưa đạt 8/10. Bài học về vòng lặp:
 - Dư địa còn lại: đòn mocap riêng cho vũ khí nặng (cần dữ liệu kiếm/gậy chuyên
   nghiệp có giấy phép), tay trái ôm cán chuỳ lúc nện (critic v4), cánh xa tengu
   điều khiển riêng, bản vector 2.5D vẫn ở góc ¾ cũ (chưa quay nghiêng).
+
+## 17. Báo cáo đồ hoạ `baocao_dohoa.html` (quy tắc, 19/10/2026)
+
+Mọi thay đổi đồ hoạ (nhân vật, boss, đòn đánh, phông, hiệu ứng, sprite) phải
+ghi vào `baocao_dohoa.html` ở gốc repo, cùng commit với thay đổi (hoặc ngay sau).
+
+- **Kiểu stack:** mục mới chèn ngay dưới `<h1>`, mục cũ đẩy xuống. Mỗi mục bọc
+  bằng marker `<!--<tên>-start-->` … `<!--<tên>-end-->`, ghi ngày giờ, làm gì,
+  commit, việc còn chờ duyệt.
+- **Một file duy nhất:** ảnh **và video** đều nhúng base64 vào HTML, không trỏ
+  ra `build/` (thư mục bị gitignore, người khác mở báo cáo sẽ không thấy).
+- **Đòn đánh / chuyển động phải có video,** không chỉ tấm tư thế khoá: tư thế
+  tĩnh không cho thấy nhịp lấy đà → chạm → thu. Quy trình:
+  1. `bash tool/blender/render.sh <boss> --video` (60 khung mỗi đòn),
+  2. `python tool/boss_video.py` → `build/videos/<boss>_<đòn>.mp4`,
+  3. `python tool/report_video.py <tên mục> build/videos/<file>.mp4="<chú thích>" …`
+     — nén 540p (~150–300 KB mỗi video), chèn khối `<video>` trước
+     `<!--<tên>-end-->`; chạy lại thì thay khối cũ.
+- Video phải là bản **đúng với sprite đang commit**. Đổi biên đạo / mocap thì
+  render lại video, đừng để video cũ trong mục mới (19/10: 4 video ở
+  `build/videos/` vẫn là biên đạo trước mocap mà không ai biết).
+- Render video song song được: mỗi tiến trình Blender ~3,4 GB RAM, ~1,2 GB
+  VRAM, phần chậm là đặt dáng mocap (CPU một luồng) chứ không phải Cycles →
+  chạy hai boss cùng lúc trên máy 16 GB nhanh gần gấp đôi; ba thì thiếu RAM.
+- File lớn (vài MB): chèn/sửa bằng script hoặc Edit theo marker, đừng đọc cả file.

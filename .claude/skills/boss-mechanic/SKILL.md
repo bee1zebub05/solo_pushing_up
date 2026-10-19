@@ -89,3 +89,5 @@ lớp đỏ + rung TRƯỚC mốc `impact` trong JSON; mốc `impact` canh đún
 - `flutter analyze`, `flutter test` (gồm `test/game/` + `test/art/choreo_test.dart`).
 - Commit riêng từng hạng mục: cơ chế / biên đạo / hiệu ứng.
 - Bài học đòn mới (bẫy, nguyên lý) → bổ sung `rules/dohoa.md` mục 14.
+- Ghi `baocao_dohoa.html` kèm video từng đòn nhúng thẳng vào HTML
+  (`tool/report_video.py`, dohoa.md mục 17).
