@@ -6,6 +6,8 @@ import '../battle_stage.dart';
 import '../nemea_scene.dart' show stageGroundY;
 import '../sprite_atlas.dart';
 import 'choreo.dart';
+import 'pose_track.dart';
+import 'pose_track_data.dart';
 import 'choreo_data.dart';
 import '../vector_style.dart' show fillPaint;
 
@@ -53,6 +55,42 @@ abstract class JapanSpriteBoss extends BossArt {
   void dispose() => SpriteAtlas.evict(spriteName);
 
   late final Choreo choreo = Choreo(choreoData[spriteName]!);
+
+  /// Track tư thế (pose_track_data.dart, sinh lúc nướng chuyển động) hoặc null.
+  late final PoseTrack? poseTrack = poseTrackData[spriteName];
+
+  /// Đơn vị sân khấu cho 1 đơn vị kênh của bản vector (`_k` của từng boss).
+  double get trackK;
+
+  /// Kênh `lift` nâng cả hông (tengu bay) thay vì chỉ nhấc bàn chân (oni).
+  bool get liftInHip => false;
+
+  /// Kênh của bản vector lấy từ track tư thế tại đòn [move], tiến độ [phase]: độ
+  /// lệch so với dáng chờ đổi ra shift/drop/lean/step (+ lift), tay và vũ khí
+  /// truyền thẳng vector tương đối `_hx,_hy` (bàn tay − vai), `_dx,_dy` (đầu vũ
+  /// khí − bàn tay, chia độ dài vũ khí lớn nhất). Không có track → [v] nguyên.
+  Map<String, double> trackChannels(Map<String, double> v, String move, double phase) {
+    final t = poseTrack;
+    final p = t?.at(move, phase);
+    if (t == null || p == null) return v;
+    final r = t.readyFrame, k = trackK;
+    final hip = p['pelvis'] - r['pelvis'];
+    final foot = p['foot_r'] - r['foot_r'];
+    final hand = p['hand_r'] - p['shoulder_r'];
+    final dir = (p['weapon_tip'] - p['hand_r']) / (t.weaponLen > 0 ? t.weaponLen : 1);
+    var dt = p.torso - r.torso;
+    if (dt > math.pi) dt -= 2 * math.pi;
+    if (dt < -math.pi) dt += 2 * math.pi;
+    return {
+      ...v,
+      'shift': -hip.dx / (0.8 * k),
+      'drop': hip.dy / k + (liftInHip ? v['lift'] ?? 0 : 0),
+      'lean': -dt * 180 / math.pi / 0.55,
+      'step': -foot.dx / (0.8 * k),
+      if (!liftInHip) 'lift': -foot.dy / k,
+      '_hx': hand.dx, '_hy': hand.dy, '_dx': dir.dx, '_dy': dir.dy,
+    };
+  }
 
   /// Kênh tư thế lúc chờ (thở) tại thời điểm [time] giây.
   Map<String, double> idleChannels(double time);
@@ -180,7 +218,7 @@ abstract class JapanSpriteBoss extends BossArt {
       final v = fall > 0
           ? choreo.moves['defeat']!.at(fall)
           : attacking
-          ? choreo.moves[move]!.at(phase)
+          ? trackChannels(choreo.moves[move]!.at(phase), move, phase)
           : idleChannels(f.time);
       paintVector(canvas, f, v, attacking ? move : null);
       if (f.hurt > 0.01) canvas.restore();

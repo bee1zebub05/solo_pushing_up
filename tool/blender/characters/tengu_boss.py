@@ -360,22 +360,23 @@ def main():
         from boss_kit import save_blend
         save_blend("tengu_boss")
         return
-    # Sprite: thở (lặp), đòn theo tiến độ 0–1, gục.
+    # Sprite: cổng soát chuyển động → kế hoạch khung (dày quanh mốc chạm) → nướng thành
+    # khoá (art_src/blender/tengu_sutoku_anim.blend + track tư thế 2.5D) → xuất TỪ bản nướng.
+    # Cử chỉ cơ chế: viết ấn nguyền (japan_sprite_boss.scriptedMove).
+    from motion_review import gate
+    gate("tengu_boss", "tengu_sutoku")
+    from bake import bake, setups_from
     from sprite_kit import export_sprites
+    from sprite_plan import plan
     scene.cycles.samples = 16 if quick else 64
     face_game(rig)
     cam = game_camera(scene, 3.0 * UNITS_PER_M)
     motion = TenguMotion(rig)
     motion.facing = True
-    anims = {
-        "idle": [lambda k=k: motion.pose(t=k / 8) for k in range(8)],
-        "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
-        "attack2": [lambda k=k: motion.pose(move="attack2", phase=k / 19) for k in range(20)],
-        "defeat": [lambda k=k: motion.pose(move="defeat", phase=k / 5) for k in range(6)],
-        # Cử chỉ cơ chế: viết ấn nguyền (japan_sprite_boss.scriptedMove).
-        "write": [lambda k=k: motion.pose(move="write", phase=k / 9) for k in range(10)],
-    }
-    export_sprites(scene, cam, "tengu_sutoku", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.2})
+    anims, phases = plan(motion, "tengu_sutoku", {"idle": 8, "attack": 20, "attack2": 20, "defeat": 6, "write": 10})
+    extra = {"idlePeriod": 3.2, "phases": phases}
+    frames = bake(rig, anims, "tengu_sutoku", cam, (0, 0, 0), UNITS_PER_M, weapons=[r"^Fan"], extra=extra)
+    export_sprites(scene, cam, "tengu_sutoku", setups_from(frames), (0, 0, 0), UNITS_PER_M, extra=extra)
 
 
 main()

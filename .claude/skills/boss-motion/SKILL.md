@@ -48,6 +48,11 @@ bash tool/blender/render.sh <boss> --video --quick && python tool/render/boss_vi
 
 ## A3. Phía game (Flutter) — cũng là việc của phòng
 
+- Bản vector 2.5D đi theo **track tư thế** (`lib/art/bosses/pose_track.dart`, dữ liệu sinh
+  `pose_track_data.dart` từ lần xuất sprite): `JapanSpriteBoss.trackChannels` đổi độ lệch
+  so với dáng chờ ra kênh; boss mới cần `trackK` (+ `liftInHip`) và đọc `_hx/_hy`, `_dx/_dy`
+  ở hàm tay vũ khí.
+
 - `lib/art/motion.dart` (`AttackPose`, `BossBodyMotion`, `Spring`), `lib/art/bosses/choreo.dart`;
   sửa thì chạy `flutter test test/art/motion_test.dart test/art/choreo_test.dart test/art/stage_motion_test.dart`.
 - Bản vector 2.5D đọc cùng biên đạo: đổi góc quay / dáng boss bên 3D thì sửa luôn tư

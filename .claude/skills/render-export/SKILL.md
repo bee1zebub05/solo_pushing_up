@@ -11,6 +11,12 @@ Quy tắc: `rules/dohoa/xuat.md`. Code: `tool/render/`. Nhận nhân vật đã 
 
 ## 1. Sprite atlas
 
+Boss có lớp chuyển động (`tool/motion/<boss>_motion.py`): `render.sh <boss>` chạy cổng soát
+→ kế hoạch khung (dày quanh mốc chạm) → nướng (`art_src/blender/<atlas>_anim.blend` + track
+tư thế 2.5D) → xuất từ bản nướng. Bị cổng chặn: chạy `--motion-review`, sửa hoặc khai cố ý;
+vượt chỉ khi có lý do (`MOTION_GATE_SKIP="…"`). Sau xuất: `python tool/motion/gen_pose_track.py`.
+Sửa tay khoá trong file nướng rồi: `bash tool/render/render_baked.sh <script>`.
+
 - Chạy script nhân vật không cờ soát: `bash tool/blender/render.sh <tên>`
   (`--quick` = 16 mẫu để thử). Script gọi
   `sprite_kit.export_sprites(scene, cam, "<tên>", {"idle": [...], "attack": [...], …},

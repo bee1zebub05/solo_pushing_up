@@ -21,6 +21,27 @@ cho phòng Render & xuất.
   nháp `--video --quick`; chỉ gọi critic khi sheet sạch hoặc mọi đoạn còn lại đã
   khai "cố ý" trong biên đạo (`review`).
 
+**Dây chuyền xuất (19/10/2026 chiều) — `render.sh <boss>` không cờ:**
+1. **Cổng soát** (`motion_review.gate`): chặn nếu chưa soát, soát cũ hơn code chuyển động /
+   biên đạo / mocap / script nhân vật, hoặc còn đoạn **NẶNG** chưa khai cố ý (ngưỡng:
+   chân lún > 4 cm, trượt > 1,5 m/s, vũ khí xuyên thân > 8 cm so với dáng chờ, xuyên đất
+   > 5 cm, lệch dáng chờ bất kỳ, khung giật ≥ 8× không ở mốc chạm). Vượt:
+   `MOTION_GATE_SKIP="<lý do>"` — ghi `build/blender/motion_review/<boss>/gate_log.txt`.
+2. **Kế hoạch khung** (`sprite_plan.py`): đòn có `impact` lấy khung dày ×3 quanh mốc
+   chạm (−0,12…+0,08), thưa ×0,5 trong đoạn giữ thế; 20 khung → pha ra đòn 8 khung (chia
+   đều: 4). Tiến độ từng khung ghi vào atlas (`phases`), `SpriteAtlas.draw` tra theo đó.
+3. **Nướng** (`bake.py`): gọi mỗi dáng MỘT lần → khoá xương (sau IK, rồi tắt ràng buộc),
+   khoá vật đổi chỗ/ẩn hiện, vải: topology + thuộc tính không đổi → shape key, đổi
+   (hakama `hem`, khoá đai) → bản sao từng khung. Lưu `art_src/blender/<atlas>_anim.blend`
+   (gitignore — ai sửa tay thì chuyển sang Git LFS). Kiểm 19/10: render từ bản nướng
+   trùng render trực tiếp ≤ 0,05/255 (oni, tengu).
+4. **Xuất từ bản nướng** (`frame_set`), kèm **track tư thế** cho 2.5D
+   (`build/blender/pose_track/<atlas>.json` → `python tool/motion/gen_pose_track.py` →
+   `lib/art/bosses/pose_track_data.dart`).
+Sửa tay: mở `<atlas>_anim.blend`, chỉnh khoá xương, lưu, `bash tool/render/render_baked.sh <script>`.
+Lưu ý: IK của Blender giải lặp TỪ dáng trước → cùng một tiến độ, đi tới từ thứ tự khác có
+thể lệch dưới một điểm ảnh; bản nướng chốt một thứ tự (tuần tự theo timeline).
+
 **Phạm vi (19/10/2026).** Phòng sở hữu MỌI thứ quyết định "cái gì chuyển động thế
 nào", ở cả Blender lẫn game:
 - `tool/motion/` (biên đạo, mocap, lớp `<boss>_motion.py`, bộ soát chuyển động).
@@ -31,8 +52,9 @@ nào", ở cả Blender lẫn game:
 - Test: `test/art/motion_test.dart`, `choreo_test.dart`, `stage_motion_test.dart`.
 
 **Việc tồn của phòng:**
-- Bản vector 2.5D của oni/tengu vẫn ở góc ¾ cũ; bản 3D đã quay gần nghiêng về
-  Hercules (−72° / −55°). Đổi `planeDir` + dáng thân 2.5D cho khớp.
+- Bản vector 2.5D của oni/tengu: CHUYỂN ĐỘNG nay theo track tư thế (hông, ngả thân,
+  bước chân, tay + vũ khí — `JapanSpriteBoss.trackChannels`); HÌNH VẼ thân vẫn góc ¾
+  cũ (bản 3D gần nghiêng −72° / −55°) — vẽ lại là việc của phòng Vào game / vector-game-art.
 - Oni: chuỳ xuyên bụng 22–25 cm ở vòng thu về vai (Nện đỉnh 0,83–0,90, Quét
   0,71–0,81) — cần đổi đường vung trong biên đạo (đưa chuỳ vòng ra ngoài thân).
 

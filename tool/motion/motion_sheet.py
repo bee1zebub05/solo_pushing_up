@@ -88,7 +88,7 @@ def main(folder):
             sheet.paste(im, (c * W, r * H))
     d = ImageDraw.Draw(sheet)
     for i, line in enumerate(lines[:30]):
-        d.text((10, len(rows) * H + 10 + 20 * i), line, fill=(200, 30, 30) if line.startswith("[") else (20, 20, 20),
+        d.text((10, len(rows) * H + 10 + 20 * i), line, fill=(200, 30, 30) if line.startswith(("[", "NẶNG")) else (20, 20, 20),
                font=font(14, i == 0))
     out = os.path.join(folder, "sheet.png")
     sheet.save(out)

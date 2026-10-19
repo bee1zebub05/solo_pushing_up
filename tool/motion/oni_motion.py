@@ -304,11 +304,16 @@ class OniMotion:
         self.redress()
         bpy.context.view_layer.update()
 
+    def dress_objects(self):
+        """Object vải đang có (bộ dựng theo dáng duyệt trước lần redress đầu) — cho bake."""
+        if self.dress is None:
+            return [o for o in bpy.data.objects if o.name.startswith(("Hakama", "Apron", "Buckle")) or o.name == "Oni"]
+        return list(self.dress)
+
     def redress(self):
         """Dựng lại hakama, tạp dề, khoá đai theo dáng hiện tại (vải rủ từ chỗ rộng nhất)."""
         if self.dress is None:  # lần đầu: bỏ bộ dựng theo dáng duyệt
-            self.dress = [o for o in bpy.data.objects
-                          if o.name.startswith(("Hakama", "Apron", "Buckle")) or o.name == "Oni"]
+            self.dress = self.dress_objects()
         for o in self.dress:
             bpy.data.objects.remove(o, do_unlink=True)
         before = set(bpy.data.objects)

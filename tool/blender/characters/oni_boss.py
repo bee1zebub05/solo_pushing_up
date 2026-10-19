@@ -1343,22 +1343,24 @@ def main():
         return
     checks = ("--grip-only", "--checks", "--belly", "--grip", "--face", "--game")
     if not STILL and not any(c in sys.argv for c in checks):
-        # Sprite: thở (lặp), đòn theo tiến độ 0–1, gục.
+        # Sprite: cổng soát chuyển động → kế hoạch khung (dày quanh mốc chạm) → nướng thành
+        # khoá (art_src/blender/shuten_doji_anim.blend + track tư thế 2.5D) → xuất TỪ bản nướng.
+        # Cử chỉ cơ chế (japan_sprite_boss.scriptedMove): uống rượu, sặc.
+        from motion_review import gate
+        gate("oni_boss", "shuten_doji")
+        from bake import bake, setups_from
         from sprite_kit import export_sprites
+        from sprite_plan import plan
         scene.cycles.samples = 16 if "--quick" in sys.argv else 64
         motion = OniMotion(poser, body, mats)
         cam = game_camera(scene, 3.0 * UNITS_PER_M)
         aim_pupils(mats["eyes"], cam, look=poser.frame()[0])
-        anims = {
-            "idle": [lambda k=k: motion.pose(t=k / 8) for k in range(8)],
-            "attack": [lambda k=k: motion.pose(move="attack", phase=k / 19) for k in range(20)],
-            "attack2": [lambda k=k: motion.pose(move="attack2", phase=k / 19) for k in range(20)],
-            "defeat": [lambda k=k: motion.pose(move="defeat", phase=k / 5) for k in range(6)],
-            # Cử chỉ cơ chế (japan_sprite_boss.scriptedMove): uống rượu, sặc.
-            "drink": [lambda k=k: motion.pose(move="drink", phase=k / 9) for k in range(10)],
-            "stagger": [lambda k=k: motion.pose(move="stagger", phase=k / 9) for k in range(10)],
-        }
-        export_sprites(scene, cam, "shuten_doji", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 3.4})
+        anims, phases = plan(motion, "shuten_doji",
+                             {"idle": 8, "attack": 20, "attack2": 20, "defeat": 6, "drink": 10, "stagger": 10})
+        extra = {"idlePeriod": 3.4, "phases": phases}
+        frames = bake(rig, anims, "shuten_doji", cam, (0, 0, 0), UNITS_PER_M, dress=motion.dress_objects,
+                      weapons=[r"^Kanabo"], extra=extra)
+        export_sprites(scene, cam, "shuten_doji", setups_from(frames), (0, 0, 0), UNITS_PER_M, extra=extra)
         return
     if "--game" in sys.argv:  # góc sân khấu các pha đòn (soát trước khi xuất sprite)
         motion = OniMotion(poser, body, mats)

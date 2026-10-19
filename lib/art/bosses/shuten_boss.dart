@@ -305,6 +305,9 @@ class ShutenBossArt extends JapanSpriteBoss {
   static const _nearShoulder = Offset(40, -142);
 
   @override
+  double get trackK => _k;
+
+  @override
   Map<String, double> idleChannels(double time) {
     final w = 2 * math.pi * time / 3.4;
     final r = choreo.ready;
@@ -331,10 +334,14 @@ class ShutenBossArt extends JapanSpriteBoss {
   (Offset, Offset, Offset) _club(Map<String, double> v) {
     final sh = _body(v, _shoulder.translate(-v['twist']! * 0.25, 0));
     final sweep = v['sweep']!;
-    final hand = sh +
-        planeDir(v['hand']!, sweep) * v['reach']! * _k +
-        const Offset(-0.6, -0.15) * v['side']! * _k * 0.5;
-    var dir = planeDir(v['club']!, sweep);
+    // Track tư thế (JapanSpriteBoss.trackChannels): tay + chuỳ theo chuyển động 3D.
+    final tracked = v.containsKey('_hx');
+    final hand = tracked
+        ? sh + Offset(v['_hx']!, v['_hy']!)
+        : sh +
+              planeDir(v['hand']!, sweep) * v['reach']! * _k +
+              const Offset(-0.6, -0.15) * v['side']! * _k * 0.5;
+    var dir = tracked ? Offset(v['_dx']!, v['_dy']!) : planeDir(v['club']!, sweep);
     if (dir.distance < 0.35) dir = dir / dir.distance * 0.35;
     return (sh, hand, dir);
   }

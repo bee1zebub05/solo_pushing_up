@@ -32,6 +32,30 @@ class SpriteAtlas {
   /// Thông số thêm trong json (chu kỳ idle…).
   final Map<String, dynamic> meta;
 
+  /// Tiến độ (0–1) của từng khung theo chuỗi, khi khung KHÔNG chia đều
+  /// (`phases` trong json — tool/motion/sprite_plan.py dày khung quanh mốc chạm).
+  late final Map<String, List<double>> phases = {
+    for (final e in ((meta['phases'] as Map<String, dynamic>?) ?? const {}).entries)
+      e.key: [for (final v in e.value as List) (v as num).toDouble()],
+  };
+
+  /// Vị trí khung (chỉ số + phần lẻ) của tiến độ [t] trên danh sách tiến độ
+  /// tăng dần [ph] (gồm 0 và 1) — tra nhị phân rồi nội suy trong đoạn.
+  static double positionOf(List<double> ph, double t) {
+    final x = t.clamp(ph.first, ph.last);
+    var lo = 0, hi = ph.length - 1;
+    while (hi - lo > 1) {
+      final mid = (lo + hi) >> 1;
+      if (ph[mid] <= x) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    final span = ph[hi] - ph[lo];
+    return lo + (span > 0 ? (x - ph[lo]) / span : 0.0);
+  }
+
   static final _cache = <String, SpriteAtlas?>{};
   static final _loading = <String, Future<SpriteAtlas?>>{};
 
@@ -136,7 +160,12 @@ class SpriteAtlas {
     final frames = anims[anim];
     if (frames == null || frames.isEmpty) return;
     final n = frames.length;
-    var pos = loop ? (t % 1) * n : t.clamp(0.0, 1.0) * (n - 1);
+    final ph = loop ? null : phases[anim];
+    var pos = ph != null && ph.length == n
+        ? positionOf(ph, t)
+        : loop
+        ? (t % 1) * n
+        : t.clamp(0.0, 1.0) * (n - 1);
     if (snap) pos = pos.roundToDouble() % n;
     final i = pos.floor() % n;
     final j = loop ? (i + 1) % n : (i + 1).clamp(0, n - 1);

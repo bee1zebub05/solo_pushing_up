@@ -18,6 +18,11 @@ Kiểm từng đòn theo tiến độ 0–1 (thời gian thật: đòn dài ATTA
 - **về dáng chờ:** khung đầu/cuối đòn lệch dáng chờ > 3 cm (vào/ra đòn bị giật
   khi sân khấu nối với nhịp thở).
 
+Mỗi đoạn có mức NẶNG / nhẹ (SEVERE). **Cổng xuất sprite** (`gate`, gọi ở nhánh xuất
+sprite của script nhân vật): chặn khi chưa soát, khi kết quả soát cũ hơn code chuyển
+động / biên đạo / mocap / script nhân vật, hoặc còn đoạn NẶNG chưa khai cố ý. Vượt
+cổng: `MOTION_GATE_SKIP="<lý do>"` — lý do ghi vào gate_log.txt và in ra.
+
 Khung liền nhau cùng lỗi gộp thành một đoạn. Đoạn CỐ Ý khai trong biên đạo
 (`attacks.<đòn>.review`, tiến độ 0–1), ví dụ bước dậm trượt hay chuỳ nằm đất:
     "review": {"slide": [[0.40, 0.52]], "weapon_ground": [[0.60, 0.75]]}
@@ -39,6 +44,10 @@ ATTACK_S = 1.2  # độ dài đòn trên sân khấu (battle_stage.dart _attackL
 JOINTS = ("pelvis", "spine_03", "head", "hand_l", "hand_r", "foot_l", "foot_r")
 PEN_FOOT, CONTACT, SLIDE = 0.02, 0.03, 0.3
 PEN_WEAPON, JERK_RATIO, JERK_MIN, HOME = 0.03, 5.0, 60.0, 0.03
+# Ngưỡng NẶNG (chặn xuất sprite) theo loại: tệ nhất vượt ngưỡng thì nặng.
+SEVERE = {"chân xuyên đất": 4.0, "trượt chân": 1.5, "vũ khí xuyên thân": 8.0, "vũ khí xuyên đất": 5.0,
+          "lệch dáng chờ": 0.0}
+SEVERE_JERK_RATIO = 8.0  # khung giật nặng: gấp ≥ 8× quanh nó và không ở quanh mốc chạm
 
 
 class _Posed:
@@ -170,9 +179,14 @@ def _runs(flags, n, review):
             a, b = cur[0]["frame"] / (n - 1), cur[-1]["frame"] / (n - 1)
             wins = review.get(INTENT.get(kind, ""), [])
             intended = any(lo - 1e-6 <= a and b <= hi + 1e-6 for lo, hi in wins)
+            worst = max(cur, key=lambda x: x["value"])
+            if kind == "khung giật":
+                severe = worst.get("ratio", 0.0) >= SEVERE_JERK_RATIO and not worst.get("near_impact")
+            else:
+                severe = worst["value"] > SEVERE.get(kind, float("inf"))
             out.append({"from": cur[0]["frame"], "to": cur[-1]["frame"], "kind": kind, "who": who,
-                        "worst": max(x["value"] for x in cur), "unit": cur[0]["unit"], "intended": intended,
-                        "note": cur[0].get("note", "")})
+                        "worst": worst["value"], "unit": cur[0]["unit"], "intended": intended,
+                        "note": worst.get("note", ""), "severe": severe and not intended})
             if f is not None:
                 cur = [f]
     # Cùng loại + cùng đoạn khung ở nhiều khớp (thân bật cả khối) → một dòng.
@@ -184,6 +198,7 @@ def _runs(flags, n, review):
             m["who"] += ", " + r["who"]
             if r["worst"] > m["worst"]:
                 m["worst"], m["note"] = r["worst"], r["note"]
+            m["severe"] = m["severe"] or r["severe"]
         else:
             merged[k] = dict(r)
     return sorted(merged.values(), key=lambda r: (r["intended"], r["from"]))
@@ -208,9 +223,9 @@ def review_motion(motion, body, rig, name, choreo_id, weapons=(), grip=("hand_r"
         fr = [_sample(motion, posed, rig, objs, grip, move=move, phase=k / (n - 1)) for k in range(n)]
         m = {"events": ev, "review": review, "foot_min": {}, "slide": {}, "accel": {}, "flags": []}
 
-        def flag(k, kind, who, value, unit, note=""):
+        def flag(k, kind, who, value, unit, note="", **more):
             m["flags"].append({"frame": k, "phase": round(k / (n - 1), 3), "kind": kind, "who": who,
-                               "value": round(float(value), 3), "unit": unit, "note": note})
+                               "value": round(float(value), 3), "unit": unit, "note": note, **more})
 
         for s in "lr":
             zmin = [float(f["feet"][s][:, 2].min() - ground) for f in fr]
@@ -248,8 +263,10 @@ def review_motion(motion, body, rig, name, choreo_id, weapons=(), grip=("hand_r"
                 base = float(np.median(around)) if len(around) else 0.0
                 if acc[k] > JERK_MIN and acc[k] > JERK_RATIO * max(base, 1e-6):
                     near = impact is not None and abs(k / (n - 1) - impact) <= 0.06
+                    ratio = acc[k] / max(base, 1e-6)
                     flag(k, "khung giật", j, acc[k], "m/s²",
-                         "quanh mốc chạm, có thể cố ý" if near else f"gấp {acc[k] / max(base, 1e-6):.0f}× quanh nó")
+                         "quanh mốc chạm, có thể cố ý" if near else f"gấp {ratio:.0f}× quanh nó",
+                         ratio=round(float(ratio), 1), near_impact=bool(near))
         if move != "defeat":
             for k in (0, n - 1):
                 for j, hp in home["joints"].items():
@@ -261,13 +278,60 @@ def review_motion(motion, body, rig, name, choreo_id, weapons=(), grip=("hand_r"
         for r in m["runs"]:
             span = f"khung {r['from']:02d}" + (f"–{r['to']:02d}" if r["to"] > r["from"] else "")
             ph = f"{r['from'] / (n - 1):.2f}" + (f"–{r['to'] / (n - 1):.2f}" if r["to"] > r["from"] else "")
-            line = (f"[{move} {span} · {ph}] {r['kind']} · {r['who']}: tệ nhất {r['worst']:g} {r['unit']}"
+            line = (("NẶNG " if r["severe"] else "") + f"[{move} {span} · {ph}] {r['kind']} · {r['who']}: tệ nhất {r['worst']:g} {r['unit']}"
                     + (f" ({r['note']})" if r["note"] else ""))
             (intended if r["intended"] else warn).append(line + (" (cố ý)" if r["intended"] else ""))
+    severe = sum(1 for m in out["moves"].values() for r in m["runs"] if r["severe"])
+    out["severe"], out["moves_reviewed"], out["frames_reviewed"] = severe, moves, n
+    head = [f"{name}: {len(moves)} đòn × {n} khung, {time.time() - t0:.0f} s; đáy chân dáng chờ {home_low * 100:+.1f} cm so với sàn",
+            f"{len(warn)} đoạn cảnh báo ({severe} NẶNG — chặn xuất sprite), {len(intended)} đoạn cố ý theo biên đạo"]
+    warn.sort(key=lambda line: not line.startswith("NẶNG"))
     d = os.path.join(ROOT, "build", "blender", "motion_review", name)
     os.makedirs(d, exist_ok=True)
     json.dump(out, open(os.path.join(d, "data.json"), "w", encoding="utf-8"), ensure_ascii=False)
-    head = [f"{name}: {len(moves)} đòn × {n} khung, {time.time() - t0:.0f} s; đáy chân dáng chờ {home_low * 100:+.1f} cm so với sàn",
-            f"{len(warn)} đoạn cảnh báo, {len(intended)} đoạn cố ý theo biên đạo"]
     open(os.path.join(d, "checks.txt"), "w", encoding="utf-8").write("\n".join(head + warn + intended) + "\n")
     print("\n".join(head + warn[:40]))
+
+
+def _sources(name, choreo_id):
+    """File mà kết quả soát phụ thuộc: code chuyển động, biên đạo, mocap, script nhân vật."""
+    import glob
+    motion = os.path.join(ROOT, "tool", "motion")
+    out = glob.glob(os.path.join(motion, "*.py"))
+    out += [os.path.join(motion, "choreo", f"{choreo_id}.json"),
+            os.path.join(ROOT, "art_src", "mocap", "moves.json"),
+            os.path.join(ROOT, "tool", "blender", "characters", f"{name}.py")]
+    out += glob.glob(os.path.join(ROOT, "art_src", "mocap", "moves", f"{choreo_id}_*.npz"))
+    return [p for p in out if os.path.exists(p) and not p.endswith(("motion_review.py", "motion_sheet.py"))]
+
+
+def gate(name, choreo_id):
+    """Cổng xuất sprite: dừng (SystemExit) nếu chưa soát, soát đã cũ, hoặc còn đoạn NẶNG."""
+    d = os.path.join(ROOT, "build", "blender", "motion_review", name)
+    data = os.path.join(d, "data.json")
+    why = None
+    if not os.path.exists(data):
+        why = "chưa chạy bộ soát chuyển động"
+    else:
+        t = os.path.getmtime(data)
+        newer = [os.path.relpath(p, ROOT) for p in _sources(name, choreo_id) if os.path.getmtime(p) > t]
+        res = json.load(open(data, encoding="utf-8"))
+        if newer:
+            why = "kết quả soát cũ hơn: " + ", ".join(newer[:4]) + (" …" if len(newer) > 4 else "")
+        elif res.get("frames_reviewed", 0) < 40 or set(res.get("moves_reviewed", [])) < {"attack", "attack2"}:
+            why = "lần soát gần nhất không đủ (cần cả attack + attack2, ≥ 40 khung)"
+        elif res.get("severe", 1):
+            why = f"còn {res['severe']} đoạn NẶNG (build/blender/motion_review/{name}/checks.txt)"
+    if why is None:
+        print(f"[cổng chuyển động] {name}: đạt")
+        return
+    skip = os.environ.get("MOTION_GATE_SKIP", "").strip()
+    if skip:
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "gate_log.txt"), "a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M')} VƯỢT CỔNG ({why}) — lý do: {skip}\n")
+        print(f"[cổng chuyển động] {name}: VƯỢT CỔNG — {why}. Lý do: {skip}")
+        return
+    raise SystemExit(f"[cổng chuyển động] {name}: chặn xuất sprite — {why}.\n"
+                     f"  Chạy: bash tool/blender/render.sh {name} --motion-review   (rồi sửa hoặc khai cố ý trong biên đạo)\n"
+                     f"  Vượt có lý do: MOTION_GATE_SKIP=\"<lý do>\" bash tool/blender/render.sh {name}")
