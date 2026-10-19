@@ -1,5 +1,4 @@
-/// Biên đạo đòn theo khoá — bản Dart của tool/blender/choreo.py (rules/dohoa.md
-/// mục 14). Cùng dữ liệu (choreo_data.dart sinh từ JSON) và cùng phép nội suy
+/// Biên đạo đòn theo khoá — bản Dart của tool/motion/choreo.py (rules/dohoa/chuyendong.md). Cùng dữ liệu (choreo_data.dart sinh từ JSON) và cùng phép nội suy
 /// cubic đơn điệu Fritsch–Carlson, nên bản vector 2.5D đi đúng nhịp, đúng tư
 /// thế khoá như sprite Blender. Hai bộ nội suy được test so khớp.
 library;

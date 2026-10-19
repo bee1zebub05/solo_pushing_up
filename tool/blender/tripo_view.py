@@ -15,7 +15,8 @@ import sys
 
 import bpy
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths  # noqa: E402,F401
 from boss_kit import ROOT, render_to, reset_scene, srgb  # noqa: E402
 from human_kit import shadow_catcher  # noqa: E402
 from review_kit import _frame, _yaw_for  # noqa: E402

@@ -1023,7 +1023,7 @@ void paintHerculesAura(Canvas canvas, {double time = 0, double appear = 1}) {
   }
 }
 
-/// Hercules bằng sprite Blender (tool/blender/hercules.py, atlas
+/// Hercules bằng sprite Blender (tool/blender/characters/hercules.py, atlas
 /// `hercules`): bản render quay mặt sang phải nên lật ngang để nhìn về người
 /// chơi; gốc ở mặt đất. [talk] 0–1: mức giơ tay về phía người chơi (màn gọi
 /// làm mượt theo thời gian); [talking]: đang nói thì tay nhấp nhẹ theo lời.

@@ -1,0 +1,725 @@
+{
+ "_doc": "Biên đạo đòn Shuten-dōji (rules/dohoa/chuyendong.md). Thời gian t = tiến độ đòn 0–1 của sân khấu (AttackPose: lấy đà 0–0,5, ra đòn 0,5–0,65, thu về 0,65–1; đòn dài 1,2 s). Kênh: shift/drop/step/lift = m (×S trong Blender), góc = độ. hand = góc vị trí nắm quanh vai trong mặt phẳng trước–lên (0 trước, 90 lên), reach/side = ×S, club = hướng chuỳ cùng mặt phẳng, sweep = xoay cả tay + chuỳ quanh trục đứng qua vai (+ = sang trái nhân vật, quét ngang), aim = tay lửa vươn ra trước ngắm (1) / kéo về (−), poleF/poleU = hướng khuỷu. Khoá thiếu kênh = kênh đó không có khoá ở thời điểm ấy. Nội suy cubic đơn điệu (không vọt). lag = độ trễ kênh (chuỗi lực hông → thân → tay → chuỳ). Sinh Dart: python tool/motion/gen_choreo.py.",
+ "ready": {
+  "shift": 0,
+  "drop": 0,
+  "lean": 0,
+  "twist": 0,
+  "step": 0,
+  "lift": 0,
+  "hand": -14,
+  "reach": 0.165,
+  "side": 0.08,
+  "club": 148,
+  "sweep": 0,
+  "aim": 0,
+  "head": 0,
+  "poleF": 0,
+  "poleU": -0.5
+ },
+ "lag": {
+  "lean": 0.006,
+  "twist": 0.004,
+  "head": 0.016,
+  "hand": 0.01,
+  "reach": 0.01,
+  "sweep": 0.01,
+  "club": 0.01,
+  "aim": 0.012,
+  "drink": 0.01,
+  "face": 0.01,
+  "cant": 0.008
+ },
+ "attacks": {
+  "attack": {
+   "_name": "Nện đỉnh — jōdan rồi đánh thẳng xuống (shōmen-uchi) kèm dậm chân fumikomi",
+   "events": {
+    "impact": 0.62,
+    "hold_from": 0.38,
+    "hold_to": 0.48
+   },
+   "keys": [
+    {
+     "t": 0.12,
+     "v": {
+      "shift": -0.05,
+      "drop": 0.03,
+      "lean": -4,
+      "hand": -5,
+      "club": 155,
+      "aim": 0.3
+     }
+    },
+    {
+     "t": 0.38,
+     "v": {
+      "shift": -0.16,
+      "drop": -0.02,
+      "lean": -30,
+      "twist": -30,
+      "hand": 132,
+      "reach": 0.56,
+      "side": 0.3,
+      "club": 118,
+      "aim": 1.0,
+      "head": -8,
+      "poleF": -0.3,
+      "poleU": 0.75
+     }
+    },
+    {
+     "t": 0.48,
+     "v": {
+      "shift": -0.2,
+      "lean": -34,
+      "twist": -34,
+      "hand": 134,
+      "club": 126,
+      "aim": 1.0,
+      "head": -9,
+      "poleU": 0.8,
+      "reach": 0.57
+     }
+    },
+    {
+     "t": 0.53,
+     "v": {
+      "shift": 0.02,
+      "lean": -36,
+      "twist": -36,
+      "step": 0.3,
+      "lift": 0.16,
+      "hand": 128,
+      "club": 132,
+      "aim": 0.6
+     }
+    },
+    {
+     "t": 0.575,
+     "v": {
+      "shift": 0.2,
+      "drop": 0.1,
+      "lean": 14,
+      "twist": -10,
+      "step": 0.75,
+      "lift": 0.08,
+      "hand": 70,
+      "reach": 0.52,
+      "club": 60,
+      "aim": 0.1,
+      "head": 2,
+      "poleF": 0.1,
+      "poleU": -0.3
+     }
+    },
+    {
+     "t": 0.6,
+     "v": {
+      "club": 0,
+      "hand": 10,
+      "twist": 0,
+      "lean": 20
+     }
+    },
+    {
+     "t": 0.62,
+     "v": {
+      "shift": 0.34,
+      "drop": 0.36,
+      "lean": 36,
+      "twist": 0,
+      "step": 0.78,
+      "lift": 0.0,
+      "hand": -45,
+      "reach": 0.62,
+      "side": 0.05,
+      "club": -50,
+      "aim": -0.5,
+      "head": 10,
+      "poleF": -0.1,
+      "poleU": -0.75
+     }
+    },
+    {
+     "t": 0.69,
+     "v": {
+      "club": -55,
+      "hand": -46,
+      "lean": 42
+     }
+    },
+    {
+     "t": 0.72,
+     "v": {
+      "shift": 0.34,
+      "drop": 0.3,
+      "lean": 36,
+      "twist": 0,
+      "hand": -34,
+      "club": -75,
+      "aim": -0.45,
+      "head": 9,
+      "reach": 0.55
+     }
+    },
+    {
+     "t": 0.8,
+     "v": {
+      "shift": 0.3,
+      "drop": 0.32,
+      "lean": 26,
+      "twist": 0,
+      "hand": -30,
+      "reach": 0.48,
+      "club": -115,
+      "aim": -0.2
+     }
+    },
+    {
+     "t": 0.85,
+     "v": {
+      "shift": 0.2,
+      "drop": 0.2,
+      "lean": 22,
+      "hand": -30,
+      "reach": 0.3,
+      "club": -140,
+      "cant": 0.0
+     }
+    },
+    {
+     "t": 0.88,
+     "v": {
+      "shift": 0.12,
+      "drop": 0.1,
+      "lean": 10,
+      "hand": -25,
+      "reach": 0.24,
+      "club": -175,
+      "step": 0.4,
+      "cant": 0.0,
+      "sweep": -30
+     }
+    },
+    {
+     "t": 0.92,
+     "v": {
+      "hand": -14,
+      "reach": 0.165,
+      "side": 0.08,
+      "club": -212,
+      "cant": 0.32,
+      "sweep": 0,
+      "poleF": 0.0,
+      "poleU": -0.5,
+      "shift": 0.04,
+      "drop": 0.03,
+      "lean": 2,
+      "twist": 0,
+      "step": 0.15,
+      "lift": 0.04,
+      "aim": 0
+     }
+    },
+    {
+     "t": 0.95,
+     "v": {
+      "hand": -14,
+      "reach": 0.165,
+      "side": 0.08,
+      "club": -212,
+      "cant": 0.32,
+      "sweep": 0,
+      "poleF": 0.0,
+      "poleU": -0.5,
+      "shift": 0.01,
+      "drop": 0.0,
+      "lean": 0,
+      "step": 0.0,
+      "lift": 0.0
+     }
+    },
+    {
+     "t": 1.0,
+     "v": {
+      "club": -212
+     }
+    }
+   ]
+  },
+  "attack2": {
+   "_name": "Quét chân ngựa — giấu chuỳ thấp sau hông (waki-gamae) rồi quét ngang tầm gối, xoay hông trọn vòng",
+   "events": {
+    "impact": 0.61,
+    "hold_from": 0.36,
+    "hold_to": 0.48
+   },
+   "keys": [
+    {
+     "t": 0.14,
+     "v": {
+      "drop": 0.1,
+      "hand": -30,
+      "club": -20,
+      "sweep": -130,
+      "twist": -10,
+      "cant": 0.1
+     }
+    },
+    {
+     "t": 0.36,
+     "v": {
+      "shift": -0.12,
+      "drop": 0.4,
+      "lean": 5,
+      "twist": -60,
+      "hand": -40,
+      "reach": 0.52,
+      "side": 0.42,
+      "club": -10,
+      "sweep": -165,
+      "cant": 0.05,
+      "aim": 0.5,
+      "head": 6,
+      "poleF": -0.2,
+      "poleU": -0.4
+     }
+    },
+    {
+     "t": 0.48,
+     "v": {
+      "shift": -0.13,
+      "drop": 0.42,
+      "lean": 6,
+      "twist": -62,
+      "club": -8,
+      "sweep": -170,
+      "aim": 0.5
+     }
+    },
+    {
+     "t": 0.52,
+     "v": {
+      "sweep": -95,
+      "hand": -65,
+      "club": -20,
+      "twist": -10,
+      "drop": 0.44
+     }
+    },
+    {
+     "t": 0.54,
+     "v": {
+      "sweep": -60,
+      "hand": -68,
+      "club": -10,
+      "twist": 0,
+      "drop": 0.5
+     }
+    },
+    {
+     "t": 0.555,
+     "v": {
+      "shift": 0.12,
+      "drop": 0.52,
+      "lean": 18,
+      "twist": -20,
+      "step": 0.65,
+      "lift": 0.06,
+      "hand": -70,
+      "reach": 0.6,
+      "club": 0,
+      "sweep": -45,
+      "aim": 0.2,
+      "side": 0.3
+     }
+    },
+    {
+     "t": 0.61,
+     "v": {
+      "shift": 0.24,
+      "drop": 0.52,
+      "lean": 32,
+      "twist": 25,
+      "step": 0.7,
+      "lift": 0.0,
+      "hand": -72,
+      "club": 2,
+      "sweep": -10,
+      "aim": 0.4,
+      "head": 4,
+      "reach": 0.62
+     }
+    },
+    {
+     "t": 0.7,
+     "v": {
+      "shift": 0.26,
+      "drop": 0.45,
+      "lean": 20,
+      "twist": 40,
+      "hand": -60,
+      "reach": 0.62,
+      "club": -10,
+      "sweep": 30,
+      "aim": 0.35,
+      "poleF": 0.2
+     }
+    },
+    {
+     "t": 0.78,
+     "v": {
+      "twist": 48,
+      "sweep": 140,
+      "club": -10,
+      "hand": -50,
+      "drop": 0.25,
+      "aim": 0.3,
+      "reach": 0.6
+     }
+    },
+    {
+     "t": 0.86,
+     "v": {
+      "shift": 0.12,
+      "drop": 0.12,
+      "lean": 6,
+      "twist": 20,
+      "step": 0.35,
+      "hand": -40,
+      "reach": 0.35,
+      "club": -20,
+      "sweep": 200,
+      "aim": 0
+     }
+    },
+    {
+     "t": 0.89,
+     "v": {
+      "sweep": 290,
+      "club": 60,
+      "hand": 0,
+      "reach": 0.3
+     }
+    },
+    {
+     "t": 0.92,
+     "v": {
+      "hand": -14,
+      "reach": 0.165,
+      "side": 0.08,
+      "club": 148,
+      "cant": 0.32,
+      "sweep": 360,
+      "poleF": 0.0,
+      "poleU": -0.5,
+      "shift": 0.03,
+      "drop": 0.02,
+      "lean": 1,
+      "twist": 0,
+      "step": 0.1,
+      "lift": 0.04
+     }
+    },
+    {
+     "t": 1.0,
+     "v": {
+      "sweep": 360
+     }
+    }
+   ]
+  },
+  "defeat": {
+   "_name": "Gục: chuỳ cắm đất làm gậy chống, quỵ một gối, thân đổ tới, đầu gục",
+   "keys": [
+    {
+     "t": 0.3,
+     "v": {
+      "shift": 0.06,
+      "drop": 0.12,
+      "lean": 12,
+      "hand": -50,
+      "reach": 0.5,
+      "club": -70,
+      "head": 10,
+      "aim": -0.2
+     }
+    },
+    {
+     "t": 0.65,
+     "v": {
+      "shift": 0.14,
+      "drop": 0.42,
+      "lean": 26,
+      "twist": 8,
+      "step": 0.3,
+      "hand": -76,
+      "reach": 0.5,
+      "side": 0.1,
+      "club": -78,
+      "head": 26,
+      "aim": -0.6
+     }
+    },
+    {
+     "t": 1.0,
+     "v": {
+      "shift": 0.16,
+      "drop": 0.5,
+      "lean": 30,
+      "twist": 10,
+      "step": 0.32,
+      "hand": -80,
+      "reach": 0.48,
+      "side": 0.1,
+      "club": -80,
+      "head": 32,
+      "aim": -0.7
+     }
+    }
+   ],
+   "hold_end": true
+  },
+  "drink": {
+   "_name": "Uống rượu — cắm chuỳ chống đất, nâng vò sake ngửa cổ tu ừng ực (5 s; ngắt bằng rep dồn)",
+   "keys": [
+    {
+     "t": 0.03,
+     "v": {
+      "hand": -40,
+      "reach": 0.45,
+      "side": 0.25,
+      "club": -60,
+      "drink": 0.0,
+      "aim": -0.3
+     }
+    },
+    {
+     "t": 0.06,
+     "v": {
+      "hand": -50,
+      "reach": 0.55,
+      "side": 0.35,
+      "club": -90,
+      "drink": 0.3,
+      "lean": -4,
+      "cant": 0.0
+     }
+    },
+    {
+     "t": 0.16,
+     "v": {
+      "shift": -0.04,
+      "hand": -50,
+      "club": -90,
+      "drink": 1.0,
+      "head": -40,
+      "lean": -18,
+      "cant": 0.0,
+      "reach": 0.55,
+      "side": 0.35
+     }
+    },
+    {
+     "t": 0.85,
+     "v": {
+      "shift": -0.05,
+      "hand": -50,
+      "club": -90,
+      "drink": 1.0,
+      "head": -42,
+      "lean": -20,
+      "cant": 0.0,
+      "reach": 0.55,
+      "side": 0.35
+     }
+    },
+    {
+     "t": 0.94,
+     "v": {
+      "hand": -14,
+      "reach": 0.165,
+      "side": 0.08,
+      "club": 148,
+      "cant": 0.32,
+      "sweep": 0,
+      "poleF": 0.0,
+      "poleU": -0.5,
+      "drink": 0.0,
+      "head": 0,
+      "lean": 0
+     }
+    }
+   ]
+  },
+  "stagger": {
+   "_name": "Sặc rượu — vò vỡ, giật lùi, ôm miệng ho gập người, lảo đảo rồi đứng lại (3 s choáng)",
+   "keys": [
+    {
+     "t": 0.06,
+     "v": {
+      "shift": -0.2,
+      "drop": 0.0,
+      "lean": -24,
+      "twist": -14,
+      "head": -36,
+      "face": 0.2,
+      "hand": -62,
+      "club": -90,
+      "cant": 0.0,
+      "aim": 0
+     }
+    },
+    {
+     "t": 0.2,
+     "v": {
+      "shift": -0.12,
+      "drop": 0.28,
+      "lean": 42,
+      "head": 30,
+      "face": 1.0,
+      "twist": 4,
+      "cant": 0.2
+     }
+    },
+    {
+     "t": 0.28,
+     "v": {
+      "drop": 0.1,
+      "lean": 8,
+      "head": 0,
+      "face": 1.0,
+      "cant": 0.0
+     }
+    },
+    {
+     "t": 0.36,
+     "v": {
+      "drop": 0.3,
+      "lean": 44,
+      "head": 32,
+      "face": 1.0,
+      "step": -0.2,
+      "cant": 0.25
+     }
+    },
+    {
+     "t": 0.44,
+     "v": {
+      "drop": 0.1,
+      "lean": 8,
+      "head": 0,
+      "face": 1.0,
+      "step": -0.3,
+      "cant": 0.0
+     }
+    },
+    {
+     "t": 0.52,
+     "v": {
+      "drop": 0.28,
+      "lean": 40,
+      "head": 28,
+      "face": 1.0,
+      "step": -0.35,
+      "cant": 0.2
+     }
+    },
+    {
+     "t": 0.6,
+     "v": {
+      "shift": -0.3,
+      "drop": 0.12,
+      "lean": 10,
+      "head": 4,
+      "face": 0.8,
+      "twist": -16,
+      "step": -0.45
+     }
+    },
+    {
+     "t": 0.62,
+     "v": {
+      "drop": 0.14,
+      "lean": 14,
+      "head": 6,
+      "face": 0.8,
+      "twist": -14
+     }
+    },
+    {
+     "t": 0.7,
+     "v": {
+      "twist": 14,
+      "head": 0,
+      "face": 0.5,
+      "club": -90,
+      "hand": -62
+     }
+    },
+    {
+     "t": 0.72,
+     "v": {
+      "shift": -0.28,
+      "twist": 16,
+      "head": -4,
+      "face": 0.4,
+      "step": -0.45
+     }
+    },
+    {
+     "t": 0.78,
+     "v": {
+      "twist": -10,
+      "face": 0.9,
+      "head": -6,
+      "drop": 0.08,
+      "lean": 8,
+      "club": -92,
+      "hand": -60
+     }
+    },
+    {
+     "t": 0.8,
+     "v": {
+      "twist": -12,
+      "face": 0.9,
+      "head": -8,
+      "drop": 0.06,
+      "lean": 6
+     }
+    },
+    {
+     "t": 0.88,
+     "v": {
+      "shift": -0.1,
+      "twist": 0,
+      "face": 0.0,
+      "drop": 0.03,
+      "lean": 2,
+      "step": -0.15,
+      "hand": -40,
+      "club": -120,
+      "cant": 0.2
+     }
+    },
+    {
+     "t": 0.94,
+     "v": {
+      "hand": -14,
+      "reach": 0.165,
+      "side": 0.08,
+      "club": 148,
+      "cant": 0.32,
+      "sweep": 0,
+      "poleF": 0.0,
+      "poleU": -0.5,
+      "shift": 0,
+      "step": 0,
+      "face": 0
+     }
+    }
+   ]
+  }
+ }
+}

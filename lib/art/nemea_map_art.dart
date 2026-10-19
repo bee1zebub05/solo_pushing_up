@@ -81,7 +81,7 @@ void paintNemeaMap(
 
 Path _poly(List<Offset> pts) => Path()..addPolygon(pts, true);
 
-/// Bản đồ Thung lũng Nemea dựng bằng Blender (tool/blender/nemea_map.py),
+/// Bản đồ Thung lũng Nemea dựng bằng Blender (tool/blender/scenes/nemea_map.py),
 /// nạp khi mở màn chọn màn; chưa có thì vẽ bản vector.
 abstract final class NemeaMapImage {
   static ui.Image? _image;

@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import '../../rep/pushup_counter.dart';
 import '../battle.dart';
 
-/// Một đòn có báo trước: khoá đòn trong biên đạo (`tool/blender/choreo/<id>.json`)
+/// Một đòn có báo trước: khoá đòn trong biên đạo (`tool/motion/choreo/<id>.json`)
 /// và cách né.
 class BossAttack {
   const BossAttack(this.move, this.dodge);

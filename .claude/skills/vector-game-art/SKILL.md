@@ -7,7 +7,7 @@ description: Vẽ hoặc nâng cấp đồ hoạ vector bằng code (Flutter Can
 
 Không có hoạ sĩ: mọi hình vẽ bằng `Canvas` trong `lib/art/`. Mục tiêu là
 hình đủ chất lượng lên store: **cartoon trưởng thành**, không phải tranh
-thiếu nhi. Đọc `rules/dohoa.md` (nguyên tắc dự án) trước khi vẽ.
+thiếu nhi. Đọc `rules/dohoa/phongcach.md` (nguyên tắc dự án) trước khi vẽ.
 
 ## 0. Tờ spec trước khi vẽ (bắt buộc cho mọi hình MỚI)
 
@@ -53,7 +53,7 @@ của critic mắt-lạ ở mục 1.
    trông nghiệp dư/ngô nghê theo từng vùng; chỉ khen khi thật sự đạt." Sửa
    theo nhận xét → xuất lại → gọi critic MỚI. **Lặp tới khi critic cho ≥ 8/10**,
    đừng dừng ở "mình thấy ổn" (oni cần ~9 vòng).
-6. **Hiệu năng** (rules/dohoa.md mục 6): ngân sách chính là đo trên máy
+6. **Hiệu năng** (rules/dohoa/vaogame.md): ngân sách chính là đo trên máy
    thật bằng `lib/dev/perf_bench_main.dart` — GPU tô ≤ 16 ms/khung, ghi lệnh
    ≤ 5 ms. `flutter test test/art/perf_budget_test.dart` (< 3 ms ghi lệnh
    trên PC) chỉ là lưới chặn hồi quy. Phần tĩnh → `RasterLayer` (ảnh chụp
@@ -159,7 +159,7 @@ giữa nhân vật và boss.
   vì `late` chỉ khởi tạo khi truy cập lần đầu (thường là lúc dispose) nên
   hình đứng im. Viết widget test có `pump` để chắc hình có chạy.
 
-## 6. Thiết kế màn và game feel (xem rules/dohoa.md mục 5)
+## 6. Thiết kế màn và game feel (xem rules/dohoa/phongcach.md)
 
 - Chương nhiều màn: độ khó răng cưa, mỗi cơ chế theo kishōtenketsu.
 - Mọi đòn kẻ thù có dấu hiệu báo trước riêng, cố định; đọc được ≥ 0,6 giây.

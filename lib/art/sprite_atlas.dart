@@ -17,7 +17,7 @@ class SpriteFrame {
   final Size size;
 }
 
-/// Sprite dựng bằng Blender (tool/blender/sprite_kit.py): các trang WebP +
+/// Sprite dựng bằng Blender (tool/render/sprite_kit.py): các trang WebP +
 /// json mô tả khung theo chuỗi hoạt hình. Toạ độ đã tính sẵn theo đơn vị sân
 /// khấu quanh điểm neo (chân quái hoặc tâm thân quái bay) — chỉ việc vẽ.
 ///

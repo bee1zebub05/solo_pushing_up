@@ -6,8 +6,8 @@ description: Thiết kế và dựng một cơ chế / đòn đánh (cử chỉ)
 # Dựng cơ chế & đòn đánh boss (chống "ngô nghê")
 
 Rút từ CCGS (`rules/thamkhao/ccgs/agents/systems-designer.md`, `gates/cd-*`)
-+ bài học thật ở `rules/dohoa.md` mục 14. Skill này **không** dạy lại biên đạo
-Blender (đã có `blender-character` mục 5) và **không** chấm số cân bằng (đã có
++ bài học thật ở `rules/dohoa/chuyendong.md`. Skill này **không** dạy lại biên đạo
+(đã có `boss-motion`) và **không** chấm số cân bằng (đã có
 `balance-reps`) — nó lo phần khiến một boss "có hồn": tạo quyết định cho người
 chơi + đòn đọc được.
 
@@ -19,12 +19,12 @@ Ba lỗi gốc — tránh cả ba:
    phải ĐỔI cách hít đất (giữ chuỗi, nghỉ đúng lúc, xuống sâu, ra đòn khớp…).
 2. **Đòn không có nhịp** — chỉ A→B tuyến tính, thân đứng yên. Đòn thật = lấy đà
    (anticipation) → báo trước đọc được ở bóng → chạm (khựng + lực) → thu
-   (zanshin, phần phụ trễ). Xem `dohoa.md` mục 14 và `vector-game-art` mục 1
+   (zanshin, phần phụ trễ). Xem `rules/dohoa/chuyendong.md` và `vector-game-art` mục 1
    (§hoạt hình: 12 nguyên lý Disney).
-3. **Tự nghĩ, không tra nguồn** → ra đòn generic. Như mục 14 đã tra kiếm đạo /
+3. **Tự nghĩ, không tra nguồn** → ra đòn generic. Như biên đạo chương Nhật đã tra kiếm đạo /
    kanabō / tessen: mỗi đòn phải truy được về một nguồn hoặc nguyên lý thật.
-   Tốt nhất: lấy cơ học thân từ **mocap võ thật** (skill `martial-motion`,
-   `dohoa.md` mục 16) — boss quay về Hercules, thân/chân/ngón từ võ sinh,
+   Tốt nhất: lấy cơ học thân từ **mocap võ thật** (skill `boss-motion`,
+   `rules/dohoa/chuyendong.md`) — boss quay về Hercules, thân/chân/ngón từ võ sinh,
    tay vũ khí theo biên đạo.
 
 ## 1. Brief trước khi code (xin người dùng chốt)
@@ -36,7 +36,7 @@ Một cơ chế = một bài học. Viết và chốt trước khi gõ dòng cod
   boss đó.
 - **Cách hoá giải (counterplay):** người chơi làm gì để né/giảm? Luôn có cửa thắng.
 - **Hậu quả khi trượt:** mất gì (combo, máu, vàng, thời gian…).
-- **Nguồn tham khảo** cho tư thế/đòn (võ thuật, thần thoại) — như mục 14.
+- **Nguồn tham khảo** cho tư thế/đòn (võ thuật, thần thoại).
 → Đưa qua `design-gate` trước khi viết code.
 
 ## 2. Dựng cơ chế (BattleMechanic)
@@ -51,22 +51,16 @@ Một cơ chế = một bài học. Viết và chốt trước khi gõ dòng cod
   dạy giữ chuỗi). Cơ chế = một ý tưởng rõ một dòng, không rải rác khắp file.
 - Trạng thái cơ chế muốn hiện lên màn hình: điền qua `describe(... BattleView ...)`.
 
-## 3. Biên đạo đòn (cử chỉ) — giao cho pipeline sẵn có
+## 3. Biên đạo đòn (cử chỉ) — giao cho phòng Chuyển động
 
-Phần hình do `blender-character` mục 5 + `rules/dohoa.md` mục 14 lo. Nhắc lại
-các mốc KHÔNG được bỏ:
-- **Ba tư thế khoá** (lấy đà / chạm / thu) phải đọc được ở DẠNG BÓNG từ góc
-  game; cho vũ khí thò ra khỏi bóng thân (bài học mục 14).
-- Người + vũ khí là MỘT khối; quỹ đạo cong; `lag` hông→thân→tay→vũ khí→phần phụ.
-- Khoá lặp lại cùng giá trị = giữ (khựng lúc chạm, zanshin, lơ lửng ở đỉnh).
-- Một nguồn: `tool/blender/choreo/<id>.json` → `python tool/gen_choreo.py` →
-  `lib/art/bosses/choreo_data.dart`; `flutter test test/art/choreo_test.dart`
-  so bộ nội suy Dart với Python.
-- Mỗi boss ≥ 2 đòn, dấu hiệu báo trước KHÁC nhau.
+Phần hình của đòn do skill `boss-motion` lo (biên đạo `tool/motion/choreo/<id>.json`,
+mocap võ học, tấm tư thế khoá) — đưa nó brief mục 1. Yêu cầu tối thiểu phía
+cơ chế: mỗi boss ≥ 2 đòn, dấu hiệu báo trước KHÁC nhau, mốc `impact` trong JSON
+khớp thời điểm cơ chế tính trúng/né.
 
 ## 4. Game feel lúc chạm (nối cơ chế ↔ hình)
 
-Mỗi đòn trúng phải có (xem `vector-game-art` mục 6, `dohoa.md` mục 6): hitstop
+Mỗi đòn trúng phải có (xem `vector-game-art` mục 6, `rules/dohoa/vaogame.md`): hitstop
 (khựng ~0,1 s) + loé trắng + giật lùi + rung khung + hạt. Telegraph của boss:
 lớp đỏ + rung TRƯỚC mốc `impact` trong JSON; mốc `impact` canh đúng khung hiệu ứng.
 
@@ -74,9 +68,9 @@ lớp đỏ + rung TRƯỚC mốc `impact` trong JSON; mốc `impact` canh đún
 
 - **Tự soát:** đòn có đủ lấy đà / báo trước / chạm / thu? Telegraph đọc được ở
   bóng? Cơ chế tạo một quyết định thật, không chỉ là số?
-- **Critic mắt-lạ:** xuất khung đòn (tấm tư thế khoá `--still --game`, và/hoặc
-  `ART_PREVIEW=1 flutter test test/art` cho bản vector) rồi gọi reviewer ĐỘC LẬP
-  (tool Agent, `general-purpose`), đưa ảnh + brief mục 1, **không nói mình vừa
+- **Critic mắt-lạ:** xuất khung đòn (tấm tư thế khoá + video từ `render-export`,
+  và/hoặc `ART_PREVIEW=1 flutter test test/art` cho bản vector) rồi gọi agent
+  `critic` MỚI (tool Agent, `subagent_type: critic`), đưa ảnh + brief mục 1, **không nói mình vừa
   làm**. Hỏi: "Đòn này đọc ra là đòn gì không? Trông như robot trượt A→B hay
   như một cú đánh thật? Liệt kê ≥ 5 chỗ ngố." Sửa → xuất lại → critic mới, lặp
   tới khi đạt.
@@ -88,6 +82,5 @@ lớp đỏ + rung TRƯỚC mốc `impact` trong JSON; mốc `impact` canh đún
 
 - `flutter analyze`, `flutter test` (gồm `test/game/` + `test/art/choreo_test.dart`).
 - Commit riêng từng hạng mục: cơ chế / biên đạo / hiệu ứng.
-- Bài học đòn mới (bẫy, nguyên lý) → bổ sung `rules/dohoa.md` mục 14.
-- Ghi `baocao_dohoa.html` kèm video từng đòn nhúng thẳng vào HTML
-  (`tool/report_video.py`, dohoa.md mục 17).
+- Bài học cơ chế / game feel → `rules/dohoa/vaogame.md`; bài học đòn → `rules/dohoa/chuyendong.md`.
+- Ghi `baocao_dohoa.html` kèm video từng đòn nhúng thẳng vào HTML (skill `render-export`).

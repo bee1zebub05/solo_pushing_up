@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solo_pushing_up/art/bosses/choreo.dart';
 import 'package:solo_pushing_up/art/bosses/choreo_data.dart';
 
-/// Bộ nội suy biên đạo Dart phải khớp bản Python (tool/blender/choreo.py) —
+/// Bộ nội suy biên đạo Dart phải khớp bản Python (tool/motion/choreo.py) —
 /// nếu lệch, bản vector 2.5D đi khác nhịp sprite Blender.
 void main() {
   test('nội suy Dart khớp Python ở các giá trị mẫu', () {
@@ -24,7 +24,7 @@ void main() {
         final end = m.value.at(1.5);
         e.value.ready.forEach((k, v) {
           // Kênh góc (độ) chỉ cần cùng hướng: chuỳ thu vòng dưới về vai kết thúc ở
-          // −212° ≡ 148° (rules/dohoa.md mục 16).
+          // −212° ≡ 148° (rules/dohoa/chuyendong.md).
           final d = _angles.contains(k) ? ((end[k]! - v) % 360 + 540) % 360 - 180 : end[k]! - v;
           expect(d, closeTo(0, 1e-9), reason: '${e.key} ${m.key} $k');
         });

@@ -230,7 +230,7 @@ void paintLion(Canvas canvas, LionState s) {
   canvas.restore();
 }
 
-/// Sư tử bằng sprite Blender (tool/blender/lion_nemea.py, cùng gốc toạ độ
+/// Sư tử bằng sprite Blender (tool/blender/characters/lion_nemea.py, cùng gốc toạ độ
 /// và nhịp đòn với [paintLion]): thân, bờm, bóng đổ đã có trong ảnh; ở đây
 /// chỉ thêm phần đọc nhịp trận — bụi cào đất khi lấy đà, rung gầm gừ, vệt
 /// vuốt, sóng gầm, khiên da loé khi bị chặn, Trì Trệ rời xác khi gục.

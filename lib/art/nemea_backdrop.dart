@@ -6,7 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'art_mode.dart';
 import 'nemea_scene.dart';
 
-/// Phông Thung lũng Nemea dựng bằng Blender (tool/blender/nemea_valley.py):
+/// Phông Thung lũng Nemea dựng bằng Blender (tool/blender/scenes/nemea_valley.py):
 /// mỗi tầng chiều sâu ([NemeaLayer]) và tiền cảnh là một ảnh WebP phủ cả sân
 /// khấu, rộng thêm [margin] đơn vị mỗi bên cho camera trôi. Chỉ nạp khi vào
 /// trận (BossArt.preload) và trả bộ nhớ khi rời trận; chưa nạp xong thì sân

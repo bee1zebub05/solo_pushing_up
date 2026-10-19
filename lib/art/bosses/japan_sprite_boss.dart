@@ -9,13 +9,13 @@ import 'choreo.dart';
 import 'choreo_data.dart';
 import '../vector_style.dart' show fillPaint;
 
-/// Boss hình người chương Nhật dựng bằng Blender (`tool/blender/<tên>_boss.py`,
+/// Boss hình người chương Nhật dựng bằng Blender (`tool/blender/characters/<tên>_boss.py`,
 /// atlas `idle` / `attack` / `attack2` / `defeat`): chế độ 3D vẽ sprite, chế độ
 /// 2.5D hoặc lúc chưa nạp vẽ bản vector [paintVector] — cùng chỗ đứng, cùng cỡ.
 ///
 /// Hai đòn luân phiên, mỗi đòn có dấu hiệu báo trước riêng; tư thế theo biên
-/// đạo chung với Blender (`choreo_data.dart` sinh từ tool/blender/choreo/*.json,
-/// rules/dohoa.md mục 14): bản vector đọc cùng kênh (dịch hông, ngả, vặn, góc
+/// đạo chung với Blender (`choreo_data.dart` sinh từ tool/motion/choreo/*.json,
+/// rules/dohoa/chuyendong.md): bản vector đọc cùng kênh (dịch hông, ngả, vặn, góc
 /// tay, góc vũ khí, cánh…) tại cùng tiến độ nên đi đúng nhịp sprite.
 /// Hiệu ứng đòn ([paintStrike]) vẽ ở cả hai chế độ, canh mốc `impact`.
 abstract class JapanSpriteBoss extends BossArt {

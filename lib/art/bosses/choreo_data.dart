@@ -1,8 +1,8 @@
-// SINH TỰ ĐỘNG bởi tool/gen_choreo.py từ tool/blender/choreo/*.json — đừng sửa tay.
+// SINH TỰ ĐỘNG bởi tool/motion/gen_choreo.py từ tool/motion/choreo/*.json — đừng sửa tay.
 
 import 'choreo.dart';
 
-/// Biên đạo đòn theo id boss (rules/dohoa.md mục 14).
+/// Biên đạo đòn theo id boss (rules/dohoa/chuyendong.md).
 const choreoData = <String, ChoreoSpec>{
   'shuten_doji': ChoreoSpec(
     ready: {'shift': 0.0, 'drop': 0.0, 'lean': 0.0, 'twist': 0.0, 'step': 0.0, 'lift': 0.0, 'hand': -14.0, 'reach': 0.165, 'side': 0.08, 'club': 148.0, 'sweep': 0.0, 'aim': 0.0, 'head': 0.0, 'poleF': 0.0, 'poleU': -0.5},

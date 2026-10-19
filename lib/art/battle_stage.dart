@@ -22,7 +22,7 @@ import 'stage_shaders.dart';
 import 'vector_style.dart';
 
 /// Trạng thái trận truyền từ logic (lib/game/battle.dart) sang hình mỗi khung,
-/// để cơ chế của boss nhìn thấy được (rules/dohoa.md nguyên tắc 4).
+/// để cơ chế của boss nhìn thấy được (rules/dohoa/phongcach.md, nguyên tắc 4).
 class StageBattleState {
   /// Mực nước 0–100 (Thuỷ Tinh).
   double water = 0;

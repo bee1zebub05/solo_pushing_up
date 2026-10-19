@@ -5,7 +5,7 @@ import 'package:flutter/painting.dart';
 /// Hiệu ứng sân khấu chạy bằng fragment shader (GPU). Mỗi shader vẽ vào một
 /// ảnh nhỏ cố định rồi phóng lên sân khấu: toạ độ trong shader không phụ
 /// thuộc camera/lớp màu, và GPU chỉ tô vài chục nghìn điểm ảnh thay vì cả màn
-/// hình (nút cổ chai trên máy tầm trung là raster, rules/dohoa.md mục 6).
+/// hình (nút cổ chai trên máy tầm trung là raster, rules/dohoa/vaogame.md).
 ///
 /// Shader chưa nạp (hoặc nền tảng không hỗ trợ) thì [ShaderLayer.ready] là
 /// `false`: nơi gọi vẽ bản vector cũ hoặc bỏ qua, sân khấu vẫn chạy.

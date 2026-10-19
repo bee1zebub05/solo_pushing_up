@@ -1,11 +1,11 @@
-"""Addon Blender "SPU Tripo": đưa model Tripo AI vào repo (rules/dohoa.md mục 12).
+"""Addon Blender "SPU Tripo": đưa model Tripo AI vào repo (rules/dohoa/dunghinh.md).
 
 - Tự động: Tripo Bridge ghi file nhận về vào thư mục tạm rồi XOÁ ngay sau khi
   nhập — addon bọc `ModelImporter.import_model` của Tripo, chép file gốc vào
   `art_src/tripo/_inbox/` trước khi Tripo nhập. Không lần sinh nào bị mất.
 - Nút "Gửi vào repo" (thanh bên 3D View › SPU): xuất vật đang chọn (cả con,
   xương, hoạt hình, chỗ sửa tay) → `art_src/tripo/<tên>/model.glb` +
-  `meta.json` + `thumb.png`. Script `tool/blender/tripo_kit.py` dựng tiếp.
+  `meta.json` + `thumb.png`. Script `tool/blender/kits/tripo_kit.py` dựng tiếp.
 
 Cài một lần (Blender đang đóng):  blender -b -P tool/blender/install_tripo_inbox.py
 Addon nạp file này thẳng từ repo — sửa ở đây, khởi động lại Blender là có.

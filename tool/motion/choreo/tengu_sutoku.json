@@ -1,0 +1,451 @@
+{
+ "_doc": "Biên đạo đòn tengu Sutoku (rules/dohoa/chuyendong.md). t = tiến độ đòn 0–1 (AttackPose). Khung rig của model (mặt quay −Y): shift/drop/lift/step/tuck = m; góc = độ. hand = góc vị trí cầm quạt quanh vai phải trong mặt phẳng trước–lên (0 trước, 90 lên), reach/side = m, sweep = xoay cả tay + quạt quanh trục đứng qua vai (+ = sang trái nhân vật: đường chém chéo kesa kết thúc bên trái), fan = hướng cán quạt cùng mặt phẳng, guard = tay trái giơ ra trước đỡ (tessen, 1) / kéo về (−), wing = cánh dựng (+) / đập xuống (−), wingFwd = cánh quạt ra trước, wingFold = đốt ngoài cụp (+) / duỗi (−), lift = cả người bay lên, tuck = co chân khi bay. lag: hông → thân → tay → quạt → cánh → mút cánh (trễ nhất).",
+ "ready": {
+  "shift": 0,
+  "drop": 0,
+  "lift": 0,
+  "lean": 0,
+  "twist": 0,
+  "step": 0,
+  "tuck": 0,
+  "hand": -75,
+  "reach": 0.42,
+  "side": 0.12,
+  "sweep": 0,
+  "fan": 80,
+  "poleF": -0.1,
+  "poleU": -0.3,
+  "guard": 0,
+  "wing": 0,
+  "wingFwd": 0,
+  "wingFold": 0,
+  "head": 0,
+  "turn": 0
+ },
+ "lag": {
+  "lean": 0.006,
+  "twist": 0.004,
+  "head": 0.015,
+  "hand": 0.008,
+  "reach": 0.008,
+  "sweep": 0.008,
+  "fan": 0.014,
+  "guard": 0.01,
+  "wing": 0.012,
+  "wingFwd": 0.02,
+  "wingFold": 0.035,
+  "mouth": 0.01,
+  "stroke": 0.0,
+  "sigil": 0.01,
+  "turn": 0.002
+ },
+ "attacks": {
+  "attack": {
+   "_name": "Phong kesa — kéo quạt nằm ngang ra sau ở tầm vai (không giơ trên đầu: luật 'vũ khí trên đầu = giữ plank'), tay trái dựng đỡ, cánh duỗi phẳng căng hết cỡ → xoay người bước tới quạt ngang về phía người chơi ở tầm ngực, cánh đập tới",
+   "events": {
+    "impact": 0.6,
+    "hold_from": 0.36,
+    "hold_to": 0.48
+   },
+   "keys": [
+    {
+     "t": 0.14,
+     "v": {
+      "drop": 0.04,
+      "hand": -5,
+      "reach": 0.42,
+      "sweep": -60,
+      "fan": 10,
+      "wing": 6,
+      "wingFwd": -10,
+      "guard": 0.4
+     }
+    },
+    {
+     "t": 0.36,
+     "v": {
+      "shift": -0.12,
+      "drop": 0.12,
+      "lean": -12,
+      "twist": -26,
+      "turn": -6,
+      "hand": 40,
+      "reach": 0.48,
+      "side": 0.1,
+      "sweep": -120,
+      "fan": 100,
+      "poleF": 0.4,
+      "poleU": 0.6,
+      "guard": 1,
+      "wing": 25,
+      "wingFwd": 15,
+      "wingFold": -10,
+      "head": -2
+     }
+    },
+    {
+     "t": 0.48,
+     "v": {
+      "shift": -0.14,
+      "drop": 0.14,
+      "twist": -30,
+      "turn": -8,
+      "hand": 42,
+      "sweep": -125,
+      "fan": 102,
+      "wing": 26,
+      "wingFwd": 16,
+      "wingFold": -10,
+      "guard": 1,
+      "poleU": 0.62,
+      "poleF": 0.4,
+      "lean": -14
+     }
+    },
+    {
+     "t": 0.52,
+     "v": {
+      "sweep": -60,
+      "hand": 50,
+      "fan": 70
+     }
+    },
+    {
+     "t": 0.55,
+     "v": {
+      "shift": 0.12,
+      "drop": 0.1,
+      "lean": 10,
+      "twist": 0,
+      "turn": 10,
+      "step": 0.35,
+      "hand": 20,
+      "reach": 0.7,
+      "sweep": -10,
+      "fan": 2,
+      "guard": 0.3,
+      "wing": 20,
+      "wingFwd": 35
+     }
+    },
+    {
+     "t": 0.58,
+     "v": {
+      "hand": -10,
+      "sweep": 0,
+      "reach": 0.8,
+      "fan": 0
+     }
+    },
+    {
+     "t": 0.6,
+     "v": {
+      "shift": 0.26,
+      "drop": 0.16,
+      "lean": 32,
+      "twist": 0,
+      "turn": 24,
+      "step": 0.5,
+      "hand": -35,
+      "reach": 0.85,
+      "side": 0.05,
+      "sweep": -5,
+      "fan": -45,
+      "poleF": 0.0,
+      "poleU": -0.3,
+      "guard": -0.3,
+      "wing": 15,
+      "wingFwd": 25,
+      "wingFold": 10,
+      "head": 2
+     }
+    },
+    {
+     "t": 0.72,
+     "v": {
+      "drop": 0.17,
+      "lean": 22,
+      "twist": 5,
+      "turn": 24,
+      "hand": -40,
+      "sweep": 10,
+      "fan": 10,
+      "wing": -10,
+      "wingFwd": 10,
+      "wingFold": 12,
+      "reach": 0.75
+     }
+    },
+    {
+     "t": 0.86,
+     "v": {
+      "shift": 0.06,
+      "drop": 0.03,
+      "lean": 5,
+      "twist": 8,
+      "turn": 6,
+      "step": 0.15,
+      "hand": -55,
+      "sweep": -10,
+      "fan": 40,
+      "guard": 0,
+      "wing": -4,
+      "wingFwd": 6,
+      "wingFold": 2
+     }
+    }
+   ]
+  },
+  "attack2": {
+   "_name": "Thiên cẩu phi — ngồi sâu gối 90°, cánh dựng chữ V, quạt sát vai; vỗ cánh bật cao, co gối lên ngực, quạt giơ sau gáy; bổ thẳng xuống, đáp quỵ một gối, quạt cắm sàn trước mặt",
+   "events": {
+    "impact": 0.61,
+    "hold_from": 0.25,
+    "hold_to": 0.34
+   },
+   "keys": [
+    {
+     "t": 0.25,
+     "v": {
+      "drop": 0.45,
+      "lean": 22,
+      "wing": 58,
+      "wingFold": -16,
+      "hand": 60,
+      "reach": 0.25,
+      "fan": 110,
+      "guard": 0.2,
+      "tuck": 0.0,
+      "lift": 0.0
+     }
+    },
+    {
+     "t": 0.34,
+     "v": {
+      "drop": 0.48,
+      "lean": 24,
+      "wing": 62,
+      "wingFold": -18,
+      "hand": 62,
+      "reach": 0.25,
+      "fan": 112,
+      "guard": 0.2,
+      "tuck": 0.0,
+      "lift": 0.0
+     }
+    },
+    {
+     "t": 0.42,
+     "v": {
+      "drop": 0.0,
+      "lift": 0.8,
+      "tuck": 0.75,
+      "lean": -6,
+      "twist": -8,
+      "wing": -34,
+      "wingFwd": 10,
+      "wingFold": 4,
+      "hand": 105,
+      "reach": 0.4,
+      "side": 0.15,
+      "fan": 150,
+      "guard": 0.6
+     }
+    },
+    {
+     "t": 0.5,
+     "v": {
+      "lift": 1.15,
+      "tuck": 0.95,
+      "lean": -10,
+      "wing": 42,
+      "wingFwd": 0,
+      "wingFold": -10,
+      "hand": 115,
+      "fan": 150
+     }
+    },
+    {
+     "t": 0.56,
+     "v": {
+      "lift": 0.5,
+      "tuck": 0.4,
+      "lean": 16,
+      "shift": 0.15,
+      "wing": 24,
+      "hand": 75,
+      "fan": 95
+     }
+    },
+    {
+     "t": 0.585,
+     "v": {
+      "lift": 0.22,
+      "tuck": 0.15,
+      "lean": 26,
+      "shift": 0.22,
+      "hand": 10,
+      "reach": 0.55,
+      "fan": 20,
+      "wing": 0,
+      "wingFwd": 20
+     }
+    },
+    {
+     "t": 0.61,
+     "v": {
+      "lift": 0.0,
+      "tuck": 0.0,
+      "drop": 0.45,
+      "shift": 0.28,
+      "lean": 36,
+      "step": 0.42,
+      "hand": -70,
+      "reach": 0.6,
+      "side": 0.05,
+      "fan": -80,
+      "poleU": -0.35,
+      "guard": -0.3,
+      "wing": -24,
+      "wingFwd": 34,
+      "wingFold": 14,
+      "head": 10
+     }
+    },
+    {
+     "t": 0.74,
+     "v": {
+      "drop": 0.43,
+      "lean": 34,
+      "wing": -18,
+      "wingFold": 10
+     }
+    },
+    {
+     "t": 0.88,
+     "v": {
+      "drop": 0.08,
+      "shift": 0.06,
+      "lean": 6,
+      "step": 0.12,
+      "wing": 0,
+      "wingFwd": 4,
+      "wingFold": 2,
+      "hand": -50,
+      "fan": 50,
+      "guard": 0
+     }
+    }
+   ]
+  },
+  "defeat": {
+   "_name": "Gục: quạt rời tay trĩu xuống, cánh rũ sụp, quỵ gối, đầu cúi",
+   "hold_end": true,
+   "keys": [
+    {
+     "t": 0.4,
+     "v": {
+      "drop": 0.12,
+      "lean": 10,
+      "hand": -80,
+      "fan": 60,
+      "wing": -30,
+      "wingFold": 10,
+      "head": 10
+     }
+    },
+    {
+     "t": 1.0,
+     "v": {
+      "drop": 0.45,
+      "lean": 24,
+      "step": 0.1,
+      "hand": -90,
+      "reach": 0.5,
+      "fan": 10,
+      "wing": -55,
+      "wingFold": 25,
+      "head": 30,
+      "guard": -0.5
+     }
+    }
+   ]
+  },
+  "write": {
+   "_name": "Viết ấn nguyền — cắn ngón tay, vạch chữ máu trong không trung (1,6 s, khi ấn nguyền hiện)",
+   "keys": [
+    {
+     "t": 0.15,
+     "v": {
+      "mouth": 1.0,
+      "head": 14,
+      "lean": 8,
+      "hand": -80,
+      "fan": 60
+     }
+    },
+    {
+     "t": 0.28,
+     "v": {
+      "mouth": 1.0,
+      "head": 14
+     }
+    },
+    {
+     "t": 0.4,
+     "v": {
+      "mouth": 0.0,
+      "sigil": 1.0,
+      "stroke": 0.0,
+      "wing": 12,
+      "head": -6,
+      "lean": -4,
+      "turn": -10,
+      "twist": -14
+     }
+    },
+    {
+     "t": 0.55,
+     "v": {
+      "sigil": 1.0,
+      "stroke": 0.33,
+      "turn": 10,
+      "twist": 14,
+      "head": -4
+     }
+    },
+    {
+     "t": 0.7,
+     "v": {
+      "sigil": 1.0,
+      "stroke": 0.66,
+      "turn": 0,
+      "twist": 0,
+      "lean": 10,
+      "head": 4
+     }
+    },
+    {
+     "t": 0.8,
+     "v": {
+      "sigil": 1.0,
+      "stroke": 1.0
+     }
+    },
+    {
+     "t": 0.92,
+     "v": {
+      "sigil": 0.0,
+      "guard": 1.0,
+      "step": 0.3,
+      "shift": 0.12,
+      "lean": 14,
+      "turn": 16,
+      "wing": 34,
+      "wingFold": -16
+     }
+    }
+   ]
+  }
+ }
+}

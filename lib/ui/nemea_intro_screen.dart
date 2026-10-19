@@ -11,7 +11,7 @@ import '../art/nemea_backdrop.dart';
 import '../art/nemea_scene.dart';
 import '../art/sprite_atlas.dart';
 
-/// Atlas Hercules dựng Blender (tool/blender/hercules.py).
+/// Atlas Hercules dựng Blender (tool/blender/characters/hercules.py).
 const herculesSprite = 'hercules';
 
 /// Nạp phông, nhân vật, Hercules bằng Blender cho cảnh mở đầu (chưa có thì
