@@ -33,10 +33,36 @@ nào", ở cả Blender lẫn game:
 **Việc tồn của phòng:**
 - Bản vector 2.5D của oni/tengu vẫn ở góc ¾ cũ; bản 3D đã quay gần nghiêng về
   Hercules (−72° / −55°). Đổi `planeDir` + dáng thân 2.5D cho khớp.
-- Lỗi máy soát bắt được ngày 19/10 (sửa sau): tengu Phong kesa bật thân ở khung
-  2→3 và 56→57 (đầu/cuối đòn lệch dáng chờ ~74 cm); oni chân sau lún đất quanh
-  khung 42–43 đòn Nện đỉnh; tengu Thiên cẩu phi (biên đạo cũ) chân lún ~10 cm khi
-  ngồi thụp. Kết quả đầy đủ: `build/blender/motion_review/<boss>/sheet.png`.
+- Oni: chuỳ xuyên bụng 22–25 cm ở vòng thu về vai (Nện đỉnh 0,83–0,90, Quét
+  0,71–0,81) — cần đổi đường vung trong biên đạo (đưa chuỳ vòng ra ngoài thân).
+
+**Sửa sau lần chạy máy soát đầu (19/10 chiều) — bài học cho mọi boss:**
+- **Đầu/cuối đòn mocap phải hoà về dáng chờ trong không gian rig** (`Track.from_ready`,
+  hệ số `w` theo `in`/`out` của moves.json). Retarget (`turn`, `yaw_keep`, `travel`) làm
+  khung đầu track lệch dáng chờ 46–74 cm → boss bật thân mỗi lần vào đòn; tengu
+  Phong kesa bật từ đứng xuống ngồi trong một khung (critic 12 vòng không thấy vì chỉ
+  xem tư thế khoá). Lớp cộng biên đạo (twist/lean/shift) cũng nhân `w`.
+- **Mọi kênh dùng trong khoá phải có trong `ready`** — thiếu thì tiến độ 0 lấy giá trị
+  khoá đầu (oni thiếu `cant`: chuỳ lệch 35 cm). `gen_choreo.py` nay dừng nếu thiếu.
+- **Khoá thưa nội suy cả kênh bước chân:** khoá không ghi `step` thì `step` trượt đều
+  giữa hai khoá có ghi → chân kéo lê. Ghim `step` ở mọi khoá chân phải đứng yên.
+- **Bước = nhấc chân:** dời đích chân trên sàn là trượt. Nhánh mocap (`Track.from_ready`)
+  và nhánh biên đạo (tengu `_legs`) tự nhấc chân theo tốc độ dời ngang
+  (`STEP_LIFT` 0,05 m mỗi m/đơn vị tiến độ, tối đa 0,12 m theo chiều dài chân); phần
+  nhấc này nâng CẢ bàn chân phẳng.
+- **Bàn chân phẳng dần theo độ cao, không có/không:** ngưỡng cứng làm mũi chân chúc
+  theo mocap cắm sàn 5–6 cm ngay khi nhấc vài cm; thêm chặn khớp ngón không dưới sàn.
+  IK chỉ đặt cổ chân — gập gối sâu mà không ép bàn chân phẳng thì mũi chân cắm đất
+  (tengu Thiên cẩu phi 10 cm).
+- **Mặt đất = z 0 (mặt hứng bóng)**, không phải đáy chân dáng chờ — dáng chờ tengu
+  lún 3,4 cm trước khi ép bàn chân phẳng.
+- **Vũ khí chạm sàn: nhấc tay nắm, đừng xoay vũ khí** (`OniMotion.club_floor`). Xoay
+  thì khi chuỳ qua phương thẳng đứng chiều nâng đổi phía → bật 58° trong một khung.
+- Hai tay oni đặt lại dáng gốc trước mỗi lần IK (`reset_arms`) để kết quả không phụ
+  thuộc khung trước.
+
+Sau sửa (máy soát, 2 đòn × 60 khung): tengu 27 → 7 đoạn cảnh báo (6 đoạn cú nhảy
+khai cố ý), oni 54 → 37; lệch dáng chờ, chân lún > 4 cm, chuỳ cắm đất: hết.
 
 ## Chuẩn chuyển động boss (cũ: mục 6)
 

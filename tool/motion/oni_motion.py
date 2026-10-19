@@ -128,6 +128,30 @@ class OniMotion:
     hakama/tạp dề/khoá đai dựng lại theo dáng từng khung."""
 
     SPINE = ("pelvis", "spine_02", "spine_03", "neck_01", "head")
+    ARMS = ("clavicle_l", "upperarm_l", "lowerarm_l", "hand_l", "clavicle_r", "upperarm_r", "lowerarm_r", "hand_r")
+
+    def club_floor(self, v, floor=0.005):
+        """Chuỳ chạm sàn chứ không cắm xuống: sau cú nện và trong vòng thu dưới, đầu chuỳ
+        lún tới ~31 cm (motion_review 19/10). NHẤC tay nắm lên đúng độ lún, giữ nguyên góc
+        chuỳ — liên tục theo tiến độ (xoay chuỳ thì bật 58° khi chuỳ qua phương thẳng
+        đứng). Không đụng khi chuỳ đã ở trên sàn."""
+        if not self.club:
+            return
+        poser, S = self.poser, self.model.S
+        a, dist = math.radians(v["hand"]), v["reach"]
+        for _ in range(3):  # IK có thể không với tới đủ cao → đo lại
+            bpy.context.view_layer.update()
+            low = min((o.matrix_world @ c).z for o, pts in self.club for c in pts)
+            if low >= floor - 1e-4:
+                return
+            x, y = math.cos(a) * dist, math.sin(a) * dist + (floor - low) / S
+            a, dist = math.atan2(y, x), math.hypot(x, y)
+            club_arm(poser, math.degrees(a), dist, v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
+                     sign=poser.club_sign, sweep=v["sweep"], cant=v.get("cant", 0.32))
+
+    def reset_arms(self):
+        for b, m in self.arm_basis.items():
+            self.rig.pose.bones[b].matrix_basis = m
 
     def __init__(self, poser, body, mats, model):
         self.model = model
@@ -138,9 +162,16 @@ class OniMotion:
         self.choreo = Choreo("shuten_doji")
         bpy.context.view_layer.update()
         self.basis = {b: rig.pose.bones[b].matrix_basis.copy() for b in self.SPINE}
+        # Dáng gốc hai tay (vác chuỳ đã duyệt): IK của Blender giải lặp TỪ dáng hiện tại →
+        # không đặt lại thì độ xoắn cẳng tay (và hướng chuỳ) phụ thuộc khung trước — idle
+        # và khung đầu đòn lệch chuỳ ~35 cm (motion_review 19/10).
+        self.arm_basis = {b: rig.pose.bones[b].matrix_basis.copy() for b in self.ARMS if b in rig.pose.bones}
         self.wisps = [(o, o.matrix_world.copy(), int(re.match(r"Wisp(\d+)", o.name).group(1)))
                       for o in bpy.data.objects if o.name.startswith("Wisp")]
         self.fire = [o for o in bpy.data.objects if o.name.startswith("Onibi")]
+        # Điểm mẫu của chuỳ (đầu, gai) để giữ chuỳ không cắm xuống sàn (club_floor).
+        self.club = [(o, [v.co.copy() for v in o.data.vertices][::7])
+                     for o in bpy.data.objects if o.type == "MESH" and o.name.startswith("Kanabo")]
         self.jar = [o for o in bpy.data.objects if o.name.startswith("SakeJar")]
         self.move = None
         # IK chân: đích = bàn chân dáng duyệt, gối hướng ra trước.
@@ -199,7 +230,7 @@ class OniMotion:
         return {"arm_l": self.poser.ik["l"][:2], "arm_r": self.poser.ik["r"][:2],
                 "leg_l": self.feet["l"][:2], "leg_r": self.feet["r"][:2]}
 
-    def apply_mocap(self, v, T):
+    def apply_mocap(self, v, T, w=1.0):
         """Lớp thân từ mocap (hông, cột sống, đầu, chân, tay lửa) + lớp tay chuỳ
         theo biên đạo — khung tay chuỳ xoay theo độ vặn ngực của mocap."""
         import mocap_drive as md
@@ -214,18 +245,21 @@ class OniMotion:
 
         iko.pop("arm_l")  # tay lửa theo biên đạo: vươn ra trước ngắm = thế báo (critic v2)
         if self.mshift:  # dồn trọng tâm theo biên đạo (dậm, hạ tấn) cộng lên hông mocap
-            T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * v["drop"]) * self.model.S * self.mshift)
+            T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * v["drop"]) * self.model.S * self.mshift * w)
+        self.reset_arms()
         md.apply(self.minfo, T, iko, palm=None)
         # Gập/ngả + vặn thân theo biên đạo cộng lên mocap (karate giữ thân thẳng,
         # đòn nện cần gập người, đòn quét cần hông xoay).
-        md.twist_add(self.minfo, v["twist"] * self.mtwist)
-        md.lean_add(self.minfo, v["lean"] * self.mlean, left)
+        # [w]: lớp cộng hoà cùng mocap — dáng chờ (mready) đã có sẵn twist/lean của biên đạo.
+        md.twist_add(self.minfo, v["twist"] * self.mtwist * w)
+        md.lean_add(self.minfo, v["lean"] * self.mlean * w, left)
         md.look_at(self.minfo, fwd)  # sau mọi lớp cộng: mặt nhìn Hercules
         fire_arm(poser, drop=self.defeat, aim=v["aim"], drink=v.get("drink", 0.0), face=v.get("face", 0.0))
         # Vị trí tay chuỳ trong biên đạo tính theo khung CỐ ĐỊNH (không theo độ vặn
         # thân) — giữ nguyên, chỉ gốc vai đi theo thân mocap.
         club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
                  sign=poser.club_sign, sweep=v["sweep"], cant=v.get("cant", 0.32))
+        self.club_floor(v)
         self.redress()
         bpy.context.view_layer.update()
 
@@ -233,6 +267,7 @@ class OniMotion:
         rig, poser = self.rig, self.poser
         for b, m in self.basis.items():
             rig.pose.bones[b].matrix_basis = m
+        self.reset_arms()
         bpy.context.view_layer.update()
         fwd, left, up = poser.frame()
         # Hông: dịch trước/sau, hạ trọng tâm (chân IK tự gập gối).
@@ -264,6 +299,7 @@ class OniMotion:
         bpy.context.view_layer.update()
         club_arm(poser, v["hand"], v["reach"], v["side"], v["club"], (v["poleF"], 0.6, v["poleU"]),
                  sign=poser.club_sign, sweep=v["sweep"], cant=v.get("cant", 0.32))
+        self.club_floor(v)
         fire_arm(poser, drop=self.defeat, aim=v["aim"], drink=v.get("drink", 0.0), face=v.get("face", 0.0))
         self.redress()
         bpy.context.view_layer.update()
@@ -300,7 +336,7 @@ class OniMotion:
         self.move = move
         tr = self.mocap(move)
         if tr is not None:
-            self.apply_mocap(v, tr(phase))
+            self.apply_mocap(v, *tr.from_ready(self.mready, phase))
         else:
             self.apply(v)
         gone = self.defeat > 0.6

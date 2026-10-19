@@ -7,11 +7,12 @@
 
 Kiểm từng đòn theo tiến độ 0–1 (thời gian thật: đòn dài ATTACK_S giây):
 - **chân xuyên đất:** đỉnh lưới bàn chân (nhóm foot/ball) thấp hơn mặt đất > 2 cm;
-  mặt đất = đáy bàn chân ở dáng chờ.
+  mặt đất = z 0, mặt hứng bóng render ra (đo theo dáng chờ thì sai khi chính dáng
+  chờ lún — tengu lún 3,4 cm trước 19/10).
 - **trượt chân:** đỉnh bàn chân chạm đất (≤ 3 cm) ở hai khung liền mà dịch ngang
   nhanh hơn 0,3 m/s (xoay trên mũi chân không tính: gót đã nhấc khỏi đất).
-- **vũ khí xuyên thân / xuyên đất:** đỉnh vũ khí nằm trong lưới thân sâu > 3 cm
-  (bỏ vùng nắm quanh xương tay cầm), hoặc thấp hơn mặt đất > 3 cm.
+- **vũ khí xuyên thân / xuyên đất:** đỉnh vũ khí nằm trong lưới thân sâu hơn dáng
+  chờ (đã duyệt) > 3 cm (bỏ vùng nắm quanh xương tay cầm), hoặc thấp hơn mặt đất > 3 cm.
 - **khung giật:** gia tốc (sai phân bậc hai) của khớp chính vọt > 5× mức quanh
   nó và > 60 m/s²; quanh mốc `impact` ghi "có thể cố ý" (khựng lúc chạm).
 - **về dáng chờ:** khung đầu/cuối đòn lệch dáng chờ > 3 cm (vào/ra đòn bị giật
@@ -197,7 +198,8 @@ def review_motion(motion, body, rig, name, choreo_id, weapons=(), grip=("hand_r"
     posed = _Posed(body)
     t0 = time.time()
     home = _sample(motion, posed, rig, objs, grip, t=0.0)
-    ground = float(min(home["feet"][s][:, 2].min() for s in "lr"))
+    ground = 0.0  # mặt hứng bóng (human_kit.shadow_catcher) = sàn người chơi thấy
+    home_low = float(min(home["feet"][s][:, 2].min() for s in "lr"))
     dt = ATTACK_S / (n - 1)
     out = {"name": name, "ground": ground, "frames": n, "attack_s": ATTACK_S, "moves": {}}
     warn, intended = [], []
@@ -231,7 +233,7 @@ def review_motion(motion, body, rig, name, choreo_id, weapons=(), grip=("hand_r"
             m["weapon_depth"] = [f["weapon_depth"] for f in fr]
             m["weapon_min_z"] = [f["weapon_min_z"] - ground for f in fr]
             for k, f in enumerate(fr):
-                if f["weapon_depth"] > PEN_WEAPON:
+                if f["weapon_depth"] > home.get("weapon_depth", 0.0) + PEN_WEAPON:
                     flag(k, "vũ khí xuyên thân", "vũ khí", f["weapon_depth"] * 100, "cm")
                 if f["weapon_min_z"] - ground < -PEN_WEAPON:
                     flag(k, "vũ khí xuyên đất", "vũ khí", (ground - f["weapon_min_z"]) * 100, "cm")
@@ -265,7 +267,7 @@ def review_motion(motion, body, rig, name, choreo_id, weapons=(), grip=("hand_r"
     d = os.path.join(ROOT, "build", "blender", "motion_review", name)
     os.makedirs(d, exist_ok=True)
     json.dump(out, open(os.path.join(d, "data.json"), "w", encoding="utf-8"), ensure_ascii=False)
-    head = [f"{name}: {len(moves)} đòn × {n} khung, {time.time() - t0:.0f} s; mặt đất z = {ground:.3f} m",
+    head = [f"{name}: {len(moves)} đòn × {n} khung, {time.time() - t0:.0f} s; đáy chân dáng chờ {home_low * 100:+.1f} cm so với sàn",
             f"{len(warn)} đoạn cảnh báo, {len(intended)} đoạn cố ý theo biên đạo"]
     open(os.path.join(d, "checks.txt"), "w", encoding="utf-8").write("\n".join(head + warn + intended) + "\n")
     print("\n".join(head + warn[:40]))

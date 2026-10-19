@@ -353,13 +353,24 @@ def apply(info, T, ik_objects, palm=None, look=None, foot_flat=True):
     for s in SIDES:
         pbf = rig.pose.bones[f"foot_{s}"]
         f = T["foot"][s].copy()
-        # Phẳng khi chạm đất HOẶC mắt cá sát đất (mocap bước nhón gót kiểu múa — critic v7).
-        low = T["ik"][f"leg_{s}"][0].z < info.ground + info.ankle_h * 1.35
-        if (T["contact"].get(s) or low) and foot_flat:
-            f.z = 0
+        # Phẳng khi chạm đất; nhấc lên thì nhả DẦN về hướng mocap (mắt cá cao hơn chiều cao
+        # mắt cá ×1,5 mới theo hẳn mocap). Ngưỡng có/không cũ: nhấc chân vài cm khi bước là
+        # mũi chân chúc theo mocap cắm sàn 5–6 cm (motion_review 19/10).
+        h = T["ik"][f"leg_{s}"][0].z - (info.ground + info.ankle_h) - T.get("lifted", {}).get(s, 0.0)
+        flat = 1.0 if T["contact"].get(s) else min(1.0, max(0.0, 1.0 - h / (info.ankle_h * 1.5)))
+        if foot_flat:
+            f.z *= 1.0 - flat
         if f.length < 1e-6:
             continue
         f.normalize()
+        # Chúc mũi không được đưa khớp ngón (ball) xuống dưới sàn.
+        ankle_w = rig.matrix_world @ pbf.head
+        foot_len = (rig.matrix_world @ rig.pose.bones[f"ball_{s}"].head - ankle_w).length
+        min_fz = (info.ground + 0.004 - ankle_w.z) / max(foot_len, 1e-6)
+        if f.z < min_fz < 1.0:
+            hz = Vector((f.x, f.y, 0))
+            if hz.length > 1e-6:
+                f = hz.normalized() * math.sqrt(1 - min_fz ** 2) + Vector((0, 0, min_fz))
         lat = Vector((0, 0, 1)).cross(Vector((f.x, f.y, 0)).normalized() if Vector((f.x, f.y, 0)).length > 1e-6 else f)
         F = frame_from(lat, f)
         R_w = F @ info.foot[s].transposed() @ info.rest_rot[f"foot_{s}"]
@@ -468,6 +479,9 @@ def dump_ready(info, basis, origin, name):
     print(f"[mocap] dáng chờ {name}: {len(pts)} điểm")
 
 
+STEP_LIFT, STEP_LIFT_MAX = 0.05, 0.12  # nhấc chân (m) theo tốc độ dời đích chân (m / đơn vị tiến độ)
+
+
 class Track:
     """Đòn đã ghép (compose.py) → đích retarget theo tiến độ sân khấu."""
 
@@ -484,11 +498,47 @@ class Track:
         self.drive = MocapDrive(info, m, basis, origin, pelvis_z=pelvis_z,
                                 yaw_keep=float(self.meta.get("yaw_keep", 1.0)))
         self.Ts = self.drive.lock([self.drive.targets(m.pos[i], i) for i in range(len(m))])
+        # Khoảng nối dáng chờ ↔ đòn (moves.json in/out) cho hệ số hoà [weight].
+        spec = json.load(open(os.path.join(os.path.dirname(MOVES), "moves.json"), encoding="utf-8"))[name][move]
+        self.ease_in = float(spec.get("in", (0.06, 0.2))[1])
+        self.ease_out = float(spec.get("out", (0.88, 0.97))[0])
+        self.lift_max = STEP_LIFT_MAX * info.leg / 0.87  # theo chiều dài chân (tengu 0,87 m)
 
     def __call__(self, phase):
         f = float(np.interp(phase, self.phases, np.arange(len(self.phases))))
         i = min(len(self.Ts) - 2, int(f))
         return blend(self.Ts[i], self.Ts[i + 1], f - i)
+
+    def weight(self, phase):
+        """Hệ số hoà dáng chờ → mocap: 0 ở hai đầu đòn, 1 trong [cuối in, đầu out] (smoothstep)."""
+        def ss(x):
+            x = min(1.0, max(0.0, x))
+            return x * x * (3 - 2 * x)
+        return min(ss(phase / self.ease_in), ss((1 - phase) / (1 - self.ease_out)))
+
+    def from_ready(self, ready, phase):
+        """(đích, w): mocap hoà từ/về đích dáng chờ [ready] (`capture` lúc dựng track).
+        Đầu và cuối đòn trùng ĐÚNG dáng chờ — retarget (turn, yaw_keep, travel) làm khung
+        đầu của track lệch dáng chờ tới 46–74 cm → boss bật thân khi sân khấu chuyển
+        nhịp thở → đòn (motion_review "lệch dáng chờ", 19/10)."""
+        w = self.weight(phase)
+        T = blend(ready, self(phase), w)
+        # Bước = nhấc chân: hoà/nối dời đích chân trên sàn → trượt. Tốc độ dời ngang
+        # (m / đơn vị tiến độ) → nhấc cổ chân theo cung (motion_review 19/10).
+        e = 0.01
+        lo, hi = max(0.0, phase - e), min(1.0, phase + e)
+        a = blend(ready, self(lo), self.weight(lo))
+        b = blend(ready, self(hi), self.weight(hi))
+        T = dict(T, ik=dict(T["ik"]), lifted={})
+        for leg in ("leg_l", "leg_r"):
+            if leg in T["ik"]:
+                d = b["ik"][leg][0] - a["ik"][leg][0]
+                speed = math.hypot(d.x, d.y) / (hi - lo)
+                lift = min(self.lift_max, STEP_LIFT * speed)
+                tgt, pole = T["ik"][leg]
+                T["ik"][leg] = [tgt + Vector((0, 0, lift)), pole + Vector((0, 0, lift))]
+                T["lifted"][leg[-1]] = lift  # apply(): nhấc khi bước nâng CẢ bàn chân phẳng
+        return T, w
 
 
 def yaw_of(q):

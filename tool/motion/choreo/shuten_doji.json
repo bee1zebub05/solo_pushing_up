@@ -15,7 +15,10 @@
   "aim": 0,
   "head": 0,
   "poleF": 0,
-  "poleU": -0.5
+  "poleU": -0.5,
+  "cant": 0.32,
+  "drink": 0.0,
+  "face": 0.0
  },
  "lag": {
   "lean": 0.006,

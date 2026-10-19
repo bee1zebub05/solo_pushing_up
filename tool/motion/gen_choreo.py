@@ -40,6 +40,12 @@ lines = [
 ]
 checks = []
 for path in sorted(glob.glob(os.path.join(HERE, "choreo", "*.json"))):
+    # Mọi kênh dùng trong khoá phải có trong "ready": thiếu thì tiến độ 0 lấy giá trị khoá
+    # đầu thay vì dáng chờ → boss bật khi vào đòn (oni thiếu "cant": chuỳ lệch 35 cm, 19/10).
+    _spec = json.load(open(path, encoding="utf-8"))
+    _miss = sorted({k for mv in _spec["attacks"].values() for key in mv["keys"] for k in key["v"]} - set(_spec["ready"]))
+    if _miss:
+        raise SystemExit(f"{os.path.basename(path)}: kênh {_miss} có trong khoá nhưng thiếu trong ready")
     name = os.path.splitext(os.path.basename(path))[0]
     data = json.load(open(path, encoding="utf-8"))
     lines.append(f"  '{name}': ChoreoSpec(")

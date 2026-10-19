@@ -12,6 +12,7 @@ import bpy
 from mathutils import Matrix, Quaternion, Vector
 
 X, Y, Z = (1, 0, 0), (0, 1, 0), (0, 0, 1)  # trục thế giới, như tengu_boss.py
+STEP_LIFT, STEP_LIFT_MAX = 0.05, 0.12  # nhấc chân (m) theo tốc độ bước (m / đơn vị tiến độ)
 
 
 # Góc pole IK theo khung xương tự gắn (roll 0): đo bằng TENGU_POLE (in độ nhô
@@ -104,9 +105,23 @@ class TenguMotion:
         # Chân: bàn chân bám đất (chân phải bước tới), co lên khi bay.
         # Bay: bàn chân lên theo hông (lift) và co thêm lên ngực (tuck × 0,55): gối gập.
         air = U * (max(0.0, v["lift"]) + 0.55 * v["tuck"])
+        # Bước = nhấc chân: dời bàn chân phải trên sàn mà không nhấc là trượt (motion_review).
+        stride = U * min(STEP_LIFT_MAX, STEP_LIFT * abs(v.get("_dstep", 0.0)))
         for s_ in "lr":
-            step = F * v["step"] if s_ == "r" else Vector()
+            step = F * v["step"] + stride if s_ == "r" else Vector()
             self._set(f"leg_{s_}", self.foot[s_] + step + air, self.knee[s_] + step + air + F * 1.2)
+        # Bàn chân phẳng bám đất: IK chỉ đặt cổ chân, bàn chân xoay theo cẳng → ngồi sâu
+        # gối 90° (Thiên cẩu phi) thì mũi chân cắm đất ~10 cm (motion_review 19/10).
+        # Đang bay (lift/tuck) thì nhả dần về hướng tự nhiên của cẳng.
+        flat = max(0.0, 1.0 - (max(0.0, v["lift"]) + 0.55 * v["tuck"]) / 0.15)
+        if flat > 0:
+            bpy.context.view_layer.update()
+            for s_ in "lr":
+                pb = rig.pose.bones[f"foot_{s_}"]
+                cur = pb.matrix.copy()
+                q = cur.to_quaternion().slerp(pb.bone.matrix_local.to_quaternion(), flat)
+                pb.matrix = Matrix.Translation(cur.translation) @ q.to_matrix().to_4x4()
+            bpy.context.view_layer.update()
 
     def _arms(self, v, yaw=0.0, left_arm=True):
         """Tay phải cầm quạt (biên đạo; [yaw] = bù độ vặn ngực khi thân do mocap lái), tay trái (nếu [left_arm])."""
@@ -209,7 +224,7 @@ class TenguMotion:
         cache[move] = tr
         return tr
 
-    def apply_mocap(self, v, T):
+    def apply_mocap(self, v, T, w=1.0):
         """Thân + chân + tay trái từ mocap; cánh + tay quạt theo biên đạo (tay quạt
         xoay theo phần ngực mocap vặn khác biên đạo); ngón nắm cán quạt."""
         import mocap_drive as md
@@ -225,10 +240,11 @@ class TenguMotion:
                 md.set_hand(self.minfo, "l", d, n)
 
         if self.mshift:  # dồn trọng tâm theo biên đạo cộng lên hông mocap
-            T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * (v["drop"] - v["lift"])) * self.mshift)
+            T = dict(T, pelvis=T["pelvis"] + (fwd * v["shift"] - up * (v["drop"] - v["lift"])) * self.mshift * w)
         md.apply(self.minfo, T, iko, palm=palm)
-        md.twist_add(self.minfo, v["twist"] * self.mtwist)
-        md.lean_add(self.minfo, v["lean"] * self.mlean, left)
+        # [w]: lớp cộng hoà cùng mocap — dáng chờ (mready) đã có sẵn twist/lean của biên đạo.
+        md.twist_add(self.minfo, v["twist"] * self.mtwist * w)
+        md.lean_add(self.minfo, v["lean"] * self.mlean * w, left)
         md.look_at(self.minfo, fwd)  # sau mọi lớp cộng: mặt nhìn Hercules
         self._wings(v)
         # Tay quạt theo biên đạo trong khung rig (không bù độ vặn thân mocap).
@@ -238,7 +254,7 @@ class TenguMotion:
     def pose(self, t=0.0, move=None, phase=0.0):
         tr = self.mocap(move) if move else None
         if tr is not None:
-            self.apply_mocap(self.choreo[move](phase), tr(phase))
+            self.apply_mocap(self.choreo[move](phase), *tr.from_ready(self.mready, phase))
             return
         if move is None:  # thở: cánh khẽ nâng hạ, quạt phe phẩy, đầu nghiêng
             w = 2 * math.pi * t
@@ -248,4 +264,7 @@ class TenguMotion:
                      lean=1.0 * math.sin(w))
         else:
             v = self.choreo[move](phase)
+            e = 0.01  # tốc độ đổi step (m / đơn vị tiến độ) cho nhấc chân khi bước
+            v["_dstep"] = (self.choreo[move](min(1.0, phase + e))["step"]
+                           - self.choreo[move](max(0.0, phase - e))["step"]) / (2 * e)
         self.apply(v)
