@@ -310,6 +310,16 @@ class NemeaMonsterArt extends NemeaBossArt {
         ? 0.5 * charge
         : -1.0;
     // Thân sprite dài hơn bản vector: thu nhỏ, lùi vào trong khung.
+    if (SpriteAtlas.get('erymanthian_boar') != null) {
+      // Mũi tên đỏ báo húc (bản vector tự vẽ trong thân): chỉ theo cú húc
+      // thật của cơ chế, không theo động tác doạ.
+      _at(
+        canvas,
+        x,
+        1.25,
+        () => paintBoarChargeTell(canvas, time: f.time, charge: charge),
+      );
+    }
     if (_sprite(
       canvas,
       'erymanthian_boar',

@@ -47,6 +47,9 @@ class StageBattleState {
   /// Số túi vàng Harpy đã cướp.
   int goldStolen = 0;
 
+  /// Số lần người chơi vật được sư tử (pha 2 Nemea).
+  int wrestles = 0;
+
   /// Chép trạng thái trận vừa tính ([Battle.view]).
   void sync(BattleView view) {
     water = view.water ?? 0;
@@ -58,6 +61,7 @@ class StageBattleState {
     charge = view.charge;
     revives = view.revives;
     goldStolen = view.goldStolen;
+    wrestles = view.wrestles;
   }
 }
 

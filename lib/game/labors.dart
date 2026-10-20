@@ -32,7 +32,7 @@ class Labor {
   /// Vật phẩm nhận được khi thắng lần đầu.
   final Item reward;
 
-  /// Các màn trong kỳ công (1.1 … 1.10), màn cuối là boss. Rỗng = chỉ có
+  /// Các màn trong kỳ công (ví dụ 1.1 … 1.8), màn cuối là boss. Rỗng = chỉ có
   /// trận boss.
   final List<Stage> stages;
 
@@ -79,168 +79,158 @@ class Stage {
   final String emoji;
 }
 
-/// Kỳ công 1 — Hy Lạp, thung lũng Nemea (tutorial).
+/// Kỳ công 1 — Hy Lạp, thung lũng Nemea (tutorial). Đặc tả 8 màn:
+/// rules/thietke/chuong1-nemea.md. Máu chỉnh theo rep mục tiêu, kiểm bằng
+/// test/game/chapter1_balance_test.dart.
+///
+/// Pha 1: da không xuyên thủng. Pha 2 (máu < 40%): vồ, giữ tay thẳng để vật.
 const nemeanLion = EnemySpec(
   id: 'nemean_lion',
   name: 'Sư tử Nemea',
-  maxHp: 150,
-  mechanics: [ImpenetrableHide.new],
+  maxHp: 300,
+  mechanics: [ImpenetrableHide.new, LionPounce.new],
 );
 
-// Quái thường Kỳ công 1 (rules/cottruyen.md mục 3b.1). Số liệu tạm.
+// Quái Kỳ công 1 (rules/cottruyen.md mục 3b.1).
 const stymphalianFlock = EnemySpec(
   id: 'stymphalian_flock',
   name: 'Đàn chim Stymphalia',
-  maxHp: 60,
-);
-const stymphalianSwarm = EnemySpec(
-  id: 'stymphalian_swarm',
-  name: 'Bầy chim Stymphalia',
-  maxHp: 90,
+  maxHp: 80,
 );
 const spartoi = EnemySpec(
   id: 'spartoi',
   name: 'Spartoi',
-  maxHp: 80,
+  maxHp: 90,
   mechanics: [ReviveOnce.new],
 );
 const stoneSoldier = EnemySpec(
   id: 'stone_soldier',
   name: 'Lính đá',
-  maxHp: 90,
+  maxHp: 150,
   mechanics: [ImpenetrableHide.new],
 );
 const erymanthianBoar = EnemySpec(
   id: 'erymanthian_boar',
   name: 'Lợn rừng Erymanthus',
-  maxHp: 120,
+  maxHp: 180,
   mechanics: [ChargingBoar.new],
 );
 const harpy = EnemySpec(
   id: 'harpy',
   name: 'Harpy',
-  maxHp: 90,
+  maxHp: 120,
   mechanics: [GoldThief.new],
-);
-const spartoiPack = EnemySpec(
-  id: 'spartoi_pack',
-  name: 'Chim và Spartoi',
-  maxHp: 110,
-  mechanics: [ReviveOnce.new],
 );
 const youngHydra = EnemySpec(
   id: 'young_hydra',
   name: 'Hydra non',
-  maxHp: 120,
+  maxHp: 240,
   heads: 3,
   mechanics: [RegrowingHeads.new],
 );
+
+/// Ôn tập trước boss: đá chặn rep sai (1.3) và ráp lại một lần (1.2).
 const stoneGuard = EnemySpec(
   id: 'stone_guard',
   name: 'Lính đá canh hang',
-  maxHp: 120,
-  mechanics: [ImpenetrableHide.new],
+  maxHp: 110,
+  mechanics: [ImpenetrableHide.new, ReviveOnce.new],
 );
 
-/// 10 màn của Kỳ công 1: quái thường dạy dần từng kỹ năng, 1.5 tinh anh,
-/// 1.8 mini-boss, 1.10 boss Sư tử Nemea.
+/// 8 màn của Kỳ công 1: mỗi màn thường dạy một kỹ năng, 1.4 tinh anh,
+/// 1.6 mini-boss, 1.8 boss Sư tử Nemea. Id giữ theo bản 10 màn cũ để không
+/// mất tiến trình đã lưu (id ≠ số màn hiển thị).
 const nemeaStages = <Stage>[
   Stage(
     id: 'nemea_1_1',
     code: '1.1',
     title: 'Đàn chim Stymphalia',
     enemy: stymphalianFlock,
-    tip: 'Làm quen: mỗi lần hít đất là một đòn đánh',
+    tip: 'Mỗi lần hít đất là một đòn. Giữ nhịp đều để combo tăng dần',
     emoji: '🐦',
     lore:
-        'Bìa rừng ô liu phủ bụi xám. Lũ chim lông đồng của hồ Stymphalia đã bay tới tận đây.',
-  ),
-  Stage(
-    id: 'nemea_1_2',
-    code: '1.2',
-    title: 'Bầy chim kéo đến',
-    enemy: stymphalianSwarm,
-    tip: 'Giữ nhịp đều để combo tăng dần',
-    emoji: '🐦',
-    lore:
-        'Tiếng cánh đồng rít như lưỡi dao: cả bầy đang kéo về phía người kế nhiệm.',
+        'Ông lão Molorchus xứ Cleonae chỉ về phía thung lũng: '
+        '"Từ ngày bụi xám đổ xuống, cả lũ chim lông đồng hồ Stymphalia '
+        'cũng bay tới đây."',
   ),
   Stage(
     id: 'nemea_1_3',
-    code: '1.3',
+    code: '1.2',
     title: 'Spartoi',
     enemy: spartoi,
     tip: 'Ngã một lần sẽ đứng dậy: đánh dứt điểm',
     emoji: '💀',
     lore:
-        'Từ răng rồng gieo xuống đất, chiến binh Spartoi trỗi dậy — và không chịu nằm yên.',
+        'Ai đó đã gieo răng rồng xuống ruộng đá. Chiến binh Spartoi trỗi '
+        'dậy từ đất — và không chịu nằm yên.',
   ),
   Stage(
     id: 'nemea_1_4',
-    code: '1.4',
+    code: '1.3',
     title: 'Lính đá',
     enemy: stoneSoldier,
     tip: 'Chỉ rep đúng form mới làm vỡ đá',
     emoji: '🗿',
     lore:
-        'Tượng hoplite canh đền bị Trì Trệ nhập. Đá chỉ vỡ trước đòn đánh chuẩn.',
+        'Giữa trưa, trước đền thần Zeus, tượng hoplite bị Trì Trệ nhập. '
+        'Đá chỉ vỡ trước đòn đánh chuẩn.',
   ),
   Stage(
     id: 'nemea_1_5',
-    code: '1.5',
+    code: '1.4',
     title: 'Lợn rừng Erymanthus (tinh anh)',
     enemy: erymanthianBoar,
     tip: 'Thấy mũi tên đỏ thì giữ tay thẳng để né cú húc',
     emoji: '🐗',
     lore:
-        'Lợn rừng Erymanthus, kẻ Hercules từng bắt sống, đang húc đổ từng hàng ô liu.',
+        'Nữ thợ săn Atalanta kéo căng dây cung: "Lợn rừng không biết rẽ. '
+        'Đứng vững, để nó tự lao qua."',
   ),
   Stage(
     id: 'nemea_1_6',
-    code: '1.6',
+    code: '1.5',
     title: 'Harpy',
     enemy: harpy,
     tip: 'Nghỉ quá 4 giây là bị cướp vàng',
     emoji: '🦅',
-    lore: 'Harpy lượn quanh đền, chờ kẻ nào lơ là để cướp vàng.',
-  ),
-  Stage(
-    id: 'nemea_1_7',
-    code: '1.7',
-    title: 'Chim và Spartoi',
-    enemy: spartoiPack,
-    tip: 'Ôn lại: nhịp đều, đánh dứt điểm',
-    emoji: '⚔️',
-    lore: 'Chim và xương binh cùng chặn cây cầu đá cuối cùng.',
+    lore:
+        'Gió chiều rít trên mái đền. Harpy lượn vòng, chờ kẻ nào lơ là để '
+        'cướp vàng.',
   ),
   Stage(
     id: 'nemea_1_8',
-    code: '1.8',
+    code: '1.6',
     title: 'Hydra non (mini-boss)',
     enemy: youngHydra,
     tip: 'Đứt combo thì đầu đang chém mọc lại',
     emoji: '🐍',
-    lore: 'Dưới đầm lầy, Hydra non thè ba cái lưỡi. Chém một, mọc hai.',
+    lore:
+        'Hoàng hôn trên đầm lầy cuối thung lũng: Hydra non, con của quái '
+        'vật xứ Lerna, thè ba cái lưỡi. Chém một, mọc hai.',
   ),
   Stage(
     id: 'nemea_1_9',
-    code: '1.9',
+    code: '1.7',
     title: 'Lính đá canh hang',
     enemy: stoneGuard,
-    tip: 'Màn cuối trước hang sư tử: giữ form chuẩn',
+    tip: 'Ôn lại: rep đúng form, và đánh dứt điểm khi đá ráp lại',
     emoji: '🗿',
     lore:
-        'Trước cửa hang, lính đá cuối cùng đứng gác. Từ bóng tối, đôi mắt hổ phách đang nhìn ra.',
+        'Đá vỡ rồi lại ráp lại. Phía sau lính canh, trong bóng tối cửa '
+        'hang, đôi mắt hổ phách khép mở.',
   ),
   Stage(
     id: 'nemea',
-    code: '1.10',
+    code: '1.8',
     title: 'Sư tử Nemea',
     enemy: nemeanLion,
-    tip: 'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương',
+    tip:
+        'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương. '
+        'Khi nó nổi giận và vồ: giữ tay thẳng để vật nó',
     emoji: '🦁',
     lore:
-        'Sư tử Nemea: da không vũ khí nào xuyên thủng. Chỉ sức mạnh rèn từng lần một mới hạ được nó.',
+        'Đôi mắt hổ phách là của Sư tử Nemea: da không vũ khí nào xuyên '
+        'thủng. Hercules đã vật nó bằng tay không — sức mạnh rèn từng lần một.',
   ),
 ];
 
@@ -279,7 +269,9 @@ const labors = <Labor>[
     region: 'Hy Lạp · Thung lũng Nemea',
     emoji: '🦁',
     enemy: nemeanLion,
-    mechanic: 'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương',
+    mechanic:
+        'Da không xuyên thủng: chỉ rep đúng form mới gây sát thương; '
+        'khi nó vồ, giữ tay thẳng để vật nó',
     reward: nemeanPelt,
     stages: nemeaStages,
   ),

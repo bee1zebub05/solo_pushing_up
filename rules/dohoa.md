@@ -317,3 +317,29 @@ nạp tài nguyên Blender (`SpriteAtlas.get`, `NemeaBackdrop.ready`,
 vector như lúc thiếu tài nguyên. Hệ quả: code vector KHÔNG còn là tạm — phải
 giữ chạy được; hình mới cần có cả bản vector, hoặc chấp nhận 2.5D vẽ thiếu.
 Test: `test/art/art_mode_test.dart`.
+
+## 10. Mô hình Tripo3D thay khối ghép (19/10/2026)
+
+Sư tử Nemea làm lại từ mô hình Tripo3D (`art_src/tripo/nemea_lion.glb`,
+ảnh → 3D, chọn Clean Topology, đã tô texture) thay khối ellipsoid + lông sợi
+của `lion_nemea.py`. Script: `tool/blender/lion_tripo.py`.
+
+- **Ảnh đầu vào cho Tripo**: nhìn ngang, quay trái, nền trơn, dáng trung
+  tính (4 chân tách rời, miệng ngậm). Miệng há trong ảnh bị đúc vào mô hình.
+- **Đặt vào cảnh**: giữ mũi đúng chỗ bản cũ và bờm cao bằng bản cũ (đo trên
+  ảnh `--still`), cùng máy quay/đèn/điểm neo → sân khấu không phải đổi.
+- **Xương**: đọc khớp trên ảnh nhìn ngang có lưới toạ độ (đơn vị vẽ), dùng
+  `Rig` (xương phẳng, trọng số theo khoảng cách), lọc chân gần/xa theo chiều
+  sâu. Bắt buộc làm mượt trọng số (`smooth_weights`): lọn bờm rời bị chia
+  cho xương chân và thân thì kéo thành sợi khi cử động.
+- **Bẫy GLB**: đỉnh bị tách ở mọi đường nối UV. Tìm mảnh rời / làm mượt phải
+  hàn đỉnh trùng vị trí trước, nếu không lưới bị xé thành mảnh.
+- Render nhanh hơn nhiều (~10 s/khung so với ~2 phút có lông sợi); 49 khung,
+  thu nhỏ 0,8 → 4 trang (trang cuối 2048×512).
+- Kiểm tra giấy phép gói Tripo trước khi phát hành; vẫn coi đầu ra là bản
+  thô cần chỉnh (rules: tránh art "rõ là AI").
+- Phần dùng chung (nạp, đặt tỉ lệ, làm mượt trọng số): `tool/blender/tripo_kit.py`.
+  Quái mới: chép `boar_tripo.py`, đọc khớp trên ảnh nhìn ngang có lưới, giữ
+  máy quay/điểm neo/tên atlas của script cũ để sân khấu không phải đổi.
+- Lợn rừng (`boar_tripo.py`): lông gáy cao hơn bản cũ → `GROW = 0.9` cho
+  đỉnh lông không chạm mép khung render.

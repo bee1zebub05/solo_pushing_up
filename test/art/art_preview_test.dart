@@ -552,6 +552,34 @@ void main() {
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
     }
+    // Pha 2 (máu < 40%): nhảy vồ; vật được thì chồm ngửa ra sau.
+    final rage = StageBattleState()..bossHp = 0.3;
+    BossFrame at(double time, {double phase = -1}) => BossFrame(
+      time: time,
+      attack: phase < 0 ? 0 : 0.9,
+      hurt: 0,
+      glint: -1,
+      defeat: 0,
+      battle: rage,
+      attackPhase: phase,
+    );
+    void scene(Canvas c, BossFrame frame) {
+      art.paintStageBackdrop(c);
+      art.paintScene(c, frame.time, rage);
+      art.paintBoss(c, frame);
+      paintHero(c, HeroPose.plank(178), effort: 0.8);
+      art.paintForeground(c, frame);
+      paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+    }
+
+    await render(
+      tester,
+      'sprite_1_10_pounce',
+      (c) => scene(c, at(3, phase: 0.56)),
+    );
+    rage.wrestles = 1;
+    art.paintBoss(Canvas(ui.PictureRecorder()), at(3.5));
+    await render(tester, 'sprite_1_10_wrestled', (c) => scene(c, at(4)));
     art.dispose();
   });
 

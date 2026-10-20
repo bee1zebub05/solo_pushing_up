@@ -171,6 +171,26 @@ final class ChargeLanded extends BattleEvent {
   final int healed;
 }
 
+/// Sư tử pha 2 chuẩn bị vồ: còn [inMs] nữa thì vồ ([LionPounce]).
+final class PounceWarning extends BattleEvent {
+  const PounceWarning(super.timestampMs, {required this.inMs});
+
+  final int inMs;
+}
+
+/// Cú vồ tới: vật được (đang giữ tay thẳng, kèm một đòn [Hit]) hay bị vồ
+/// trúng (sư tử hồi [healed] máu).
+final class PounceLanded extends BattleEvent {
+  const PounceLanded(
+    super.timestampMs, {
+    required this.wrestled,
+    this.healed = 0,
+  });
+
+  final bool wrestled;
+  final int healed;
+}
+
 /// Harpy cướp vàng vì nghỉ quá lâu ([GoldThief]).
 final class GoldStolen extends BattleEvent {
   const GoldStolen(super.timestampMs, {required this.total});
@@ -238,7 +258,7 @@ class BattleView {
   /// Mức lạnh 0–1, chạm 1 là đòn sau bị đóng băng ([FreezingCold]).
   double cold = 0;
 
-  /// Lợn rừng lấy đà 0–1, 1 = húc ngay ([ChargingBoar]).
+  /// Kẻ thù lấy đà 0–1, 1 = lao tới ngay ([ChargingBoar], [LionPounce]).
   double charge = 0;
 
   /// Số túi vàng đã bị cướp ([GoldThief]).
@@ -246,6 +266,9 @@ class BattleView {
 
   /// Số lần kẻ thù đã đứng dậy ([ReviveOnce]).
   int revives = 0;
+
+  /// Số lần người chơi vật được sư tử ([LionPounce]).
+  int wrestles = 0;
 }
 
 /// Logic một trận: nhận [RepEvent] từ bộ đếm, trừ máu kẻ thù. Không phụ

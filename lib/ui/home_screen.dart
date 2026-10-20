@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../art/art_mode.dart';
@@ -100,6 +101,31 @@ class _HomeScreenState extends State<HomeScreen> {
     await widget.progressStore.save(progress);
     if (mounted) setState(() {});
     return reward;
+  }
+
+  /// Xoá XP, cấp, màn đã thắng, vật phẩm (giữ nhân vật) — chỉ bản debug.
+  Future<void> _resetProgress() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xoá tiến trình?'),
+        content: const Text('Mất XP, cấp, màn đã thắng và vật phẩm.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final fresh = PlayerProgress();
+    await widget.progressStore.save(fresh);
+    if (mounted) setState(() => _progress = fresh);
   }
 
   Future<void> _openBattle({
@@ -284,6 +310,21 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.bug_report_outlined),
               label: const Text('Chế độ đếm (debug, ghi dữ liệu test)'),
             ),
+            // Công cụ thử cho người làm game: chỉ có trong bản debug.
+            if (kDebugMode) ...[
+              SwitchListTile(
+                value: PlayerProgress.debugUnlockAll,
+                onChanged: (v) =>
+                    setState(() => PlayerProgress.debugUnlockAll = v),
+                title: const Text('Mở khoá mọi màn (debug)'),
+                subtitle: const Text('Không tính là đã thắng, không lưu'),
+              ),
+              TextButton.icon(
+                onPressed: _resetProgress,
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Xoá tiến trình (debug)'),
+              ),
+            ],
           ],
         ),
       ),

@@ -261,12 +261,26 @@ class NemeaBossArt extends BossArt {
   /// Đàn chim Stymphalia canh hang (cùng atlas quái màn 1.1).
   static const birdSprite = 'stymphalian_bird';
 
+  /// Lần vật được sư tử gần nhất (giây sân khấu) — diễn `wrestled` 1,2 s.
+  int _wrestles = 0;
+  double _wrestledAt = -10;
+  static const _wrestledLength = 1.2;
+
   @override
   void paintBoss(Canvas canvas, BossFrame f) {
+    final b = f.battle;
+    if (b.wrestles != _wrestles) {
+      if (b.wrestles > _wrestles) _wrestledAt = f.time;
+      _wrestles = b.wrestles;
+    }
+    final sinceWrestled = (f.time - _wrestledAt) / _wrestledLength;
     canvas.save();
     canvas.translate(lionX, stageGroundY);
     canvas.scale(lionScale);
     final state = LionState(
+      // Pha 2 (máu < 40%, LionPounce): đòn là cú nhảy vồ.
+      pounce: b.bossHp < 0.4,
+      wrestled: sinceWrestled >= 0 && sinceWrestled < 1 ? sinceWrestled : -1,
       time: f.time,
       attackPhase: f.attackPhase,
       // Không có đòn vồ (chân dung, xem trước): attack chỉ là há miệng gầm.

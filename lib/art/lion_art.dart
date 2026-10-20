@@ -30,6 +30,8 @@ class LionState {
     this.hurt = 0,
     this.glint = -1,
     this.defeat = 0,
+    this.pounce = false,
+    this.wrestled = -1,
   });
 
   /// Giây trôi qua, cho các chuyển động lặp (thở, đuôi, chớp mắt).
@@ -49,6 +51,12 @@ class LionState {
 
   /// Gục ngã 0–1.
   final double defeat;
+
+  /// Pha 2: đòn là cú nhảy vồ ([attackPhase] dùng động tác `pounce`).
+  final bool pounce;
+
+  /// Bị người chơi vật 0–1 (chồm ngửa ra sau); âm = không.
+  final double wrestled;
 }
 
 Paint _fill(Color c) => Paint()..color = c;
@@ -262,6 +270,10 @@ void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
   canvas.scale(1 + 0.04 * s.hurt, 1 - 0.05 * s.hurt);
   if (s.defeat > 0 && sprite.has('defeat')) {
     sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt);
+  } else if (s.wrestled >= 0 && sprite.has('wrestled')) {
+    sprite.draw(canvas, 'wrestled', s.wrestled, flash: s.hurt);
+  } else if (p >= 0 && s.pounce && sprite.has('pounce')) {
+    sprite.draw(canvas, 'pounce', p, flash: s.hurt);
   } else if (p >= 0 && sprite.has('attack')) {
     sprite.draw(canvas, 'attack', p, flash: s.hurt);
   } else {

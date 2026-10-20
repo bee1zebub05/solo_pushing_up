@@ -1,12 +1,17 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'art/art_mode.dart';
+import 'game/progress.dart';
 import 'ui/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ArtModeSetting.load();
+  // Bản debug (flutter run): mở sẵn mọi màn để người làm game thử; tắt được
+  // bằng công tắc ở trang chủ. Bản phát hành giữ khoá theo tiến trình.
+  PlayerProgress.debugUnlockAll = kDebugMode;
   // Cho xoay ngang: phòng nhỏ đôi khi chỉ đặt máy nằm ngang được
   // (review Pushup RPG chê ép xoay camera).
   SystemChrome.setPreferredOrientations([

@@ -1500,6 +1500,46 @@ void _paintBoarHead(Canvas canvas) {
 /// Lớp lông lợn rừng (cố định theo khung thân) ghi sẵn một lần.
 final _boarCoat = PictureCache<int>(maxEntries: 1);
 
+/// Báo trước cú húc của lợn rừng (bảng dấu hiệu, rules/dohoa.md): mũi tên
+/// đỏ chớp trên đất chỉ hướng lao (né = giữ tay thẳng), vệt tốc độ, bụi tung
+/// sau lưng. Toạ độ như [paintErymanthianBoar] (gốc ở chân giữa thân);
+/// bản sprite Blender cũng vẽ lớp này. [charge] 0–1: mức lấy đà.
+void paintBoarChargeTell(Canvas canvas, {double time = 0, double charge = 0}) {
+  final attack = charge;
+  if (attack > 0.05) {
+    final blink = 0.55 + 0.45 * math.sin(time * 14);
+    final arrow = _fill(Color.fromRGBO(230, 40, 30, 0.6 * attack * blink));
+    for (var i = 0; i < 3; i++) {
+      final x = -70.0 - i * 18;
+      canvas.drawPath(
+        _poly([
+          Offset(x + 8, -6),
+          Offset(x, 0),
+          Offset(x + 8, 6),
+          Offset(x + 12, 6),
+          Offset(x + 4, 0),
+          Offset(x + 12, -6),
+        ]),
+        arrow,
+      );
+    }
+    // Vệt tốc độ + bụi tung sau lưng.
+    final streak = _stroke(Color.fromRGBO(255, 240, 220, 0.5 * attack), 1.4);
+    for (var i = 0; i < 4; i++) {
+      final y = -60.0 + i * 12;
+      canvas.drawLine(Offset(58, y), Offset(80 + i * 6.0, y + 2), streak);
+    }
+    for (var i = 0; i < 5; i++) {
+      final ph = (time * 2 + i / 5) % 1;
+      canvas.drawCircle(
+        Offset(50 + ph * 40, -4 - ph * 14),
+        3 + ph * 6,
+        _fill(Color.fromRGBO(190, 155, 110, 0.6 * attack * (1 - ph))),
+      );
+    }
+  }
+}
+
 void paintErymanthianBoar(
   Canvas canvas, {
   double time = 0,
@@ -1511,39 +1551,7 @@ void paintErymanthianBoar(
   final breath = math.sin(time * 2.4);
   final dip = 8 * attack;
   _withHurt(canvas, hurt, () {
-    // Báo trước cú húc: mũi tên đỏ chớp trên đất chỉ hướng lao (né = squat).
-    if (attack > 0.05) {
-      final blink = 0.55 + 0.45 * math.sin(time * 14);
-      final arrow = _fill(Color.fromRGBO(230, 40, 30, 0.6 * attack * blink));
-      for (var i = 0; i < 3; i++) {
-        final x = -70.0 - i * 18;
-        canvas.drawPath(
-          _poly([
-            Offset(x + 8, -6),
-            Offset(x, 0),
-            Offset(x + 8, 6),
-            Offset(x + 12, 6),
-            Offset(x + 4, 0),
-            Offset(x + 12, -6),
-          ]),
-          arrow,
-        );
-      }
-      // Vệt tốc độ + bụi tung sau lưng.
-      final streak = _stroke(Color.fromRGBO(255, 240, 220, 0.5 * attack), 1.4);
-      for (var i = 0; i < 4; i++) {
-        final y = -60.0 + i * 12;
-        canvas.drawLine(Offset(58, y), Offset(80 + i * 6.0, y + 2), streak);
-      }
-      for (var i = 0; i < 5; i++) {
-        final ph = (time * 2 + i / 5) % 1;
-        canvas.drawCircle(
-          Offset(50 + ph * 40, -4 - ph * 14),
-          3 + ph * 6,
-          _fill(Color.fromRGBO(190, 155, 110, 0.6 * attack * (1 - ph))),
-        );
-      }
-    }
+    paintBoarChargeTell(canvas, time: time, charge: attack);
     // Hào quang tinh anh: vầng đỏ dưới chân.
     canvas.drawOval(
       Rect.fromCenter(center: const Offset(0, 0), width: 130, height: 14),

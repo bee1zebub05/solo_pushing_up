@@ -10,9 +10,10 @@ import 'vector_style.dart';
 /// Kích thước bản đồ Thung lũng Nemea (đơn vị vẽ).
 const nemeaMapSize = Size(400, 300);
 
-/// Vị trí 10 điểm màn trên bản đồ: từ bìa rừng ô liu (dưới trái) men theo
-/// đường mòn lên đồi đền, qua cầu đá, tới hang sư tử (trên phải).
-const nemeaMapNodes = <Offset>[
+/// Các điểm uốn của đường mòn: từ bìa rừng ô liu (dưới trái) men lên đồi
+/// đền, qua cầu đá, tới hang sư tử (trên phải). Phải khớp `NODES` trong
+/// tool/blender/nemea_map.py (cây trên ảnh Blender rải tránh đường này).
+const nemeaMapTrail = <Offset>[
   Offset(48, 262),
   Offset(104, 240),
   Offset(84, 196),
@@ -25,11 +26,20 @@ const nemeaMapNodes = <Offset>[
   Offset(352, 62),
 ];
 
+/// Điểm uốn ([nemeaMapTrail]) đặt từng màn của chương 1 (8 màn).
+const _nodeOnTrail = [0, 2, 3, 4, 5, 7, 8, 9];
+
+/// Vị trí 8 điểm màn trên bản đồ.
+final nemeaMapNodes = [for (final i in _nodeOnTrail) nemeaMapTrail[i]];
+
+/// Màn tinh anh (1.4) và mini-boss (1.6): vòng điểm đỏ.
+const _eliteNodes = {3, 5};
+
 /// Trạng thái một điểm màn trên bản đồ.
 enum MapNodeState { locked, open, done }
 
 /// Vẽ bản đồ thung lũng kiểu nhìn chéo từ trên (Kingdom Rush): đồi, rừng
-/// ô liu, sông, đền, hang sư tử; đường mòn nối 10 điểm, đoạn đã đi sáng
+/// ô liu, sông, đền, hang sư tử; đường mòn qua 8 điểm màn, đoạn đã đi sáng
 /// màu, điểm kế tiếp nhấp nháy. [time] cho nước chảy và điểm nhấp nháy.
 void paintNemeaMap(
   Canvas canvas,
@@ -62,7 +72,7 @@ void paintNemeaMap(
       i + 1,
       states[i],
       boss: i == nemeaMapNodes.length - 1,
-      elite: i == 4 || i == 7,
+      elite: _eliteNodes.contains(i),
       time: time,
     );
   }
@@ -354,7 +364,7 @@ void _forest(Canvas canvas) {
 }
 
 bool _nearPath(Offset p, double r) {
-  for (final n in nemeaMapNodes) {
+  for (final n in nemeaMapTrail) {
     if ((n - p).distance < r) return true;
   }
   return false;
@@ -465,11 +475,12 @@ void _cave(Canvas canvas, Offset c) {
 }
 
 void _path(Canvas canvas, List<MapNodeState> states) {
+  // Đường đi qua mọi điểm uốn; [from]/[to] là chỉ số trên [nemeaMapTrail].
   Path segment(int from, int to) {
-    final p = Path()..moveTo(nemeaMapNodes[from].dx, nemeaMapNodes[from].dy);
+    final p = Path()..moveTo(nemeaMapTrail[from].dx, nemeaMapTrail[from].dy);
     for (var i = from + 1; i <= to; i++) {
-      final a = nemeaMapNodes[i - 1];
-      final b = nemeaMapNodes[i];
+      final a = nemeaMapTrail[i - 1];
+      final b = nemeaMapTrail[i];
       final mid =
           Offset.lerp(a, b, 0.5)! +
           Offset((b.dy - a.dy) * 0.25, (a.dx - b.dx) * 0.25);
@@ -478,7 +489,7 @@ void _path(Canvas canvas, List<MapNodeState> states) {
     return p;
   }
 
-  final all = segment(0, nemeaMapNodes.length - 1);
+  final all = segment(0, nemeaMapTrail.length - 1);
   // Đường mòn đất: viền tối, thân sáng.
   canvas.drawPath(
     all,
@@ -501,7 +512,7 @@ void _path(Canvas canvas, List<MapNodeState> states) {
   // Đoạn đã đi: chấm vàng dọc đường.
   final reached = states.lastIndexWhere((s) => s != MapNodeState.locked);
   if (reached > 0) {
-    final walked = segment(0, reached);
+    final walked = segment(0, _nodeOnTrail[reached]);
     for (final metric in walked.computeMetrics()) {
       for (var d = 0.0; d < metric.length; d += 7) {
         final t = metric.getTangentForOffset(d);
