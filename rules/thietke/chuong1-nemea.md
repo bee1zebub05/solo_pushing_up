@@ -87,8 +87,16 @@ Boss: vật được sư tử thì thắng nhanh hơn không vật (19 so với 
 - **Lợn rừng (19/10/2026)**: mô hình Tripo3D gắn xương (`tool/blender/boar_tripo.py`),
   `idle` + `attack` cùng nhịp bản cũ. Bản Blender giờ cũng vẽ mũi tên đỏ báo
   húc (trước đây chỉ bản vector có).
-- **Hình còn thiếu**: lính đá chưa có chuỗi `rise` (ráp lại) trong Blender
-  (`hoplite.py`); chân dung Molorchus,
+- **Lính đá (20/10/2026)**: mô hình Tripo3D gắn xương (`tool/blender/stone_tripo.py`),
+  `idle`, `attack` (giương giáo trên vai rồi đâm), `rise` (trồi lên từ đống
+  đá — màn 1.7 diễn khi đá ráp lại). Bản Blender vẽ sao tím ở mũi giáo báo đòn.
+- **Hydra non (20/10/2026)**: Tripo3D (`tool/blender/hydra_tripo.py`), thân rắn cuộn
+  ba cổ, `idle_h1..3`/`attack_h1..3`; đầu bị chém thu vào thân, thay gốc cụt
+  đỏ. Bản Blender vẽ vũng độc xanh báo đòn.
+- **Harpy (20/10/2026)**: Tripo3D (`tool/blender/harpy_tripo.py`), góc ¾ (xoay
+  -55°), `idle` vỗ cánh, `attack` sà xuống quắp. Bản Blender vẽ sóng rít tím
+  và túi vàng quắp ở móng khi cướp vàng.
+- **Hình còn thiếu**: Spartoi, chim Stymphalia (vẫn bản khối ghép); chân dung Molorchus,
   Atalanta, Kẻ Ru Ngủ; phông đầm lầy (1.6) và trong hang (1.8) — hiện dùng
   chung phông thung lũng.
 - Thoại kết chương (Kẻ Ru Ngủ) chưa có màn hình.

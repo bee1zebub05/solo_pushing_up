@@ -947,6 +947,20 @@ void paintHarpy(
     (c) => _harpyBody(c, phase / 12 * period, aq / 6),
     colorFilter: _hurtFilter(hurt),
   );
+  paintHarpyExtras(canvas, time: time, attack: attack, stealing: stealing);
+  canvas.restore();
+}
+
+/// Phần đọc nhịp của Harpy vẽ đè lên thân (dùng cho cả bản sprite Blender):
+/// túi vàng quắp ở móng khi [stealing] (cướp vàng, màn 1.5) và vòng sóng
+/// rít tím toả từ miệng khi vồ. Toạ độ theo thân Harpy bản vector: mặt ở
+/// (-2, -26), móng chân quanh (0, 32).
+void paintHarpyExtras(
+  Canvas canvas, {
+  double time = 0,
+  double attack = 0,
+  bool stealing = false,
+}) {
   const face = Offset(-2, -26);
   if (stealing) _goldPouch(canvas, time);
   // Tiếng rít: vòng sóng âm toả ra từ miệng khi vồ.
@@ -962,7 +976,6 @@ void paintHarpy(
       );
     }
   }
-  canvas.restore();
 }
 
 final _harpyFrames = _FrameCache(
@@ -1764,6 +1777,30 @@ void paintErymanthianBoar(
 // ---------------------------------------------------------------------------
 // Hydra non (mini-boss): thân rắn, nhiều cổ, mỗi đầu thè lưỡi chẻ, nọc độc.
 
+/// Báo trước phun độc của Hydra non (bảng dấu hiệu, rules/dohoa.md): vũng
+/// độc xanh sủi bọt trên đất phía trước. Toạ độ như [paintYoungHydra] (gốc
+/// ở chân giữa vòng thân); bản sprite Blender cũng vẽ lớp này.
+void paintHydraPoisonTell(Canvas canvas, {double time = 0, double attack = 0}) {
+  if (attack > 0.05) {
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: const Offset(-70, 0),
+        width: 70 * attack,
+        height: 10 * attack,
+      ),
+      _fill(Color.fromRGBO(140, 230, 70, 0.45 * attack)),
+    );
+    for (var i = 0; i < 4; i++) {
+      final ph = (time * 1.5 + i / 4) % 1;
+      canvas.drawCircle(
+        Offset(-86 + i * 10.0, -2 - ph * 10),
+        1.4 + ph * 2,
+        _stroke(Color.fromRGBO(190, 255, 120, attack * (1 - ph)), 0.8),
+      );
+    }
+  }
+}
+
 void paintYoungHydra(
   Canvas canvas, {
   double time = 0,
@@ -1829,25 +1866,7 @@ void paintYoungHydra(
     }
     // Vòng cuộn phía trước, đuôi thon vắt lên.
     _hydraFrontCoil.paint(canvas);
-    // Báo trước phun độc: vũng độc xanh sủi bọt trên đất phía trước.
-    if (attack > 0.05) {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: const Offset(-70, 0),
-          width: 70 * attack,
-          height: 10 * attack,
-        ),
-        _fill(Color.fromRGBO(140, 230, 70, 0.45 * attack)),
-      );
-      for (var i = 0; i < 4; i++) {
-        final ph = (time * 1.5 + i / 4) % 1;
-        canvas.drawCircle(
-          Offset(-86 + i * 10.0, -2 - ph * 10),
-          1.4 + ph * 2,
-          _stroke(Color.fromRGBO(190, 255, 120, attack * (1 - ph)), 0.8),
-        );
-      }
-    }
+    paintHydraPoisonTell(canvas, time: time, attack: attack);
     // Đầu rắn.
     for (var i = 0; i < necks.length; i++) {
       final (_, tip) = necks[i];

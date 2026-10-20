@@ -12,8 +12,11 @@ import '../sprite_atlas.dart';
 import '../vector_style.dart' show RasterLayer, StageQuality;
 
 /// Vị trí và tỉ lệ Sư tử Nemea trên sân khấu 400×260.
-const lionX = 335.0;
-const lionScale = 0.72;
+const lionX = 350.0;
+
+/// Sư tử to hẳn so với nhân vật (boss chương 1): 0,72 → 1,2; dời phải
+/// (335 → 350) để mõm không chạm nhân vật lúc đứng chờ.
+const lionScale = 1.2;
 
 /// Kỳ công 1 — Sư tử Nemea ở thung lũng Nemea.
 class NemeaBossArt extends BossArt {
@@ -39,7 +42,7 @@ class NemeaBossArt extends BossArt {
       Vector2(lionX - 88 * lionScale, stageGroundY - 104 * lionScale);
 
   @override
-  double get portraitView => 104;
+  double get portraitView => 104 * lionScale / 0.72; // khung đo ở lionScale 0,72
 
   @override
   void paintBackdrop(Canvas canvas) => paintNemeaBackdrop(canvas);

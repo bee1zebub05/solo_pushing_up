@@ -73,14 +73,37 @@ class NemeaMonsterArt extends NemeaBossArt {
   /// Vị trí đứng của quái (giữa thân, mặt đất).
   static const _x = 318.0;
 
-  @override
-  Vector2 get target => switch (kind) {
-    NemeaMonster.birds || NemeaMonster.swarm => Vector2(_x - 10, 110),
-    NemeaMonster.harpy => Vector2(_x - 6, 120),
-    NemeaMonster.boar => Vector2(_x - 70, stageGroundY - 60),
-    NemeaMonster.hydra => Vector2(_x - 40, stageGroundY - 110),
-    _ => Vector2(_x - 8, stageGroundY - 70),
+  /// Quái to hơn nhân vật cho ra dáng quái vật thần thoại: mọi hình của quái
+  /// (kể cả dấu hiệu báo đòn, đàn chim) phóng [grow] quanh [_pivot].
+  /// Hydra đã cao gần chạm trời: giữ cỡ (phóng thêm thì đầu ra khỏi khung).
+  double get grow => switch (kind) {
+    NemeaMonster.hydra => 1.0,
+    NemeaMonster.harpy => 1.2,
+    _ => 1.25,
   };
+
+  /// Quái đứng phóng quanh chân. Chim phóng quanh tâm vùng bay; Harpy phóng
+  /// quanh mép trên rồi hạ xuống [_drop] để cánh không ra khỏi khung.
+  Offset get _pivot => switch (kind) {
+    NemeaMonster.birds || NemeaMonster.swarm => const Offset(_x, 120),
+    NemeaMonster.harpy => const Offset(_x, 0),
+    _ => const Offset(_x, stageGroundY),
+  };
+
+  double get _drop => kind == NemeaMonster.harpy ? 18 : 0;
+
+  @override
+  Vector2 get target {
+    final t = switch (kind) {
+      NemeaMonster.birds || NemeaMonster.swarm => const Offset(_x - 10, 110),
+      NemeaMonster.harpy => const Offset(_x - 6, 120),
+      NemeaMonster.boar => const Offset(_x - 70, stageGroundY - 60),
+      NemeaMonster.hydra => const Offset(_x - 40, stageGroundY - 110),
+      _ => const Offset(_x - 8, stageGroundY - 70),
+    };
+    final p = _pivot + (t - _pivot) * grow;
+    return Vector2(p.dx, p.dy + _drop);
+  }
 
   /// Ánh sáng đổi theo hành trình: 1.1 sáng sớm trong, 1.9 hoàng hôn đỏ
   /// cam — càng gần hang sư tử trời càng về chiều (màn boss giữ ánh chiều).
@@ -97,7 +120,7 @@ class NemeaMonsterArt extends NemeaBossArt {
   Object get artKey => (runtimeType, kind);
 
   @override
-  double get portraitView => 110;
+  double get portraitView => 110 * grow;
 
   // Theo dõi thay đổi để diễn hoạt cảnh (Spartoi trồi lại, Harpy vừa cướp).
   int _revives = 0;
@@ -124,6 +147,11 @@ class NemeaMonsterArt extends NemeaBossArt {
     final fall = f.defeat.clamp(0.0, 1.0);
     // Gục: chìm xuống đất và mờ dần.
     canvas.save();
+    final pivot = _pivot;
+    canvas
+      ..translate(pivot.dx, pivot.dy + _drop)
+      ..scale(grow)
+      ..translate(-pivot.dx, -pivot.dy);
     if (fall > 0) {
       canvas.translate(0, 16 * fall);
       canvas.saveLayer(
@@ -141,7 +169,22 @@ class NemeaMonsterArt extends NemeaBossArt {
       case NemeaMonster.stone:
       case NemeaMonster.guard:
         final scale = kind == NemeaMonster.guard ? 1.5 : 1.35;
-        if (_sprite(canvas, 'stone_soldier', f, _x, scale / 1.35)) break;
+        // Lính đá canh hang (1.7) vỡ rồi ráp lại: trồi lên từ đống đá.
+        final rebuilt = (f.time - _reviveAt) / 1.4;
+        final rising =
+            kind == NemeaMonster.guard && rebuilt >= 0 && rebuilt < 1;
+        if (_sprite(
+          canvas,
+          'stone_soldier',
+          f,
+          _x,
+          scale / 1.35,
+          anim: rising ? 'rise' : null,
+          animT: rebuilt.clamp(0.0, 1.0),
+        )) {
+          if (!rising) _spearGlint(canvas, f, scale / 1.35);
+          break;
+        }
         _at(
           canvas,
           _x,
@@ -164,7 +207,10 @@ class NemeaMonsterArt extends NemeaBossArt {
             ? steal
             : -1.0;
         // Sprite Harpy nhỏ hơn bản vector một chút: phóng cho cân với nhân vật.
-        if (_sprite(canvas, 'harpy', f, _x, 1.3, attackPhase: phase)) break;
+        if (_sprite(canvas, 'harpy', f, _x, 1.3, attackPhase: phase)) {
+          _harpyExtras(canvas, f, phase, 1.3);
+          break;
+        }
         _at(
           canvas,
           _x,
@@ -182,6 +228,15 @@ class NemeaMonsterArt extends NemeaBossArt {
         _birds(canvas, f, 2, offset: const Offset(-70, -38));
       case NemeaMonster.hydra:
         final heads = math.max(1, b.headsLeft).clamp(1, 3);
+        if (SpriteAtlas.get('young_hydra') != null) {
+          // Vũng độc báo đòn (bản vector tự vẽ trong thân).
+          _at(
+            canvas,
+            _x,
+            1.25,
+            () => paintHydraPoisonTell(canvas, time: f.time, attack: f.attack),
+          );
+        }
         if (_sprite(
           canvas,
           'young_hydra',
@@ -259,6 +314,66 @@ class NemeaMonsterArt extends NemeaBossArt {
     }
     canvas.restore();
     return true;
+  }
+
+  /// Báo trước cú đâm của lính đá bản sprite: mũi giáo loé sao tím (màu Trì
+  /// Trệ) lúc lấy đà — bản vector tự vẽ trong hình. Vị trí mũi giáo lúc đứng
+  /// và lúc giương hết đà theo pose() của tool/blender/stone_tripo.py (đơn
+  /// vị sân khấu quanh chân).
+  void _spearGlint(Canvas canvas, BossFrame f, double scale) {
+    final p = f.attackPhase;
+    if (p <= 0.05 || p >= 0.55) return;
+    final k = math.sin((p - 0.05) / 0.5 * math.pi);
+    final u = (p / 0.5).clamp(0.0, 1.0);
+    final w = u * u * (3 - 2 * u);
+    final tip = Offset.lerp(
+      const Offset(-16, -143),
+      const Offset(-31, -129),
+      w,
+    )!;
+    canvas.save();
+    canvas.translate(_x, stageGroundY);
+    canvas.scale(scale);
+    final r = 9 * k;
+    final c = tip + const Offset(-4, 0);
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx, c.dy - r)
+        ..lineTo(c.dx + r * 0.2, c.dy - r * 0.2)
+        ..lineTo(c.dx + r, c.dy)
+        ..lineTo(c.dx + r * 0.2, c.dy + r * 0.2)
+        ..lineTo(c.dx, c.dy + r)
+        ..lineTo(c.dx - r * 0.2, c.dy + r * 0.2)
+        ..lineTo(c.dx - r, c.dy)
+        ..lineTo(c.dx - r * 0.2, c.dy - r * 0.2)
+        ..close(),
+      Paint()..color = Color.fromRGBO(230, 216, 255, k),
+    );
+    canvas.restore();
+  }
+
+  /// Túi vàng (đang cướp) và sóng rít của Harpy bản sprite. Hệ toạ độ thân
+  /// bản vector (mặt (-2, -26), móng (0, 32)) đặt khớp mặt (-12, -143) và
+  /// móng (-12, -49) của sprite (pose() trong tool/blender/harpy_tripo.py,
+  /// đơn vị sân khấu quanh chân); lúc sà xuống thân lao trái và hạ thấp.
+  void _harpyExtras(Canvas canvas, BossFrame f, double phase, double scale) {
+    final dive = phase < 0.45 || phase > 1
+        ? 0.0
+        : phase < 0.6
+        ? (phase - 0.45) / 0.15
+        : 1 - (phase - 0.6) / 0.4;
+    canvas.save();
+    canvas.translate(_x, stageGroundY);
+    canvas.scale(scale);
+    canvas.translate(-8.8 - 26 * dive, -100.9 + 20 * dive);
+    canvas.scale(1.62);
+    paintHarpyExtras(
+      canvas,
+      time: f.time,
+      attack: math.max(f.attack, _recent(f.time, _stealAt, 1.5)),
+      stealing: f.time - _stealAt < 2.5,
+    );
+    canvas.restore();
   }
 
   /// Trồi lên từ đất lúc mở màn và mỗi lần đứng dậy (0–1).

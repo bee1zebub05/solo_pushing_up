@@ -66,6 +66,16 @@ void scene(
   paintHero(canvas, hero, cloak: cloak, effort: effort);
 }
 
+/// Nhân vật trên sân khấu trận: thu nhỏ như _HeroComponent (heroStageScale).
+void paintStageHero(Canvas c, HeroPose pose, {double effort = 0}) {
+  c.save();
+  c.translate(heroStagePivot.dx, heroStagePivot.dy);
+  c.scale(heroStageScale);
+  c.translate(-heroStagePivot.dx, -heroStagePivot.dy);
+  paintHero(c, pose, effort: effort);
+  c.restore();
+}
+
 void main() {
   testWidgets('chống đẩy: tay thẳng, giữa chừng, xuống sâu', (tester) async {
     for (final angle in [180.0, 120.0, 70.0]) {
@@ -271,7 +281,7 @@ void main() {
         art.paintStageBackdrop(c);
         art.paintScene(c, 4, battle);
         art.paintBoss(c, frame);
-        paintHero(c, HeroPose.plank(110), effort: 0.6);
+        paintStageHero(c, HeroPose.plank(110), effort: 0.6);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
         c.restore();
@@ -421,7 +431,7 @@ void main() {
       paintNemeaScene(c, time: 1);
       c.scale(2.2);
       c.translate(-40, -110);
-      paintHero(c, HeroPose.plank(110), effort: 0.6);
+      paintStageHero(c, HeroPose.plank(110), effort: 0.6);
     });
     await render(tester, 'hero_glow', (c) {
       paintNemeaScene(c, time: 1);
@@ -470,7 +480,7 @@ void main() {
         art.paintStageBackdrop(c);
         art.paintScene(c, 2.5, battle);
         art.paintBoss(c, frame);
-        paintHero(c, HeroPose.plank(120), effort: 0.5);
+        paintStageHero(c, HeroPose.plank(120), effort: 0.5);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
@@ -499,7 +509,11 @@ void main() {
         ..totalHeads = 3
         ..headsLeft = 3
         ..charge = kind == NemeaMonster.boar ? 0.7 : 0;
-      for (final (tag, phase) in [('idle', -1.0), ('strike', 0.58)]) {
+      for (final (tag, phase) in [
+        ('idle', -1.0),
+        ('windup', 0.4),
+        ('strike', 0.58),
+      ]) {
         final frame = BossFrame(
           time: 2.5,
           attack: phase < 0 ? 0 : 0.9,
@@ -513,7 +527,7 @@ void main() {
           art.paintStageBackdrop(c);
           art.paintScene(c, 2.5, battle);
           art.paintBoss(c, frame);
-          paintHero(c, HeroPose.plank(120), effort: 0.5);
+          paintStageHero(c, HeroPose.plank(120), effort: 0.5);
           art.paintForeground(c, frame);
           paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
         });
@@ -547,7 +561,7 @@ void main() {
         art.paintStageBackdrop(c);
         art.paintScene(c, 2.5, battle);
         art.paintBoss(c, frame);
-        paintHero(c, HeroPose.plank(120), effort: 0.5);
+        paintStageHero(c, HeroPose.plank(120), effort: 0.5);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
@@ -567,7 +581,7 @@ void main() {
       art.paintStageBackdrop(c);
       art.paintScene(c, frame.time, rage);
       art.paintBoss(c, frame);
-      paintHero(c, HeroPose.plank(178), effort: 0.8);
+      paintStageHero(c, HeroPose.plank(178), effort: 0.8);
       art.paintForeground(c, frame);
       paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
     }
@@ -984,7 +998,7 @@ void main() {
             battle: StageBattleState(),
           ),
         );
-        paintHero(c, HeroPose.plank(110), effort: 0.5);
+        paintStageHero(c, HeroPose.plank(110), effort: 0.5);
       });
     }
   });

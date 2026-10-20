@@ -343,3 +343,12 @@ của `lion_nemea.py`. Script: `tool/blender/lion_tripo.py`.
   máy quay/điểm neo/tên atlas của script cũ để sân khấu không phải đổi.
 - Lợn rừng (`boar_tripo.py`): lông gáy cao hơn bản cũ → `GROW = 0.9` cho
   đỉnh lông không chạm mép khung render.
+- **Dáng người** (lính đá, `stone_tripo.py`): Tripo dựng quay mặt về -Y →
+  `import_tripo_upright(..., rot_z=-90)`, chuẩn theo chiều cao, gốc giữa hai
+  bàn chân. Vũ khí/khiên là mảnh lưới riêng: gắn vào **xương riêng**
+  (`pin_to_bone`), đặt vào bàn tay mỗi khung — giáo dựng đứng lúc đứng, chĩa
+  ngang lúc đâm mà không phải bẻ cẳng tay. Mảnh nhỏ (khoá, quai) dùng
+  `follow_nearest` (chép trọng số đỉnh thân gần nhất) sau khi làm mượt, nếu
+  không sẽ tách khỏi thân khi cử động. Khuỷu tay IK chọn phía chĩa xuống/ra sau.
+- Dấu hiệu báo đòn vẽ trong bản vector (mũi tên lợn rừng, sao mũi giáo) phải
+  vẽ lại cho nhánh sprite: tính vị trí từ chính công thức pose() trong Blender.

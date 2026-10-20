@@ -16,7 +16,7 @@ def import_tripo(path, nose_x, span, grow=1.0, flip=False):
     (Rig tính trọng số trên toạ độ đỉnh). [flip]: mô hình quay mặt sang phải
     thì xoay 180° cho quay trái như sân khấu."""
     bpy.ops.import_scene.gltf(filepath=path)
-    mesh = next(o for o in bpy.context.scene.objects if o.type == "MESH" and o.name.startswith("tripo"))
+    mesh = next(o for o in bpy.context.scene.objects if o.type == "MESH")
     for o in list(bpy.context.scene.objects):
         if o.type == "EMPTY" and mesh.parent == o:
             mesh.matrix_world = o.matrix_world @ mesh.matrix_local
@@ -41,6 +41,144 @@ def import_tripo(path, nose_x, span, grow=1.0, flip=False):
         bsdf.inputs["Roughness"].default_value = 0.85
         bsdf.inputs["Specular IOR Level"].default_value = 0.25
     return mesh
+
+
+def import_tripo_upright(path, height, rot_z=0.0):
+    """Mô hình dáng người: xoay [rot_z] độ quanh trục đứng (Tripo dựng người
+    quay mặt về -Y; -90 cho quay trái như sân khấu), cao [height] (đơn vị
+    vẽ), gốc toạ độ ở giữa hai bàn chân trên mặt đất; áp biến đổi vào lưới."""
+    bpy.ops.import_scene.gltf(filepath=path)
+    mesh = next(o for o in bpy.context.scene.objects if o.type == "MESH")
+    for o in list(bpy.context.scene.objects):
+        if o.type == "EMPTY" and mesh.parent == o:
+            mesh.matrix_world = o.matrix_world @ mesh.matrix_local
+            mesh.parent = None
+            bpy.data.objects.remove(o)
+    mesh.matrix_world = Matrix.Rotation(np.radians(rot_z), 4, "Z") @ mesh.matrix_world
+    bpy.context.view_layer.update()
+    ws = np.array([(mesh.matrix_world @ v.co)[:] for v in mesh.data.vertices])
+    lo_z, hi_z = ws[:, 2].min(), ws[:, 2].max()
+    k = height * S / (hi_z - lo_z)
+    feet = ws[ws[:, 2] < lo_z + 0.03 * (hi_z - lo_z)]
+    cx, cy = np.median(feet[:, 0]), np.median(feet[:, 1])
+    mesh.matrix_world = Matrix.Translation(Vector((-cx * k, -cy * k, -lo_z * k))) @ \
+        Matrix.Scale(k, 4) @ mesh.matrix_world
+    bpy.context.view_layer.update()
+    mesh.data.transform(mesh.matrix_world)
+    mesh.matrix_world = Matrix.Identity(4)
+    for slot in mesh.material_slots:
+        bsdf = next(n for n in slot.material.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+        bsdf.inputs["Roughness"].default_value = 0.85
+        bsdf.inputs["Specular IOR Level"].default_value = 0.25
+    return mesh
+
+
+def islands(mesh):
+    """Mảnh lưới rời (đỉnh trùng vị trí coi là một): mảng số mảnh cho mỗi đỉnh,
+    mảnh lớn nhất là 0."""
+    verts = mesh.data.vertices
+    weld = {}
+    canon = np.array([weld.setdefault(tuple(round(c, 5) for c in v.co), len(weld)) for v in verts])
+    parent = np.arange(len(weld))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for e in mesh.data.edges:
+        ra, rb = find(canon[e.vertices[0]]), find(canon[e.vertices[1]])
+        if ra != rb:
+            parent[ra] = rb
+    roots = np.array([find(c) for c in canon])
+    ids, counts = np.unique(roots, return_counts=True)
+    rank = {r: i for i, r in enumerate(ids[np.argsort(-counts)])}
+    return np.array([rank[r] for r in roots])
+
+
+def pin_to_bone(mesh, vertex_ids, bone):
+    """Gắn cứng các đỉnh (vũ khí, khiên) vào một xương: trọng số 1 cho xương
+    đó, 0 cho mọi xương khác."""
+    for g in mesh.vertex_groups:
+        if g.name == bone:
+            g.add(list(map(int, vertex_ids)), 1.0, "REPLACE")
+        else:
+            g.remove(list(map(int, vertex_ids)))
+
+
+def follow_nearest(mesh, isl, small=400, skip_groups=()):
+    """Mảnh nhỏ (quai, khoá, mào…) lấy trọng số của đỉnh gần nhất trên các
+    mảnh lớn: di chuyển y như chỗ thân ngay cạnh nó, không bị tách ra khi
+    thân pha trọng số nhiều xương. Bỏ qua mảnh đã gắn vào [skip_groups]."""
+    from mathutils.kdtree import KDTree
+
+    verts = mesh.data.vertices
+    counts = np.bincount(isl)
+    big = [i for i in range(len(verts)) if counts[isl[i]] > small]
+    tree = KDTree(len(big))
+    for j, i in enumerate(big):
+        tree.insert(verts[i].co, j)
+    tree.balance()
+    skip = {mesh.vertex_groups[g].index for g in skip_groups if g in mesh.vertex_groups}
+    for k in np.nonzero(counts <= small)[0]:
+        ids = np.nonzero(isl == k)[0]
+        first = verts[int(ids[0])]
+        if any(g.group in skip and g.weight > 0.5 for g in first.groups):
+            continue
+        c = sum((verts[int(i)].co for i in ids), Vector()) / len(ids)
+        _, j, _ = tree.find(c)
+        src = {g.group: g.weight for g in verts[big[j]].groups}
+        ids = list(map(int, ids))
+        for g in mesh.vertex_groups:
+            w = src.get(g.index, 0.0)
+            if w > 1e-4:
+                g.add(ids, w, "REPLACE")
+            else:
+                g.remove(ids)
+
+
+def surface_regions(mesh, seeds):
+    """Chia đỉnh theo đường đi trên bề mặt lưới (Dijkstra theo cạnh, đỉnh
+    trùng vị trí coi là một): [seeds] = {nhãn: hàm(toạ_độ) → True nếu là
+    hạt giống}. Mỗi đỉnh mang nhãn hạt giống tới được gần nhất. Dùng khi các
+    phần chồng nhau trong không gian (nhiều cổ) nhưng tách nhau trên bề mặt.
+    Trả {toạ độ làm tròn: nhãn}."""
+    import heapq
+
+    verts = mesh.data.vertices
+    weld = {}
+    canon = [weld.setdefault(tuple(round(c, 5) for c in v.co), len(weld)) for v in verts]
+    pos = [None] * len(weld)
+    for v, c in zip(verts, canon):
+        pos[c] = v.co
+    adj = [[] for _ in range(len(weld))]
+    for e in mesh.data.edges:
+        a, b = canon[e.vertices[0]], canon[e.vertices[1]]
+        if a != b:
+            w = (pos[a] - pos[b]).length
+            adj[a].append((b, w))
+            adj[b].append((a, w))
+    dist = [float("inf")] * len(weld)
+    label = [None] * len(weld)
+    heap = []
+    for name, test in seeds.items():
+        for c, p in enumerate(pos):
+            if test(p):
+                dist[c] = 0.0
+                label[c] = name
+                heap.append((0.0, c))
+    heapq.heapify(heap)
+    while heap:
+        d, c = heapq.heappop(heap)
+        if d > dist[c]:
+            continue
+        for n, w in adj[c]:
+            if d + w < dist[n]:
+                dist[n] = d + w
+                label[n] = label[c]
+                heapq.heappush(heap, (d + w, n))
+    return {key: label[c] for key, c in weld.items()}
 
 
 def smooth_weights(mesh, islands_below=400, iterations=6):

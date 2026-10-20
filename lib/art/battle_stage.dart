@@ -902,6 +902,15 @@ class _TransitionComponent extends Component {
 
 enum _HeroMode { standing, plank, victory }
 
+/// Nhân vật nhỏ hơn quái (quái vật thần thoại phải to): vẽ thu nhỏ quanh
+/// điểm mũi chân trên mặt đất, các điểm phóng đòn (ngực) co theo.
+const heroStageScale = 0.8;
+const heroStagePivot = Offset(30, 220);
+
+/// Điểm trên tư thế nhân vật → điểm thật trên sân khấu (sau khi thu nhỏ).
+Offset heroOnStage(Offset p) =>
+    heroStagePivot + (p - heroStagePivot) * heroStageScale;
+
 class _HeroComponent extends Component {
   _HeroComponent({
     required this.cloak,
@@ -943,11 +952,9 @@ class _HeroComponent extends Component {
 
   /// Ngực nhân vật: điểm xuất phát của đòn đánh, điểm khoác áo.
   Vector2 get chest {
-    final p = Offset.lerp(
-      _shown[HeroJoint.shoulder],
-      _shown[HeroJoint.head],
-      0.4,
-    )!;
+    final p = heroOnStage(
+      Offset.lerp(_shown[HeroJoint.shoulder], _shown[HeroJoint.head], 0.4)!,
+    );
     return Vector2(p.dx, p.dy);
   }
 
@@ -1031,14 +1038,19 @@ class _HeroComponent extends Component {
     if (!StageQuality.hero) return;
     StageProfile.run('hero', () {
       // Biến đổi đặt lên ảnh chụp sẵn của nhân vật: không phá bộ đệm tư thế.
-      final r = _recoil.value;
-      if (r.abs() < 0.05) return _paint(canvas);
       canvas
         ..save()
-        ..translate(r, 0)
-        ..translate(90, 220)
-        ..rotate(r * 0.004)
-        ..translate(-90, -220);
+        ..translate(heroStagePivot.dx, heroStagePivot.dy)
+        ..scale(heroStageScale)
+        ..translate(-heroStagePivot.dx, -heroStagePivot.dy);
+      final r = _recoil.value;
+      if (r.abs() >= 0.05) {
+        canvas
+          ..translate(r, 0)
+          ..translate(90, 220)
+          ..rotate(r * 0.004)
+          ..translate(-90, -220);
+      }
       _paint(canvas);
       canvas.restore();
     });
