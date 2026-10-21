@@ -176,8 +176,13 @@ def main():
     def fig(src, alt, cap):
         return f'<figure><img src="{src}" alt="{alt}" loading="lazy"><figcaption>{cap}</figcaption></figure>' if src else ""
 
-    # Artifact tự bọc <!doctype>/<head>/<body> khi đăng: file chỉ chứa nội dung trang.
-    html = f"""<title>Solo Pushing Up · Chương 2</title>
+    # File đứng riêng (như baocao_chuong1.html): gửi qua Zalo/Drive, bấm là mở trên điện thoại.
+    html = f"""<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Solo Pushing Up · Chương 2</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -186,7 +191,9 @@ def main():
 {css}
 {EXTRA_CSS}
 </style>
-<div class="page" lang="vi">
+</head>
+<body>
+<div class="page">
 
 <header>
   <span class="eyebrow">Báo cáo tiến độ · cập nhật 21/10/2026</span>
@@ -287,6 +294,8 @@ def main():
 <footer>Hoạt ảnh ghép từ chính các khung sprite trong game (assets/sprites). Sinh bằng tool/render/baocao_chuong2.py.</footer>
 </div>
 <script>{JS}</script>
+</body>
+</html>
 """
     open(OUT, "w", encoding="utf-8").write(html)
     print(f"{os.path.relpath(OUT, ROOT)}: {len(html) / 1e6:.1f} MB, cột Tripo: {'có' if have_tripo else 'chờ'}")
