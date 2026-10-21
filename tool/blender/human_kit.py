@@ -4,6 +4,7 @@ trong hero.py) — đừng đọc lưới đã áp modifier, vì mask "Hide help
 bỏ bớt đỉnh làm lệch chỉ số."""
 
 import math
+import os
 
 import bpy
 import bmesh
@@ -12,10 +13,18 @@ from mathutils import Matrix, Vector
 from boss_kit import add_object, parent_to_bone, srgb
 
 
+_WEIGHTS = {}
+
+
 def weights_by_group(obj):
-    """[{tên nhóm: trọng số}] cho từng đỉnh."""
-    names = {g.index: g.name for g in obj.vertex_groups}
-    return [{names[g.group]: g.weight for g in v.groups} for v in obj.data.vertices]
+    """[{tên nhóm: trọng số}] cho từng đỉnh. Nhớ đệm theo (tên, số đỉnh, số
+    nhóm) — lưới người đã chia dày gọi hàng trăm lần khi khắc chi tiết."""
+    key = (obj.name, len(obj.data.vertices), len(obj.vertex_groups))
+    if key not in _WEIGHTS:
+        names = {g.index: g.name for g in obj.vertex_groups}
+        _WEIGHTS.clear()
+        _WEIGHTS[key] = [{names[g.group]: g.weight for g in v.groups} for v in obj.data.vertices]
+    return _WEIGHTS[key]
 
 
 def group_center(body, name, co):
@@ -194,6 +203,18 @@ def rest_coords(body):
     return co
 
 
+def target_path(name):
+    """Đường dẫn target MPFB theo tên; tên có "/" là đường dẫn tương đối trong
+    data/targets (ví dụ "expression/units/asian/mouth-open" — tên biểu cảm
+    trùng nhau giữa các thư mục chủng người nên phải chỉ rõ)."""
+    from bl_ext.blender_org.mpfb.services.targetservice import TargetService
+    if "/" not in name:
+        return TargetService.target_full_path(name)
+    root = os.path.dirname(os.path.dirname(TargetService.target_full_path("head-fat-incr")))
+    path = os.path.join(root, *name.split("/")) + ".target.gz"
+    return path if os.path.exists(path) else None
+
+
 def make_human(gender, muscle=0.5, weight=0.5, height=0.5, age=0.5, proportions=0.9, race=None, scale=1.0,
                details=None):
     """Người MPFB + khung xương game_engine (tên xương kiểu Unreal: pelvis,
@@ -208,7 +229,7 @@ def make_human(gender, muscle=0.5, weight=0.5, height=0.5, age=0.5, proportions=
     macro["race"] = race or {"asian": 0.45, "caucasian": 0.45, "african": 0.1}
     body = HumanService.create_human(macro_detail_dict=macro)
     for name, value in (details or {}).items():
-        path = TargetService.target_full_path(name)
+        path = target_path(name)
         if path is None:
             raise ValueError(f"không có target MPFB {name}")
         TargetService.load_target(body, path, weight=value, name=name)
@@ -265,3 +286,29 @@ def camera(scene, cx, cz, width, height, ppm, yaw=-10, pitch=7):
     scene.render.resolution_x = round(width * ppm)
     scene.render.resolution_y = round(height * ppm)
     return cam
+
+
+def add_face_parts(body, eyes="high-poly", eyebrows="eyebrow001", eyelashes="eyelashes01", teeth="teeth_base",
+                   tongue="tongue01", eye_material="MAKESKIN"):
+    """Mắt, lông mày, lông mi, răng, lưỡi từ gói tài nguyên hệ thống MakeHuman
+    (CC0, cài vào %APPDATA%/Blender Foundation/Blender/<bản>/mpfb/data — xem
+    rules/dohoa.md mục 10). Gọi SAU make_human (đã có xương): MPFB tự gắn trọng
+    số theo thân. Bỏ một phần bằng cách truyền None. Trả {loại: object}."""
+    from bl_ext.blender_org.mpfb.services.assetservice import AssetService
+    from bl_ext.blender_org.mpfb.services.humanservice import HumanService
+    before = set(bpy.data.objects)
+    out = {}
+    for kind, name in (("eyes", eyes), ("eyebrows", eyebrows), ("eyelashes", eyelashes), ("teeth", teeth),
+                       ("tongue", tongue)):
+        if not name:
+            continue
+        path = AssetService.find_asset_absolute_path(f"{name}/{name}.mhclo", asset_subdir=kind)
+        if path is None:
+            raise FileNotFoundError(f"chưa cài tài nguyên MPFB {kind}/{name} (gói makehuman_system_assets)")
+        HumanService.add_mhclo_asset(path, body, asset_type=kind, subdiv_levels=1,
+                                     material_type=eye_material if kind == "eyes" else "MAKESKIN")
+        new = [o for o in bpy.data.objects if o not in before]
+        before |= set(new)
+        if new:
+            out[kind] = new[0]
+    return out

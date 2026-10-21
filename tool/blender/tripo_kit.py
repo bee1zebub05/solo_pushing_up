@@ -1,6 +1,6 @@
 """Dùng chung cho mô hình Tripo3D (ảnh → 3D, art_src/tripo/*.glb): nạp,
 đặt đúng tỉ lệ/vị trí trên sân khấu, làm mượt trọng số xương. Xem
-rules/dohoa.md mục 10.
+rules/dohoa.md mục 12.
 """
 
 import bpy

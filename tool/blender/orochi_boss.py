@@ -41,20 +41,31 @@ def head_rest(i):
     return (BASE[0] + math.cos(a) * length, BASE[1] + math.sin(a) * length * 0.9, d)
 
 
-def neck_points(base, head, d, lift=1.0):
-    """4 điểm điều khiển cổ: gốc → vồng lên → gần đầu → đầu."""
+def neck_points(base, head, d, lift=1.0, wave=0.0):
+    """4 điểm điều khiển cổ: gốc → vồng lên → gần đầu → đầu. [wave] uốn cổ
+    thành chữ S (lệch vuông góc ngược chiều ở hai điểm giữa), các cổ quấn
+    lẫn nhau như tranh tham khảo."""
     bx, by = base
     hx, hy = head[0], head[1]
-    p1 = (bx + (hx - bx) * 0.3, by + (hy - by) * 0.45 - 10 * lift, d * 0.6)
-    p2 = (bx + (hx - bx) * 0.7, by + (hy - by) * 0.85 - 6 * lift, d * 0.9)
+    L = math.hypot(hx - bx, hy - by) or 1
+    nx, ny = -(hy - by) / L, (hx - bx) / L
+    w = wave * L * 0.22
+    p1 = (bx + (hx - bx) * 0.3 + nx * w, by + (hy - by) * 0.45 - 10 * lift + ny * w, d * 0.6)
+    p2 = (bx + (hx - bx) * 0.7 - nx * w, by + (hy - by) * 0.85 - 6 * lift - ny * w, d * 0.9)
     return [(bx, by, d * 0.3), p1, p2, (hx, hy, d)]
 
 
-HEAD_K = 1.6  # đầu to hơn hẳn cổ (đọc được từ xa, như tranh ukiyo-e)
+def wave_of(i):
+    return (0.9, -0.7, 0.6, -1.0, 0.8, -0.6, 1.0, -0.8)[i]
+
+
+HEAD_K = 1.1  # đầu rắn thon, to hơn cổ vừa đủ đọc từ xa
 
 
 def head_parts(i, mats, rig, parts):
-    """Đầu rồng-rắn i: sọ, mõm, gờ mày, mào gai, sừng, mắt đỏ, hàm, lưỡi chẻ.
+    """Đầu rắn i theo tranh tham khảo (rắn tám đầu dưới trăng lưỡi liềm): sọ
+    hình nêm dẹt, mõm tròn, gờ mày che mắt vàng con ngươi dọc, môi và hàm
+    dưới trắng ngà, nanh dài, lưỡi chẻ hồng. Không sừng, không gai.
     Dựng theo hệ toạ độ đầu (gáy ở gốc, mõm hướng −x) rồi đặt vào chỗ."""
     hx, hy, d = head_rest(i)
     ang = math.radians(8)  # mõm hơi chúi xuống
@@ -68,51 +79,63 @@ def head_parts(i, mats, rig, parts):
         return tuple(v * K for v in r)
 
     head = ellipsoids_mesh(f"Head{i}", [
-        (W(-6, 0), R(10, 7.5, 8.5)),
-        (W(-19, 1.5), R(11, 5, 6.5), 4),
-        (W(-27, 2.5), R(5, 4, 5.5), 6),  # chóp mõm vuông
-        (W(-12, -5.5, -4), R(6, 2.4, 2.8), -8),
-        (W(-12, -5.5, 4), R(6, 2.4, 2.8), -8),
-        (W(-4, 3, -6), R(6, 5, 3)),  # gò má
-        (W(-4, 3, 6), R(6, 5, 3)),
-        (W(1, 2), R(7, 7, 7)),
-    ], voxel=0.01, smooth_iter=4)
+        (W(-5, 0.4), R(9, 4.6, 6.6)),  # gáy rộng (cơ hàm)
+        (W(-14, 0.8), R(9, 3.8, 5.6), 3),
+        (W(-22, 1.6), R(5, 3.0, 4.0), 5),  # mõm tròn
+        (W(-12, -2.8, -4.0), R(5, 1.5, 2.4), -6),  # gờ mày
+        (W(-12, -2.8, 4.0), R(5, 1.5, 2.4), -6),
+        (W(2, 1), R(5, 4.4, 5.2)),  # nối vào cổ
+    ], voxel=0.008, smooth_iter=5)
     parts.append(add_object(f"Head{i}", head, [mats["head"]], f"head{i}"))
-    jaw = ellipsoids_mesh(f"Jaw{i}", [(W(-15, 6.5), R(13, 2.8, 5.5), 4), (W(-4, 5), R(6, 4, 6))], voxel=0.01, smooth_iter=4)
-    parts.append(add_object(f"Jaw{i}", jaw, [mats["head"]], f"jaw{i}"))
-    parts.append(add_object(f"Mouth{i}", uv_ellipsoid(f"Mouth{i}", W(-16, 4.5), R(11, 2.5, 4.5)), [mats["mouth"]], f"head{i}"))
-    horns = []
+    lip = ellipsoids_mesh(f"Lip{i}", [(W(-14, 3.0), R(10, 1.3, 5.4), 4), (W(-22, 3.2), R(4.2, 1.2, 3.4), 5)],
+                          voxel=0.008, smooth_iter=3)
+    parts.append(add_object(f"Lip{i}", lip, [mats["lip"]], f"head{i}"))
+    jaw = ellipsoids_mesh(f"Jaw{i}", [(W(-13, 5.0), R(11, 1.6, 5.0), 4), (W(-3, 4.4), R(5.5, 2.6, 5.4))],
+                          voxel=0.008, smooth_iter=4)
+    parts.append(add_object(f"Jaw{i}", jaw, [mats["lip"]], f"jaw{i}"))
+    # Lòng miệng hồng: vòm trên theo sọ, nền lưỡi theo hàm — há ra là thấy.
+    parts.append(add_object(f"Mouth{i}", uv_ellipsoid(f"Mouth{i}", W(-14, 3.9), R(10, 1.4, 4.4)), [mats["mouth"]],
+                            f"head{i}"))
+    parts.append(add_object(f"Gullet{i}", uv_ellipsoid(f"Gullet{i}", W(-13, 4.1), R(10, 1.3, 4.2)), [mats["mouth"]],
+                            f"jaw{i}"))
     for s in (-1, 1):
-        horns.append((W(-8, -6, 4 * s), W(2, -13, 6 * s), W(12, -12, 8 * s), 1.8 * K))
-        horns.append((W(-4, 3, 6 * s), W(4, 6, 8 * s), W(10, 10, 9 * s), 1.0 * K))  # râu cằm
-        horns.append((W(-2, 1, 7 * s), W(6, 0, 10 * s), W(12, 3, 12 * s), 0.8 * K))  # vây má
-    # Mào gai dọc đỉnh đầu ra sau gáy.
-    for k in range(4):
-        x = -10 + k * 4.5
-        horns.append((W(x, -6.5), W(x + 2, -10 - k * 0.5), W(x + 5, -11 - k * 0.6), (1.2 - k * 0.15) * K))
-    parts.append(add_object(f"Horns{i}", tapered_tubes(f"Horns{i}", horns, 7, 6, taper=1.0), [mats["horn"]], f"head{i}"))
-    for s in (-1, 1):
-        parts.append(add_object(f"Eye{i}", uv_ellipsoid(f"Eye{i}", W(-14, -2.5, 6 * s), R(2.6, 1.8, 1.2)), [mats["eye"]], f"head{i}"))
-    teeth = [(W(-26 + k * 3.5, 4.5, 3.2 * s), W(-26 + k * 3.5, 6.5, 3.2 * s), W(-27 + k * 3.5, 8.5, 3 * s), 0.9 * K)
-             for k in range(4) for s in (-1, 1)]
-    parts.append(add_object(f"Teeth{i}", tapered_tubes(f"Teeth{i}", teeth, 5, 3, taper=1.1), [mats["tooth"]], f"head{i}"))
-    tongue = [(W(-24, 6, 0), W(-32, 7, 0), W(-38, 9, s * 1.5), 1.0 * K) for s in (-1, 1)]
-    parts.append(add_object(f"Tongue{i}", tapered_tubes(f"Tongue{i}", tongue, 6, 4, taper=0.9), [mats["tongue"]], f"jaw{i}"))
+        # Mắt tròn to vàng, viền trắng ngà, con ngươi đen tròn (như tranh).
+        parts.append(add_object(f"EyeRing{i}", uv_ellipsoid(f"EyeRing{i}", W(-13.5, -1.4, 4.2 * s), R(3.0, 2.8, 1.4)),
+                                [mats["lip"]], f"head{i}"))
+        parts.append(add_object(f"Eye{i}", uv_ellipsoid(f"Eye{i}", W(-13.5, -1.4, 4.9 * s), R(2.4, 2.3, 1.2)),
+                                [mats["eye"]], f"head{i}"))
+        parts.append(add_object(f"Pupil{i}", uv_ellipsoid(f"Pupil{i}", W(-14.0, -1.4, 5.85 * s), R(0.9, 0.9, 0.5)),
+                                [mats["pupil"]], f"head{i}"))
+        parts.append(add_object(f"Nostril{i}", uv_ellipsoid(f"Nostril{i}", W(-25.5, 0.6, 1.8 * s), R(0.7, 0.5, 0.5)),
+                                [mats["pupil"]], f"head{i}"))
+    # Hai nanh dài cong ở mõm trên, hàng răng nhỏ dọc hàm.
+    fangs = [(W(-21.5, 3.4, 2.4 * s), W(-22, 6.2, 2.5 * s), W(-20.5, 8.6, 2.3 * s), 0.8 * K) for s in (-1, 1)]
+    fangs += [(W(-17.5 + k * 3.0, 3.6, 3.3 * s), W(-17.5 + k * 3.0, 4.6, 3.3 * s), W(-18 + k * 3.0, 5.5, 3.2 * s), 0.38 * K)
+              for k in range(4) for s in (-1, 1)]
+    parts.append(add_object(f"Teeth{i}", tapered_tubes(f"Teeth{i}", fangs, 5, 3, taper=1.1), [mats["tooth"]],
+                            f"head{i}"))
+    tongue = [(W(-18, 4.6, 0), W(-27, 5.6, 0), W(-33, 7.5, s * 1.8), 0.6 * K) for s in (-1, 1)]
+    parts.append(add_object(f"Tongue{i}", tapered_tubes(f"Tongue{i}", tongue, 6, 4, taper=0.9), [mats["tongue"]],
+                            f"jaw{i}"))
 
 
 def build():
     mats = {
-        # Xanh ngọc bích sẫm ánh kim (rồng xanh tranh ukiyo-e), bụng đỏ thẫm (Kojiki).
-        "neck": scales_material("Hide", back="#1C6A5A", belly="#A3202A", edge="#03110D",
-                                scale_uv=(9, 9), plates=20, belly_band=0.14, metallic=0.35, bump_strength=0.9),
-        "body": scales_material("BodyHide", back="#1C6A5A", belly="#A3202A", edge="#03110D",
-                                scale_uv=(5, 14), plates=10, belly_band=0.16, metallic=0.35, bump_strength=0.9),
-        "head": solid_scales_material("HeadScales", "#1E705E", "#03110D", scale=26, metallic=0.35),
-        "horn": skin_material("Horn", "#D8C79A", rough=0.4, noise_scale=40),
-        "tooth": skin_material("Tooth", "#EFE6CF", rough=0.35),
-        "mouth": skin_material("Mouth", "#4A0A10", rough=0.35, sss=0.3),
-        "tongue": skin_material("Tongue", "#C0202A", rough=0.3, sss=0.4),
-        "eye": glow_material("Eye", "#FF3020", strength=7, base="#600000"),
+        # Theo tranh tham khảo: lưng xanh xám bạc, bụng vảy hồng phấn, mắt vàng.
+        "neck": scales_material("Hide", back="#9AA890", belly="#E3A69E", edge="#2E3A2E",
+                                scale_uv=(7, 7), plates=22, belly_band=0.2, metallic=0.05, rough=0.5,
+                                bump_strength=0.8),
+        "body": scales_material("BodyHide", back="#8E9C84", belly="#DE9C94", edge="#2A3428",
+                                scale_uv=(4, 9), plates=10, belly_band=0.2, metallic=0.05, rough=0.5,
+                                bump_strength=0.8),
+        "head": solid_scales_material("HeadScales", "#A8B69E", "#56644E", scale=14, metallic=0.05),
+        "lip": skin_material("Lip", "#E6E4D6", rough=0.5, noise_scale=30),
+        "tooth": skin_material("Tooth", "#F4EEDC", rough=0.3),
+        "mouth": skin_material("Mouth", "#B8545C", rough=0.35, sss=0.3),
+        "tongue": skin_material("Tongue", "#E07A88", rough=0.3, sss=0.4),
+        "eye": glow_material("Eye", "#F2CC40", strength=1.6, base="#E8C030"),
+        "pupil": skin_material("Pupil", "#0A0806", rough=0.1),
+        "gold": glow_material("GoldLeaf", "#FFD860", strength=2.5, base="#F0C040"),
         "flesh": skin_material("Flesh", "#9A1E22", rough=0.35, sss=0.5),
         "bone": skin_material("Bone", "#E8DCC0", rough=0.5),
     }
@@ -121,7 +144,7 @@ def build():
     rests = []
     for i in range(HEADS):
         hx, hy, d = head_rest(i)
-        pts = neck_points(BASE, (hx, hy), d)
+        pts = neck_points(BASE, (hx, hy), d, wave=wave_of(i))
         rests.append(pts)
         for k in range(3):
             bones[f"n{i}_{k}"] = (pts[k], pts[k + 1])
@@ -143,56 +166,25 @@ def build():
                                       sides=36, samples_per_seg=6, dorsal=(0, -1, 0), flatten=0.95)
     body = add_object("Body", body_mesh, [mats["body"]])
     parts.append(body)
-    # Bách / tuyết tùng nhỏ mọc trên lưng (cây nón nhiều tầng).
-    rng = np.random.default_rng(5)
-    tree_mat = skin_material("Cedar", "#1F3318", rough=0.8, noise_scale=60)
-    trunk_mat = skin_material("Trunk", "#3A2A1C", rough=0.9)
-    trees, trunks = [], []
-    for k in range(14):
-        j = int(rng.integers(len(body_curve) // 3, len(body_curve) - 2))
-        c = body_curve[j]
-        h = rng.uniform(16, 30)
-        top = (c[0] + rng.uniform(-3, 3), c[1] - 15 - h, c[2])
-        trunks.append(((c[0], c[1] - 14, c[2]), (c[0], c[1] - 14 - h * 0.3, c[2]), top, 1.4))
-        for tier in range(4):
-            y0 = c[1] - 18 - h * tier * 0.22
-            w = (4 - tier) * 2.6
-            trees.append(((c[0], y0, c[2]), (c[0], y0 - h * 0.2, c[2]), (top[0], y0 - h * 0.42, top[2]), w))
-    parts.append(add_object("Trees", tapered_tubes("Trees", trees, 9, 4, taper=1.0), [tree_mat]))
-    parts.append(add_object("Trunks", tapered_tubes("Trunks", trunks, 6, 3, taper=0.6), [trunk_mat]))
-
     # ---- 8 cổ + đầu; mỗi cổ có bản "đã chém" (gốc cụt, mặt cắt đỏ, đốt sống)
     for i in range(HEADS):
         pts = rests[i]
-        neck_mesh, _ = tube_mesh(f"Neck{i}", pts, lambda t: 10 - 3.5 * t, sides=22, samples_per_seg=8,
+        neck_mesh, _ = tube_mesh(f"Neck{i}", pts, lambda t: 7.5 - 2.5 * t, sides=22, samples_per_seg=8,
                                  dorsal=(0.3, -1, 0))
         neck = add_object(f"Neck{i}", neck_mesh, [mats["neck"]])
         rig.skin(neck, [f"n{i}_{k}" for k in range(3)])
         parts.append(neck)
-        # Hàng gai nhỏ dọc sống cổ.
-        nc = catmull(pts, 8)
-        fins = []
-        for j in range(3, len(nc) - 3, 2):
-            tan = (nc[j + 1] - nc[j - 1]).normalized()
-            up = Vector((0.3, -1, 0))
-            up = (up - tan * up.dot(tan)).normalized()
-            r = 10 - 3.5 * j / len(nc)
-            b0 = nc[j] + up * r * 0.85
-            fins.append((tuple(b0), tuple(b0 + up * 2.5 - tan * 1.5), tuple(b0 + up * 4.5 - tan * 4), 1.4))
-        fo = add_object(f"Fins{i}", tapered_tubes(f"Fins{i}", fins, 5, 3, flat=0.6, taper=1.0), [mats["horn"]])
-        rig.skin(fo, [f"n{i}_{k}" for k in range(3)])
-        parts.append(fo)
         head_parts(i, mats, rig, parts)
         # Gốc cụt: nửa dưới cổ + nắp thịt đỏ, vành da, đốt sống trắng.
         cut = lerp(pts[1], pts[2], 0.4)
-        stub_mesh, _ = tube_mesh(f"Stump{i}", [pts[0], pts[1], cut], lambda t: 10 - 2.2 * t, sides=22,
+        stub_mesh, _ = tube_mesh(f"Stump{i}", [pts[0], pts[1], cut], lambda t: 7.5 - 1.6 * t, sides=22,
                                  samples_per_seg=6, dorsal=(0.3, -1, 0))
         stub = add_object(f"Stump{i}", stub_mesh, [mats["neck"]])
         rig.skin(stub, [f"n{i}_0", f"n{i}_1"])
         # Mặt cắt: đĩa dẹt vuông góc với hướng cổ tại chỗ chém.
         dx, dy = pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]
         cut_ang = math.degrees(math.atan2(dy, dx))
-        cap = add_object(f"Cut{i}", ellipsoids_mesh(f"Cut{i}", [(cut, (1.6, 8.4, 8.4), cut_ang)], voxel=0.008, smooth_iter=2),
+        cap = add_object(f"Cut{i}", ellipsoids_mesh(f"Cut{i}", [(cut, (1.4, 6.6, 6.6), cut_ang)], voxel=0.008, smooth_iter=2),
                          [mats["flesh"]], f"n{i}_1")
         tip = (cut[0] + dx * 0.04, cut[1] + dy * 0.04, cut[2])
         bone_ = add_object(f"Vert{i}", ellipsoids_mesh(f"Vert{i}", [(tip, (1.4, 2.8, 2.8), cut_ang)], voxel=0.006, smooth_iter=2),
@@ -201,6 +193,14 @@ def build():
     for p in parts:
         if any(g.name in rig.bones for g in p.vertex_groups) or p.vertex_groups:
             rig.bind(p)
+
+    # Vảy vàng lá lấp lánh quanh các cổ (như vàng rắc trên tranh).
+    rng = np.random.default_rng(8)
+    for k in range(22):
+        x, y, z = rng.uniform(-140, 40), rng.uniform(-160, -40), rng.uniform(10, 40)
+        r = rng.uniform(1.0, 1.8)
+        add_object(f"Gold{k}", uv_ellipsoid(f"Gold{k}", (x, y, z), (r, r * 0.7, r * 0.3), segments=8, rings=5),
+                   [mats["gold"]])
 
     # Vò rượu sake sơn đỏ (Susanoo bày 8 vò để Orochi say) phía trước thân.
     lacquer = skin_material("Lacquer", "#8E1A14", rough=0.25)
@@ -219,7 +219,8 @@ def set_severed(count, defeated=False):
     """Đầu < count đã bị chém: ẩn cổ + đầu, hiện gốc cụt."""
     for i in range(HEADS):
         cut = i < count or defeated
-        for name in ("Neck", "Fins", "Head", "Jaw", "Mouth", "Horns", "Eye", "Teeth", "Tongue"):
+        for name in ("Neck", "Head", "Lip", "Jaw", "Mouth", "Gullet", "EyeRing", "Eye", "Pupil", "Nostril", "Teeth",
+                     "Tongue"):
             for o in bpy.data.objects:
                 if o.name == f"{name}{i}" or o.name.startswith(f"{name}{i}."):
                     o.hide_render = cut
@@ -238,7 +239,7 @@ def pose(rig, t=0.0, attack=-1.0, defeat=0.0, current=0):
         ph = t * 2 * math.pi + i * 0.9
         dx = math.sin(ph) * 4
         dy = math.cos(ph * 0.8) * 3
-        tilt = math.sin(ph + 1) * 5
+        tilt = math.sin(ph + 1) * 5 + (-6, 14, -22, 8, -30, 18, -12, 24)[i]  # mỗi đầu ngoảnh một kiểu
         if i == current:
             dx += 16 * windup - 32 * strike - 6 * recover
             dy += -14 * windup + 20 * strike
@@ -250,17 +251,18 @@ def pose(rig, t=0.0, attack=-1.0, defeat=0.0, current=0):
         ground = (hx * 0.9 - 30 + 8 * i, -8 - 3 * (i % 2))
         head = (hx + dx + (ground[0] - hx - dx) * fall, hy + dy + (ground[1] - hy - dy) * fall)
         d = d - 50 * fall
-        pts = neck_points(BASE, head, d, lift=1 + 2 * fall)
+        pts = neck_points(BASE, head, d, lift=1 + 2 * fall, wave=wave_of(i) * (1 - fall))
         for k in range(3):
             rig.set(f"n{i}_{k}", pts[k], pts[k + 1])
         ang = math.radians(tilt + 25 * fall)
         K = HEAD_K
         tip = rot2((head[0] - 26 * K, head[1] + 4 * K, d), (head[0], head[1]), ang)
         rig.set(f"head{i}", (head[0], head[1], d), (tip[0], tip[1], d))
-        opened = (max(0.4 * windup, strike) if i == current else 0.1 + 0.08 * math.sin(ph)) + 0.25 * fall
+        gape = (0.15, 0.9, 0.2, 1.0, 0.1, 0.7, 0.25, 0.85)[i]  # vài đầu há rộng nhe nanh như tranh
+        opened = (max(0.4 * windup, strike) if i == current else gape + 0.08 * math.sin(ph)) + 0.25 * fall
         j0 = rot2((head[0] - 2 * K, head[1] + 5 * K, d), (head[0], head[1]), ang)
         j1 = rot2((head[0] - 28 * K, head[1] + 9 * K, d), (head[0], head[1]), ang)
-        j1 = rot2(j1, j0, math.radians(-32 * opened))
+        j1 = rot2(j1, j0, math.radians(-40 * opened))
         rig.set(f"jaw{i}", (j0[0], j0[1], d), (j1[0], j1[1], d))
 
 
