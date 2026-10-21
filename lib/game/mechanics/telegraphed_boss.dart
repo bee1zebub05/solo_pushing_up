@@ -34,7 +34,11 @@ abstract class TelegraphedBoss extends BattleMechanic {
     this.counterMultiplier = 2,
     this.maxMultiplier = 4,
     math.Random? random,
-  }) : random = random ?? math.Random();
+  }) : random = random ?? newRandom();
+
+  /// Nguồn ngẫu nhiên cho khoảng nghỉ khi không truyền [random] — test cân
+  /// bằng đặt hạt cố định để mô phỏng lặp lại được.
+  static math.Random Function() newRandom = math.Random.new;
 
   final List<BossAttack> attacks;
   final int warnMs;
@@ -120,7 +124,7 @@ abstract class TelegraphedBoss extends BattleMechanic {
       if (startSpecial(battle, nowMs, out)) {
         attacksSinceSpecial = 0;
         _nextAt = null;
-      } else {
+      } else if (attacks.isNotEmpty) {
         final attack = attacks[_attackIndex++ % attacks.length];
         attacksSinceSpecial++;
         _current = _Pending(attack, nowMs + warnMs);
@@ -160,6 +164,20 @@ abstract class TelegraphedBoss extends BattleMechanic {
       ..bossWarnMs = warnMs
       ..bossTellMs = shown.impactAt - nowMs;
   }
+}
+
+/// Quái thường đánh có báo trước (chương Nhật: oni, kappa, tengu quạ…): chỉ
+/// đòn, không hành động riêng. Một đòn = dạy riêng một cách né; hai đòn luân
+/// phiên = ôn cả hai (rules/thietke/chuong2-nhat.md).
+class TelegraphedFoe extends TelegraphedBoss {
+  TelegraphedFoe({
+    required super.attacks,
+    super.warnMs,
+    super.firstActionMs = 4000,
+    super.gapMinMs,
+    super.gapMaxMs,
+    super.random,
+  });
 }
 
 class _Pending {
@@ -271,20 +289,20 @@ class ShutenMechanic extends TelegraphedBoss {
 /// từng nét") đốt ấn và đánh ×[purgeMultiplier]; ấn tự tan sau [curseLifeMs],
 /// ấn sau cách ≥ [curseGapMs]. Dạy rep chậm có kiểm soát.
 class SutokuMechanic extends TelegraphedBoss {
+  /// [attacks] rỗng = chỉ viết ấn (tengu quạ chép ấn — dạy rep chậm trước Sutoku).
   SutokuMechanic({
     super.random,
+    super.attacks = const [
+      BossAttack('attack', DodgeBy.duck),
+      BossAttack('attack2', DodgeBy.hold),
+    ],
     this.curseBelow = 0.6,
     this.curseMultiplier = 0.75,
     this.purgeMultiplier = 2,
     this.curseLifeMs = 15000,
     this.curseGapMs = 12000,
     this.firstCurseDelayMs = 2000,
-  }) : super(
-         attacks: const [
-           BossAttack('attack', DodgeBy.duck),
-           BossAttack('attack2', DodgeBy.hold),
-         ],
-       );
+  });
 
   final double curseBelow;
   final double curseMultiplier;

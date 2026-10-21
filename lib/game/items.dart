@@ -18,7 +18,16 @@ const dragonScaleShield = Item(
 const kusanagi = Item(id: 'kusanagi', name: 'Kiếm Kusanagi');
 const nineManeHorse = Item(id: 'nine_mane_horse', name: 'Ngựa chín hồng mao');
 
-const allItems = [nemeanPelt, dragonScaleShield, kusanagi, nineManeHorse];
+/// Kỳ công Heian: quạt lông của Sutoku (chưa có hình trên nhân vật).
+const tenguFan = Item(id: 'tengu_fan', name: 'Quạt lông tengu');
+
+const allItems = [
+  nemeanPelt,
+  dragonScaleShield,
+  kusanagi,
+  tenguFan,
+  nineManeHorse,
+];
 
 /// Tìm vật phẩm theo [id]. Bản lưu cũ ghi tên thay vì id, nên tên cũng nhận.
 Item? itemById(String idOrLegacyName) {

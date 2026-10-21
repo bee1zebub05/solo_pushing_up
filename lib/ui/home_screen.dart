@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
         victoryText: labor == null
             ? null
             : boss || stage == null
-            ? 'Kỳ công ${labor.number} hoàn thành'
+            ? 'Kỳ công ${labor.label} hoàn thành'
             : 'Màn ${stage.code} hoàn thành',
         onFinished: (outcome) =>
             _recordOutcome(outcome, labor: labor, stage: stage),
@@ -334,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
           null => const Icon(Icons.lock, size: 36, color: GreekUi.inkDim),
         },
         title: Text(
-          'Kỳ công ${labor.number} — ${labor.title}',
+          'Kỳ công ${labor.label} — ${labor.title}',
           style: TextStyle(
             color: unlocked ? GreekUi.ink : GreekUi.inkDim,
             fontWeight: FontWeight.w600,
@@ -344,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: Text(
           unlocked
               ? '${labor.region}\n${labor.mechanic}'
-              : 'Hoàn thành Kỳ công ${previousLabor(labor)?.number} để mở',
+              : 'Hoàn thành Kỳ công ${previousLabor(labor)?.label} để mở',
           style: const TextStyle(color: GreekUi.inkDim, height: 1.35),
         ),
         isThreeLine: unlocked,

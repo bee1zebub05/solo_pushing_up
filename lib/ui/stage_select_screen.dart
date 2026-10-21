@@ -34,7 +34,7 @@ class StageSelectScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: GreekUi.background,
         foregroundColor: GreekUi.ink,
-        title: Text('Kỳ công ${labor.number} — ${labor.title}'),
+        title: Text('Kỳ công ${labor.label} — ${labor.title}'),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(8),
           child: Padding(

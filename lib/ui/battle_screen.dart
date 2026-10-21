@@ -756,7 +756,7 @@ class _BattleScreenState extends State<BattleScreen>
                     if (reward.unlockedLabor case final next?)
                       _resultRow(
                         Icons.lock_open,
-                        'Kỳ công ${next.number}: ${next.title}',
+                        'Kỳ công ${next.label}: ${next.title}',
                         'đã mở khoá',
                         color: GreekUi.gold,
                       ),
