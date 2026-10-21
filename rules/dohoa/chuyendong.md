@@ -310,3 +310,26 @@ Chưa đạt 8/10. Bài học về vòng lặp:
 - Dư địa còn lại: đòn mocap riêng cho vũ khí nặng (cần dữ liệu kiếm/gậy chuyên
   nghiệp có giấy phép), tay trái ôm cán chuỳ lúc nện (critic v4), cánh xa tengu
   điều khiển riêng, bản vector 2.5D vẫn ở góc ¾ cũ (chưa quay nghiêng).
+
+## Đòn mượn từ thể thao: Thiên cẩu phi kiểu smash cầu lông (21/10/2026)
+
+- **Mượn động tác thể thao có bóng dáng nổi tiếng** (smash cầu lông: tay trái
+  chỉ trời + vợt sau đầu) làm dấu hiệu báo đòn — đọc được ngay ở dạng bóng.
+- **Thế nghiêng thật vs góc máy:** boss cầm vũ khí tay phải, đối thủ bên trái
+  màn hình → đứng nghiêng đúng kiểu thì LƯNG quay về máy (mặt khuất lúc lấy đà).
+  Người dùng chọn giữ thế thật. Thử chiều xoay bằng ảnh, đừng đoán dấu
+  `twist`/`turn` (tengu: twist −, turn + mới ra thế nghiêng).
+- **Đo cổ tay, khuỷu bằng số** (`--dry` + TENGU_DEBUG in góc): mắt người dùng bắt
+  "tay cong cong" trước critic. Ba lỗi cùng lúc: cổ tay gập 90–140° (ép hướng cán +
+  mặt quạt theo biên đạo), khuỷu rớt dưới vai (pole IK đặt dưới), tay thẳng đơ
+  180° (đích ngoài tầm với). Sửa: `TenguMotion.WRIST_MAX` (kẹp hướng BÀN TAY so với
+  cẳng tay, không kẹp cán — cán vuông góc bàn tay), nới về 0 ở hai đầu đòn (dáng
+  chờ gập hơn giới hạn → lệch 15 cm); `poleU` dương lúc nạp; `reach` ≤ 94 % tay.
+  Chọn góc `fan` cho cổ tay gập ít nhất (đo vài giá trị, 80° → 29°).
+- **Tay che mặt có thể là tay KIA** (tay ngắm kéo xuống cắt ngang mặt): giữ tay
+  trái trên cao tới sát chạm rồi mới giật xuống — cũng đúng kỹ thuật smash.
+- **Hai chân trên không phải khác nhau** (cùng gập = "quỳ trên không"); chân đá
+  ra sau thì pole gối chĩa xuống, không chĩa tới.
+- Đích IK của tay ngắm ở ~90 % tầm với: duỗi căng 100 % làm IK giật khuỷu.
+- **`git stash`/`stash pop` làm mới mtime** → cổng soát chuyển động chặn xuất vì
+  "kết quả soát cũ hơn". Đừng sửa file nào trong lúc `render.sh <boss>` đang chạy.

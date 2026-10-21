@@ -107,9 +107,21 @@ class TenguMotion:
         air = U * (max(0.0, v["lift"]) + 0.55 * v["tuck"])
         # Bước = nhấc chân: dời bàn chân phải trên sàn mà không nhấc là trượt (motion_review).
         stride = U * min(STEP_LIFT_MAX, STEP_LIFT * abs(v.get("_dstep", 0.0)))
+        # Đá kéo kiểu smash cầu lông (`kick`, chỉ dùng khi bay): + = ưỡn người, chân
+        # phải (bên quạt) vung ra sau gót lên, chân trái nhích tới; − = hai chân đổi
+        # chỗ lúc quất (chân phải ra trước, chân trái ra sau) để đáp chân trái trước.
+        k = v.get("kick", 0.0)
+        kp, kn = max(k, 0.0), max(-k, 0.0)
+        # Hai chân phải KHÁC nhau (critic 21/10: cùng gập = "quỳ trên không"): chân
+        # trái gần duỗi ra trước khi chân phải đá ra sau; cắt kéo thì chân phải vọt lên trước.
+        kick = {"r": -F * 0.55 * kp + U * 0.38 * kp + F * 0.40 * kn + U * 0.30 * kn,
+                "l": F * 0.25 * kp + U * 0.02 * kp - F * 0.40 * kn + U * 0.25 * kn}
         for s_ in "lr":
             step = F * v["step"] + stride if s_ == "r" else Vector()
-            self._set(f"leg_{s_}", self.foot[s_] + step + air, self.knee[s_] + step + air + F * 1.2)
+            step = step + kick[s_]
+            # Chân đá ra sau: gối chĩa xuống đất (không co lên trước ngực như khi tuck).
+            bend = (F * 1.2).lerp(-U * 1.2 + F * 0.3, kp) if s_ == "r" else F * 1.2
+            self._set(f"leg_{s_}", self.foot[s_] + step + air, self.knee[s_] + step + air + bend)
         # Bàn chân phẳng bám đất: IK chỉ đặt cổ chân, bàn chân xoay theo cẳng → ngồi sâu
         # gối 90° (Thiên cẩu phi) thì mũi chân cắm đất ~10 cm (motion_review 19/10).
         # Đang bay (lift/tuck) thì nhả dần về hướng tự nhiên của cẳng.
@@ -143,6 +155,10 @@ class TenguMotion:
             # Đỡ kiểu tessen: bàn tay dựng trước mặt (ngang mắt), không ngang bụng.
             aim = shl + F * 0.45 + U * 0.22 + R * 0.08 if g >= 0 else shl + U * -0.38 - F * 0.12 + L * 0.1
             target = hang.lerp(aim, abs(g))
+            # Ngắm kiểu smash (`aim` 0–1): tay trái duỗi thẳng chỉ lên trời phía trước
+            # — dáng báo đòn đọc được ở dạng bóng; quất thì kéo về (guard âm).
+            if v.get("aim", 0.0) > 0:
+                target = target.lerp(shl + U * 0.52 + F * 0.2 + R * 0.04, v["aim"])  # ~90 % tầm với: duỗi căng thì IK giật khuỷu
             # Cắn ngón tay (`mouth`) rồi vạch ấn máu trong không trung (`stroke` 0–1: hai vòng nét).
             if v.get("mouth", 0.0) > 0:
                 mouth = rig.pose.bones["head"].head + F * 0.13 + U * 0.03
@@ -182,11 +198,24 @@ class TenguMotion:
             dst = Matrix((H1, N1, H1.cross(N1))).transposed()
             hb.matrix = Matrix.Translation(hb.head) @ (dst @ src.inverted()).to_4x4()
         bpy.context.view_layer.update()
+        # Cổ tay người bẻ tối đa ~50–60°: hướng cán + mặt quạt theo biên đạo có thể đòi
+        # bàn tay gập 90–140° so với cẳng tay ("cổ cò", người dùng 21/10) → xoay cả bàn
+        # tay (kèm quạt) về trong giới hạn; quạt lệch biên đạo một chút còn hơn tay gãy.
+        lim = getattr(self, "wrist_max", None)
+        if lim:
+            fa = (hb.head - rig.pose.bones["lowerarm_r"].head).normalized()
+            d = (hb.tail - hb.head).normalized()
+            if d.angle(fa) > math.radians(lim):
+                want = Quaternion(fa.cross(d).normalized(), math.radians(lim)) @ fa
+                q = d.rotation_difference(want)
+                hb.matrix = Matrix.Translation(hb.head) @ (q.to_matrix() @ hb.matrix.to_3x3()).to_4x4()
+                bpy.context.view_layer.update()
         # Ngón nắm cán quạt (xương ngón tự dựng — tripo_kit.add_fingers).
         import mocap_drive as md
         md.fingers(rig, "r", 0.72, thumb=0.6)
         if left_arm:
-            md.fingers(rig, "l", 0.25 + 0.4 * max(0.0, v.get("guard", 0.0)))
+            curl = 0.25 + 0.4 * max(0.0, v.get("guard", 0.0))
+            md.fingers(rig, "l", curl + (0.08 - curl) * v.get("aim", 0.0))  # ngắm: bàn tay mở
 
     # ------------------------------------------------ đòn mocap (rules/dohoa/chuyendong.md)
     def basis(self):
@@ -251,7 +280,17 @@ class TenguMotion:
         self._arms(v, left_arm=False)
         md.fingers(rig, "l", 0.15, thumb=0.2)  # bàn tay trái mở, lòng bàn tay hướng đối thủ
 
+    # Đòn có giới hạn cổ tay (độ). Phong kesa đã duyệt giữ nguyên cách cũ.
+    WRIST_MAX = {"attack2": 50}
+
     def pose(self, t=0.0, move=None, phase=0.0):
+        # Giới hạn cổ tay nới dần về "không giới hạn" ở hai đầu đòn: dáng chờ cổ tay gập
+        # hơn 50°, kẹp tới khung cuối thì đòn không khớp dáng chờ (motion_review: quạt lệch 15 cm).
+        lim = self.WRIST_MAX.get(move)
+        if lim:
+            w = max(0.0, min(1.0, phase / 0.1, (1.0 - phase) / 0.12))
+            lim = lim + (180 - lim) * (1 - w * w * (3 - 2 * w))
+        self.wrist_max = lim if lim and lim < 179.9 else None
         tr = self.mocap(move) if move else None
         if tr is not None:
             self.apply_mocap(self.choreo[move](phase), *tr.from_ready(self.mready, phase))

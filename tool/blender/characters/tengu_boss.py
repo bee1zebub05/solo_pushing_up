@@ -314,7 +314,9 @@ def main():
         motion = TenguMotion(rig)
         motion.facing = True
         from video_frames import video_frames
-        video_frames(scene, motion, out, quick="--quick" in sys.argv)
+        a = sys.argv
+        moves = a[a.index("--moves") + 1].split(",") if "--moves" in a else ("attack", "attack2")  # chỉ đòn đã sửa
+        video_frames(scene, motion, out, moves=moves, quick="--quick" in a)
         return
     if "--still" in sys.argv:
         # Ảnh duyệt chính diện (như bản MPFB cũ) + dáng thử xương.
@@ -335,7 +337,7 @@ def main():
         motion = TenguMotion(rig)
         motion.facing = True
         keys = [("attack", t) for t in (0.14, 0.36, 0.48, 0.52, 0.55, 0.58, 0.6, 0.72, 0.86)]
-        keys += [("attack2", t) for t in (0.25, 0.42, 0.5, 0.56, 0.585, 0.61, 0.74, 0.88)]
+        keys += [("attack2", t) for t in (0.25, 0.36, 0.39, 0.5, 0.56, 0.585, 0.61, 0.635, 0.65, 0.7)]
         keys += [("write", t) for t in (0.15, 0.42, 0.55, 0.7, 0.92)]
         keys += [("defeat", 0.4), ("defeat", 1.0)]
         only = os.environ.get("TENGU_MOVE")
