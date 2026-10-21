@@ -1,0 +1,101 @@
+/* Khuôn báo cáo chương (theo baocao_chuong1.html của Tung): một cột đọc dọc, hình tràn cột, lưới hoạt ảnh.
+   Bảng màu theo chương: ghi đè --bg/--accent/--stage trong <style> của từng báo cáo. */
+:root {
+  --bg: #ECEFEA;
+  --surface: #FFFFFF;
+  --fg: #1C2320;
+  --muted: #56615B;
+  --line: #D3D9D2;
+  --accent: #8F4F14;
+  --accent-soft: #F3E6D6;
+  --stage: #D9CFBA;
+  --good: #2E6B3A;
+  --warn: #8A5A00;
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141917; --surface: #1C2320; --fg: #E5EAE6; --muted: #9AA59F;
+    --line: #2E3833; --accent: #E0A15E; --accent-soft: #3A2A1A; --stage: #CFC4AC;
+    --good: #7CC48A; --warn: #E3B45A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #1C2320; --fg: #E5EAE6; --muted: #9AA59F;
+  --line: #2E3833; --accent: #E0A15E; --accent-soft: #3A2A1A; --stage: #CFC4AC;
+  --good: #7CC48A; --warn: #E3B45A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.page { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); font-weight: 700; }
+h2 { font-size: 1.65rem; font-weight: 600; }
+h3 { font-size: 1.15rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow {
+  font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent);
+}
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 18px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 20px; }
+
+/* Đầu trang */
+header { display: flex; flex-direction: column; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.9rem; color: var(--muted); }
+.meta b { color: var(--fg); font-weight: 600; }
+.summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px;
+}
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fact .num { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.fact .lbl { font-size: 0.9rem; color: var(--muted); }
+
+/* Hình */
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid var(--line); }
+figcaption { font-size: 0.88rem; color: var(--muted); }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+/* Hoạt ảnh */
+.anims { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.anim { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.anim .stage { background: radial-gradient(ellipse at 50% 85%, #EEE6D4 0%, var(--stage) 70%); aspect-ratio: 16 / 10; display: grid; place-items: center; padding: 8px; }
+.anim .stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.anim .cap { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 2px; }
+.anim .cap code { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); }
+.anim .cap span { font-size: 0.88rem; color: var(--muted); }
+
+/* Quy trình */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; counter-reset: step; padding: 0; margin: 0; list-style: none; }
+.flow li { counter-increment: step; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.flow li::before { content: "Bước " counter(step); font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.flow b { font-weight: 600; }
+.flow span { font-size: 0.88rem; color: var(--muted); }
+
+/* Bảng */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 0.86rem; white-space: nowrap; }
+.tag { display: inline-block; font-size: 0.76rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.new { background: var(--accent-soft); color: var(--accent); }
+.tag.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.tag.todo { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+tr.peak td:first-child { font-weight: 600; color: var(--accent); }
+
+ul.list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; max-width: 72ch; }
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { .anim .stage img { animation: none; } }
