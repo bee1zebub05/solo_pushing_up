@@ -318,7 +318,94 @@ vector như lúc thiếu tài nguyên. Hệ quả: code vector KHÔNG còn là t
 giữ chạy được; hình mới cần có cả bản vector, hoặc chấp nhận 2.5D vẽ thiếu.
 Test: `test/art/art_mode_test.dart`.
 
-## 10. Mô hình Tripo3D thay khối ghép (19/10/2026)
+## 10. Bộ công cụ Blender cho boss hình người chương Nhật (14/10/2026)
+
+Tìm trên mạng xem có gì bổ sung được (kết quả và quyết định):
+
+| Công cụ | Dùng? | Ghi chú |
+|---|---|---|
+| Gói tài nguyên hệ thống MakeHuman (CC0, 267 MB) | ✅ đã cài | Mắt, lông mày, lông mi, răng, lưỡi, tóc, da. Phải giải nén vào `%APPDATA%/Blender Foundation/Blender/5.2/extensions/.user/blender_org/mpfb/data` (thư mục MPFB đọc, KHÔNG phải `.../5.2/mpfb/data`). `human_kit.add_face_parts`. |
+| Bộ node tóc có sẵn của Blender (`datafiles/assets/nodes/procedural_hair_node_assets.blend`) | ✅ | Duplicate / Clump / Frizz / Curl / Braid / Set Hair Curve Profile — `hair_kit.strand_locks` (tóc tỉa theo lọn, mỗi lọn một guide). Addon tóc trả phí (Stylized Hair Pro, Medusa Nodes) không cần. |
+| blender-mcp (ahujasid) | chưa | Nối Claude với Blender đang mở (xem cảnh trực tiếp, Poly Haven, Hyper3D). Có ích khi làm tay trong Blender; quy trình script `render.sh` hiện tại không cần. |
+| Poly Haven / ambientCG (CC0) | khi cần | Texture/HDRI tả thực; phong cách painted đang tự vẽ bằng node nên chưa dùng. |
+| Ảnh → 3D (TRELLIS.2 MIT, Hunyuan3D, TripoSR) | ❌ | TRELLIS cần ≥16 GB VRAM (máy: RTX 3050 4 GB). Hunyuan3D: giấy phép cộng đồng loại EU/UK/Hàn. Dựng từ tranh tham khảo có bản quyền cũng là tác phẩm phái sinh. |
+
+Thư viện mới:
+- `tool/blender/hair_kit.py`: tóc theo lọn (`strand_locks` sợi thật, `ribbon_locks` lọn khối), `hair_material`.
+- `tool/blender/japan_kit.py`: da tô màu/xăm (`painted_skin`, có son môi), vải lụa vân mây (`silk_material`), vải hoa tròn (`kamon_material`), lửa ma (`flame_material`, `flame`), áo ôm thân (`garment`), tay áo rộng (`sleeve_bag`), hakama, giáp tay (`limb_band`), sừng có gờ, chuỗi hạt, thừng shimenawa, chữ Hán nổi (font Yu Gothic — máy không có Mincho), vuốt, quạt lông, đắp khối (`inflate` — bụng phệ), ghép khối elip theo mét (`blob`), dáng đứng ¾ (`StandPoser`).
+
+Boss dựng theo tranh người dùng chọn (ảnh duyệt `--still`, CHƯA xuất sprite):
+
+| Boss | Script | Ảnh |
+|---|---|---|
+| Yamata no Orochi (làm lại: rắn thật xanh xám, bụng hồng, mắt vàng, vàng lá) | `orochi_boss.py` | `build/blender/orochi/` |
+| Shuten-dōji (oni đỏ vác kanabō) | `oni_boss.py` | `build/blender/oni/` |
+| Sutoku hoá đại tengu | `tengu_boss.py` | `build/blender/tengu/` |
+| Susanoo cuồng nộ (lửa ma xanh, hào quang) | `susanoo_boss.py` | `build/blender/susanoo/` |
+| Tamamo-no-Mae, dạng cáo / dạng người | `tamamo_boss.py --form fox|human` | `build/blender/tamamo/` |
+
+Việc tiếp: người dùng duyệt ảnh → sửa → xuất atlas sprite (`sprite_kit.export_sprites`, chuỗi idle/windup/strike/hurt/defeat) → BossArt Flutter + bản vector 2.5D (mục 9). Đã sửa (14/10): cổ áo tengu dựng bằng `flat_band` bám mặt ngoài áo theo từng tầng `body_ring` (ống dẹt Bézier cắt xuyên ngực và xoắn khi gần thẳng đứng); mày Tamamo dạng người là một nét `tapered_world` — `helper-*-eye` là tâm nhãn cầu nên phải đẩy ra trước ~0,024·H mới qua gờ mày.
+
+Oni bản 3 (14/10): mặt Hannya bằng target biểu cảm MPFB (`human_kit.target_path` nhận đường dẫn kiểu `expression/units/asian/mouth-open` — tên biểu cảm trùng giữa các chủng người); đắp cơ dọc xương bằng `japan_kit.muscle_bulge` + tô hõm cơ bằng AO cục bộ (`painted_skin(cavity=…)`); `--clay` bỏ hình xăm để soát khối. Dạng chân `StandPoser.place` quay quanh trục trước–sau của khung xương (trục Z cục bộ của đùi bị lệch làm chân bắt chéo); `StandPoser.palm` + `fist` cho tay nắm cán; `--grip` / `--grip-only` render ảnh soát tay, chân, thân. Gốc tóc bờm đặt theo bán kính sọ đo từ đỉnh nhóm `head` (bỏ HelperGeometry), không dùng mặt cầu cố định.
+
+Đêm 14→15/10 (người dùng giao tự làm oni + Susanoo): bụng oni kiểu Gragas bằng `japan_kit.belly_ball` (chiếu đỉnh lên mặt elip theo tia từ tâm, hợp smooth-max — đẩy theo pháp tuyến `inflate` cho bụng nhọn); bờm mọc từ đỉnh nhóm `scalp`; `hair_kit.combed_material` (Wave của Blender tự nhân toạ độ ×20, scale chỉ 3–5); `hero_muscles(k)` dùng chung; `painted_skin(tattoo_attr=…)` giới hạn vùng xăm; `skin_snapper` dán mày lên mặt da; `flat_band` (đã chuyển vào japan_kit, có `widths`) cho tấm da hổ vắt vai + viền lông `strand_locks`; Susanoo: target biểu cảm `expression/units/caucasian/*`, nắm kiếm `fist`+`palm`, sét `lightning` (dời điểm giữa) — emission ánh màu cần strength ≈2, cao hơn bị cháy trắng. Cờ soát: oni `--belly --grip --clay`, Susanoo `--hand --clay`.
+
+Oni bản 7 (15/10, theo nhận xét người dùng): `japan_kit.densify` gộp shape key MPFB rồi áp một bậc subsurf vào lưới gốc (75k đỉnh) — nếp nhăn/gân mảnh hơn khoảng cách đỉnh MPFB (~5–10 mm) không hiện; `weights_by_group` có nhớ đệm. `ridge` (gờ/rãnh dọc đường gấp khúc: gân xanh, nếp nhăn, sẹo, thớ cơ), `snap_rest`, `inflate(groups=…)` để khối ngực không lan sang nách (nâng tay sẽ kéo thành mẩu nhọn). `conform_outside` ép tấm da/vải bám mặt da SAU khi tạo dáng (tấm phải chia nhiều đỉnh theo bề ngang); vật dựng sau khi tạo dáng phải gắn xương theo `pose_bone.matrix` hiện tại, `parent_to_bone` tính theo dáng nghỉ. `painted_skin(paints=[(thuộc tính, màu)])` cho kumadori, đỏ rượu, sẹo, gan chân. Máy quay vừa tạo cần `view_layer.update()` trước khi đọc `matrix_world` (đồng tử nhắm nhầm lên trời). `human_kit.camera` đặt tâm ở mặt phẳng y = 0 — góc quay lớn dùng `look_at` trong oni_boss. Eo béo: bỏ `torso-muscle-dorsi-incr`, macro cơ 0,7 / mỡ 0,9, đắp mỡ sườn–lưng–bụng trên. Cờ mới: `--face`, `--checks`, `--quick`, `--dry` (+ biến `ONI_DEBUG`).
+
+## 11. Bài học sau khi dựng oni (bản 3 → 9, 14–16/10/2026)
+
+Oni mất ~7 vòng nhận xét. Phần lớn vòng sửa là lỗi có thể bắt trước khi đưa người dùng xem. Thứ tự làm và cách soát dưới đây áp cho mọi nhân vật hình người sau.
+
+### Thứ tự dựng: khối trước, chi tiết sau
+1. **Xin ảnh tham khảo dáng người ngay từ đầu** (cả nhìn nghiêng), không chỉ tranh phong cách. Oni chỉ đúng tỉ lệ béo phì sau khi người dùng gửi ảnh 5 dáng người gầy → béo.
+2. **Chốt tỉ lệ khung (chiều dài chân, thân) trước khi đắp khối.** Rút ngắn chân cho "lùn bè" rồi đắp mỡ thì thân dưới thành cái chuông úp; người béo vẫn cần chân dài bình thường.
+3. **Bóng (silhouette) ba hướng: trước, nghiêng, sau.** Người béo phì nhìn nghiêng: bụng trễ chờm qua cạp, mông là điểm nhô ra sau xa nhất, lưng chảy liền xuống mông, đùi trên dày gần bằng thân rồi thon về gối, hai đùi áp sát.
+4. Rồi mới tới mặt, gân, vuốt, hiệu ứng.
+
+### Soát thân trần dưới quần áo
+- **Quần áo sao từ thân thừa hưởng mọi lỗi của thân.** Luôn render một ảnh ẩn quần áo (hakama, tạp dề…) trước khi chỉnh vải. Oni sửa hakama hai vòng mà bên trong vẫn là hông lép, đùi thon.
+- Đắp mỡ quanh chi: dùng `japan_kit.limb_fat` (đẩy ra xa trục xương, khối tròn đều). `inflate` đẩy theo pháp tuyến dễ ra cục, chỉ hợp cho khối nhỏ (ngực, đệm gối). Vòng eo béo: đẩy toàn vòng ra xa trục thân (`WaistFill` trong `oni_boss.lower_fat`), không đắp từng cục.
+
+### Vải và đồ dựng theo thân
+- **Vải rộng (hakama, váy, áo choàng) dựng SAU khi tạo dáng, theo bao lồi:** `japan_kit.DrapedSkirt`. Vải rủ từ chỗ rộng nhất rồi buông thẳng, căng qua khe chân. Bản sao lưới thân + đẩy pháp tuyến (`hakama`, `garment`) chỉ hợp đồ ôm sát; với thân béo nó thành quần bó lộ từng khối.
+- **Đồ gắn lên thân (khoá đai, phù hiệu, chữ thêu) phải soát lại mỗi khi khối thân đổi.** Bụng trễ xuống đã che mất khoá đai. Đặt chúng theo lớp ngoài cùng (mặt tạp dề, mặt quần) chứ không theo vòng thân gốc.
+- Lưới tự dựng: kiểm tra pháp tuyến hướng ra ngoài. Ngược thì mép vải trông mờ như kính. Lụa nhiều sheen cũng loé trắng ở mép trên nền sáng; vải dày để sheen ≤ 0,2.
+- Đồ dựng sau khi tạo dáng chỉ đúng cho dáng đó; sprite nhiều dáng phải dựng lại theo từng dáng.
+
+### Dò điểm trên lưới
+- **Dò ở dáng nghỉ, không ở dáng đã tạo** (vuốt chân lệch hai lần): trục xương sau khi tạo dáng không trùng hướng thật của bàn chân. Dò xong thì `parent_to_bone` (tính theo dáng nghỉ) là vật tự đi theo dáng.
+- Hàng ngón chân/tay xếp chéo: trừ đường thẳng khớp qua mép trước rồi mới tìm cực đại (`toe_claws`). Chia bề ngang theo tỉ lệ cố định sẽ trượt khỏi ngón thật.
+- Đọc lưới đã tạo dáng (`posed_points`): tắt tạm mọi modifier trừ Armature. MPFB có Mask ẩn lưới phụ, subsurf thì đổi số đỉnh.
+
+### Hiệu ứng và phụ kiện nhỏ
+- Lửa ma: quầng sáng opacity ≤ 0,1, nếu không thành quả bóng che mất lửa. Đuôi lửa cần thành phần hướng lên, vì đuôi theo tiếp tuyến quỹ đạo sẽ chĩa vào máy quay ở hai bên và bị ngắn lại. Bỏ ngọn nào rơi trước bụng/mặt nhìn từ máy quay.
+- Tua, dây, lông: dựng đúng cấu trúc vật thật (dây treo → nút → chóp → đai → sợi), sợi đều nét và cắt bằng. Vuốt nhọn đầu là kiểu "kim".
+
+### Quy trình nhanh
+- Mỗi vòng thử dùng `--dry --quick` + biến `ONI_DEBUG` trỏ tới script soát (khoảng 1,5 phút) render đúng góc cần xem, ghép thành một ảnh lưới. Chỉ render đầy đủ (khoảng 9 phút) khi đã ưng.
+- **Bộ ảnh soát cố định trước khi đưa người dùng xem:** toàn thân · nghiêng trần (ẩn quần áo) · nghiêng mặc đồ · sau lưng · cận bàn chân (trước + trên xuống) · cận mặt. Tự hỏi: bóng có giống tham khảo không, đồ gắn có bị che không, chỗ tiếp xúc (đai–thân, vải–chân, vuốt–ngón) có khớp không.
+- Lỗi "Cannot change old file" / sót `.blend@` (file lớn vừa ghi bị Windows khoá tạm) đã sửa trong `boss_kit.save_blend` 16/10: lưu ra file tạm, tự đổi tên `@` có thử lại; không còn phải xoá tay.
+
+### Bổ sung sau vòng soát cận (bản 10 → 10b, 16/10 tối — oni được duyệt)
+Người dùng phóng to ảnh duyệt và thấy lỗi mà ảnh toàn thân che mất. Ba ảnh cắt cận của người dùng ra 6 lỗi.
+- **Bộ soát phải có ảnh cận từng phụ kiện** ở cỡ người dùng hay phóng (khoảng 700 px/m): tay + vật cầm, khoá đai, chuỗi hạt/vòng cổ, mép da thú/vải, giáp tay. Kèm vài con số đo (khe giữa các hạt, bán kính da so với giáp). Số liệu bắt lỗi nhanh hơn nhìn ảnh.
+- **Màu dưới AgX:** vật phát sáng mạnh hoặc nhiều lớp bán trong suốt chồng nhau (mặt trước + sau ống, nhiều lưỡi lửa) cộng sáng, AgX đẩy về trắng kem. Lửa dùng `japan_kit.fire_material`: ramp bão hoà, cường độ ≈ 1,4, đục ở lõi.
+- **Tên thuộc tính lưới:** không đặt `heat`, `density`, `flame`, `temperature`, `color`, `velocity`. Cycles dành các tên này cho khói/lửa thể tích, shader đọc ra 0 mà không báo lỗi. Đặt có tiền tố (`flame_heat`). Nghi ngờ thì render thẳng thuộc tính ra màu Emission để kiểm.
+- **Vật liệu tối màu trên nền đèn lam:** bóng gương phản trời/đèn viền lam thành xám nhựa hoặc tím. Vải tối dùng `silk_material(spec ≤ 0,25, sheen ≤ 0,06)`, sơn mài nhám ≥ 0,4. Mặt khuất của da đỏ chỉ có đèn viền lam rọi thì ra tím: đèn viền nhạt và vừa phải.
+- **Đồ ôm chi (giáp, vòng tay) phải đo da:** đắp mỡ sau khi đặt bán kính cố định thì giáp chìm vào da, lộ lốm đốm. Dùng `limb_band(skin=(body, co), pad=…)`.
+- **Phụ kiện nhỏ phải đọc được ở cỡ sprite và có chỗ bám:** khối cầu một màu đọc thành quả bom. Phải là mặt phẳng có nét khắc nổi tương phản (vàng/đen/phát sáng). Đồ treo cần quai/khuyên nối vào vật mang (khoá đai treo vào thừng), không đặt lơ lửng.
+- **Chuỗi, dây, vật xếp hàng: xử lý cả đường, không xử lý từng phần tử** (`japan_kit.drape_chain`).
+  - Đẩy từng hạt riêng lẻ thì chuỗi gãy khúc.
+  - Làm mượt vị trí một vòng kín thì vòng co lại thành vòng siết. Chỉ làm mượt *độ đẩy* để giữ dáng võng.
+  - Số hạt phải vừa chiều dài dây (26 hạt cần 1,6S trên vòng 1,0S nên hạt đè thành cục).
+  - Mặt dây đặt theo hình học (điểm nhô trước nhất), không theo chỉ số.
+- **Đẩy vật ra khỏi thân béo:** điểm lọt trong khối thịt thì "mặt gần nhất" có thể là dưới cằm, vật bị đẩy sai hướng. Tia bắn ngang từ ngoài vào thì lại trúng cơ vai. Chọn cách đẩy theo vị trí, và soát cả hai phía.
+- **Bẫy kỹ thuật:**
+  - `bmesh.from_mesh`/`from_object` trên thân MPFB đã tạo dáng (có shape key) làm Blender sập. Dựng BVH từ đỉnh/mặt (`BVHTree.FromPolygons`, xem `_surface_tree`).
+  - Script `ONI_DEBUG` chạy bằng `exec` trong `main()`: generator/lambda không thấy biến cục bộ. Bọc code soát trong hàm và truyền `scene` vào.
+- **Sửa một chỗ trong kit dùng chung thì soát các nhân vật khác dùng chỗ đó.** Lửa Susanoo vẫn dùng `flame_material` cũ, nhiều khả năng cũng bị kem.
+
+## 12. Mô hình Tripo3D thay khối ghép (19/10/2026)
 
 Sư tử Nemea làm lại từ mô hình Tripo3D (`art_src/tripo/nemea_lion.glb`,
 ảnh → 3D, chọn Clean Topology, đã tô texture) thay khối ellipsoid + lông sợi

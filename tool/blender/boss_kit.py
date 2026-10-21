@@ -1041,7 +1041,31 @@ def pack_atlas(files, anchor, ppu, out_png, out_json, width=2048):
 
 
 def save_blend(name):
+    """Lưu cảnh ra art_src/blender/<name>.blend. Blender ghi `<file>@` rồi đổi
+    tên — trên Windows với file lớn (oni ~110 MB) file vừa ghi bị khoá tạm
+    (quét virus) nên Blender báo "Cannot change old file" và sót `@`, kể cả
+    khi lưu ra tên mới tinh. Vì vậy: lưu ra file tạm, Blender lỗi thì tự đổi
+    tên `@` (thử lại tới khi hết khoá) rồi thay file đích; không giữ `.blend1`."""
+    import time
     path = os.path.join(ROOT, "art_src", "blender", f"{name}.blend")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=path, compress=True)
-    return path
+    tmp = os.path.join(os.path.dirname(path), f"{name}.saving.blend")
+    for stale in (tmp, tmp + "@", path + "@"):
+        if os.path.exists(stale):
+            os.remove(stale)
+    try:
+        bpy.ops.wm.save_as_mainfile(filepath=tmp, compress=True, copy=True)
+    except RuntimeError:
+        if not os.path.exists(tmp + "@"):
+            raise
+        src = tmp + "@"  # Blender đã ghi đủ, chỉ vấp bước đổi tên
+    else:
+        src = tmp
+    for attempt in range(20):
+        try:
+            os.replace(src, path)
+            return path
+        except PermissionError:
+            time.sleep(0.5 * (attempt + 1))
+    print(f"save_blend: không thay được {path} (file đang mở?) — bản mới để ở {src}")
+    return src
