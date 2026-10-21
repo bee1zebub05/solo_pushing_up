@@ -58,6 +58,11 @@ class BattleController extends ChangeNotifier {
   /// rep chậm không bị coi là nghỉ.
   int? _descentStartMs;
 
+  /// Lúc đòn đang báo sẽ chạm, và các mốc đếm ngược chưa phát (ms trước chạm).
+  int? _impactAt;
+  final List<int> _ticksLeft = [];
+  static const _countdownMs = [1000, 500];
+
   BattleEvent? _headline;
   int _headlineKey = 0;
   bool _reported = false;
@@ -89,6 +94,7 @@ class BattleController extends ChangeNotifier {
     ];
     _view = _battle.view(_nowMs, restEndMs: _descentStartMs);
     if (events.isNotEmpty) _handle(events);
+    _countdown();
     notifyListeners();
   }
 
@@ -101,8 +107,17 @@ class BattleController extends ChangeNotifier {
     // Người chơi đang nhìn sàn: đòn báo trước phải nghe được (trụ 3).
     for (final e in events) {
       switch (e) {
-        case BossTell(:final dodge):
-          session.feedback.announce(dodge == DodgeBy.hold ? 'Giữ tay!' : 'Xuống sâu!');
+        case BossTell(:final dodge, :final inMs, :final timestampMs):
+          session.feedback
+            ..dodgeCue(hold: dodge == DodgeBy.hold)
+            ..announce(dodge == DodgeBy.hold ? 'Giữ tay!' : 'Xuống sâu!');
+          _impactAt = timestampMs + inMs;
+          _ticksLeft
+            ..clear()
+            ..addAll(_countdownMs);
+        case BossStruck():
+          _impactAt = null;
+          _ticksLeft.clear();
         case SakeDrinking():
           session.feedback.announce('Ngắt! Đánh liên tục');
         case CurseCast():
@@ -114,6 +129,17 @@ class BattleController extends ChangeNotifier {
     if (!_reported && events.any((e) => e is Victory || e is Defeat)) {
       _reported = true;
       _report(won: events.any((e) => e is Victory));
+    }
+  }
+
+  /// Tích đếm ngược 1 s và 0,5 s trước lúc đòn chạm (người chơi canh lúc giữ
+  /// tay / xuống rep sâu bằng tai).
+  void _countdown() {
+    final at = _impactAt;
+    if (at == null) return;
+    while (_ticksLeft.isNotEmpty && _nowMs >= at - _ticksLeft.first) {
+      _ticksLeft.removeAt(0);
+      session.feedback.countdownTick();
     }
   }
 

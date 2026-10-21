@@ -135,7 +135,7 @@ Sát thương một rep = gốc (Battle) × combo × [counterMul nếu phản đ
 | Đầu vào (tóm tắt, luật, công thức, edge, núm, nghiệm thu) | APPROVE | Đủ 5 mục; số máu để `balance-reps` |
 | Trụ 1 — mồ hôi thật | APPROVE | Né = hành động thể chất (plank / rep sâu); chỉ giữ plank không thắng được |
 | Trụ 2 — boss là bài tập | APPROVE | Kỹ năng: kiểm soát thời điểm plank / độ sâu; rep chậm (Sutoku); bùng nổ (Shuten) |
-| Trụ 3 — đọc được khi hít đất | **CONCERNS** | Cần **âm báo riêng cho từng đòn** (hiện chỉ có một tiếng `tell` chung) + tiếng đếm ngược trước chạm; chưa có thì người nhìn sàn không phân biệt được ⏸ / 💥 |
+| Trụ 3 — đọc được khi hít đất | CONCERNS → đã sửa 21/10 | Âm báo theo **cách né**, chung mọi quái: `dodge_hold` (hai tiếng trống trầm, rung mạnh) / `dodge_duck` (tiếng vút trượt xuống, rung hai nhịp nhẹ) + tích đếm ngược 1 s và 0,5 s trước chạm (`count_tick`) — `RepFeedback.dodgeCue`, `BattleController._countdown` |
 | Trụ 4 — tôn trọng cơ thể | CONCERNS → đã sửa | Camera mất người → huỷ đòn (trước là phạt); ngắt rượu nới 4 → 5 s, chống gối 2 rep |
 | Vòng lặp / chú ý | APPROVE | Vòng màn; tối đa 2 thứ cùng lúc (ấn nguyền + một đòn) |
 | Phá cho hỏng | APPROVE | Rep đều tự né đòn 💥 ~60 % — chấp nhận (rep chuẩn luôn có lợi), đòn ⏸ vẫn bắt dừng lại; trần ×4 mỗi rep |
