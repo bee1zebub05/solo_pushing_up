@@ -211,6 +211,15 @@ Tripo Studio gửi model sang Blender qua addon **Tripo Bridge** (cổng 60600).
   - **Xét "là vải" theo màu trung bình cả tam giác:** vải Tripo có đốm nhạt khác màu; xét từng điểm ảnh thì khuôn thủng lỗ chỗ.
   - UV Tripo vỡ thành hàng trăm mảnh nhỏ → mọi thao tác texture phải đi qua toạ độ 3D, không cắt dán trong ảnh UV.
 
+### Sửa trọng số sau `build_rig` (học từ chương 1 của Tung, 21/10/2026)
+Năm hàm trong `tripo_kit`, đều hàn đỉnh trùng vị trí trước khi tính theo cạnh (GLB tách đỉnh ở đường nối UV):
+- `islands(o)`: số mảnh lưới rời cho mỗi đỉnh (0 = lớn nhất). Vũ khí/khiên Tripo đúc liền file thường là một mảnh riêng.
+- `add_prop_bone(rig, "club", đầu, đuôi, "hand_r")` + `pin_to_bone(o, ids, "club")`: **vũ khí gắn cứng vào xương riêng** con của bàn tay. Biên đạo xoay vũ khí mà không bẻ cổ tay; trọng số bàn tay không kéo méo cán.
+- `smooth_weights(o, keep_groups=("club",))`: mảnh nhỏ (lọn tóc, tua, vạt) dùng chung trọng số trung bình rồi làm mượt Laplace; đỉnh vũ khí giữ nguyên. Chữa vải/tóc bị kéo thành sợi khi chân vung.
+- `follow_nearest(o, isl, skip_groups=("club",))`: mảnh nhỏ (chuỗi hạt, khoá) lấy trọng số chỗ thân gần nhất → không tách khỏi thân.
+- `surface_regions(o, {nhãn: hàm(toạ độ thế giới)})`: chia đỉnh theo đường đi trên bề mặt. Dùng khi các phần chồng nhau trong không gian (nhiều cổ rắn — Orochi; cánh áp thân; tay ôm bụng); lọc xương được phép theo vùng.
+Thứ tự: `build_rig` → `add_fingers` → `pin_to_bone` → `smooth_weights` → `follow_nearest`. Đã chạy thử trên tengu (11 mảnh, tổng trọng số = 1 mọi đỉnh, < 1 s).
+
 ## Model Tripo cầm vật, màu vật cầm (cũ: mục 13)
 
 - **Model Tripo cầm vật:** bàn tay xoè (không có xương ngón) → cán vuông góc

@@ -758,3 +758,189 @@ def add_fingers(m, rig, side, min_size=10, palm=None):
     print(f"[tripo] add_fingers {side}: {len(fingers)} ngón + {'ngón cái' if thumb else 'không ngón cái'}, "
           f"cắt ở {tk / L:.2f} dài bàn tay")
     return made
+
+
+# --- Sửa trọng số sau gắn xương (học từ nhánh chương 1 của Tung, tool/blender/tripo_kit.py
+# bên đó; rules/dohoa.md mục 12). Lưới GLB tách đỉnh ở mọi đường nối UV: mọi hàm
+# dưới đây HÀN đỉnh trùng vị trí trước khi tính theo cạnh, nếu không mỗi mảnh UV
+# thành một "mảnh rời" và lưới bị xé khi cử động.
+
+def _weld(o):
+    """(chỉ số điểm hàn cho mỗi đỉnh, số điểm hàn): đỉnh trùng vị trí là một điểm."""
+    import numpy as np
+    seen = {}
+    canon = np.array([seen.setdefault(tuple(round(c, 5) for c in v.co), len(seen)) for v in o.data.vertices])
+    return canon, len(seen)
+
+
+def _welded_edges(o, canon):
+    import numpy as np
+    e = canon[np.array([ed.vertices[:] for ed in o.data.edges]).reshape(-1, 2)]
+    return e[e[:, 0] != e[:, 1]]
+
+
+def _union(n, edges):
+    """Gốc nhóm liền (hợp nhất theo cạnh) cho mỗi điểm 0..n-1."""
+    import numpy as np
+    parent = np.arange(n)
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for a, b in edges:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+    return np.array([find(i) for i in range(n)])
+
+
+def islands(o):
+    """Mảnh lưới rời của [o] (vũ khí, khiên, phụ kiện Tripo đúc liền file nhưng
+    tách lưới): mảng số mảnh cho mỗi đỉnh, mảnh lớn nhất là 0."""
+    import numpy as np
+    canon, n = _weld(o)
+    roots = _union(n, _welded_edges(o, canon))[canon]
+    ids, counts = np.unique(roots, return_counts=True)
+    rank = {r: i for i, r in enumerate(ids[np.argsort(-counts)])}
+    return np.array([rank[r] for r in roots])
+
+
+def surface_regions(o, seeds):
+    """Chia đỉnh theo đường đi TRÊN BỀ MẶT lưới (Dijkstra theo cạnh): [seeds] =
+    {nhãn: hàm(toạ độ thế giới) → True nếu là hạt giống}; mỗi đỉnh mang nhãn hạt
+    giống tới được gần nhất. Dùng khi các phần chồng nhau trong không gian
+    nhưng tách nhau trên bề mặt (Hydra/Orochi nhiều cổ, cánh áp sát thân, tay
+    ôm bụng) — trọng số theo khoảng cách thẳng sẽ lẫn. Trả nhãn cho mỗi đỉnh
+    (None = không tới được hạt giống nào)."""
+    import heapq
+    canon, n = _weld(o)
+    mw = o.matrix_world
+    pos = [None] * n
+    for v, c in zip(o.data.vertices, canon):
+        pos[c] = mw @ v.co
+    adj = [[] for _ in range(n)]
+    for a, b in _welded_edges(o, canon):
+        w = (pos[a] - pos[b]).length
+        adj[a].append((b, w))
+        adj[b].append((a, w))
+    dist = [math.inf] * n
+    label = [None] * n
+    heap = []
+    for name, test in seeds.items():
+        for c, p in enumerate(pos):
+            if test(p):
+                dist[c], label[c] = 0.0, name
+                heap.append((0.0, c))
+    heapq.heapify(heap)
+    while heap:
+        d, c = heapq.heappop(heap)
+        if d > dist[c]:
+            continue
+        for k, w in adj[c]:
+            if d + w < dist[k]:
+                dist[k], label[k] = d + w, label[c]
+                heapq.heappush(heap, (d + w, k))
+    return [label[c] for c in canon]
+
+
+def add_prop_bone(rig, name, head, tail, parent):
+    """Xương riêng cho vũ khí/khiên (toạ độ thế giới, con của [parent], vd.
+    hand_r). Vũ khí gắn cứng vào đây (pin_to_bone) thì cổ tay không bị kéo
+    méo theo chuỳ, và biên đạo xoay được vũ khí độc lập với bàn tay — tránh
+    kiểu chuỳ xuyên bụng vì phải bẻ cẳng tay mới chĩa được hướng cần."""
+    bpy.context.view_layer.objects.active = rig
+    for ob in bpy.context.view_layer.objects:
+        ob.select_set(ob is rig)
+    bpy.ops.object.mode_set(mode="EDIT")
+    inv = rig.matrix_world.inverted()
+    b = rig.data.edit_bones.new(name)
+    b.head, b.tail = inv @ Vector(head), inv @ Vector(tail)
+    b.parent = rig.data.edit_bones[parent]
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return name
+
+
+def pin_to_bone(o, vertex_ids, bone):
+    """Gắn cứng các đỉnh (vũ khí, khiên) vào [bone]: trọng số 1 cho xương đó,
+    0 cho mọi xương khác."""
+    ids = [int(i) for i in vertex_ids]
+    if bone not in o.vertex_groups:
+        o.vertex_groups.new(name=bone)
+    for g in o.vertex_groups:
+        if g.name == bone:
+            g.add(ids, 1.0, "REPLACE")
+        else:
+            g.remove(ids)
+
+
+def follow_nearest(o, isl, small=400, skip_groups=()):
+    """Mảnh nhỏ (quai, khoá, tua, chuỗi hạt…) lấy trọng số của đỉnh gần nhất
+    trên các mảnh lớn: di chuyển y như chỗ thân ngay cạnh, không bị tách ra
+    khi thân pha trọng số nhiều xương. Bỏ qua mảnh đã gắn vào [skip_groups]."""
+    import numpy as np
+    from mathutils.kdtree import KDTree
+    verts = o.data.vertices
+    counts = np.bincount(isl)
+    big = [i for i in range(len(verts)) if counts[isl[i]] > small]
+    tree = KDTree(len(big))
+    for j, i in enumerate(big):
+        tree.insert(verts[i].co, j)
+    tree.balance()
+    skip = {o.vertex_groups[g].index for g in skip_groups if g in o.vertex_groups}
+    for k in np.nonzero(counts <= small)[0]:
+        ids = [int(i) for i in np.nonzero(isl == k)[0]]
+        if any(g.group in skip and g.weight > 0.5 for g in verts[ids[0]].groups):
+            continue
+        c = sum((verts[i].co for i in ids), Vector()) / len(ids)
+        _, j, _ = tree.find(c)
+        src = {g.group: g.weight for g in verts[big[j]].groups}
+        for g in o.vertex_groups:
+            w = src.get(g.index, 0.0)
+            if w > 1e-4:
+                g.add(ids, w, "REPLACE")
+            else:
+                g.remove(ids)
+
+
+def smooth_weights(o, islands_below=400, iterations=6, keep_groups=()):
+    """Làm mượt trọng số: mỗi mảnh rời nhỏ hơn [islands_below] điểm dùng chung
+    trọng số trung bình (cứng như một lọn — lọn tóc/bờm/tua không bị chân và
+    thân kéo thành sợi), rồi làm mượt Laplace theo cạnh, chuẩn hoá lại. Đỉnh
+    đã gắn cứng vào [keep_groups] (xương vũ khí) giữ nguyên."""
+    import numpy as np
+    verts = o.data.vertices
+    groups = list(o.vertex_groups)
+    keep = {o.vertex_groups[g].index for g in keep_groups if g in o.vertex_groups}
+    canon, n = _weld(o)
+    w = np.zeros((n, len(groups)))
+    for v in verts:
+        for g in v.groups:
+            w[canon[v.index], g.group] += g.weight
+    w /= np.bincount(canon, minlength=n)[:, None]
+    pinned = w[:, sorted(keep)].sum(axis=1) > 0.5 if keep else np.zeros(n, bool)
+    edges = _welded_edges(o, canon)
+    roots = _union(n, edges)
+    for r in np.unique(roots):
+        idx = np.nonzero(roots == r)[0]
+        if len(idx) < islands_below:
+            w[idx] = w[idx].mean(axis=0)
+    deg = np.maximum(np.bincount(edges.ravel(), minlength=n), 1).astype(float)
+    for _ in range(iterations):
+        acc = np.zeros_like(w)
+        np.add.at(acc, edges[:, 0], w[edges[:, 1]])
+        np.add.at(acc, edges[:, 1], w[edges[:, 0]])
+        w = np.where(pinned[:, None], w, 0.5 * w + 0.5 * acc / deg[:, None])
+    w /= np.maximum(w.sum(axis=1, keepdims=True), 1e-6)
+    # Ghi theo nhóm: gom các đỉnh cùng trọng số (làm tròn) để giảm số lần gọi add().
+    for gi, g in enumerate(groups):
+        col = w[canon, gi]
+        off = np.nonzero(col <= 1e-4)[0]
+        if len(off):
+            g.remove([int(i) for i in off])
+        on = np.nonzero(col > 1e-4)[0]
+        q = np.round(col[on], 4)
+        for val in np.unique(q):
+            g.add([int(i) for i in on[q == val]], float(val), "REPLACE")
