@@ -507,15 +507,23 @@ void main() {
       final battle = StageBattleState()
         ..bossHp = 0.7
         ..totalHeads = 3
-        ..headsLeft = 3
-        ..charge = kind == NemeaMonster.boar ? 0.7 : 0;
+        ..headsLeft = 3;
       for (final (tag, phase) in [
         ('idle', -1.0),
         ('windup', 0.4),
         ('strike', 0.58),
       ]) {
+        // Lợn rừng: lấy đà và lao theo tiến độ báo húc thật (charge).
+        battle.charge = kind != NemeaMonster.boar
+            ? 0
+            : switch (tag) {
+                'windup' => 0.7,
+                'strike' => 0.97,
+                _ => 0,
+              };
+        // Sau cảnh mở màn (lính đá trồi từ dưới đất 2,6 s).
         final frame = BossFrame(
-          time: 2.5,
+          time: 3,
           attack: phase < 0 ? 0 : 0.9,
           hurt: 0,
           glint: -1,
@@ -532,6 +540,32 @@ void main() {
           paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
         });
       }
+    }
+  });
+
+  testWidgets('lính đá trồi từ dưới đất lúc mở màn', (tester) async {
+    await tester.runAsync(NemeaMonsterArt.preloadSprites);
+    await tester.runAsync(NemeaBackdrop.load);
+    final art = NemeaMonsterArt(NemeaMonster.stone);
+    final battle = StageBattleState()..bossHp = 1;
+    for (final (k, time) in const [0.25, 0.6, 0.9, 1.25, 1.75, 2.2].indexed) {
+      final frame = BossFrame(
+        time: time,
+        attack: 0,
+        hurt: 0,
+        glint: -1,
+        defeat: 0,
+        battle: battle,
+        attackPhase: -1,
+      );
+      await render(tester, 'stone_rise_$k', (c) {
+        art.paintStageBackdrop(c);
+        art.paintScene(c, time, battle);
+        art.paintBoss(c, frame);
+        paintStageHero(c, HeroPose.plank(120), effort: 0.5);
+        art.paintForeground(c, frame);
+        paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+      });
     }
   });
 

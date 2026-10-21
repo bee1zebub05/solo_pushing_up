@@ -23,6 +23,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
+from choreo_kit import Move  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo, islands, smooth_weights, surface_regions  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "three-headed dragon 3d model.glb")
@@ -121,11 +122,33 @@ def stump(i):
     return obj
 
 
-def pose(rig, stumps, t=0.0, attack=-1.0, alive=HEADS):
-    """Cổ lắc lư lệch pha; đầu sống thấp nhất (gần người chơi) ra đòn: lấy
-    đà ngóc lên, ra đòn mổ xuống tới trước; các đầu khác rít theo."""
+# Biên đạo (choreo_kit). Đầu ra đòn (đầu sống gần người chơi nhất):
+#   hx, hy  dời đầu (đơn vị vẽ: x dương = lùi, y dương = xuống)
+#   curl    cổ cong chữ S (dương = khúc giữa võng ra sau, như rắn hổ mang thu thế)
+#   tilt    gằm đầu (độ, + = chúc mõm xuống mổ)
+# Các đầu khác: ox, oy, otilt (rụt lại rít, rồi chồm theo).
+# Rắn: cổ uốn theo sóng truyền từ gốc lên đầu; thu thế chậm, mổ cực nhanh,
+# rút về có nảy nhẹ.
+READY = dict(hx=0, hy=0, curl=0, tilt=0, ox=0, oy=0, otilt=0)
+LAG = dict(tilt=0.02, curl=0.01, ox=0.03, oy=0.03, otilt=0.04)
+
+ATTACK = Move(READY, [
+    (0.10, dict(hx=4, hy=-4, curl=4, tilt=-6, ox=2, oy=-2)),
+    (0.25, dict(hx=12, hy=-10, curl=9, tilt=-14, ox=4, oy=-4, otilt=-8)),
+    (0.38, dict(hx=16, hy=-14, curl=12, tilt=-20, ox=5, oy=-5, otilt=-10)),
+    (0.48, dict(hx=17, hy=-15, curl=13, tilt=-22, ox=5, oy=-5, otilt=-10)),
+    (0.53, dict(hx=-10, hy=12, curl=-2, tilt=10)),
+    (0.58, dict(hx=-36, hy=34, curl=-4, tilt=24, ox=-4, oy=2, otilt=6)),
+    (0.65, dict(hx=-37, hy=35, curl=-4, tilt=26, ox=-5, oy=3, otilt=6)),
+    (0.76, dict(hx=-14, hy=12, curl=6, tilt=0, ox=-2, oy=1, otilt=2)),
+    (0.87, dict(hx=4, hy=-3, curl=3, tilt=-6, ox=1, oy=-1, otilt=-2)),
+], LAG)
+
+
+def pose(rig, stumps, v=READY, t=0.0, alive=HEADS):
+    """Cổ lắc lư theo sóng, lệch pha giữa các đầu; đầu sống thấp nhất (gần
+    người chơi) ra đòn theo kênh [v]; đầu đã chém thu vào dưới gốc cụt."""
     rig.rest()
-    windup, strike, recover = attack_pose(attack)
     current = HEADS - alive
     breath = math.sin(t * 2 * math.pi)
     for k in range(len(COIL) - 1):
@@ -135,10 +158,10 @@ def pose(rig, stumps, t=0.0, attack=-1.0, alive=HEADS):
     ang = 0.0
     for k in range(len(TAIL) - 1):
         a, b = TAIL[k], TAIL[k + 1]
-        ang += math.radians(5 * math.sin(t * 2 * math.pi + k * 0.8) * (k + 1) / 2)
-        v = Vector((b[0] - a[0], b[1] - a[1]))
+        ang += math.radians(5 * math.sin(t * 2 * math.pi - k * 0.8) * (k + 1) / 2)
+        d = Vector((b[0] - a[0], b[1] - a[1]))
         c, s = math.cos(ang), math.sin(ang)
-        nxt = (prev[0] + v.x * c - v.y * s, prev[1] + v.x * s + v.y * c, b[2])
+        nxt = (prev[0] + d.x * c - d.y * s, prev[1] + d.x * s + d.y * c, b[2])
         rig.set(f"tail_{k}", prev, nxt)
         prev = nxt
 
@@ -156,24 +179,23 @@ def pose(rig, stumps, t=0.0, attack=-1.0, alive=HEADS):
             rig.arm.pose.bones[f"head{i}"].scale = (0.02, 0.02, 0.02)
             continue
         ph = t * 2 * math.pi + i * 1.7
-        dx = math.sin(ph) * 3.5
-        dy = math.cos(ph) * 3
-        tilt = math.sin(ph + 1) * 6
         if i == current:
-            dx += 14 * windup - 34 * strike - 6 * recover
-            dy += -12 * windup + 34 * strike
-            tilt += -18 * windup + 22 * strike
+            hx, hy, curl, tilt = v["hx"], v["hy"], v["curl"], v["tilt"]
         else:
-            dx += 4 * windup
-            dy += -4 * windup
+            hx, hy, curl, tilt = v["ox"], v["oy"], 0.0, v["otilt"]
         pts = []
         for k, p in enumerate(chain):
-            f = (k / (len(chain) - 1)) ** 1.3
-            pts.append((p[0] + dx * f, p[1] + dy * f, p[2]))
+            f = k / (len(chain) - 1)
+            w = f ** 1.2
+            # Sóng chạy từ gốc lên đầu (pha trễ theo f) + dời đầu + võng chữ S.
+            dx = 3.5 * math.sin(ph - 1.6 * f) * w + hx * f ** 1.3 + curl * math.sin(math.pi * f)
+            dy = 3.0 * math.cos(ph - 1.6 * f) * w + hy * f ** 1.3 - 0.4 * curl * math.sin(math.pi * f)
+            pts.append((p[0] + dx, p[1] + dy, p[2]))
         for k in range(len(pts) - 1):
             rig.set(f"n{i}_{k}", pts[k], pts[k + 1])
         h = pts[-1]
         sn = SNOUTS[i]
+        tilt += 6 * math.sin(ph - 0.6)  # đầu lắc trễ sau cổ
         tip = rot2((h[0] + sn[0] - chain[-1][0], h[1] + sn[1] - chain[-1][1], sn[2]), h, math.radians(tilt))
         rig.set(f"head{i}", h, (tip[0], tip[1], sn[2]))
     bpy.context.view_layer.update()
@@ -205,10 +227,10 @@ def main():
         out = os.path.join(ROOT, "build", "blender", "hydra_tripo")
         os.makedirs(out, exist_ok=True)
         setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=3.4, yaw=-14, pitch=6)
-        for name, alive, kw in (("idle", 3, dict(t=0)), ("windup", 3, dict(t=0.2, attack=0.4)),
-                                ("strike", 3, dict(t=0.2, attack=0.58)), ("cut1", 2, dict(t=0.5)),
-                                ("cut2", 1, dict(t=0.2, attack=0.58))):
-            pose(rig, stumps, alive=alive, **kw)
+        for name, alive, v, t in (("idle", 3, READY, 0), ("coil", 3, ATTACK.at(0.45), 0.3),
+                                  ("strike", 3, ATTACK.at(0.6), 0.4), ("cut1", 2, READY, 0.5),
+                                  ("cut2", 1, ATTACK.at(0.6), 0.4)):
+            pose(rig, stumps, v, t, alive)
             render_to(scene, os.path.join(out, f"hydra_{name}.png"))
         pose(rig, stumps)
         save_blend("young_hydra_tripo")
@@ -216,10 +238,12 @@ def main():
     cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=2.9, yaw=-14, pitch=6)
     anims = {}
     for alive in (1, 2, 3):
-        def run(alive=alive, **kw):
-            pose(rig, stumps, alive=alive, **kw)
-        anims[f"idle_h{alive}"] = [lambda k=k, run=run: run(t=k / 4) for k in range(4)]
-        anims[f"attack_h{alive}"] = [lambda k=k, run=run: run(t=0.2, attack=k / 5) for k in range(6)]
+        def run(v, t, alive=alive):
+            pose(rig, stumps, v, t, alive)
+        anims[f"idle_h{alive}"] = [lambda k=k, run=run: run(READY, k / 6) for k in range(6)]
+        # Đòn 1,2 s trên chu kỳ lắc 2,8 s: các đầu khác vẫn lắc tiếp trong lúc mổ.
+        anims[f"attack_h{alive}"] = [lambda k=k, run=run: run(ATTACK.at(k / 11), 0.2 + k / 11 * 1.2 / 2.8)
+                                     for k in range(12)]
     export_sprites(scene, cam, "young_hydra", anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.8})
     pose(rig, stumps)
     save_blend("young_hydra_tripo")

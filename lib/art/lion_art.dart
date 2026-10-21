@@ -242,6 +242,20 @@ void paintLion(Canvas canvas, LionState s) {
 /// và nhịp đòn với [paintLion]): thân, bờm, bóng đổ đã có trong ảnh; ở đây
 /// chỉ thêm phần đọc nhịp trận — bụi cào đất khi lấy đà, rung gầm gừ, vệt
 /// vuốt, sóng gầm, khiên da loé khi bị chặn, Trì Trệ rời xác khi gục.
+/// Điểm [key] (danh sách [x, y] từng khung trong meta atlas) tại tiến độ [p].
+Offset? _spriteTrack(SpriteAtlas sprite, String key, double p) {
+  final list = sprite.meta[key] as List?;
+  if (list == null || list.length < 2) return null;
+  Offset at(int i) {
+    final t = list[i] as List;
+    return Offset((t[0] as num).toDouble(), (t[1] as num).toDouble());
+  }
+
+  final pos = p.clamp(0.0, 1.0) * (list.length - 1);
+  final i = math.min(pos.floor(), list.length - 2);
+  return Offset.lerp(at(i), at(i + 1), pos - i)!;
+}
+
 void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
   final t = s.time;
   final fall = _smooth(s.defeat);
@@ -272,25 +286,41 @@ void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
     sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt);
   } else if (s.wrestled >= 0 && sprite.has('wrestled')) {
     sprite.draw(canvas, 'wrestled', s.wrestled, flash: s.hurt);
-  } else if (p >= 0 && s.pounce && sprite.has('pounce')) {
-    sprite.draw(canvas, 'pounce', p, flash: s.hurt);
-  } else if (p >= 0 && sprite.has('attack')) {
-    sprite.draw(canvas, 'attack', p, flash: s.hurt);
+  } else if (p >= 0 && sprite.has(s.pounce ? 'pounce' : 'attack')) {
+    // Quanh cú vồ (0,48–0,7) không hoà hai khung kề nhau (chân thành bốn).
+    sprite.draw(
+      canvas,
+      s.pounce ? 'pounce' : 'attack',
+      p,
+      flash: s.hurt,
+      snap: p > 0.48 && p < 0.7,
+    );
   } else {
     final period = sprite.metaDouble('idlePeriod', 3);
     sprite.draw(canvas, 'idle', t / period, loop: true, flash: s.hurt);
   }
 
-  // Vị trí đầu và vuốt theo cùng công thức với pose() trong lion_nemea.py.
+  // Vị trí đầu và vuốt: track từng khung ghi trong atlas lúc render
+  // (tracks() của tool/blender/lion_tripo.py, độ dời so với dáng chờ); atlas
+  // cũ không có thì theo công thức của pose() trong lion_nemea.py.
   final shift = 10 * windup - 18 * strike + 10 * fall;
   final drop = 6 * windup + 34 * fall;
-  final head = Offset(-74 + shift - 16 * strike, -104 + drop + 26 * fall + 9);
+  final attacking = p >= 0 && fall == 0 && s.wrestled < 0;
+  final headMove = attacking
+      ? _spriteTrack(sprite, s.pounce ? 'headPounce' : 'headAttack', p)
+      : null;
+  final head = headMove != null
+      ? const Offset(-74, -95) + headMove
+      : Offset(-74 + shift - 16 * strike, -104 + drop + 26 * fall + 9);
   final swipe = strike * (1 - fall);
-  if (swipe > 0.25) {
+  if (swipe > 0.25 && !s.pounce) {
+    final pawMove = attacking ? _spriteTrack(sprite, 'pawAttack', p) : null;
     final ground = Offset(-62 + 10 * windup - 36 * fall, 0);
     _clawTrails(
       canvas,
-      Offset.lerp(ground, const Offset(-120, -56), swipe)!,
+      pawMove != null
+          ? const Offset(-62, 0) + pawMove
+          : Offset.lerp(ground, const Offset(-120, -56), swipe)!,
       swipe,
     );
   }

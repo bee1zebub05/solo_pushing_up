@@ -352,3 +352,34 @@ của `lion_nemea.py`. Script: `tool/blender/lion_tripo.py`.
   không sẽ tách khỏi thân khi cử động. Khuỷu tay IK chọn phía chĩa xuống/ra sau.
 - Dấu hiệu báo đòn vẽ trong bản vector (mũi tên lợn rừng, sao mũi giáo) phải
   vẽ lại cho nhánh sprite: tính vị trí từ chính công thức pose() trong Blender.
+- **Biên đạo theo khoá (21/10, lính đá):** `pose()` nội suy thẳng giữa ba thế
+  (lấy đà/ra đòn/thu) trông cứng và "vung tay". Thay bằng `tool/blender/choreo_kit.py`
+  (bản gọn của biên đạo nhánh chương Nhật): khoá thưa quanh dáng chờ, nội suy
+  cubic đơn điệu, `lag` từng kênh (hông → thân → khiên → tay → giáo → đầu),
+  khoá lặp lại = giữ thế (nén trước cú đâm, khựng ở đỉnh đòn); bước = nhấc
+  chân; 20 khung đòn chia đều + `SpriteAtlas.draw(snap:)` quanh pha ra đòn để
+  không hiện hai cây giáo chồng nhau. Vị trí mũi giáo từng khung ghi vào atlas
+  (`spearTip`) cho sao báo đòn, không chép số tay.
+  Cùng ngày làm lại theo cách này cả lợn rừng, Harpy, Hydra, sư tử (mỗi script
+  có `READY` + `Move` cho từng động tác + `idle_channels(t)` vòng lặp liền).
+  Track ghi vào atlas: `headTrack` (Harpy → túi vàng, sóng rít), `headAttack`
+  / `pawAttack` / `headPounce` (sư tử → sóng gầm, vệt vuốt, khiên). Giữ số
+  trang atlas như cũ bằng `repack_sprites.py --scale` (0,7–0,85).
+  Nhịp riêng: Harpy đập cánh xuống nhanh, nâng chậm (pha cong
+  `arg = ph + 0,5 sin ph`); Hydra cổ uốn theo sóng (pha trễ theo vị trí trên
+  cổ) + võng chữ S khi thu thế; lợn rừng lấy đà theo `charge` của cơ chế
+  (sân khấu tự diễn nốt pha thu về khi `charge` về 0, lao 120 đơn vị theo pha
+  — trước đây nhảy cóc). Soát dấu kênh bằng ảnh cực trị trước khi biên đạo:
+  đầu lợn rừng `rot2` dương là NGẨNG (chú thích cũ ghi ngược).
+- **Cảnh mở màn trồi từ dưới đất (lính đá 1.3, 1.7):** `rise` cũ chỉ diễn khi
+  lính đá canh hang ráp lại → vào trận thấy đứng sẵn. Nay `BossArt.introSeconds`
+  (sân khấu lùi đòn doạ đầu tiên) + `rise` 16 khung theo kiểu xác sống trồi
+  khỏi mộ: chìm sâu (`sink` 154) để mũi giáo ló trước, tay giơ thẳng, mũ, vai;
+  mặt hứng bóng che phần dưới đất. Đất nứt/hố/gò/đá văng/bụi vẽ ở sân khấu
+  (`_risingEarth`, hố trước sprite, gò + đá sau sprite). Đá vụn vẽ hình góc
+  cạnh xoay theo đà — hình tròn trông như chuỗi hạt.
+- Bẫy gặp lúc làm lính đá: Tripo dính **ống chân + bàn chân vào cùng mảnh
+  khiên** → ghim cả mảnh vào xương khiên thì chân không bước được (chỉ ghim
+  phần trên mặt khiên, ghim SAU `smooth_weights`); chân gần duỗi thẳng che
+  mất lỗi chiều gập gối — có khuỵu gối thì phải soát IK (gối chĩa tới trước).
+  In nhóm đỉnh trội theo xương (số đỉnh, khoảng toạ độ) trước khi tin rig.

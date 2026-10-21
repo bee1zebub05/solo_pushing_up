@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
+from choreo_kit import Move  # noqa: E402
 from tripo_kit import import_tripo, smooth_weights  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "lon_rung_Erymanthus.glb")
@@ -65,13 +66,64 @@ def build():
     return rig
 
 
-def pose(rig, t=0.0, attack=-1.0):
+# Biên đạo (choreo_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
+#   shift, drop   dời thân (x dương = lùi, y dương = hạ thấp)
+#   tilt          nghiêng thân quanh hông (độ, âm = hạ vai, chổng mông)
+#   head          gằm đầu (độ, + = cúi, âm = hất nanh lên); hx, hy dời gốc đầu
+#   fnx, fnl / ffx, ffl   móng trước gần / xa: dời ngang, nhấc lên
+#   bnx, bfx, bl  móng sau gần / xa dời ngang, nhấc lên (cả hai)
+#   tail, wag     đuôi cong lên (độ), biên độ vẫy
+# Lợn rừng: nặng đầu, nóng nảy — khịt, cào đất, dồn sức chân sau rồi bật
+# một phát; sau cú húc lắc đầu như rũ máu.
+READY = dict(shift=0, drop=0, tilt=0, head=0, hx=0, hy=0, fnx=0, fnl=0, ffx=0, ffl=0,
+             bnx=0, bfx=0, bl=0, tail=0, wag=4)
+LAG = dict(tilt=0.006, hx=0.012, hy=0.012, head=0.02, tail=0.04, wag=0.04)
+
+# Đòn húc (tiến độ sân khấu: lấy đà 0–0,5 — sân khấu cũng phát nửa này chậm
+# theo `charge` khi báo húc thật — ra đòn 0,5–0,65, chạm ~0,58, thu về).
+ATTACK = Move(READY, [
+    (0.06, dict(drop=1, head=5, tail=10, wag=2)),
+    (0.14, dict(shift=4, tilt=-2, head=10, fnx=-6, fnl=7, tail=18)),
+    (0.21, dict(shift=5, fnx=-4, fnl=0)),
+    (0.28, dict(shift=7, tilt=-4, drop=2, head=13, fnx=10, fnl=0)),
+    (0.34, dict(shift=9, fnx=-6, fnl=7)),
+    (0.40, dict(shift=10, fnx=-4, fnl=0)),
+    (0.45, dict(shift=12, tilt=-6, drop=3, head=16, fnx=8, fnl=0, bnx=4, bfx=4, tail=28)),
+    (0.49, dict(shift=13, tilt=-7, drop=4, head=17, fnx=2, fnl=0, bnx=5, bfx=5, bl=0)),
+    (0.53, dict(shift=-8, drop=-2, tilt=1, head=12, fnx=-14, fnl=8, ffx=-12, ffl=6, bnx=8, bfx=8, bl=0, tail=35, wag=0)),
+    (0.58, dict(shift=-34, drop=0, tilt=4, head=-30, hx=-4, hy=-4, fnx=-26, fnl=4, ffx=-24, ffl=2,
+                bnx=-14, bfx=-16, bl=4, tail=30)),
+    (0.66, dict(shift=-36, tilt=3, head=-34, hx=-5, hy=-5, fnx=-28, fnl=0, ffx=-26, ffl=0, bnx=-18, bfx=-20, bl=0)),
+    (0.76, dict(shift=-26, tilt=0, head=10, hx=-2, hy=2, fnx=-20, bnx=-14, bfx=-16, tail=20)),
+    (0.84, dict(shift=-14, head=-8, hx=0, hy=0, fnx=-10, fnl=4, ffx=-12, bnx=-6, bfx=-8)),
+    (0.92, dict(shift=-4, head=4, fnx=-2, fnl=0, ffx=-2, bnx=0, bfx=0, tail=8, wag=3)),
+], LAG)
+
+
+def idle_channels(t):
+    """Đứng thở nặng: thân phập phồng, cứ mỗi chu kỳ khịt mũi hất đầu một
+    cái, móng trước dồn trọng lượng, đuôi vẫy — vòng lặp liền."""
+    a = 2 * math.pi * t
+    snort = max(0.0, math.sin(a)) ** 6  # nhói ngắn quanh giữa nửa chu kỳ đầu
+    v = dict(READY)
+    v.update(
+        drop=-0.8 * (0.5 + 0.5 * math.sin(a)) + 0.6 * math.sin(2 * a),
+        shift=0.8 * math.sin(a + 0.4),
+        tilt=0.8 * math.sin(a - 0.3),
+        head=3 * math.sin(a - 0.8) - 7 * snort,
+        hy=-1.0 * snort,
+        fnx=0.8 * math.sin(a + 1.0),
+        tail=6 * math.sin(a - 1.5),
+        wag=6,
+    )
+    return v
+
+
+def pose(rig, v, t=0.0):
+    """Đặt dáng theo kênh biên đạo [v] (xem READY); [t] = thời gian vòng vẫy đuôi."""
     rig.rest()
-    breath = math.sin(t * 2 * math.pi) * 0.5 + 0.5
-    windup, strike, recover = attack_pose(attack)
-    shift = 12 * windup - 34 * strike
-    drop = 3 * windup - breath * 1.0
-    tilt = math.radians(-5 * windup + 3 * strike)  # lấy đà: hạ vai, chổng mông
+    shift, drop = v["shift"], v["drop"]
+    tilt = math.radians(v["tilt"])
 
     def body_pt(p):
         q = rot2(p, (10, -50), tilt)
@@ -79,28 +131,20 @@ def pose(rig, t=0.0, attack=-1.0):
 
     rig.set("body", body_pt(BONES["body"][0]), body_pt(BONES["body"][1]))
     rig.set("chest", body_pt(BONES["chest"][0]), body_pt(BONES["chest"][1]))
-    # Đầu: cúi gằm khi lấy đà, hất nanh lên khi húc; khịt mũi nhẹ lúc đứng.
     hb = BONES["head"]
-    head_rot = math.radians(14 * windup - 30 * strike + 10 * recover + 2 * math.sin(t * 4 * math.pi))
     h0 = body_pt(hb[0])
-    h0 = (h0[0] - 4 * strike, h0[1] + 6 * windup - 4 * strike, 0)
+    h0 = (h0[0] + v["hx"], h0[1] + v["hy"], 0)
     rig.set("neck", body_pt(BONES["neck"][0]), h0)
-    rig.set("head", h0, rot2((h0[0] + hb[1][0] - hb[0][0], h0[1] + hb[1][1] - hb[0][1], 0), h0, head_rot))
+    rig.set("head", h0, rot2((h0[0] + hb[1][0] - hb[0][0], h0[1] + hb[1][1] - hb[0][1], 0), h0,
+                             tilt - math.radians(v["head"])))  # rot2 dương = ngẩng
 
-    # Chân: chân trước gần cào đất lúc lấy đà; ra đòn chân trước vươn, chân sau đạp.
-    scrape = math.sin(windup * math.pi * 3) * windup
+    paws = {"fl_n": (v["fnx"], v["fnl"]), "fl_f": (v["ffx"], v["ffl"]),
+            "bl_n": (v["bnx"], v["bl"]), "bl_f": (v["bfx"], v["bl"])}
     for leg, j in LEGS.items():
         hip = body_pt(j[0])
-        paw = list(j[3])
         front = leg.startswith("f")
-        if leg == "fl_n":
-            paw[0] += 10 * scrape - 14 * strike
-            paw[1] -= 6 * max(0.0, scrape) + 10 * strike
-        elif front:
-            paw[0] -= 8 * strike
-        else:
-            paw[0] += 4 * windup + 10 * strike
-        paw[0] += shift * (0.0 if not front else 0.2)
+        dx, lift = paws[leg]
+        paw = (j[3][0] + dx + shift * (0.2 if front else 0.0), j[3][1] - lift, j[3][2])
         ankle = (paw[0] + (j[2][0] - j[3][0]), paw[1] + (j[2][1] - j[3][1]), j[3][2])
         l1 = math.dist(j[1][:2], j[0][:2])
         l2 = math.dist(j[2][:2], j[1][:2])
@@ -108,13 +152,13 @@ def pose(rig, t=0.0, attack=-1.0):
         knee = (knee[0], knee[1], j[0][2])
         rig.set(leg + "_1", (hip[0], hip[1], j[0][2]), knee)
         rig.set(leg + "_2", knee, ankle)
-        rig.set(leg + "_3", ankle, tuple(paw))
+        rig.set(leg + "_3", ankle, paw)
 
     prev = body_pt(TAIL[0])
-    ang = 0.0
+    ang = tilt
     for i in range(len(TAIL) - 1):
         a, b = TAIL[i], TAIL[i + 1]
-        ang += math.radians(14 * math.sin(t * 6 * math.pi + i) + 20 * windup)
+        ang += math.radians(v["wag"] * 3 * math.sin(t * 6 * math.pi + i) + v["tail"] * 0.7)
         dx, dy = b[0] - a[0], b[1] - a[1]
         c, s = math.cos(ang), math.sin(ang)
         nxt = (prev[0] + dx * c - dy * s, prev[1] + dx * s + dy * c, 0)
@@ -152,20 +196,20 @@ def main():
         out = os.path.join(ROOT, "build", "blender", "boar_tripo")
         os.makedirs(out, exist_ok=True)
         setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=4.0, yaw=-14, pitch=6)
-        for name, kw in (("idle", dict(t=0)), ("windup", dict(t=0.2, attack=0.4)),
-                         ("strike", dict(t=0.2, attack=0.58))):
-            pose(rig, **kw)
+        for name, v in (("idle", idle_channels(0.25)), ("scrape", ATTACK.at(0.28)), ("coil", ATTACK.at(0.49)),
+                        ("burst", ATTACK.at(0.53)), ("strike", ATTACK.at(0.6)), ("shake", ATTACK.at(0.78))):
+            pose(rig, v, 0.2)
             render_to(scene, os.path.join(out, f"boar_{name}.png"))
-        pose(rig, 0)
+        pose(rig, READY)
         save_blend("erymanthian_boar_tripo")
         return
     cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=3.4, yaw=-14, pitch=6)
     anims = {
-        "idle": [lambda k=k: pose(rig, k / 6) for k in range(6)],
-        "attack": [lambda k=k: pose(rig, 0.2, attack=k / 9) for k in range(10)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 8), k / 8) for k in range(8)],
+        "attack": [lambda k=k: pose(rig, ATTACK.at(k / 19), k / 19) for k in range(20)],
     }
-    export_sprites(scene, cam, "erymanthian_boar", anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.2})
-    pose(rig, 0)
+    export_sprites(scene, cam, "erymanthian_boar", anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.6})
+    pose(rig, READY)
     save_blend("erymanthian_boar_tripo")
 
 

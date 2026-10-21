@@ -11,20 +11,20 @@ về phía máy quay, tay giáo (phải) phía xa — như bản cũ. Giáo và 
 mảnh lưới riêng: gắn cứng vào xương riêng, đặt vào bàn tay mỗi khung, nên
 giáo dựng đứng lúc đứng và chĩa ngang lúc đâm mà cẳng tay không phải bẻ.
 
-Động tác: idle, attack (thế đâm từ trên vai của hoplite), rise (trồi lên
-từ đống đá: lúc mở màn và lúc ráp lại ở màn 1.7).
+Động tác theo biên đạo khoá (choreo_kit, xem ATTACK/RISE): idle (thế thủ
+thở chậm), attack (đâm giáo qua vai kiểu hoplite: lấy đà – nén – bước dậm –
+khựng – thu), rise (trồi lên từ đống đá: lúc mở màn và lúc ráp lại ở 1.7).
 """
 
 import math
 import os
 import sys
 
-from mathutils import Vector
-
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
+from choreo_kit import Move  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, pin_to_bone, smooth_weights  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "ancient warrior 3d model.glb")
@@ -85,6 +85,7 @@ def build():
     isl = islands(mesh)
     # Mảnh riêng: giáo là cột mảnh dựng đứng cao nhất, khiên là đĩa phía gần.
     co = [v.co / S for v in mesh.data.vertices]
+    pins = []
     for k in range(1, 6):
         ids = [i for i in range(len(co)) if isl[i] == k]
         if not ids:
@@ -95,45 +96,117 @@ def build():
         tall = max(zs) - min(zs) > 80 and max(xs) - min(xs) < 10
         disk = min(ds) < -25 and max(zs) - min(zs) > 30
         if tall:
-            pin_to_bone(mesh, ids, "spear")
+            pins.append((ids, "spear"))
         elif disk:
-            pin_to_bone(mesh, ids, "shield")
-    # Mảnh nhỏ còn lại (khoá ống đồng, quai, mào): đi theo chỗ thân cạnh nó.
+            # Tripo dính ống chân + bàn chân vào cùng mảnh khiên: chỉ ghim
+            # phần nằm trên mặt khiên, còn lại để da theo xương chân (trước
+            # đây cả mảnh theo khiên → chân không bước được).
+            pins.append(([i for i in ids if co[i].y < -23 and co[i].z > 30], "shield"))
+    # Ghim sau khi làm mượt (không pha trọng số khiên với chân dính liền);
+    # mảnh nhỏ còn lại (khoá ống đồng, quai, mào) đi theo chỗ cạnh nó.
     smooth_weights(mesh, islands_below=0)
+    for ids, bone in pins:
+        pin_to_bone(mesh, ids, bone)
     follow_nearest(mesh, isl, skip_groups=("spear", "shield"))
     rig.bind(mesh)
     return rig
 
 
-def pose(rig, t=0.0, attack=-1.0, rise=1.0):
-    """Đứng thủ thế; lấy đà = ngả người, giương giáo lên vai, mũi giáo chĩa
-    tới; ra đòn = bước lao, đâm thẳng; rise 0 → 1: trồi lên từ đống đá."""
+# Biên đạo (choreo_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
+#   hipx, hipy  dời hông (x âm = tới trước, y dương = hạ thấp)
+#   tilt        ngả thân quanh hông (độ, + = ngả ra sau)
+#   head        gằm đầu (độ, + = cúi nhìn qua vành khiên)
+#   sink        cả tượng chìm trong đống đá (trồi lên)
+#   nx, nl / fx, fl   bàn chân gần / xa: dời ngang, nhấc lên
+#   hx, hy      tay giáo so với vai
+#   spear       hướng giáo (độ: 90 = dựng đứng, 0 = chĩa thẳng tới, âm = chúc mũi)
+#   sx, sy, srot      tay khiên: dời so với chỗ cũ, nghiêng khiên
+# Tượng đá nặng: không nảy, không vọt; trọng tâm đi trước, tay sau, giáo và
+# đầu trễ nhất — chậm, chắc, đúng kỹ thuật phalanx.
+READY = dict(hipx=0, hipy=3, tilt=-2, head=2, sink=0, nx=0, nl=0, fx=0, fl=0,
+             hx=-18, hy=17, spear=80, sx=-2, sy=-1, srot=0)
+LAG = dict(tilt=0.008, sx=0.012, sy=0.012, srot=0.016, hx=0.02, hy=0.02, spear=0.03, head=0.035)
+
+# Đòn đâm giáo hoplite (tiến độ sân khấu: lấy đà 0–0,5, ra đòn 0,5–0,65 —
+# chạm ~0,55 — rồi thu về): hạ trọng tâm, nâng khiên → dồn sức chân sau,
+# giương giáo qua vai cầm ngược tay (dory), mũi chĩa tới, nén thế → bước
+# dậm chân trước, hông dẫn, thân đổ tới, tay duỗi phóng giáo ngang ngực →
+# khựng ở đỉnh đòn → rút giáo, lùi chân về thế thủ.
+ATTACK = Move(READY, [
+    (0.10, dict(hipy=6, tilt=1, head=5, sx=-5, sy=-5, srot=-4, spear=74)),
+    (0.26, dict(hipx=4, hipy=5, tilt=7, head=6, hx=-2, hy=-12, spear=40, sx=-7, sy=-7, srot=-6)),
+    (0.40, dict(hipx=7, hipy=6, tilt=12, head=7, hx=6, hy=-29, spear=5, sx=-8, sy=-8, srot=-8, fx=1)),
+    (0.48, dict(hipx=8, hipy=7, tilt=13, head=7, hx=7, hy=-30, spear=3, sx=-8, sy=-8, srot=-8, fx=1, nx=0, nl=0)),
+    (0.52, dict(hipx=1, hipy=5, tilt=2, nx=-7, nl=4, hx=-8, hy=-19, spear=-6)),
+    (0.56, dict(hipx=-9, hipy=7, tilt=-11, head=4, nx=-14, nl=0, fx=-2, hx=-30, hy=-7, spear=-10, sx=-3, sy=-5, srot=-2)),
+    (0.66, dict(hipx=-10, hipy=8, tilt=-12, head=4, nx=-14, nl=0, fx=-2, hx=-31, hy=-6, spear=-11, sx=-3, sy=-5, srot=-2)),
+    (0.78, dict(hipx=-5, hipy=6, tilt=-6, nx=-14, nl=0, fx=-1, hx=-17, hy=1, spear=22, sx=-4, sy=-4)),
+    (0.86, dict(hipx=-2, hipy=4, nx=-7, nl=3, fx=0)),
+    (0.93, dict(nx=0, nl=0, hx=-18, hy=15, spear=74)),
+], LAG)
+
+# Trồi lên từ dưới đất (kiểu xác sống trồi khỏi mộ; sân khấu vẽ thêm đất
+# nứt, ụ đất, đá văng — nemea_monster_art _risingEarth): mũi giáo ló lên như
+# đầu ngón tay → bàn tay nắm giáo vọt lên, cánh tay vươn thẳng, quơ quơ →
+# mũ ngù trồi lên (đầu còn gằm) → vai, khiên; tay khiên chống đất đẩy người
+# lên → đứng dậy, đầu ngẩng SAU CÙNG, vào thế thủ. Phần dưới mặt đất bị mặt
+# hứng bóng che, nên trong sprite chỉ thấy phần đã trồi.
+RISE = Move(READY, [
+    (0.0, dict(sink=154, hipy=8, tilt=-22, head=34, hx=1, hy=-32, spear=92, sx=6, sy=10, srot=14)),
+    (0.12, dict(sink=148, hx=1, hy=-32, spear=90)),
+    (0.22, dict(sink=104, tilt=-24, head=36, hx=-3, hy=-33, spear=96)),
+    (0.30, dict(sink=94, hx=-9, hy=-31, spear=106)),
+    (0.38, dict(sink=89, hx=5, hy=-32, spear=80)),
+    (0.46, dict(sink=80, tilt=-22, head=32, hx=-6, hy=-31, spear=100, sx=-6, sy=0, srot=6)),
+    (0.56, dict(sink=58, hipy=10, tilt=-20, head=30, hx=-10, hy=-24, spear=96, sx=-16, sy=-2, srot=2)),
+    (0.68, dict(sink=30, hipy=13, tilt=-16, head=24, hx=-14, hy=4, spear=94, sx=-14, sy=6, srot=0)),
+    (0.80, dict(sink=6, hipy=12, tilt=-8, head=16, hx=-17, hy=14, spear=86, sx=-6, sy=2, srot=-1)),
+    (0.90, dict(sink=0, hipy=6, tilt=-3, head=8, hx=-18, hy=17, spear=80, sx=-3, sy=-1, srot=0)),
+], dict(LAG, head=0.08, spear=0.03))
+
+
+def idle_channels(t):
+    """Thế thủ thở chậm: trọng tâm đổi nhẹ trước–sau, mũi giáo lượn vòng nhỏ
+    theo sau, khiên chỉnh theo — vòng lặp liền (hàm của 2πt)."""
+    a = 2 * math.pi * t
+    v = dict(READY)
+    v.update(
+        hipx=READY["hipx"] + 1.2 * math.sin(a),
+        hipy=READY["hipy"] + 0.8 * math.sin(2 * a),
+        tilt=READY["tilt"] + 1.5 * math.sin(a - 0.5),
+        head=READY["head"] + 2.0 * math.sin(a - 1.2),
+        hx=READY["hx"] + 1.0 * math.sin(a - 0.8),
+        hy=READY["hy"] - 0.8 * math.cos(a - 0.8),
+        spear=READY["spear"] + 4.0 * math.sin(a - 1.4),
+        sx=READY["sx"] + 0.8 * math.sin(a - 0.6),
+        srot=READY["srot"] + 2.0 * math.sin(a - 1.0),
+    )
+    return v
+
+
+def pose(rig, v):
+    """Đặt dáng theo kênh biên đạo [v] (xem READY)."""
     rig.rest()
-    windup, strike, recover = attack_pose(attack)
-    breath = math.sin(t * 2 * math.pi)
-    sink = 62 * (1 - smooth(rise))
-    tilt = math.radians(5 * windup - 10 * strike + 18 * (1 - rise))
-    shift = 3 * windup - 10 * strike
-    lift = -0.6 * breath  # ngực phồng nhẹ khi thở
+    tilt = math.radians(v["tilt"])
+    sink = v["sink"]
 
-    def body_pt(p, chest=False):
+    def body_pt(p):
         q = rot2(p, HIP[:2], tilt)
-        return (q[0] + shift, q[1] + sink + (lift if chest else 0), p[2])
+        return (q[0] + v["hipx"], q[1] + v["hipy"] + sink, p[2])
 
-    rig.set("spine", body_pt(HIP), body_pt(CHEST, True))
-    neck = body_pt(NECK, True)
-    head_rot = math.radians(-4 * strike + 3 * windup)
-    rig.set("head", neck, rot2((neck[0] + CROWN[0] - NECK[0], neck[1] + CROWN[1] - NECK[1], NECK[2]), neck, tilt + head_rot))
+    rig.set("spine", body_pt(HIP), body_pt(CHEST))
+    neck = body_pt(NECK)
+    crown = (neck[0] + CROWN[0] - NECK[0], neck[1] + CROWN[1] - NECK[1], NECK[2])
+    rig.set("head", neck, rot2(crown, neck, tilt - math.radians(v["head"])))
 
-    # Chân: bàn chân bám đất (trừ khi đang trồi lên), chân gần bước tới khi đâm.
+    # Chân: IK, bàn chân bám đất (chìm theo sink lúc trồi lên); bước = nhấc chân.
     for s, j in LEG.items():
         hip = body_pt(j[0])
-        step = -8 * strike if s == "n" else 0
-        paw = (j[3][0] + step + shift * 0.3, j[3][1] + sink, j[3][2])
+        paw = (j[3][0] + v[s + "x"], j[3][1] + sink - v[s + "l"], j[3][2])
         ankle = (paw[0] + j[2][0] - j[3][0], paw[1] + j[2][1] - j[3][1], j[2][2])
         l1 = math.dist(j[0][:2], j[1][:2])
         l2 = math.dist(j[1][:2], j[2][:2])
-        knee = two_bone(hip, ankle, l1, l2, -1)
+        knee = two_bone(hip, ankle, l1, l2, 1)  # gối chĩa tới trước
         knee = (knee[0], knee[1], j[1][2])
         rig.set(f"thigh_{s}", (hip[0], hip[1], j[0][2]), knee)
         rig.set(f"shin_{s}", knee, ankle)
@@ -141,41 +214,44 @@ def pose(rig, t=0.0, attack=-1.0, rise=1.0):
 
     def arm(s, hand):
         j = ARM[s]
-        sh = body_pt(j[0], True)
+        sh = body_pt(j[0])
         l1 = math.dist(j[0][:2], j[1][:2])
         l2 = math.dist(j[1][:2], j[2][:2])
         el = two_bone(sh, hand, l1, l2, -1)  # khuỷu chĩa xuống, ra sau
         el = (el[0], el[1], j[1][2])
         rig.set(f"upperarm_{s}", sh, el)
         rig.set(f"forearm_{s}", el, (hand[0], hand[1], j[2][2]))
-        return sh
 
-    # Tay giáo: đứng = nắm giáo dựng cạnh người; lấy đà = giương lên trên
-    # vai, kéo ra sau; đâm = duỗi thẳng tới trước ngang vai.
-    rest_hand = body_pt(ARM["f"][2], True)
-    sh = body_pt(ARM["f"][0], True)
-    back = (sh[0] + 10, sh[1] - 24)  # giáo nằm trên mũ, không cắt ngang mặt
-    thrust = (sh[0] - 36, sh[1] - 2)
-    hx = rest_hand[0] + (back[0] - rest_hand[0]) * windup
-    hy = rest_hand[1] + (back[1] - rest_hand[1]) * windup
-    hx += (thrust[0] - hx) * strike
-    hy += (thrust[1] - hy) * strike
-    arm("f", (hx, hy))
-    grip = (hx - 2, hy, GRIP[2])
-    aim = max(windup, strike)
-    up = Vector((0, -1))
-    fwd = Vector((-1, 0.14)).normalized()
-    d = up.lerp(fwd, smooth(aim)).normalized()
-    rig.set("spear", grip, (grip[0] + d.x * SPEAR_UP, grip[1] + d.y * SPEAR_UP, GRIP[2]))
+    # Tay giáo: vị trí nắm so với vai; giáo xoay quanh chỗ nắm.
+    sh = body_pt(ARM["f"][0])
+    hand = (sh[0] + v["hx"], sh[1] + v["hy"])
+    arm("f", hand)
+    grip = (hand[0] - 2, hand[1], GRIP[2])
+    a = math.radians(v["spear"])
+    rig.set("spear", grip, (grip[0] - math.cos(a) * SPEAR_UP, grip[1] - math.sin(a) * SPEAR_UP, GRIP[2]))
 
-    # Tay khiên: khiên che ngực, đẩy tới khi đâm.
-    rh = body_pt(ARM["n"][2], True)
-    hand_n = (rh[0] - 6 * strike - 2 * windup, rh[1] - 4 * windup)
+    # Tay khiên: khiên che ngực, nâng lên lúc lấy đà, nghiêng theo thân.
+    rh = body_pt(ARM["n"][2])
+    hand_n = (rh[0] + v["sx"], rh[1] + v["sy"])
     arm("n", hand_n)
     c0, c1 = SHIELD
     off = (c0[0] - ARM["n"][2][0], c0[1] - ARM["n"][2][1])
     center = (hand_n[0] + off[0], hand_n[1] + off[1], c0[2])
-    rig.set("shield", center, rot2((center[0], center[1] + c1[1] - c0[1], c0[2]), center, tilt))
+    rig.set("shield", center, rot2((center[0], center[1] + c1[1] - c0[1], c0[2]), center, tilt + math.radians(v["srot"])))
+
+
+def spear_tips(scene, cam, rig, setups):
+    """Mũi giáo (đơn vị sân khấu quanh chân) từng khung đòn — sân khấu loé
+    sao báo đòn đúng chỗ mũi giáo trong sprite (_spearGlint)."""
+    from sprite_kit import _px, frame_scale
+    anchor, ppu = frame_scale(scene, cam, (0, 0, 0), UNITS_PER_M)
+    out = []
+    for setup in setups:
+        setup()
+        bpy.context.view_layer.update()
+        p = _px(scene, cam, rig.arm.matrix_world @ rig.arm.pose.bones["spear"].tail)
+        out.append([round((p.x - anchor.x) / ppu, 1), round((p.y - anchor.y) / ppu, 1)])
+    return out
 
 
 def lights(scene):
@@ -194,21 +270,26 @@ def main():
         out = os.path.join(ROOT, "build", "blender", "stone_tripo")
         os.makedirs(out, exist_ok=True)
         camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 300)
-        for name, kw in (("idle", dict(t=0)), ("windup", dict(t=0.2, attack=0.45)),
-                         ("strike", dict(t=0.2, attack=0.6)), ("rise", dict(t=0, rise=0.5))):
-            pose(rig, **kw)
+        for name, v in (("idle", idle_channels(0)), ("raise", ATTACK.at(0.26)), ("coil", ATTACK.at(0.47)),
+                        ("step", ATTACK.at(0.53)), ("strike", ATTACK.at(0.6)),
+                        ("recover", ATTACK.at(0.82)), ("rise_tip", RISE.at(0.12)), ("rise_hand", RISE.at(0.3)),
+                        ("rise_helm", RISE.at(0.48)), ("rise_push", RISE.at(0.66)), ("rise_up", RISE.at(0.82))):
+            pose(rig, v)
             render_to(scene, os.path.join(out, f"stone_{name}.png"))
-        pose(rig)
+        pose(rig, READY)
         save_blend("stone_soldier_tripo")
         return
     cam = camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 200)
+    attack = [lambda k=k: pose(rig, ATTACK.at(k / 19)) for k in range(20)]
     anims = {
-        "idle": [lambda k=k: pose(rig, t=k / 6) for k in range(6)],
-        "attack": [lambda k=k: pose(rig, t=0.2, attack=k / 7) for k in range(8)],
-        "rise": [lambda k=k: pose(rig, t=0, rise=k / 5) for k in range(6)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 8)) for k in range(8)],
+        "attack": attack,
+        "rise": [lambda k=k: pose(rig, RISE.at(k / 15)) for k in range(16)],
     }
-    export_sprites(scene, cam, "stone_soldier", anims, (0, 0, 0), UNITS_PER_M, extra={"idlePeriod": 2.6})
-    pose(rig)
+    tips = spear_tips(scene, cam, rig, attack)
+    export_sprites(scene, cam, "stone_soldier", anims, (0, 0, 0), UNITS_PER_M,
+                   extra={"idlePeriod": 3.2, "spearTip": tips})
+    pose(rig, READY)
     save_blend("stone_soldier_tripo")
 
 

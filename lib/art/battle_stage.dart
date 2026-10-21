@@ -158,6 +158,10 @@ abstract class BossArt {
   /// `true` khi hình tự vẽ khói Trì Trệ rời xác lúc gục (sư tử).
   bool get ownsDefeatSmoke => false;
 
+  /// Cảnh mở màn của hình (lính đá trồi từ dưới đất…), giây: đòn doạ đầu
+  /// tiên chờ hết cảnh này.
+  double get introSeconds => 0;
+
   /// Sương Trì Trệ (shader GPU) sát mặt đất: màu (a = độ đậm tối đa) và hệ
   /// số mật độ. Sương tan theo máu boss — vùng đất được giải phóng dần.
   Color get mistColor => const Color(0xA86A4C8C);
@@ -632,7 +636,7 @@ class _BossComponent extends PositionComponent {
   late final Offset _anchor = art.bodyAnchor;
 
   /// Đếm ngược tới lần đe doạ tiếp theo; [_attackAge] là thời gian đã diễn.
-  double _nextAttack = 1.5;
+  late double _nextAttack = 1.5 + art.introSeconds;
   double _attackAge = _attackLength;
   static const _attackLength = 1.2;
   final _random = math.Random();

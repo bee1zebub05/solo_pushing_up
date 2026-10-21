@@ -120,7 +120,9 @@ class SpriteAtlas {
   /// [loop]: khung cuối nối về khung đầu. Hai khung kề nhau được hoà trộn
   /// theo phần lẻ để chuyển động mượt dù ít khung. [flash] 0–1: loé trắng
   /// khi trúng đòn. [tint]: nhân màu (lớp render trắng/xám trung tính, ví dụ
-  /// da và tóc nhân vật theo màu người chơi chọn).
+  /// da và tóc nhân vật theo màu người chơi chọn). [snap]: chỉ vẽ khung gần
+  /// nhất — quanh cú ra đòn nhanh hai khung kề nhau cách xa, hoà thì hiện
+  /// hai vũ khí chồng nhau.
   void draw(
     Canvas canvas,
     String anim,
@@ -129,11 +131,16 @@ class SpriteAtlas {
     double opacity = 1,
     double flash = 0,
     Color? tint,
+    bool snap = false,
   }) {
     final frames = anims[anim];
     if (frames == null || frames.isEmpty) return;
     final n = frames.length;
     final pos = loop ? (t % 1) * n : t.clamp(0.0, 1.0) * (n - 1);
+    if (snap) {
+      _frame(canvas, frames[pos.round() % n], opacity, flash, tint);
+      return;
+    }
     final i = pos.floor() % n;
     final j = loop ? (i + 1) % n : (i + 1).clamp(0, n - 1);
     final mix = pos - pos.floor();
