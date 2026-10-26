@@ -23,8 +23,10 @@ abstract final class HomeBannerArt {
   static const heroAt = Offset(68, 218);
   static const heroScale = 0.82;
 
-  static String sceneAsset({required bool freed}) =>
-      'assets/banner/scene_${freed ? 'clear' : 'dust'}.webp';
+  /// Cảnh chụp sẵn: phông vẽ màn 1.8 + Sư tử Nemea đúng cỡ trong trận.
+  /// [toon]: bản 2.5D (sư tử hoạt hình — atlas `nemea_lion_toon`).
+  static String sceneAsset({required bool freed, bool toon = false}) =>
+      'assets/banner/scene_${freed ? 'clear' : 'dust'}${toon ? '_toon' : ''}.webp';
 
   static String layerAsset(HeroSex sex, String layer) =>
       'assets/banner/hero_${sex.name}_$layer.webp';
@@ -57,6 +59,28 @@ abstract final class HomeBannerArt {
     for (final a in _assets(look, cloak: cloak, freed: freed))
       _loading[a] ??= _loadOne(a),
   ]);
+
+  /// Nạp cảnh 2.5D (nhân vật vẽ vector đè lên, không cần lớp ảnh nhân vật).
+  static Future<void> loadToonScene({required bool freed}) {
+    final a = sceneAsset(freed: freed, toon: true);
+    return _loading[a] ??= _loadOne(a);
+  }
+
+  /// Đã có cảnh 2.5D chụp sẵn (dùng khi ở chế độ 2.5D).
+  static bool toonSceneReady({required bool freed}) =>
+      !ArtModeSetting.blender &&
+      _images.containsKey(sceneAsset(freed: freed, toon: true));
+
+  /// Vẽ cảnh 2.5D chụp sẵn (gọi khi [toonSceneReady]).
+  static void paintToonScene(Canvas canvas, {required bool freed}) {
+    final scene = _images[sceneAsset(freed: freed, toon: true)]!;
+    canvas.drawImageRect(
+      scene,
+      Rect.fromLTWH(0, 0, scene.width.toDouble(), scene.height.toDouble()),
+      Offset.zero & stageSize,
+      _paint..colorFilter = null,
+    );
+  }
 
   static Future<void> _loadOne(String asset) async {
     try {

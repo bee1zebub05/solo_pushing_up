@@ -48,13 +48,16 @@ def crop(px):
     x0, x1 = max(xs.min() - m, 0), min(xs.max() + m + 1, w)
     y0, y1 = max(ys.min() - m, 0), min(ys.max() + m + 1, h)
     out = px[y0:y1, x0:x1].copy()
-    # Làm mờ phần bán trong suốt (bóng) sát mép cắt; thân đục giữ nguyên.
+    # Làm mờ bóng sát mép cắt. Bóng đậm (alpha ≥ BODY_ALPHA, nắng xiên dưới
+    # chân) cũng phải mờ, không thì lộ mép chữ nhật; thân thật luôn cách mép
+    # ít nhất lề [m] nên dải mờ ≤ m không chạm thân.
     ch, cw = out.shape[:2]
-    gx = np.minimum(np.arange(cw), np.arange(cw)[::-1]) / FEATHER
-    gy = np.minimum(np.arange(ch), np.arange(ch)[::-1]) / FEATHER
+    feather = max(2, min(FEATHER, m))
+    gx = np.minimum(np.arange(cw), np.arange(cw)[::-1]) / feather
+    gy = np.minimum(np.arange(ch), np.arange(ch)[::-1]) / feather
     edge = np.clip(np.minimum(gx[None, :], gy[:, None]), 0, 1)
     soft = out[:, :, 3] < BODY_ALPHA
-    out[:, :, 3] = np.where(soft, out[:, :, 3] * edge, out[:, :, 3])
+    out[:, :, 3] = np.where(soft, out[:, :, 3] * edge, out[:, :, 3] * np.maximum(edge, 0.0))
     out[:, :, 3][out[:, :, 3] < 0.004] = 0
     return out, x0, y0
 

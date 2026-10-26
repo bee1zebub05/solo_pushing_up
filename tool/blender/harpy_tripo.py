@@ -23,6 +23,7 @@ from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
 from choreo_kit import Move  # noqa: E402
+from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, smooth_weights, surface_regions  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "harpy 3d model.glb")
@@ -230,8 +231,11 @@ def main():
     rig = build()
     lights(scene)
     shadow_catcher()
+    if TOON:
+        toonify(scene, width=0.022, block=8, colors=10)  # cánh mỏng: viền dày hơn
+    tag = "_toon" if TOON else ""
     if STILL:
-        out = os.path.join(ROOT, "build", "blender", "harpy_tripo")
+        out = os.path.join(ROOT, "build", "blender", "harpy_tripo" + tag)
         os.makedirs(out, exist_ok=True)
         camera(scene, -0.2, 1.8, 3.1, 2.9, 300, yaw=-18, pitch=8)
         for name, v in (("up", idle_channels(0)), ("down", idle_channels(0.3)), ("climb", ATTACK.at(0.33)),
@@ -240,7 +244,7 @@ def main():
             pose(rig, v)
             render_to(scene, os.path.join(out, f"harpy_{name}.png"))
         pose(rig, READY)
-        save_blend("harpy_tripo")
+        save_blend("harpy_tripo" + tag)
         return
     # Khung rộng hơn bản cũ: cú sà lao sang trái ra ngoài khung 2,5 m.
     cam = camera(scene, -0.2, 1.8, 3.1, 2.9, 190, yaw=-18, pitch=8)
@@ -250,10 +254,10 @@ def main():
         "attack": attack,
     }
     track = head_track(scene, cam, rig, attack)
-    export_sprites(scene, cam, "harpy", anims, (0, 0, 0), UNITS_PER_M,
+    export_sprites(scene, cam, "harpy" + tag, anims, (0, 0, 0), UNITS_PER_M,
                    extra={"idlePeriod": 0.9, "headTrack": track})
     pose(rig, READY)
-    save_blend("harpy_tripo")
+    save_blend("harpy_tripo" + tag)
 
 
 if __name__ == "__main__":

@@ -256,7 +256,12 @@ Offset? _spriteTrack(SpriteAtlas sprite, String key, double p) {
   return Offset.lerp(at(i), at(i + 1), pos - i)!;
 }
 
-void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
+void paintLionSprite(
+  Canvas canvas,
+  LionState s,
+  SpriteAtlas sprite, {
+  Color? tint,
+}) {
   final t = s.time;
   final fall = _smooth(s.defeat);
   var windup = 0.0, strike = 0.0;
@@ -283,9 +288,9 @@ void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
   // Trúng đòn: co người lại quanh chân.
   canvas.scale(1 + 0.04 * s.hurt, 1 - 0.05 * s.hurt);
   if (s.defeat > 0 && sprite.has('defeat')) {
-    sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt);
+    sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt, tint: tint);
   } else if (s.wrestled >= 0 && sprite.has('wrestled')) {
-    sprite.draw(canvas, 'wrestled', s.wrestled, flash: s.hurt);
+    sprite.draw(canvas, 'wrestled', s.wrestled, flash: s.hurt, tint: tint);
   } else if (p >= 0 && sprite.has(s.pounce ? 'pounce' : 'attack')) {
     // Quanh cú vồ (0,48–0,7) không hoà hai khung kề nhau (chân thành bốn).
     sprite.draw(
@@ -293,11 +298,19 @@ void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
       s.pounce ? 'pounce' : 'attack',
       p,
       flash: s.hurt,
+      tint: tint,
       snap: p > 0.48 && p < 0.7,
     );
   } else {
     final period = sprite.metaDouble('idlePeriod', 3);
-    sprite.draw(canvas, 'idle', t / period, loop: true, flash: s.hurt);
+    sprite.draw(
+      canvas,
+      'idle',
+      t / period,
+      loop: true,
+      flash: s.hurt,
+      tint: tint,
+    );
   }
 
   // Vị trí đầu và vuốt: track từng khung ghi trong atlas lúc render

@@ -465,8 +465,71 @@ của `lion_nemea.py`. Script: `tool/blender/lion_tripo.py`.
   mặt hứng bóng che phần dưới đất. Đất nứt/hố/gò/đá văng/bụi vẽ ở sân khấu
   (`_risingEarth`, hố trước sprite, gò + đá sau sprite). Đá vụn vẽ hình góc
   cạnh xoay theo đà — hình tròn trông như chuỗi hạt.
+- **Bản 2.5D của quái Tripo = render hoạt hình từ chính mô hình 3D (23/10):**
+  bản vector cũ khác hẳn thiết kế Tripo và gần như không có động tác.
+  `tool/blender/toon_kit.py` + cờ `--toon` ở 5 script → atlas `<tên>_toon`
+  (cùng xương, biên đạo, track `spearTip`/`headTrack`…). Ở chế độ 2.5D,
+  `SpriteAtlas.load/get` tự đổi sang `_toon` cho các tên trong
+  `SpriteAtlas.toon`; tên khác trả null (vẽ vector, không nạp atlas vô ích).
+  Chân dung `assets/portraits/<id>_toon.webp` (`BossPortrait.bakedToon`,
+  art_bake_test chụp cả hai chế độ). Bài học tô hoạt hình trong Cycles:
+  Toon BSDF cắt mặt khuất về đen → tự tính N·L với hướng sáng cố định, chia
+  nấc bằng ColorRamp, tô bằng Emission; ảnh màu Tripo đầy vân lông → làm
+  phẳng ảnh (thu nhỏ, làm mờ, k-means 8–12 màu, nội suy Linear — Closest vỡ
+  ô vuông); gom màu phải trên thang gamma; viền = vỏ Solidify lật pháp tuyến,
+  mực ở mặt KHÔNG quay lưng. Hoa văn nhỏ (khiên lính đá) cần ô làm phẳng nhỏ.
+- **Khung chân dung (art_bake_test `framing`) phải đo lại mỗi khi đổi tỉ lệ /
+  vị trí quái** trên `build/portraits/_stage_<id>.png`: sau đợt phóng to,
+  chân dung sư tử chỉ còn ngực/chân, Hydra mất đầu. Chân dung vẽ ở
+  `0,4 + introSeconds` giây (sau cảnh mở màn).
+
+## 13. Phông vẽ riêng từng màn + bản đồ vẽ (ChatGPT, 23–24/10/2026)
+
+Trước đây cả 8 màn dùng chung một phông Blender (thung lũng + hang = cảnh
+màn 1.8). Nay mỗi màn một tranh vẽ đúng cảnh ở điểm màn trên bản đồ, bản đồ
+cũng vẽ lại cùng chất. Toàn bộ tài liệu tạo ảnh ở `art_src/backdrop_prompts/`
+(`PROMPTS.md`: tin nhắn luật chung + 8 prompt + prompt bản đồ).
+
+- **Cách giữ thống nhất:** một cuộc trò chuyện; ảnh mẫu phong cách + bản đồ +
+  **khung bố cục** (`3_khung_bo_cuc.png`: đường đất ở dòng 220/260, vùng
+  nhân vật trái, vùng quái phải để trống, dải trên/dưới sẽ cắt); làm màn 1.8
+  trước làm chuẩn. Vị trí mốc trong từng prompt TÍNH từ toạ độ bản đồ (hướng
+  và khoảng cách từ điểm màn tới đền, cầu, sông, hang).
+- **Soát mỗi ảnh:** chồng khung bố cục + GHÉP THỬ sprite quái vào chỗ đứng.
+  Lỗi hay gặp: quái cùng màu nền (lính đá trắng trước vách/đền cẩm thạch →
+  xin vách trong bóng râm), đường đất quá cao hoặc nhìn dọc (phải chạy ngang),
+  vật cản trong vùng nhân vật, không khí sai (đầm độc mà trời nắng đẹp; đừng
+  phủ sương XANH lên cảnh Hydra xanh).
+- **Bản đồ:** đưa khung có chữ thì ChatGPT chỉ coi là gợi ý (sông, đường mòn
+  sai hết). Đưa **bản phác màu thật không chữ** (`5_phac_ban_do.png`, tô đúng
+  đường mòn game vẽ) và bảo "vẽ lại chính ảnh này" thì giữ bố cục.
+- **Nhập:** `python -I tool/import_painted_backdrops.py` → cắt về 448×260
+  (1344×780) `assets/backdrops/nemea_stage_1_X.webp`, bản đồ 1200×900; DÒ lối
+  đất (màu) và dòng sông trong tranh thành đường gấp khúc (đường đi chi phí
+  nhỏ nhất, băng được chỗ đứt ở cầu/đá kê), in hằng số Dart cho
+  `nemea_map_art.dart` (`nemeaMapTrail`, `_nodeOnTrail` theo mốc, `_riverLine`).
+  Trên tranh game chỉ vẽ chấm đoạn đã đi + điểm màn (lối đất có sẵn).
+- **Game:** `NemeaStageBackdrop` (một ảnh/màn, nạp theo `backdropScene` của
+  BossArt, dùng ở CẢ 2.5D và 3D), trôi theo camera ×0,3 (không tách tầng:
+  vách/cây cao từ trời xuống đất bị xé), bụi Trì Trệ ×0,5. `sceneLight`:
+  phủ màu toàn cảnh + nhân màu sprite quái/chim theo ánh sáng tranh (bình
+  minh vàng, đầm xám tím, hoàng hôn cam). Phông Blender 5 tầng còn dùng cho
+  màn mở đầu (`nemea_intro_screen`) và khi thiếu ảnh màn.
 - Bẫy gặp lúc làm lính đá: Tripo dính **ống chân + bàn chân vào cùng mảnh
   khiên** → ghim cả mảnh vào xương khiên thì chân không bước được (chỉ ghim
   phần trên mặt khiên, ghim SAU `smooth_weights`); chân gần duỗi thẳng che
   mất lỗi chiều gập gối — có khuỵu gối thì phải soát IK (gối chĩa tới trước).
   In nhóm đỉnh trội theo xương (số đỉnh, khoảng toạ độ) trước khi tin rig.
+- **Khung trang chủ (26/10):** chụp lại từ cảnh trận 1.8 hiện tại (phông vẽ
+  cửa hang + sư tử lionScale 1,2) — ảnh chụp sẵn phải chụp lại mỗi khi đổi
+  phông/tỉ lệ boss (`ART_BAKE=1 flutter test test/art/art_bake_test.dart` rồi
+  `python -I tool/sprites_webp.py --banner`). Thêm bản 2.5D
+  `scene_*_toon.webp` (sư tử hoạt hình); nhân vật 2.5D vẽ vector đè lên.
+- **Chim Stymphalia + Spartoi Tripo3D (26/10):** chim nhập xoay -45° (Tripo
+  dựng chéo), gốc ở tâm thân như bản cũ; chia cánh/đuôi/đầu bằng
+  `surface_regions`. Soát dấu kênh bằng ảnh thử: cả `pitch`/`neck` lẫn `flap`
+  đều ngược với giả định ban đầu. Spartoi sinh từ khuôn lính đá
+  (`stone_tripo.py`), chỉ đổi khớp, lọc gần/xa, biên đạo.
+- **Bóng đổ bị cắt thành mép chữ nhật** (Spartoi): bóng nắng xiên đậm có
+  alpha ≥ 0,6 nên bị coi là thân, không được làm mờ ở mép khung cắt.
+  `atlas_pack.crop` nay làm mờ MỌI điểm trong dải ≤ lề quanh thân.

@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
 from choreo_kit import Move  # noqa: E402
+from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo, islands, smooth_weights, surface_regions  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "three-headed dragon 3d model.glb")
@@ -223,8 +224,11 @@ def main():
     rig, stumps = build()
     lights(scene)
     shadow_floor()
+    if TOON:
+        toonify(scene)
+    tag = "_toon" if TOON else ""
     if STILL:
-        out = os.path.join(ROOT, "build", "blender", "hydra_tripo")
+        out = os.path.join(ROOT, "build", "blender", "hydra_tripo" + tag)
         os.makedirs(out, exist_ok=True)
         setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=3.4, yaw=-14, pitch=6)
         for name, alive, v, t in (("idle", 3, READY, 0), ("coil", 3, ATTACK.at(0.45), 0.3),
@@ -233,7 +237,7 @@ def main():
             pose(rig, stumps, v, t, alive)
             render_to(scene, os.path.join(out, f"hydra_{name}.png"))
         pose(rig, stumps)
-        save_blend("young_hydra_tripo")
+        save_blend("young_hydra_tripo" + tag)
         return
     cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=2.9, yaw=-14, pitch=6)
     anims = {}
@@ -244,9 +248,9 @@ def main():
         # Đòn 1,2 s trên chu kỳ lắc 2,8 s: các đầu khác vẫn lắc tiếp trong lúc mổ.
         anims[f"attack_h{alive}"] = [lambda k=k, run=run: run(ATTACK.at(k / 11), 0.2 + k / 11 * 1.2 / 2.8)
                                      for k in range(12)]
-    export_sprites(scene, cam, "young_hydra", anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.8})
+    export_sprites(scene, cam, "young_hydra" + tag, anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.8})
     pose(rig, stumps)
-    save_blend("young_hydra_tripo")
+    save_blend("young_hydra_tripo" + tag)
 
 
 if __name__ == "__main__":

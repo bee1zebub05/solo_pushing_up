@@ -17,10 +17,15 @@ const herculesSprite = 'hercules';
 /// Nạp phông, nhân vật, Hercules bằng Blender cho cảnh mở đầu (chưa có thì
 /// cảnh vẽ bản vector).
 Future<void> preloadNemeaIntro(HeroLook look) async {
-  await NemeaBackdrop.load();
+  // Phông vẽ màn 1.1 (bìa rừng ô liu lúc bình minh — đầu đường mòn, nơi
+  // Hercules gặp người kế nhiệm); cùng bộ phông với trận.
+  await NemeaStageBackdrop.load(introScene);
   await HeroSprites.load(look);
   await SpriteAtlas.load(herculesSprite);
 }
+
+/// Phông của cảnh mở đầu (NemeaStageBackdrop).
+const introScene = '1_1';
 
 /// Lời Hercules ở cảnh mở đầu Kỳ công 1 (rules/cottruyen.md mục 3).
 const nemeaIntroLines = [
@@ -40,8 +45,15 @@ void paintNemeaIntro(
   double talk = 0,
   bool talking = false,
 }) {
-  final blender = NemeaBackdrop.ready;
-  if (blender) {
+  final painted = NemeaStageBackdrop.ready;
+  final blender = !painted && NemeaBackdrop.ready;
+  if (painted) {
+    // Phông vẽ phủ bụi Trì Trệ (thung lũng chưa được giải phóng) — nhẹ như
+    // trong trận (tranh đã có không khí riêng).
+    NemeaStageBackdrop.paint(canvas, filter: nemeaDustFilterAt(0.42));
+    paintNemeaDustMist(canvas, opacity: 0.42);
+    paintNemeaAmbient(canvas, time: time, dust: 0.42, realistic: true);
+  } else if (blender) {
     // Phông Blender phủ bụi Trì Trệ (thung lũng chưa được giải phóng).
     final dust = nemeaDustFilterAt(0.85);
     for (final layer in NemeaLayer.values) {

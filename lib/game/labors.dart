@@ -172,7 +172,7 @@ const nemeaStages = <Stage>[
     tip: 'Chỉ rep đúng form mới làm vỡ đá',
     emoji: '🗿',
     lore:
-        'Giữa trưa, trước đền thần Zeus, tượng hoplite bị Trì Trệ nhập. '
+        'Nắng sáng trên đồi đền thần Zeus: tượng hoplite bị Trì Trệ nhập. '
         'Đá chỉ vỡ trước đòn đánh chuẩn.',
   ),
   Stage(
@@ -194,8 +194,8 @@ const nemeaStages = <Stage>[
     tip: 'Nghỉ quá 4 giây là bị cướp vàng',
     emoji: '🦅',
     lore:
-        'Gió chiều rít trên mái đền. Harpy lượn vòng, chờ kẻ nào lơ là để '
-        'cướp vàng.',
+        'Gió rít qua cây cầu đá cổ bắc ngang sông. Harpy lượn vòng, chờ kẻ '
+        'nào lơ là để cướp vàng.',
   ),
   Stage(
     id: 'nemea_1_8',
@@ -205,8 +205,8 @@ const nemeaStages = <Stage>[
     tip: 'Đứt combo thì đầu đang chém mọc lại',
     emoji: '🐍',
     lore:
-        'Hoàng hôn trên đầm lầy cuối thung lũng: Hydra non, con của quái '
-        'vật xứ Lerna, thè ba cái lưỡi. Chém một, mọc hai.',
+        'Trời sầm lại trên đầm lầy độc giữa thung lũng: Hydra non, con của '
+        'quái vật xứ Lerna, thè ba cái lưỡi. Chém một, mọc hai.',
   ),
   Stage(
     id: 'nemea_1_9',
@@ -216,8 +216,8 @@ const nemeaStages = <Stage>[
     tip: 'Ôn lại: rep đúng form, và đánh dứt điểm khi đá ráp lại',
     emoji: '🗿',
     lore:
-        'Đá vỡ rồi lại ráp lại. Phía sau lính canh, trong bóng tối cửa '
-        'hang, đôi mắt hổ phách khép mở.',
+        'Nắng chiều đổ dài trên vách đá dẫn lên hang. Lính canh bằng đá vỡ '
+        'rồi lại ráp lại — và trên kia, đôi mắt hổ phách đang chờ.',
   ),
   Stage(
     id: 'nemea',

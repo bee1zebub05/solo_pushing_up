@@ -94,3 +94,66 @@ abstract final class NemeaBackdrop {
   static void paintForeground(Canvas canvas, {ColorFilter? filter}) =>
       _draw(canvas, 'fg', filter);
 }
+
+/// Phông vẽ riêng từng màn chương 1 (art_src/backdrop_prompts/1.X.png →
+/// tool/import_painted_backdrops.py → `assets/backdrops/nemea_stage_<màn>.webp`),
+/// mỗi màn đúng cảnh ở điểm màn đó trên bản đồ (rừng ô liu, ruộng ven sông,
+/// đồi đền, bụi rậm, cầu, đầm, vách đá, hang). Một ảnh phủ cả sân khấu rộng
+/// thêm [NemeaBackdrop.margin] mỗi bên; dùng ở cả 2.5D lẫn 3D (tranh vẽ, không
+/// phải tài nguyên Blender). Mỗi lúc chỉ giữ ảnh của một màn.
+abstract final class NemeaStageBackdrop {
+  static ui.Image? _image;
+  static String? _scene;
+  static Future<void>? _loading;
+  static int _generation = 0;
+
+  /// Đã nạp ảnh của màn đang chơi.
+  static bool get ready => _image != null;
+
+  /// Nạp phông màn [scene] (ví dụ `1_5`); màn khác đang giữ thì trả trước.
+  static Future<void> load(String scene) {
+    if (_scene != scene) evict();
+    _scene = scene;
+    return _loading ??= _load(scene, _generation);
+  }
+
+  static Future<void> _load(String scene, int generation) async {
+    ui.Image? img;
+    try {
+      final data = await rootBundle.load(
+        'assets/backdrops/nemea_stage_$scene.webp',
+      );
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      img = (await codec.getNextFrame()).image;
+    } catch (_) {
+      return; // thiếu ảnh → sân khấu vẽ phông cũ
+    }
+    if (generation != _generation) {
+      img.dispose();
+      return;
+    }
+    _image = img;
+  }
+
+  static void evict() {
+    _generation++;
+    _loading = null;
+    _scene = null;
+    _image?.dispose();
+    _image = null;
+  }
+
+  static final _paint = Paint()..filterQuality = FilterQuality.medium;
+
+  /// Vẽ phông (qua bộ lọc bụi [filter] nếu có).
+  static void paint(Canvas canvas, {ColorFilter? filter}) {
+    final img = _image;
+    if (img == null) return;
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      NemeaBackdrop._dest,
+      _paint..colorFilter = filter,
+    );
+  }
+}

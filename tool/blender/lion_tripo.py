@@ -24,6 +24,7 @@ from boss_kit import *  # noqa: E402,F401,F403
 import lion_nemea as ln  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
 from choreo_kit import Move  # noqa: E402
+from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import import_tripo, smooth_weights  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "nemea_lion.glb")
@@ -270,8 +271,11 @@ def main():
     rig = build()
     ln.lights(scene)
     ln.shadow_floor()
+    if TOON:
+        toonify(scene)
+    tag = "_toon" if TOON else ""
     if STILL:
-        out = os.path.join(ROOT, "build", "blender", "lion_tripo")
+        out = os.path.join(ROOT, "build", "blender", "lion_tripo" + tag)
         setup_camera(scene, ln.FRAME_X, ln.FRAME_Y, px_per_unit=2.6, yaw=-14, pitch=6)
         render_stills(scene, out, [
             ("idle", lambda: pose(rig, idle_channels(0))),
@@ -285,7 +289,7 @@ def main():
             ("defeat", lambda: pose(rig, DEFEAT.at(1), 0.25)),
         ])
         pose(rig, READY)
-        save_blend("nemea_lion_tripo")
+        save_blend("nemea_lion_tripo" + tag)
         return
     cam = setup_camera(scene, ln.FRAME_X, ln.FRAME_Y, px_per_unit=2.2, yaw=-14, pitch=6)
     attack = [lambda k=k: pose(rig, ATTACK.at(k / 17), 0.25 + k / 17 * 0.4) for k in range(18)]
@@ -299,10 +303,10 @@ def main():
     }
     head_a, paw_a = tracks(scene, cam, rig, attack)
     head_p, _ = tracks(scene, cam, rig, pounce)
-    export_sprites(scene, cam, "nemea_lion", anims, P(0, 0), 50 * ln.LION_SCALE,
+    export_sprites(scene, cam, "nemea_lion" + tag, anims, P(0, 0), 50 * ln.LION_SCALE,
                    extra={"idlePeriod": 3.0, "headAttack": head_a, "pawAttack": paw_a, "headPounce": head_p})
     pose(rig, READY)
-    save_blend("nemea_lion_tripo")
+    save_blend("nemea_lion_tripo" + tag)
 
 
 if __name__ == "__main__":

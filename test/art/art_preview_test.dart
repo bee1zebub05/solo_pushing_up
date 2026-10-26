@@ -311,7 +311,7 @@ void main() {
         ),
       );
     }
-    NemeaBackdrop.evict();
+    NemeaStageBackdrop.evict();
     HeroSprites.evict(look);
     SpriteAtlas.evict(herculesSprite);
   });
@@ -489,8 +489,6 @@ void main() {
 
   testWidgets('màn quái Kỳ công 1 bằng sprite Blender', (tester) async {
     await tester.runAsync(NemeaMonsterArt.preloadSprites);
-    await tester.runAsync(NemeaBackdrop.load);
-    expect(NemeaBackdrop.ready, isTrue, reason: 'phông Blender Nemea');
     // Thiếu/hỏng trang ảnh thì sân khấu lặng lẽ vẽ bản vector — bắt ở đây.
     for (final name in [
       'stymphalian_bird',
@@ -504,6 +502,9 @@ void main() {
     }
     for (final (i, kind) in NemeaMonster.values.indexed) {
       final art = NemeaMonsterArt(kind);
+      // Phông vẽ đúng màn (vị trí trên bản đồ).
+      await tester.runAsync(() => NemeaStageBackdrop.load(art.backdropScene));
+      expect(NemeaStageBackdrop.ready, isTrue, reason: art.backdropScene);
       final battle = StageBattleState()
         ..bossHp = 0.7
         ..totalHeads = 3
@@ -545,8 +546,8 @@ void main() {
 
   testWidgets('lính đá trồi từ dưới đất lúc mở màn', (tester) async {
     await tester.runAsync(NemeaMonsterArt.preloadSprites);
-    await tester.runAsync(NemeaBackdrop.load);
     final art = NemeaMonsterArt(NemeaMonster.stone);
+    await tester.runAsync(() => NemeaStageBackdrop.load(art.backdropScene));
     final battle = StageBattleState()..bossHp = 1;
     for (final (k, time) in const [0.25, 0.6, 0.9, 1.25, 1.75, 2.2].indexed) {
       final frame = BossFrame(
@@ -573,7 +574,7 @@ void main() {
     final art = NemeaBossArt();
     await tester.runAsync(art.preload);
     expect(SpriteAtlas.get(NemeaBossArt.lionSprite), isNotNull);
-    expect(NemeaBackdrop.ready, isTrue);
+    expect(NemeaStageBackdrop.ready, isTrue);
     final battle = StageBattleState()..bossHp = 0.6;
     for (final (tag, phase, defeat, glint) in [
       ('idle', -1.0, 0.0, -1.0),
@@ -743,11 +744,11 @@ void main() {
 
   testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {
     await tester.runAsync(NemeaMapImage.load);
-    expect(NemeaMapImage.image, isNotNull, reason: 'bản đồ Blender');
+    expect(NemeaMapImage.image, isNotNull, reason: 'bản đồ vẽ');
     await render(tester, 'nemea_map', (c) {
       c.scale(400 / nemeaMapSize.width, 260 / nemeaMapSize.height);
       paintNemeaMap(c, [
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 8; i++)
           i < 3
               ? MapNodeState.done
               : i == 3

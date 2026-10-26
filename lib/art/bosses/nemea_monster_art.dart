@@ -34,7 +34,7 @@ class NemeaMonsterArt extends NemeaBossArt {
   /// không giữ ảnh 2048² của mọi quái trong bộ nhớ).
   @override
   Future<void> preload() async {
-    await NemeaBackdrop.load();
+    await NemeaStageBackdrop.load(backdropScene);
     await SpriteAtlas.load(NemeaBossArt.birdSprite);
     for (final name in _spritesOf(kind)) {
       await SpriteAtlas.load(name);
@@ -71,6 +71,19 @@ class NemeaMonsterArt extends NemeaBossArt {
 
   final NemeaMonster kind;
 
+  /// Phông vẽ theo vị trí màn trên bản đồ (bầy chim/đàn Spartoi phụ dùng
+  /// phông màn cùng loại quái).
+  @override
+  String get backdropScene => switch (kind) {
+    NemeaMonster.birds || NemeaMonster.swarm => '1_1',
+    NemeaMonster.spartoi || NemeaMonster.pack => '1_2',
+    NemeaMonster.stone => '1_3',
+    NemeaMonster.boar => '1_4',
+    NemeaMonster.harpy => '1_5',
+    NemeaMonster.hydra => '1_6',
+    NemeaMonster.guard => '1_7',
+  };
+
   /// Vị trí đứng của quái (giữa thân, mặt đất).
   static const _x = 318.0;
 
@@ -106,10 +119,12 @@ class NemeaMonsterArt extends NemeaBossArt {
     return Vector2(p.dx, p.dy + _drop);
   }
 
-  /// Ánh sáng đổi theo hành trình: 1.1 sáng sớm trong, 1.9 hoàng hôn đỏ
-  /// cam — càng gần hang sư tử trời càng về chiều (màn boss giữ ánh chiều).
+  /// Ánh sáng: phông vẽ có ánh sáng riêng từng màn (NemeaBossArt.sceneLight);
+  /// phông cũ thì đổi theo hành trình — 1.1 sáng sớm trong, cuối chương
+  /// hoàng hôn đỏ cam.
   @override
   Color get gradeLight {
+    if (NemeaStageBackdrop.ready) return super.gradeLight;
     final t = kind.index / (NemeaMonster.values.length - 1);
     return Color.lerp(const Color(0xFFE6F0FF), const Color(0xFFFFB27A), t)!;
   }
@@ -127,10 +142,12 @@ class NemeaMonsterArt extends NemeaBossArt {
   static const stoneRiseSeconds = 2.6;
 
   @override
-  double get introSeconds =>
-      kind == NemeaMonster.stone || kind == NemeaMonster.guard
-      ? stoneRiseSeconds
-      : 0;
+  double get introSeconds => switch (kind) {
+    NemeaMonster.stone || NemeaMonster.guard => stoneRiseSeconds,
+    // Spartoi trồi khỏi ruộng (_rise: 1,2 s).
+    NemeaMonster.spartoi || NemeaMonster.pack => 1.2,
+    _ => 0,
+  };
 
   // Theo dõi thay đổi để diễn hoạt cảnh (Spartoi trồi lại, Harpy vừa cướp).
   int _revives = 0;
@@ -329,7 +346,7 @@ class NemeaMonsterArt extends NemeaBossArt {
     canvas.translate(x + 4 * f.hurt, stageGroundY);
     canvas.scale(scale);
     if (anim != null && sprite.has(anim)) {
-      sprite.draw(canvas, anim, animT, flash: f.hurt);
+      sprite.draw(canvas, anim, animT, flash: f.hurt, tint: spriteTint);
     } else {
       _spriteMonster(
         canvas,
@@ -589,6 +606,10 @@ class NemeaMonsterArt extends NemeaBossArt {
 
   void _spartoiAt(Canvas canvas, BossFrame f, double x, double scale) {
     final rise = _rise(f);
+    // Trồi khỏi ruộng (mở màn, và đứng dậy sau khi ngã): đất nứt, ụ đất, đá
+    // văng như lính đá (cùng điểm đứng _x).
+    final rising = rise < 1 && f.defeat == 0 && x == _x;
+    if (rising) _risingEarth(canvas, rise, scale / 1.35, front: false);
     if (_sprite(
       canvas,
       'spartoi',
@@ -597,7 +618,9 @@ class NemeaMonsterArt extends NemeaBossArt {
       scale / 1.35,
       anim: rise < 1 ? 'rise' : null,
       animT: rise,
+      snapStrike: true,
     )) {
+      if (rising) _risingEarth(canvas, rise, scale / 1.35, front: true);
       return;
     }
     _at(canvas, x, scale, () => _spartoi(canvas, f));
@@ -741,7 +764,7 @@ class NemeaMonsterArt extends NemeaBossArt {
   }) {
     final flash = f.hurt;
     if (f.defeat > 0 && sprite.has('defeat')) {
-      sprite.draw(canvas, 'defeat', f.defeat, flash: flash);
+      sprite.draw(canvas, 'defeat', f.defeat, flash: flash, tint: spriteTint);
     } else if (attackPhase >= 0 && sprite.has(attack)) {
       // [snapStrike]: quanh pha ra đòn (0,48–0,7) không hoà hai khung kề
       // nhau — vũ khí lao nhanh, hoà thì thành hai cây chồng nhau.
@@ -750,11 +773,19 @@ class NemeaMonsterArt extends NemeaBossArt {
         attack,
         attackPhase,
         flash: flash,
+        tint: spriteTint,
         snap: snapStrike && attackPhase > 0.48 && attackPhase < 0.7,
       );
     } else {
       final period = sprite.metaDouble('idlePeriod', 2.4);
-      sprite.draw(canvas, idle, time / period, loop: true, flash: flash);
+      sprite.draw(
+        canvas,
+        idle,
+        time / period,
+        loop: true,
+        flash: flash,
+        tint: spriteTint,
+      );
     }
   }
 

@@ -11,7 +11,7 @@ Người kế nhiệm đi dọc Thung lũng Nemea, từ bìa rừng ô liu vào 
 Mỗi màn thường dạy một kỹ năng hít đất; boss kiểm lại hai kỹ năng chính
 (đúng form, giữ tay thẳng khi bị lao tới).
 
-Ánh sáng đi theo một ngày: sáng sớm → trưa → chiều → hoàng hôn → hang tối.
+Ánh sáng đi theo một ngày (khớp phông vẽ từng màn, rules/dohoa.md mục 13): bình minh → sáng → trưa → đầu chiều → chiều u ám → nắng chiều → hoàng hôn ở cửa hang.
 
 **Nhân vật phụ (chỉ trong lời kể và thoại, chưa có hình riêng):**
 
@@ -26,14 +26,14 @@ Mỗi màn thường dạy một kỹ năng hít đất; boss kiểm lại hai k
 
 | Màn | Loại | Kẻ thù (máu) | Bối cảnh, ánh sáng | Cơ chế mới | Rep mục tiêu |
 |---|---|---|---|---|---|
-| 1.1 | thường | Đàn chim Stymphalia (80) | Bìa rừng ô liu, sáng sớm | Không. Rep = đòn; combo tăng khi giữ nhịp | 6–8 |
-| 1.2 | thường | Spartoi (90) | Ruộng đá cạn, gần trưa | Đứng dậy một lần (`ReviveOnce`) | 8–12 |
-| 1.3 | thường | Lính đá (150) | Đền Zeus đổ nát, giữa trưa | Đúng form (`ImpenetrableHide`) — dạy trước kỹ năng 1 của boss | 10–12 |
-| 1.4 | **tinh anh** | Lợn rừng Erymanthus (180) | Rừng ô liu bị húc đổ, đầu chiều | Giữ tay thẳng để né húc (`ChargingBoar`) — dạy trước kỹ năng 2 của boss | 12–16 |
-| 1.5 | thường (thung) | Harpy (120) | Mái đền, vách đá, chiều gió | Nghỉ quá 4 s bị cướp vàng (`GoldThief`) | 8–10 |
-| 1.6 | **mini-boss** | Hydra non, 3 đầu (240) | Đầm lầy cuối thung lũng, hoàng hôn | Đứt combo thì đầu đang chém mọc lại (`RegrowingHeads`) | 14–18 |
-| 1.7 | thường (thung trước boss) | Lính đá canh hang (110) | Cửa hang, chạng vạng; mắt hổ phách trong bóng tối | Không mới. Ôn: form + đứng dậy một lần | 10–12 |
-| 1.8 | **boss** | Sư tử Nemea (300) | Trong hang, tối, ánh lửa | Pha 2 (máu < 40%): vồ, giữ tay thẳng để vật (`LionPounce`) | 18–22 |
+| 1.1 | thường | Đàn chim Stymphalia (80) | Bìa rừng ô liu, bình minh | Không. Rep = đòn; combo tăng khi giữ nhịp | 6–8 |
+| 1.2 | thường | Spartoi (90) | Ruộng cày ven sông, sáng, mây giông | Đứng dậy một lần (`ReviveOnce`) | 8–12 |
+| 1.3 | thường | Lính đá (150) | Chân đồi đền Zeus, nắng sáng | Đúng form (`ImpenetrableHide`) — dạy trước kỹ năng 1 của boss | 10–12 |
+| 1.4 | **tinh anh** | Lợn rừng Erymanthus (180) | Bụi rậm sườn đồi sau đền, giữa trưa | Giữ tay thẳng để né húc (`ChargingBoar`) — dạy trước kỹ năng 2 của boss | 12–16 |
+| 1.5 | thường (thung) | Harpy (120) | Cầu đá trên sông, đầu chiều lộng gió | Nghỉ quá 4 s bị cướp vàng (`GoldThief`) | 8–10 |
+| 1.6 | **mini-boss** | Hydra non, 3 đầu (240) | Đầm lầy độc giữa thung lũng, chiều u ám | Đứt combo thì đầu đang chém mọc lại (`RegrowingHeads`) | 14–18 |
+| 1.7 | thường (thung trước boss) | Lính đá canh hang (110) | Đường lên vách đá vôi, nắng chiều | Không mới. Ôn: form + đứng dậy một lần | 10–12 |
+| 1.8 | **boss** | Sư tử Nemea (300) | Cửa hang, hoàng hôn | Pha 2 (máu < 40%): vồ, giữ tay thẳng để vật (`LionPounce`) | 18–22 |
 
 Răng cưa: đỉnh 1.4, 1.6, 1.8; thung ngay sau (1.5, 1.7). Mỗi màn tối đa một
 cơ chế mới; hai kỹ năng boss đòi đều đã dạy riêng (1.3, 1.4).
@@ -96,9 +96,18 @@ Boss: vật được sư tử thì thắng nhanh hơn không vật (19 so với 
 - **Harpy (20/10/2026)**: Tripo3D (`tool/blender/harpy_tripo.py`), góc ¾ (xoay
   -55°), `idle` vỗ cánh, `attack` sà xuống quắp. Bản Blender vẽ sóng rít tím
   và túi vàng quắp ở móng khi cướp vàng.
-- **Hình còn thiếu**: Spartoi, chim Stymphalia (vẫn bản khối ghép); chân dung Molorchus,
-  Atalanta, Kẻ Ru Ngủ; phông đầm lầy (1.6) và trong hang (1.8) — hiện dùng
-  chung phông thung lũng.
+- **Chim Stymphalia (26/10/2026)**: Tripo3D (`tool/blender/stymphalia_tripo.py`),
+  chim săn mồi lông đồng như lưỡi dao, mỏ móc đồng, mắt đỏ; một con, game
+  nhân thành đàn (3 con ở 1.1, 4 con quanh hang ở 1.8). `idle` vỗ cánh, `attack`
+  bay ngược lên ngửa cổ rồi cụp cánh bổ nhào mổ, `defeat` rũ cánh.
+- **Spartoi (26/10/2026)**: Tripo3D (`tool/blender/spartoi_tripo.py`), chiến binh
+  đất sét nứt nẻ mọc từ răng rồng (mũ mào răng rồng, khiên khắc rồng, giáp đồng
+  gỉ xanh) — khác hẳn lính đá cẩm thạch. Cùng khuôn xương lính đá; biên đạo
+  khom, giật cục, đâm giáo hất từ thấp; `rise` trồi khỏi ruộng (mở màn và
+  đứng dậy sau khi ngã), có đất nứt/đá văng như lính đá.
+- Đủ 7 loài quái chương 1 bằng Tripo3D, mỗi loài có bản 3D và 2.5D (`_toon`).
+- **Hình còn thiếu**: chân dung Molorchus, Atalanta, Kẻ Ru Ngủ. Phông riêng
+  từng màn đã có (rules/dohoa.md mục 13).
 - Thoại kết chương (Kẻ Ru Ngủ) chưa có màn hình.
 - Sprite và nhánh vẽ của "Bầy chim" và "Chim và Spartoi" (`NemeaMonster.swarm`,
   `.pack` trong `nemea_monster_art.dart`, `boss_registry.dart`) không còn màn

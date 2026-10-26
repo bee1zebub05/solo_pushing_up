@@ -35,13 +35,41 @@ class SpriteAtlas {
   static final _cache = <String, SpriteAtlas?>{};
   static final _loading = <String, Future<SpriteAtlas?>>{};
 
+  /// Atlas có bản hoạt hình `<tên>_toon` (cùng mô hình, xương, biên đạo; tô
+  /// màu phẳng + viền — tool/blender/toon_kit.py): chế độ 2.5D vẽ bản này
+  /// thay hình vector cũ.
+  static const toon = {
+    'stymphalian_bird',
+    'spartoi',
+    'stone_soldier',
+    'erymanthian_boar',
+    'harpy',
+    'young_hydra',
+    'nemea_lion',
+  };
+
+  /// Tệp atlas thật cho [name] theo chế độ đồ hoạ; null = 2.5D vẽ vector.
+  static String? _file(String name) => ArtModeSetting.blender
+      ? name
+      : toon.contains(name)
+      ? '${name}_toon'
+      : null;
+
   /// Atlas đã nạp ([load]), hoặc null — không tự nạp: chỉ trận đấu nạp
   /// (BossArt.preload), chân dung ở các màn hình khác vẽ bản vector.
-  /// Chế độ 2.5D ([ArtMode.vector]) luôn trả null.
-  static SpriteAtlas? get(String name) =>
-      ArtModeSetting.blender ? _cache[name] : null;
+  /// Chế độ 2.5D ([ArtMode.vector]): bản `_toon` nếu có ([toon]), còn lại null.
+  static SpriteAtlas? get(String name) {
+    final file = _file(name);
+    return file == null ? null : _cache[file];
+  }
 
   static Future<SpriteAtlas?> load(String name) {
+    final file = _file(name);
+    if (file == null) return Future.value();
+    return _loadFile(file);
+  }
+
+  static Future<SpriteAtlas?> _loadFile(String name) {
     final pending = _loading[name];
     if (pending != null) return pending;
     late final Future<SpriteAtlas?> future;
@@ -65,10 +93,13 @@ class SpriteAtlas {
     return future;
   }
 
-  /// Trả bộ nhớ ảnh khi rời trận (mỗi trang 2048² giải nén ~16 MB).
+  /// Trả bộ nhớ ảnh khi rời trận (mỗi trang 2048² giải nén ~16 MB) — cả
+  /// bản 3D lẫn bản `_toon` (chế độ có thể đã đổi giữa lúc nạp và lúc trả).
   static void evict(String name) {
-    _loading.remove(name);
-    _cache.remove(name)?._dispose();
+    for (final file in [name, '${name}_toon']) {
+      _loading.remove(file);
+      _cache.remove(file)?._dispose();
+    }
   }
 
   void _dispose() {

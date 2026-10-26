@@ -25,6 +25,7 @@ from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
 from choreo_kit import Move  # noqa: E402
+from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, pin_to_bone, smooth_weights  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "ancient warrior 3d model.glb")
@@ -78,6 +79,36 @@ def side_filter(bone, p):
     return True
 
 
+def darken_part(mesh, ids, name, tint):
+    """Tô sẫm một phần lưới (giáo): cán giáo màu đá nhạt mảnh chìm hẳn vào cỏ
+    khô của phông vẽ — nhân màu ảnh gốc với [tint] (đồng sẫm), vật liệu riêng."""
+    base = mesh.data.materials[0]
+    mat = base.copy()
+    mat.name = name
+    nt = mat.node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    sock = bsdf.inputs["Base Color"]
+    src = sock.links[0].from_socket if sock.links else None
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.blend_type = "MULTIPLY"
+    mix.inputs["Factor"].default_value = 1.0
+    mix.inputs["B"].default_value = (*tint, 1)
+    if src is not None:
+        nt.links.new(src, mix.inputs["A"])
+    else:
+        mix.inputs["A"].default_value = sock.default_value
+    nt.links.new(mix.outputs["Result"], sock)
+    bsdf.inputs["Metallic"].default_value = 0.4
+    bsdf.inputs["Roughness"].default_value = 0.5
+    mesh.data.materials.append(mat)
+    k = len(mesh.data.materials) - 1
+    sel = set(ids)
+    for poly in mesh.data.polygons:
+        if all(v in sel for v in poly.vertices):
+            poly.material_index = k
+
+
 def build():
     mesh = import_tripo_upright(GLB, HEIGHT, rot_z=-90)
     rig = Rig("StoneRig", BONES)
@@ -108,6 +139,9 @@ def build():
     for ids, bone in pins:
         pin_to_bone(mesh, ids, bone)
     follow_nearest(mesh, isl, skip_groups=("spear", "shield"))
+    for ids, bone in pins:
+        if bone == "spear":
+            darken_part(mesh, ids, "SpearBronze", (0.42, 0.33, 0.24))
     rig.bind(mesh)
     return rig
 
@@ -127,21 +161,20 @@ READY = dict(hipx=0, hipy=3, tilt=-2, head=2, sink=0, nx=0, nl=0, fx=0, fl=0,
              hx=-18, hy=17, spear=80, sx=-2, sy=-1, srot=0)
 LAG = dict(tilt=0.008, sx=0.012, sy=0.012, srot=0.016, hx=0.02, hy=0.02, spear=0.03, head=0.035)
 
-# Đòn đâm giáo hoplite (tiến độ sân khấu: lấy đà 0–0,5, ra đòn 0,5–0,65 —
-# chạm ~0,55 — rồi thu về): hạ trọng tâm, nâng khiên → dồn sức chân sau,
-# giương giáo qua vai cầm ngược tay (dory), mũi chĩa tới, nén thế → bước
-# dậm chân trước, hông dẫn, thân đổ tới, tay duỗi phóng giáo ngang ngực →
-# khựng ở đỉnh đòn → rút giáo, lùi chân về thế thủ.
+# Đòn đâm ngang hông (khác Spartoi cắm giáo từ trên xuống): cầm giáo dưới
+# tay, khuỷu ép sát sườn dưới vai; hạ giáo từ thế dựng về ngang hông, mũi chĩa
+# thẳng tới; kéo giáo lùi ra sau hông, nâng khiên → nén thế → bước dậm chân
+# trước, hông dẫn, phóng giáo THẲNG NGANG tầm hông → khựng → rút về, dựng giáo.
 ATTACK = Move(READY, [
-    (0.10, dict(hipy=6, tilt=1, head=5, sx=-5, sy=-5, srot=-4, spear=74)),
-    (0.26, dict(hipx=4, hipy=5, tilt=7, head=6, hx=-2, hy=-12, spear=40, sx=-7, sy=-7, srot=-6)),
-    (0.40, dict(hipx=7, hipy=6, tilt=12, head=7, hx=6, hy=-29, spear=5, sx=-8, sy=-8, srot=-8, fx=1)),
-    (0.48, dict(hipx=8, hipy=7, tilt=13, head=7, hx=7, hy=-30, spear=3, sx=-8, sy=-8, srot=-8, fx=1, nx=0, nl=0)),
-    (0.52, dict(hipx=1, hipy=5, tilt=2, nx=-7, nl=4, hx=-8, hy=-19, spear=-6)),
-    (0.56, dict(hipx=-9, hipy=7, tilt=-11, head=4, nx=-14, nl=0, fx=-2, hx=-30, hy=-7, spear=-10, sx=-3, sy=-5, srot=-2)),
-    (0.66, dict(hipx=-10, hipy=8, tilt=-12, head=4, nx=-14, nl=0, fx=-2, hx=-31, hy=-6, spear=-11, sx=-3, sy=-5, srot=-2)),
-    (0.78, dict(hipx=-5, hipy=6, tilt=-6, nx=-14, nl=0, fx=-1, hx=-17, hy=1, spear=22, sx=-4, sy=-4)),
-    (0.86, dict(hipx=-2, hipy=4, nx=-7, nl=3, fx=0)),
+    (0.10, dict(hipy=6, tilt=1, head=5, sx=-5, sy=-5, srot=-4, spear=60)),
+    (0.24, dict(hipx=3, hipy=6, tilt=3, head=6, hx=-12, hy=25, spear=5, sx=-7, sy=-7, srot=-6)),
+    (0.40, dict(hipx=7, hipy=7, tilt=6, head=7, hx=5, hy=27, spear=1, sx=-8, sy=-8, srot=-8, fx=1)),
+    (0.48, dict(hipx=8, hipy=7, tilt=7, head=7, hx=7, hy=27, spear=0, sx=-8, sy=-8, srot=-8, fx=1, nx=0, nl=0)),
+    (0.52, dict(hipx=1, hipy=6, tilt=1, nx=-7, nl=4, hx=-8, hy=27, spear=0)),
+    (0.56, dict(hipx=-9, hipy=8, tilt=-8, head=4, nx=-14, nl=0, fx=-2, hx=-24, hy=24, spear=0, sx=-3, sy=-5, srot=-2)),
+    (0.66, dict(hipx=-10, hipy=9, tilt=-9, head=4, nx=-14, nl=0, fx=-2, hx=-25, hy=23, spear=0, sx=-3, sy=-5, srot=-2)),
+    (0.78, dict(hipx=-5, hipy=6, tilt=-5, nx=-14, nl=0, fx=-1, hx=-12, hy=25, spear=2, sx=-4, sy=-4)),
+    (0.86, dict(hipx=-2, hipy=4, nx=-7, nl=3, fx=0, hx=-16, hy=20, spear=40)),
     (0.93, dict(nx=0, nl=0, hx=-18, hy=15, spear=74)),
 ], LAG)
 
@@ -266,8 +299,11 @@ def main():
     rig = build()
     lights(scene)
     shadow_catcher()
+    if TOON:
+        toonify(scene, block=4, colors=12)  # giữ hoa văn khiên
+    tag = "_toon" if TOON else ""
     if STILL:
-        out = os.path.join(ROOT, "build", "blender", "stone_tripo")
+        out = os.path.join(ROOT, "build", "blender", "stone_tripo" + tag)
         os.makedirs(out, exist_ok=True)
         camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 300)
         for name, v in (("idle", idle_channels(0)), ("raise", ATTACK.at(0.26)), ("coil", ATTACK.at(0.47)),
@@ -277,7 +313,7 @@ def main():
             pose(rig, v)
             render_to(scene, os.path.join(out, f"stone_{name}.png"))
         pose(rig, READY)
-        save_blend("stone_soldier_tripo")
+        save_blend("stone_soldier_tripo" + tag)
         return
     cam = camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 200)
     attack = [lambda k=k: pose(rig, ATTACK.at(k / 19)) for k in range(20)]
@@ -287,10 +323,10 @@ def main():
         "rise": [lambda k=k: pose(rig, RISE.at(k / 15)) for k in range(16)],
     }
     tips = spear_tips(scene, cam, rig, attack)
-    export_sprites(scene, cam, "stone_soldier", anims, (0, 0, 0), UNITS_PER_M,
+    export_sprites(scene, cam, "stone_soldier" + tag, anims, (0, 0, 0), UNITS_PER_M,
                    extra={"idlePeriod": 3.2, "spearTip": tips})
     pose(rig, READY)
-    save_blend("stone_soldier_tripo")
+    save_blend("stone_soldier_tripo" + tag)
 
 
 if __name__ == "__main__":

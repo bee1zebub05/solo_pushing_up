@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
 from choreo_kit import Move  # noqa: E402
+from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import import_tripo, smooth_weights  # noqa: E402
 
 GLB = os.path.join(ROOT, "art_src", "tripo", "lon_rung_Erymanthus.glb")
@@ -192,8 +193,11 @@ def main():
     rig = build()
     lights(scene)
     shadow_floor()
+    if TOON:
+        toonify(scene)
+    tag = "_toon" if TOON else ""
     if STILL:
-        out = os.path.join(ROOT, "build", "blender", "boar_tripo")
+        out = os.path.join(ROOT, "build", "blender", "boar_tripo" + tag)
         os.makedirs(out, exist_ok=True)
         setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=4.0, yaw=-14, pitch=6)
         for name, v in (("idle", idle_channels(0.25)), ("scrape", ATTACK.at(0.28)), ("coil", ATTACK.at(0.49)),
@@ -201,16 +205,16 @@ def main():
             pose(rig, v, 0.2)
             render_to(scene, os.path.join(out, f"boar_{name}.png"))
         pose(rig, READY)
-        save_blend("erymanthian_boar_tripo")
+        save_blend("erymanthian_boar_tripo" + tag)
         return
     cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=3.4, yaw=-14, pitch=6)
     anims = {
         "idle": [lambda k=k: pose(rig, idle_channels(k / 8), k / 8) for k in range(8)],
         "attack": [lambda k=k: pose(rig, ATTACK.at(k / 19), k / 19) for k in range(20)],
     }
-    export_sprites(scene, cam, "erymanthian_boar", anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.6})
+    export_sprites(scene, cam, "erymanthian_boar" + tag, anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.6})
     pose(rig, READY)
-    save_blend("erymanthian_boar_tripo")
+    save_blend("erymanthian_boar_tripo" + tag)
 
 
 if __name__ == "__main__":
