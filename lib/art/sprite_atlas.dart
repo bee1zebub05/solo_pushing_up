@@ -165,19 +165,6 @@ class SpriteAtlas {
     return i + (t - phases[i]) / (phases[i + 1] - phases[i]);
   }
 
-  /// Độ đậm (0–1) của dáng chờ vẽ đè lên đòn ở tiến độ [p]: đầu đòn tan
-  /// dần từ dáng chờ, cuối đòn hiện dần lại — vòng đứng chờ đang ở pha bất
-  /// kỳ nên chuyển thẳng sang khung đầu / khỏi khung cuối của đòn bị giật.
-  static double idleBlend(double p, {double fade = 0.1}) {
-    final w = p < fade
-        ? 1 - p / fade
-        : p > 1 - fade
-        ? (p - (1 - fade)) / fade
-        : 0.0;
-    final c = w.clamp(0.0, 1.0);
-    return c * c * (3 - 2 * c);
-  }
-
   static final _paint = Paint()..filterQuality = FilterQuality.medium;
 
   /// Vẽ chuỗi [anim] tại tiến độ [t] (0–1) quanh điểm neo (gốc canvas).

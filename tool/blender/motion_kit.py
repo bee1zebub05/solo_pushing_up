@@ -1,8 +1,23 @@
-"""Biên đạo theo khoá cho quái Tripo (bản gọn của tool/motion/choreo.py nhánh
-chương Nhật): mỗi động tác là các khoá thưa (t, {kênh: giá trị}) quanh dáng
-chờ [ready]; nội suy cubic đơn điệu Fritsch–Carlson (mượt, không vọt quá
+"""Thư viện chuyển động mượt cho quái / nhân vật render sprite bằng Blender
+(dùng chung mọi chương — hướng dẫn: rules/chuyendong.md).
+
+Biên đạo theo khoá: mỗi động tác là các khoá thưa (t, {kênh: giá trị}) quanh
+dáng chờ [ready]; nội suy cubic đơn điệu Fritsch–Carlson (mượt, không vọt quá
 khoá — vọt thì vũ khí xuyên đất); [lag] trễ từng kênh để lực đi theo chuỗi
 hông → thân → tay → vũ khí → đầu. Khoá lặp lại cùng giá trị = giữ thế.
+
+    Move / Track     động tác một lượt (đòn, trồi lên, gục)
+    Loop             kênh lặp tuần hoàn, nối vòng không gãy (đứng chờ)
+    wingbeat         một nhịp vỗ cánh theo số đo chim thật
+    dense_phases     tiến độ khung đòn: thưa lúc lấy đà / thu, dày quanh cú đánh
+    attack_phases    dense_phases tính từ thời lượng đòn và số hình/giây mong muốn
+    idle_count       số khung vòng đứng chờ theo chu kỳ và số hình/giây
+    loop_frames / move_frames   danh sách hàm đặt dáng cho sprite_kit.export_sprites
+
+Atlas ghi `phases` (extra={"phases": {anim: phases}}) để game đọc tiến độ
+từng khung (lib/art/sprite_motion.dart). Xương nằm gần song song trục mốc
+xoắn mặc định (cánh dọc chiều sâu) cần mốc riêng: rig.up = {tên: Vector}
+(boss_kit.Rig.set).
 """
 
 import math
@@ -157,3 +172,37 @@ def wingbeat(t):
         arm = -math.cos(math.pi * (t - WING_DOWN) / (1 - WING_DOWN))
     return dict(arm=arm, bend=_BEND.at(t), sweep=_SWEEP.at(t), flex=_FLEX.at(t),
                 lift=math.cos(2 * math.pi * (t - 0.55)))
+
+
+# Nhịp game (lib/art/battle_stage.dart, BossArt.attackSeconds của chương 1):
+# đòn 1,6 s, cú đánh trong khoảng 0,46–0,70 của đòn. Mức hình/giây đã duyệt
+# ở chương 1: đứng chờ ≥ 15, đòn ~18 lúc lấy đà / thu, ~40 quanh cú đánh.
+ATTACK_SECONDS = 1.6
+STRIKE = (0.46, 0.70)
+IDLE_FPS = 16
+ATTACK_FPS = 18
+STRIKE_FPS = 40
+
+
+def attack_phases(seconds=ATTACK_SECONDS, fps=ATTACK_FPS, strike_fps=STRIKE_FPS, strike=STRIKE):
+    """Tiến độ khung một đòn dài [seconds] giây: [fps] hình/giây lúc lấy đà /
+    thu, [strike_fps] quanh cú đánh [strike] (game không hoà khung ở đó)."""
+    return dense_phases(1 / (seconds * fps), strike[0], strike[1], 1 / (seconds * strike_fps))
+
+
+def idle_count(period, fps=IDLE_FPS, even=True):
+    """Số khung vòng đứng chờ chu kỳ [period] giây (idlePeriod trong atlas)."""
+    n = max(8, round(period * fps))
+    return n + (n % 2) if even else n
+
+
+def loop_frames(pose, channels, n):
+    """[n] hàm đặt dáng chia đều một vòng lặp: pose(channels(k / n))."""
+    return [lambda k=k: pose(channels(k / n)) for k in range(n)]
+
+
+def move_frames(pose, move, phases):
+    """Hàm đặt dáng cho từng tiến độ trong [phases]: pose(move.at(p)) — [move]
+    là Move hoặc hàm p → kênh."""
+    at = move.at if hasattr(move, "at") else move
+    return [lambda p=p: pose(at(p)) for p in phases]

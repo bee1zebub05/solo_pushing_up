@@ -23,7 +23,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move, dense_phases  # noqa: E402
+from motion_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo, islands, smooth_weights, surface_regions  # noqa: E402
 
@@ -123,7 +123,7 @@ def stump(i):
     return obj
 
 
-# Biên đạo (choreo_kit). Đầu ra đòn (đầu sống gần người chơi nhất):
+# Biên đạo (motion_kit). Đầu ra đòn (đầu sống gần người chơi nhất):
 #   hx, hy  dời đầu (đơn vị vẽ: x dương = lùi, y dương = xuống)
 #   curl    cổ cong chữ S (dương = khúc giữa võng ra sau, như rắn hổ mang thu thế)
 #   tilt    gằm đầu (độ, + = chúc mõm xuống mổ)

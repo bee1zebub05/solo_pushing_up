@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'sprite_atlas.dart';
+import 'sprite_motion.dart';
 import 'vector_style.dart';
 
 /// Bảng màu Sư tử Nemea: da vàng ánh kim (không vũ khí nào xuyên thủng),
@@ -243,22 +244,13 @@ void paintLion(Canvas canvas, LionState s) {
 /// chỉ thêm phần đọc nhịp trận — bụi cào đất khi lấy đà, rung gầm gừ, vệt
 /// vuốt, sóng gầm, khiên da loé khi bị chặn, Trì Trệ rời xác khi gục.
 /// Điểm [key] (danh sách [x, y] từng khung trong meta atlas) tại tiến độ [p].
-Offset? _spriteTrack(SpriteAtlas sprite, String key, double p) {
-  final list = sprite.meta[key] as List?;
-  if (list == null || list.length < 2) return null;
-  Offset at(int i) {
-    final t = list[i] as List;
-    return Offset((t[0] as num).toDouble(), (t[1] as num).toDouble());
-  }
-
-  final anim = key.contains('Pounce') ? 'pounce' : 'attack';
-  final phases = sprite.phasesOf(anim);
-  final pos = phases != null && phases.length == list.length
-      ? SpriteAtlas.positionOf(phases, p.clamp(0.0, 1.0))
-      : p.clamp(0.0, 1.0) * (list.length - 1);
-  final i = math.min(pos.floor(), list.length - 2);
-  return Offset.lerp(at(i), at(i + 1), pos - i)!;
-}
+Offset? _spriteTrack(SpriteAtlas sprite, String key, double p) =>
+    SpriteMotion.track(
+      sprite,
+      key,
+      p,
+      anim: key.contains('Pounce') ? 'pounce' : 'attack',
+    );
 
 void paintLionSprite(
   Canvas canvas,
@@ -296,36 +288,27 @@ void paintLionSprite(
   } else if (s.wrestled >= 0 && sprite.has('wrestled')) {
     sprite.draw(canvas, 'wrestled', s.wrestled, flash: s.hurt, tint: tint);
   } else if (p >= 0 && sprite.has(s.pounce ? 'pounce' : 'attack')) {
-    // Quanh cú vồ (0,48–0,7) không hoà hai khung kề nhau (chân thành bốn).
-    sprite.draw(
+    // Quanh cú vồ không hoà hai khung kề nhau (chân thành bốn).
+    SpriteMotion.action(
       canvas,
+      sprite,
       s.pounce ? 'pounce' : 'attack',
       p,
+      idleAnim: 'idle',
+      time: t,
       flash: s.hurt,
       tint: tint,
-      snap: p > 0.48 && p < 0.7,
+      fallbackPeriod: 3,
     );
-    final blend = SpriteAtlas.idleBlend(p);
-    if (blend > 0.01) {
-      sprite.draw(
-        canvas,
-        'idle',
-        t / sprite.metaDouble('idlePeriod', 3),
-        loop: true,
-        opacity: blend,
-        flash: s.hurt,
-        tint: tint,
-      );
-    }
   } else {
-    final period = sprite.metaDouble('idlePeriod', 3);
-    sprite.draw(
+    SpriteMotion.idle(
       canvas,
+      sprite,
       'idle',
-      t / period,
-      loop: true,
+      t,
       flash: s.hurt,
       tint: tint,
+      fallbackPeriod: 3,
     );
   }
 

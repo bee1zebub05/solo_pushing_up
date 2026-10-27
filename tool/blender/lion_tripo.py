@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 import lion_nemea as ln  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move, dense_phases  # noqa: E402
+from motion_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import import_tripo, smooth_weights  # noqa: E402
 
@@ -88,7 +88,7 @@ def build():
     return rig
 
 
-# Biên đạo (choreo_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
+# Biên đạo (motion_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
 #   shift, drop   dời thân (x dương = lùi, y dương = hạ thấp)
 #   tilt          ngóc thân quanh giữa lưng (độ, + = ngóc phần trước lên)
 #   hdx, hdy, hrot   dời gốc đầu, xoay đầu (độ, + = ngửa ra sau)

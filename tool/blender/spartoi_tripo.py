@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move, dense_phases  # noqa: E402
+from motion_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, pin_to_bone, smooth_weights  # noqa: E402
 
@@ -132,7 +132,7 @@ def build():
     return rig
 
 
-# Biên đạo (choreo_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
+# Biên đạo (motion_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
 #   hipx, hipy  dời hông (x âm = tới trước, y dương = hạ thấp)
 #   tilt        ngả thân quanh hông (độ, + = ngả ra sau, âm = khom tới)
 #   head        gằm đầu (độ, + = cúi)

@@ -11,7 +11,7 @@ về phía máy quay, tay giáo (phải) phía xa — như bản cũ. Giáo và 
 mảnh lưới riêng: gắn cứng vào xương riêng, đặt vào bàn tay mỗi khung, nên
 giáo dựng đứng lúc đứng và chĩa ngang lúc đâm mà cẳng tay không phải bẻ.
 
-Động tác theo biên đạo khoá (choreo_kit, xem ATTACK/RISE): idle (thế thủ
+Động tác theo biên đạo khoá (motion_kit, xem ATTACK/RISE): idle (thế thủ
 thở chậm), attack (đâm giáo qua vai kiểu hoplite: lấy đà – nén – bước dậm –
 khựng – thu), rise (trồi lên từ đống đá: lúc mở màn và lúc ráp lại ở 1.7).
 """
@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move, dense_phases  # noqa: E402
+from motion_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, pin_to_bone, smooth_weights  # noqa: E402
 
@@ -146,7 +146,7 @@ def build():
     return rig
 
 
-# Biên đạo (choreo_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
+# Biên đạo (motion_kit): kênh theo đơn vị vẽ / độ, quanh dáng chờ READY.
 #   hipx, hipy  dời hông (x âm = tới trước, y dương = hạ thấp)
 #   tilt        ngả thân quanh hông (độ, + = ngả ra sau)
 #   head        gằm đầu (độ, + = cúi nhìn qua vành khiên)

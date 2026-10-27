@@ -440,7 +440,7 @@ của `lion_nemea.py`. Script: `tool/blender/lion_tripo.py`.
 - Dấu hiệu báo đòn vẽ trong bản vector (mũi tên lợn rừng, sao mũi giáo) phải
   vẽ lại cho nhánh sprite: tính vị trí từ chính công thức pose() trong Blender.
 - **Biên đạo theo khoá (21/10, lính đá):** `pose()` nội suy thẳng giữa ba thế
-  (lấy đà/ra đòn/thu) trông cứng và "vung tay". Thay bằng `tool/blender/choreo_kit.py`
+  (lấy đà/ra đòn/thu) trông cứng và "vung tay". Thay bằng `tool/blender/motion_kit.py`
   (bản gọn của biên đạo nhánh chương Nhật): khoá thưa quanh dáng chờ, nội suy
   cubic đơn điệu, `lag` từng kênh (hông → thân → khiên → tay → giáo → đầu),
   khoá lặp lại = giữ thế (nén trước cú đâm, khựng ở đỉnh đòn); bước = nhấc
@@ -533,8 +533,10 @@ cũng vẽ lại cùng chất. Toàn bộ tài liệu tạo ảnh ở `art_src/b
 - **Bóng đổ bị cắt thành mép chữ nhật** (Spartoi): bóng nắng xiên đậm có
   alpha ≥ 0,6 nên bị coi là thân, không được làm mờ ở mép khung cắt.
   `atlas_pack.crop` nay làm mờ MỌI điểm trong dải ≤ lề quanh thân.
+- **Thư viện:** mọi luật dưới đây đã gom thành motion kit — hướng dẫn dùng cho
+  nhân vật / chương sau ở `rules/chuyendong.md`.
 - **Độ mượt (01/11):** khung chia đều làm đoạn ra đòn chỉ ~3 khung (nhảy cóc), đứng
-  chờ 2–3 hình/giây (nhoè). Nay `choreo_kit.dense_phases` dồn khung dày quanh cú
+  chờ 2–3 hình/giây (nhoè). Nay `motion_kit.dense_phases` dồn khung dày quanh cú
   đánh (0,46–0,70), ghi `phases` vào atlas; `SpriteAtlas.phasesOf/positionOf` đọc
   tiến độ từng khung (cả track `spearTip`/`headTrack`/`headAttack`). Quanh cú
   đánh vẫn `snap` (thân lao nhanh, hoà khung hiện bóng kép). Đứng chờ ~gấp đôi
@@ -545,7 +547,7 @@ cũng vẽ lại cùng chất. Toàn bộ tài liệu tạo ảnh ở `art_src/b
   đứng chờ: lính đá/Spartoi/lợn rừng/sư tử 24 khung, chim/Harpy 16, Hydra 14
   (Hydra 5 trang ở tỉ lệ 0,7; sư tử 4 trang ở 0,65; lợn rừng 3 trang ở 0,75).
   Cánh chim + Harpy gập vào cuối nhịp đập xuống (`tuck`) — đợt 3 làm lại.
-- **Đợt 3 (27/10):** cánh vỗ theo số đo chim thật (`choreo_kit.wingbeat`,
+- **Đợt 3 (27/10):** cánh vỗ theo số đo chim thật (`motion_kit.wingbeat`,
   bồ câu bay chậm PMC12068018): đập xuống cánh duỗi, mút cánh trễ ~0,1 nhịp;
   nâng lên cổ tay dẫn trước, khuỷu gập (`flex`), mút cánh rủ xuống −80° và
   quét ra sau, ~3/5 nhịp nâng mới duỗi. Xương cánh nằm dọc chiều sâu phải có

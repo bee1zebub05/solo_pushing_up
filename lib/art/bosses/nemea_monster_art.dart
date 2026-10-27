@@ -8,6 +8,7 @@ import '../greek_monsters.dart';
 import '../nemea_scene.dart';
 import '../nemea_backdrop.dart';
 import '../sprite_atlas.dart';
+import '../sprite_motion.dart';
 import '../vector_style.dart' show fillPaint;
 import 'nemea_boss.dart';
 
@@ -533,20 +534,7 @@ class NemeaMonsterArt extends NemeaBossArt {
   /// [phase] như khung ảnh; null nếu chưa nạp / không có.
   Offset? _track(String atlas, String key, double phase) {
     final sprite = SpriteAtlas.get(atlas);
-    final list = sprite?.meta[key] as List?;
-    if (list == null || list.length < 2 || phase < 0) return null;
-    final phases = sprite!.phasesOf('attack');
-    Offset at(int i) {
-      final t = list[i] as List;
-      return Offset((t[0] as num).toDouble(), (t[1] as num).toDouble());
-    }
-
-    final p = phase.clamp(0.0, 1.0);
-    final pos = phases != null && phases.length == list.length
-        ? SpriteAtlas.positionOf(phases, p)
-        : p * (list.length - 1);
-    final i = math.min(pos.floor(), list.length - 2);
-    return Offset.lerp(at(i), at(i + 1), pos - i)!;
+    return sprite == null ? null : SpriteMotion.track(sprite, key, phase);
   }
 
   /// Báo trước cú đâm của lính đá bản sprite: mũi giáo loé sao tím (màu Trì
@@ -771,38 +759,25 @@ class NemeaMonsterArt extends NemeaBossArt {
     if (f.defeat > 0 && sprite.has('defeat')) {
       sprite.draw(canvas, 'defeat', f.defeat, flash: flash, tint: spriteTint);
     } else if (attackPhase >= 0 && sprite.has(attack)) {
-      // [snapStrike]: quanh pha ra đòn (0,48–0,7) không hoà hai khung kề
-      // nhau — vũ khí lao nhanh, hoà thì thành hai cây chồng nhau.
-      sprite.draw(
+      // [snapStrike]: quanh cú đánh không hoà hai khung kề nhau — vũ khí
+      // lao nhanh, hoà thì thành hai cây chồng nhau.
+      SpriteMotion.action(
         canvas,
+        sprite,
         attack,
         attackPhase,
+        idleAnim: idle,
+        time: time,
+        snapStrike: snapStrike,
         flash: flash,
         tint: spriteTint,
-        // Khung dồn dày quanh cú đánh (`phases`): mỗi hình game có khung
-        // riêng, chỉ vẽ khung gần nhất cho sắc nét (hoà thì thân lao nhanh
-        // hiện bóng kép).
-        snap: snapStrike && attackPhase > 0.48 && attackPhase < 0.7,
       );
-      final blend = SpriteAtlas.idleBlend(attackPhase);
-      if (blend > 0.01) {
-        sprite.draw(
-          canvas,
-          idle,
-          time / sprite.metaDouble('idlePeriod', 2.4),
-          loop: true,
-          opacity: blend,
-          flash: flash,
-          tint: spriteTint,
-        );
-      }
     } else {
-      final period = sprite.metaDouble('idlePeriod', 2.4);
-      sprite.draw(
+      SpriteMotion.idle(
         canvas,
+        sprite,
         idle,
-        time / period,
-        loop: true,
+        time,
         flash: flash,
         tint: spriteTint,
       );

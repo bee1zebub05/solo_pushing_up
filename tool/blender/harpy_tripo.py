@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move, Track, dense_phases, wingbeat  # noqa: E402
+from motion_kit import Move, Track, dense_phases, wingbeat  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, smooth_weights, surface_regions  # noqa: E402
 
@@ -121,7 +121,7 @@ def rot_about(p, pivot, axis, ang):
     return (x + pivot[0], z + pivot[1], d + pivot[2])
 
 
-# Biên đạo (choreo_kit). Kênh (hệ gốc mô hình):
+# Biên đạo (motion_kit). Kênh (hệ gốc mô hình):
 #   flap   góc vỗ cánh (độ, + = cánh lên)
 #   tip    mút cánh so với cánh trong (độ, + = cong lên, âm = rủ xuống)
 #   sweep  quét cánh ra sau (độ)    flex  gập khuỷu cánh, sải co lại (0 … 1)
@@ -158,7 +158,7 @@ SWOOP = Track([(0.0, 0.0), (0.48, 0.0), (0.53, 1.0), (0.66, 1.0), (0.74, 0.0), (
 
 
 def beat_wings(b, flap=42, lift=2.4):
-    """Kênh cánh + nảy thân cho nhịp vỗ [b] (choreo_kit.wingbeat). Cánh mô
+    """Kênh cánh + nảy thân cho nhịp vỗ [b] (motion_kit.wingbeat). Cánh mô
     hình vốn nâng ~30°: tâm nhịp hạ xuống để đáy nhịp đập thật sự xuống thấp."""
     w = wingbeat(b)
     return dict(flap=-20 + flap * w["arm"], tip=(30 if w["bend"] < 0 else 50) * w["bend"],
@@ -179,7 +179,7 @@ ATTACK_PHASES = dense_phases(0.04, 0.46, 0.70, 0.016)  # ~35 khung, 15 quanh cú
 
 
 def idle_channels(t):
-    """Lơ lửng vỗ cánh theo nhịp chim thật (choreo_kit.wingbeat): đập xuống
+    """Lơ lửng vỗ cánh theo nhịp chim thật (motion_kit.wingbeat): đập xuống
     cánh duỗi hết; nâng lên cổ tay dẫn trước, sải cánh co, mút cánh rủ xuống
     quặt ra sau, gần đỉnh mới bật duỗi. Thân cao nhất cuối nhịp đập; đầu gật
     bù lại để giữ yên; tay, chân trễ theo — vòng lặp liền."""
