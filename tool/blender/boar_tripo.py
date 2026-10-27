@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import import_tripo, smooth_weights  # noqa: E402
 
@@ -99,6 +99,9 @@ ATTACK = Move(READY, [
     (0.84, dict(shift=-14, head=-8, hx=0, hy=0, fnx=-10, fnl=4, ffx=-12, bnx=-6, bfx=-8)),
     (0.92, dict(shift=-4, head=4, fnx=-2, fnl=0, ffx=-2, bnx=0, bfx=0, tail=8, wag=3)),
 ], LAG)
+
+
+ATTACK_PHASES = dense_phases(0.035, 0.46, 0.70, 0.016)  # 39 khung, 15 quanh cú đánh
 
 
 def idle_channels(t):
@@ -209,10 +212,10 @@ def main():
         return
     cam = setup_camera(scene, FRAME_X, FRAME_Y, px_per_unit=3.4, yaw=-14, pitch=6)
     anims = {
-        "idle": [lambda k=k: pose(rig, idle_channels(k / 8), k / 8) for k in range(8)],
-        "attack": [lambda k=k: pose(rig, ATTACK.at(k / 19), k / 19) for k in range(20)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 44), k / 44) for k in range(44)],
+        "attack": [lambda p=p: pose(rig, ATTACK.at(p), p) for p in ATTACK_PHASES],
     }
-    export_sprites(scene, cam, "erymanthian_boar" + tag, anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.6})
+    export_sprites(scene, cam, "erymanthian_boar" + tag, anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.6, "phases": {"attack": ATTACK_PHASES}})
     pose(rig, READY)
     save_blend("erymanthian_boar_tripo" + tag)
 

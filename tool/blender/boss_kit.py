@@ -852,15 +852,27 @@ class Rig:
         for pb in self.arm.pose.bones:
             pb.matrix_basis = Matrix.Identity(4)
 
+    @staticmethod
+    def _frame(pa, pt, up):
+        y = (pt - pa).normalized()
+        z = (up - y * y.dot(up)).normalized()
+        x = y.cross(z).normalized()
+        return Matrix((x, y, z)).transposed()
+
     def set(self, name, a, b):
-        """Đặt xương nằm từ a tới b (đơn vị vẽ)."""
+        """Đặt xương nằm từ a tới b (đơn vị vẽ). Xương có hướng mốc riêng
+        (self.up[name], ví dụ cánh nằm dọc chiều sâu: mốc mặc định gần song
+        song với xương nên xương bị vặn xoắn khi xoay) giữ độ xoắn theo mốc đó."""
         pb = self.arm.pose.bones[name]
         pa, pt = P(*a), P(*b)
-        y = (pt - pa).normalized()
-        z = Vector((0, 1, 0))
-        z = (z - y * y.dot(z)).normalized()
-        x = y.cross(z).normalized()
-        m = Matrix((x, y, z)).transposed().to_4x4()
+        up = getattr(self, "up", {}).get(name)
+        if up is None:
+            m = self._frame(pa, pt, Vector((0, 1, 0)))
+        else:
+            ra, rb = (P(*q) for q in self.bones[name])
+            rest = self._frame(ra, rb, Vector((0, 1, 0)))
+            m = self._frame(pa, pt, up) @ self._frame(ra, rb, up).transposed() @ rest
+        m = m.to_4x4()
         m.translation = pa
         pb.matrix = m
         bpy.context.view_layer.update()

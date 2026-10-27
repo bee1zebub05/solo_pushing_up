@@ -532,14 +532,19 @@ class NemeaMonsterArt extends NemeaBossArt {
   /// [x, y] đơn vị sân khấu, sinh lúc render Blender), nội suy tại tiến độ
   /// [phase] như khung ảnh; null nếu chưa nạp / không có.
   Offset? _track(String atlas, String key, double phase) {
-    final list = SpriteAtlas.get(atlas)?.meta[key] as List?;
+    final sprite = SpriteAtlas.get(atlas);
+    final list = sprite?.meta[key] as List?;
     if (list == null || list.length < 2 || phase < 0) return null;
+    final phases = sprite!.phasesOf('attack');
     Offset at(int i) {
       final t = list[i] as List;
       return Offset((t[0] as num).toDouble(), (t[1] as num).toDouble());
     }
 
-    final pos = phase.clamp(0.0, 1.0) * (list.length - 1);
+    final p = phase.clamp(0.0, 1.0);
+    final pos = phases != null && phases.length == list.length
+        ? SpriteAtlas.positionOf(phases, p)
+        : p * (list.length - 1);
     final i = math.min(pos.floor(), list.length - 2);
     return Offset.lerp(at(i), at(i + 1), pos - i)!;
   }
@@ -774,8 +779,23 @@ class NemeaMonsterArt extends NemeaBossArt {
         attackPhase,
         flash: flash,
         tint: spriteTint,
+        // Khung dồn dày quanh cú đánh (`phases`): mỗi hình game có khung
+        // riêng, chỉ vẽ khung gần nhất cho sắc nét (hoà thì thân lao nhanh
+        // hiện bóng kép).
         snap: snapStrike && attackPhase > 0.48 && attackPhase < 0.7,
       );
+      final blend = SpriteAtlas.idleBlend(attackPhase);
+      if (blend > 0.01) {
+        sprite.draw(
+          canvas,
+          idle,
+          time / sprite.metaDouble('idlePeriod', 2.4),
+          loop: true,
+          opacity: blend,
+          flash: flash,
+          tint: spriteTint,
+        );
+      }
     } else {
       final period = sprite.metaDouble('idlePeriod', 2.4);
       sprite.draw(

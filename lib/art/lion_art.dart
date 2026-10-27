@@ -251,7 +251,11 @@ Offset? _spriteTrack(SpriteAtlas sprite, String key, double p) {
     return Offset((t[0] as num).toDouble(), (t[1] as num).toDouble());
   }
 
-  final pos = p.clamp(0.0, 1.0) * (list.length - 1);
+  final anim = key.contains('Pounce') ? 'pounce' : 'attack';
+  final phases = sprite.phasesOf(anim);
+  final pos = phases != null && phases.length == list.length
+      ? SpriteAtlas.positionOf(phases, p.clamp(0.0, 1.0))
+      : p.clamp(0.0, 1.0) * (list.length - 1);
   final i = math.min(pos.floor(), list.length - 2);
   return Offset.lerp(at(i), at(i + 1), pos - i)!;
 }
@@ -301,6 +305,18 @@ void paintLionSprite(
       tint: tint,
       snap: p > 0.48 && p < 0.7,
     );
+    final blend = SpriteAtlas.idleBlend(p);
+    if (blend > 0.01) {
+      sprite.draw(
+        canvas,
+        'idle',
+        t / sprite.metaDouble('idlePeriod', 3),
+        loop: true,
+        opacity: blend,
+        flash: s.hurt,
+        tint: tint,
+      );
+    }
   } else {
     final period = sprite.metaDouble('idlePeriod', 3);
     sprite.draw(

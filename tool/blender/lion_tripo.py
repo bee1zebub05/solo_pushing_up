@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 import lion_nemea as ln  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import import_tripo, smooth_weights  # noqa: E402
 
@@ -155,6 +155,10 @@ DEFEAT = Move(READY, [
     (1.00, dict(shift=10, drop=34, tilt=-2, hdx=-6, hdy=22, hrot=-14, roar=0.13, npx=-34, fpx=-34, bpx=8, lash=1,
                 tailup=20)),
 ], dict(LAG, hdy=0.06, hrot=0.08, tailup=0.08))
+
+
+# Vồ cào và nhảy vồ: 36 khung, 15 dồn quanh cú chạm (0,46–0,70).
+ATTACK_PHASES = dense_phases(0.04, 0.46, 0.70, 0.016)
 
 
 def idle_channels(t):
@@ -292,19 +296,20 @@ def main():
         save_blend("nemea_lion_tripo" + tag)
         return
     cam = setup_camera(scene, ln.FRAME_X, ln.FRAME_Y, px_per_unit=2.2, yaw=-14, pitch=6)
-    attack = [lambda k=k: pose(rig, ATTACK.at(k / 17), 0.25 + k / 17 * 0.4) for k in range(18)]
-    pounce = [lambda k=k: pose(rig, POUNCE.at(k / 15), 0.25 + k / 15 * 0.4) for k in range(16)]
+    attack = [lambda p=p: pose(rig, ATTACK.at(p), 0.25 + p * 0.4) for p in ATTACK_PHASES]
+    pounce = [lambda p=p: pose(rig, POUNCE.at(p), 0.25 + p * 0.4) for p in ATTACK_PHASES]
     anims = {
-        "idle": [lambda k=k: pose(rig, idle_channels(k / 8), k / 8) for k in range(8)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 48), k / 48) for k in range(48)],
         "attack": attack,
-        "defeat": [lambda k=k: pose(rig, DEFEAT.at(k / 7), 0.25 + k / 7 * 0.3) for k in range(8)],
+        "defeat": [lambda k=k: pose(rig, DEFEAT.at(k / 19), 0.25 + k / 19 * 0.3) for k in range(20)],
         "pounce": pounce,
-        "wrestled": [lambda k=k: pose(rig, WRESTLED.at(k / 9), k / 9 * 0.33) for k in range(10)],
+        "wrestled": [lambda k=k: pose(rig, WRESTLED.at(k / 23), k / 23 * 0.33) for k in range(24)],
     }
     head_a, paw_a = tracks(scene, cam, rig, attack)
     head_p, _ = tracks(scene, cam, rig, pounce)
     export_sprites(scene, cam, "nemea_lion" + tag, anims, P(0, 0), 50 * ln.LION_SCALE,
-                   extra={"idlePeriod": 3.0, "headAttack": head_a, "pawAttack": paw_a, "headPounce": head_p})
+                   extra={"idlePeriod": 3.0, "headAttack": head_a, "pawAttack": paw_a, "headPounce": head_p,
+                          "phases": {"attack": ATTACK_PHASES, "pounce": ATTACK_PHASES}})
     pose(rig, READY)
     save_blend("nemea_lion_tripo" + tag)
 

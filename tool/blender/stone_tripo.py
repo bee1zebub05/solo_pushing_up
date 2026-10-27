@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, pin_to_bone, smooth_weights  # noqa: E402
 
@@ -287,6 +287,10 @@ def spear_tips(scene, cam, rig, setups):
     return out
 
 
+# Đòn: thưa 0,035 ngoài cú đâm, dày 0,016 trong 0,46–0,70 (bước dậm → đâm → khựng).
+ATTACK_PHASES = dense_phases(0.035, 0.46, 0.70, 0.016)
+
+
 def lights(scene):
     # Như hoplite.py: nắng ấm trên-trái, viền lạnh làm nổi đá.
     add_sun(scene, "Key", (0.55, 0.6, -0.6), 4.0, "#FFE0B4", angle=2.5)
@@ -316,15 +320,15 @@ def main():
         save_blend("stone_soldier_tripo" + tag)
         return
     cam = camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 200)
-    attack = [lambda k=k: pose(rig, ATTACK.at(k / 19)) for k in range(20)]
+    attack = [lambda p=p: pose(rig, ATTACK.at(p)) for p in ATTACK_PHASES]
     anims = {
-        "idle": [lambda k=k: pose(rig, idle_channels(k / 8)) for k in range(8)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 48)) for k in range(48)],
         "attack": attack,
-        "rise": [lambda k=k: pose(rig, RISE.at(k / 15)) for k in range(16)],
+        "rise": [lambda k=k: pose(rig, RISE.at(k / 31)) for k in range(32)],
     }
     tips = spear_tips(scene, cam, rig, attack)
     export_sprites(scene, cam, "stone_soldier" + tag, anims, (0, 0, 0), UNITS_PER_M,
-                   extra={"idlePeriod": 3.2, "spearTip": tips})
+                   extra={"idlePeriod": 3.2, "spearTip": tips, "phases": {"attack": ATTACK_PHASES}})
     pose(rig, READY)
     save_blend("stone_soldier_tripo" + tag)
 

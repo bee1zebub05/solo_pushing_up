@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, Track, dense_phases, wingbeat  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, smooth_weights, surface_regions  # noqa: E402
 
@@ -97,6 +97,10 @@ def build():
         part, side = lab.split("_")
         return bone.startswith(f"{part}_{side}") or bone == "spine"
 
+    # Cánh vỗ quanh trục trước–sau của mô hình: lấy trục đó làm mốc xoắn
+    # (mốc mặc định gần nằm trong mặt phẳng vỗ → cánh vặn xoắn khi xoay).
+    c, s_ = math.cos(math.radians(ROT)), math.sin(math.radians(ROT))
+    rig.up = {n: Vector((-s_, c, 0)) for n in BONES if n.startswith("wing_")}
     rig.skin(mesh, near_filter=allowed)
     smooth_weights(mesh, islands_below=0)
     follow_nearest(mesh, islands(mesh))
@@ -110,52 +114,85 @@ def rot_about(p, pivot, axis, ang):
     c, s = math.cos(ang), math.sin(ang)
     if axis == "d":  # trong mặt phẳng x–z (vỗ cánh lên/xuống)
         x, z = x * c - z * s, x * s + z * c
+    elif axis == "z":  # quanh trục đứng: trong mặt phẳng x–d (quét cánh ra sau)
+        x, d = x * c - d * s, x * s + d * c
     else:  # quanh trục ngang: trong mặt phẳng z–d (ngả trước/sau)
         z, d = z * c - d * s, z * s + d * c
     return (x + pivot[0], z + pivot[1], d + pivot[2])
 
 
 # Biên đạo (choreo_kit). Kênh (hệ gốc mô hình):
-#   flap   góc vỗ cánh (độ, + = cánh lên)     tip   mút cánh trễ thêm (độ)
+#   flap   góc vỗ cánh (độ, + = cánh lên)
+#   tip    mút cánh so với cánh trong (độ, + = cong lên, âm = rủ xuống)
+#   sweep  quét cánh ra sau (độ)    flex  gập khuỷu cánh, sải co lại (0 … 1)
 #   z, fwd dời thân lên / tới trước (về phía người chơi)
 #   pitch  ngả thân (độ, + = ngả ra sau, âm = chúi tới)   nod  gật đầu (độ)
 #   arm    tay vươn tới (độ)   leg   móng chân (độ, âm = co lên, + = vươn tới quắp)
 # Harpy: nhẹ, giật cục như chim săn — đập cánh xuống nhanh và mạnh, nâng cánh
 # chậm; thân nảy lên mỗi nhịp đập, chân và mút cánh trễ theo sau.
-READY = dict(flap=0, tip=0, z=0, fwd=0, pitch=0, nod=0, arm=0, leg=0)
-LAG = dict(pitch=0.006, nod=0.02, arm=0.015, leg=0.02, tip=0.025)
+READY = dict(flap=0, tip=0, sweep=0, flex=0, z=0, fwd=0, pitch=0, nod=0, arm=0, leg=0)
+LAG = dict(pitch=0.006, nod=0.02, arm=0.015, leg=0.02)
 
 # Đòn sà quắp (tiến độ sân khấu: lấy đà 0–0,5, ra đòn 0,5–0,65, chạm ~0,58).
 ATTACK = Move(READY, [
-    (0.07, dict(flap=34, tip=-10, pitch=4)),
-    (0.15, dict(flap=-26, tip=14, z=5, pitch=8, leg=-10, arm=-10)),
-    (0.24, dict(flap=34, tip=-16, z=5, pitch=10)),
-    (0.33, dict(flap=-24, tip=14, z=8, pitch=13, leg=-22, arm=-25, nod=4)),
-    (0.42, dict(flap=38, tip=-8, z=7, pitch=15, leg=-25, arm=-32, fwd=-2)),
-    (0.49, dict(flap=40, tip=-6, z=7, pitch=16, leg=-26, arm=-34, fwd=-3)),
-    (0.53, dict(flap=10, tip=-20, z=2, pitch=-14, fwd=12, leg=30, arm=20, nod=-6)),
-    (0.58, dict(flap=-30, tip=18, z=-14, pitch=-26, fwd=26, leg=70, arm=55, nod=-10)),
-    (0.65, dict(flap=-34, tip=20, z=-15, pitch=-27, fwd=27, leg=72, arm=56, nod=-10)),
-    (0.75, dict(flap=30, tip=-14, z=-8, pitch=-10, fwd=18, leg=30, arm=25, nod=-4)),
-    (0.85, dict(flap=-20, tip=12, z=-2, pitch=0, fwd=6, leg=5, arm=5, nod=0)),
-    (0.93, dict(flap=14, tip=-6, z=0, fwd=1, leg=0, arm=0)),
+    (0.07, dict(pitch=4)),
+    (0.15, dict(z=5, pitch=8, leg=-10, arm=-10)),
+    (0.24, dict(z=5, pitch=10)),
+    (0.33, dict(z=8, pitch=13, leg=-22, arm=-25, nod=4)),
+    (0.42, dict(z=7, pitch=15, leg=-25, arm=-32, fwd=-2)),
+    (0.49, dict(flap=34, tip=0, sweep=0, flex=0, z=7, pitch=16, leg=-26, arm=-34, fwd=-3)),
+    (0.53, dict(flap=18, tip=-26, sweep=36, flex=0.5, z=2, pitch=-14, fwd=12, leg=30, arm=20, nod=-6)),
+    (0.58, dict(flap=30, tip=-12, sweep=30, flex=0.3, z=-14, pitch=-26, fwd=26, leg=70, arm=55, nod=-10)),
+    (0.65, dict(flap=32, tip=-10, sweep=28, flex=0.3, z=-15, pitch=-27, fwd=27, leg=72, arm=56, nod=-10)),
+    (0.75, dict(z=-8, pitch=-10, fwd=18, leg=30, arm=25, nod=-4)),
+    (0.85, dict(z=-2, pitch=0, fwd=6, leg=5, arm=5, nod=0)),
+    (0.93, dict(z=0, fwd=1, leg=0, arm=0)),
 ], LAG)
 
 
+# Cánh trong đòn vỗ theo nhịp thật (wingbeat): số nhịp đã qua theo tiến độ
+# đòn (0 = cánh ở đỉnh); đoạn sà quắp theo khoá ATTACK (trọng số SWOOP).
+BEATS = Track([(0.0, -0.3), (0.07, 0.0), (0.24, 1.0), (0.42, 2.0), (0.49, 2.0), (0.75, 3.0), (0.93, 4.0),
+               (1.0, 4.3)])
+SWOOP = Track([(0.0, 0.0), (0.48, 0.0), (0.53, 1.0), (0.66, 1.0), (0.74, 0.0), (1.0, 0.0)])
+
+
+def beat_wings(b, flap=42, lift=2.4):
+    """Kênh cánh + nảy thân cho nhịp vỗ [b] (choreo_kit.wingbeat). Cánh mô
+    hình vốn nâng ~30°: tâm nhịp hạ xuống để đáy nhịp đập thật sự xuống thấp."""
+    w = wingbeat(b)
+    return dict(flap=-20 + flap * w["arm"], tip=(30 if w["bend"] < 0 else 50) * w["bend"],
+                sweep=30 * w["sweep"], flex=w["flex"], lift=lift * w["lift"])
+
+
+def attack_channels(p):
+    v = ATTACK.at(p)
+    k = SWOOP.at(p)
+    w = beat_wings(BEATS.at(p), flap=46, lift=1.6)
+    for c in ("flap", "tip", "sweep", "flex"):
+        v[c] = k * v[c] + (1 - k) * w[c]
+    v["z"] += (1 - k) * w["lift"]
+    return v
+
+
+ATTACK_PHASES = dense_phases(0.04, 0.46, 0.70, 0.016)  # ~35 khung, 15 quanh cú đánh
+
+
 def idle_channels(t):
-    """Lơ lửng vỗ cánh: pha cong (đập xuống nhanh, nâng chậm), thân nảy lên
-    lúc đập, mút cánh, tay, chân trễ theo — vòng lặp liền."""
-    ph = 2 * math.pi * t
-    arg = ph + 0.5 * math.sin(ph)  # chạy nhanh quanh lúc cánh ở đỉnh → đập xuống nhanh
+    """Lơ lửng vỗ cánh theo nhịp chim thật (choreo_kit.wingbeat): đập xuống
+    cánh duỗi hết; nâng lên cổ tay dẫn trước, sải cánh co, mút cánh rủ xuống
+    quặt ra sau, gần đỉnh mới bật duỗi. Thân cao nhất cuối nhịp đập; đầu gật
+    bù lại để giữ yên; tay, chân trễ theo — vòng lặp liền."""
+    w = beat_wings(t)
+    lag = wingbeat(t - 0.12)["lift"]
     return dict(
-        flap=32 * math.cos(arg),
-        tip=14 * math.sin(arg),
-        z=2.4 * math.sin(arg - 0.4),
+        flap=w["flap"], tip=w["tip"], sweep=w["sweep"], flex=w["flex"],
+        z=w["lift"],
         fwd=0.0,
-        pitch=2 * math.sin(arg - 0.6),
-        nod=3 * math.sin(arg + 0.8),
-        arm=6 * math.sin(arg - 1.0),
-        leg=6 * math.sin(arg - 1.6),
+        pitch=1.5 * lag,
+        nod=-2 * w["lift"] / 2.4,
+        arm=5 * lag,
+        leg=-6 * wingbeat(t - 0.2)["lift"],
     )
 
 
@@ -179,8 +216,30 @@ def pose(rig, v):
     for s, sign in (("r", -1), ("l", 1)):
         w = WINGS[s]
         pts = [w[0]] + [rot_about(p, w[0], "d", sign * flap) for p in w[1:]]
-        # Cổ tay cánh gập theo, mút cánh trễ một nhịp.
-        pts[2] = rot_about(pts[2], pts[1], "d", sign * (flap * 0.35 + math.radians(v["tip"])))
+        # Mút cánh cong lên / rủ xuống quanh cổ tay.
+        pts[2] = rot_about(pts[2], pts[1], "d", sign * math.radians(v["tip"]))
+        # Gập cánh vào trong (khuỷu–cổ tay liên động như chim thật: khuỷu gập
+        # thì cổ tay tự gập, bàn tay cánh quặt về phía thân): cổ tay kéo về
+        # phía vai, bàn tay cánh gập xuống rồi quặt vào phía thân (~145° so
+        # với cẳng cánh, trong mặt phẳng cánh), lệch ra sau lưng một chút.
+        f = v["flex"]
+        wr = tuple(w[0][i] + (pts[1][i] - w[0][i]) * (1 - 0.45 * f) for i in range(3))
+        hand = [pts[2][i] - pts[1][i] for i in range(3)]
+        length = math.sqrt(sum(c * c for c in hand))
+        u = [c / length for c in hand]
+        arm_v = [wr[i] - w[0][i] for i in range(3)]
+        al = math.sqrt(sum(c * c for c in arm_v))
+        a_ = [c / al for c in arm_v]
+        inward = rot_about(tuple(a_), (0, 0, 0), "d", -sign * math.radians(145))
+        folded = [inward[0], inward[1], inward[2] + 0.35]  # +d: sau lưng
+        d_ = [u[i] * (1 - f) + folded[i] * f for i in range(3)]
+        dl = math.sqrt(sum(c * c for c in d_))
+        pts[2] = tuple(wr[i] + d_[i] / dl * length for i in range(3))
+        pts[1] = wr
+        # Quét ra sau (về +d) quanh vai; mút cánh quét thêm.
+        sw = math.radians(v["sweep"])
+        pts[1] = rot_about(pts[1], w[0], "z", sign * sw * 0.6)
+        pts[2] = rot_about(pts[2], w[0], "z", sign * sw)
         for k in range(2):
             put(f"wing_{s}{k}", pts[k], pts[k + 1])
         a = ARMS[s]
@@ -238,9 +297,10 @@ def main():
         out = os.path.join(ROOT, "build", "blender", "harpy_tripo" + tag)
         os.makedirs(out, exist_ok=True)
         camera(scene, -0.2, 1.8, 3.1, 2.9, 300, yaw=-18, pitch=8)
-        for name, v in (("up", idle_channels(0)), ("down", idle_channels(0.3)), ("climb", ATTACK.at(0.33)),
-                        ("top", ATTACK.at(0.48)), ("dive", ATTACK.at(0.54)), ("strike", ATTACK.at(0.6)),
-                        ("recover", ATTACK.at(0.76))):
+        for name, v in (("up", idle_channels(0)), ("down", idle_channels(0.25)), ("bottom", idle_channels(0.52)),
+                        ("lift", idle_channels(0.7)), ("late", idle_channels(0.86)), ("climb", attack_channels(0.33)),
+                        ("top", attack_channels(0.48)), ("dive", attack_channels(0.54)), ("strike", attack_channels(0.6)),
+                        ("recover", attack_channels(0.76))):
             pose(rig, v)
             render_to(scene, os.path.join(out, f"harpy_{name}.png"))
         pose(rig, READY)
@@ -248,14 +308,14 @@ def main():
         return
     # Khung rộng hơn bản cũ: cú sà lao sang trái ra ngoài khung 2,5 m.
     cam = camera(scene, -0.2, 1.8, 3.1, 2.9, 190, yaw=-18, pitch=8)
-    attack = [lambda k=k: pose(rig, ATTACK.at(k / 19)) for k in range(20)]
+    attack = [lambda p=p: pose(rig, attack_channels(p)) for p in ATTACK_PHASES]
     anims = {
-        "idle": [lambda k=k: pose(rig, idle_channels(k / 10)) for k in range(10)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 24)) for k in range(24)],
         "attack": attack,
     }
     track = head_track(scene, cam, rig, attack)
     export_sprites(scene, cam, "harpy" + tag, anims, (0, 0, 0), UNITS_PER_M,
-                   extra={"idlePeriod": 0.9, "headTrack": track})
+                   extra={"idlePeriod": 0.9, "headTrack": track, "phases": {"attack": ATTACK_PHASES}})
     pose(rig, READY)
     save_blend("harpy_tripo" + tag)
 

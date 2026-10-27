@@ -65,20 +65,21 @@ void main() {
       expect(reps, inInclusiveRange(lo, hi));
     });
 
-    test('${stage.code}: người mới (chống gối, 3 s/rep) thắng trong 30 rep',
-        () {
-      final reps = simulate(
-        stage.enemy,
-        mode: PushupMode.knee,
-        cadenceMs: 3000,
-      );
-      expect(reps, isNotNull);
-      expect(reps, lessThanOrEqualTo(30));
-    });
+    test(
+      '${stage.code}: người mới (chống gối, 3 s/rep) thắng trong 30 rep',
+      () {
+        final reps = simulate(
+          stage.enemy,
+          mode: PushupMode.knee,
+          cadenceMs: 3000,
+        );
+        expect(reps, isNotNull);
+        expect(reps, lessThanOrEqualTo(30));
+      },
+    );
   }
 
-  test('răng cưa: tinh anh, mini-boss, boss cao hơn màn ngay trước và sau',
-      () {
+  test('răng cưa: tinh anh, mini-boss, boss cao hơn màn ngay trước và sau', () {
     final reps = [for (final s in stages) simulate(s.enemy)!];
     for (final peak in [3, 5]) {
       expect(reps[peak], greaterThan(reps[peak - 1]), reason: 'trước $peak');

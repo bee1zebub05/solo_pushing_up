@@ -212,9 +212,8 @@ void main() {
       final counter = PushupCounter();
       run(
         counter,
-        readyThen(
-          (t) => t.reps(3),
-        ).frames(body: const SyntheticBody(hipSag: 60)),
+        readyThen((t) => t.reps(3))
+            .frames(body: const SyntheticBody(hipSag: 60)),
       );
 
       expect(counter.count, 3);

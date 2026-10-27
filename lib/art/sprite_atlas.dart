@@ -145,6 +145,39 @@ class SpriteAtlas {
   double metaDouble(String key, double fallback) =>
       (meta[key] as num?)?.toDouble() ?? fallback;
 
+  /// Tiến độ (0–1) của từng khung chuỗi [anim] khi khung không chia đều
+  /// (`phases` trong json: dồn dày quanh cú đánh, thưa ở đoạn giữ thế —
+  /// tool/blender/stone_tripo.py), hoặc null = chia đều.
+  List<double>? phasesOf(String anim) {
+    final all = meta['phases'] as Map<String, dynamic>?;
+    final list = all?[anim] as List?;
+    return list == null ? null : [for (final v in list) (v as num).toDouble()];
+  }
+
+  /// Vị trí (chỉ số khung, có phần lẻ) của tiến độ [t] trên dãy [phases].
+  static double positionOf(List<double> phases, double t) {
+    if (t <= phases.first) return 0;
+    if (t >= phases.last) return phases.length - 1.0;
+    var i = 0;
+    while (phases[i + 1] < t) {
+      i++;
+    }
+    return i + (t - phases[i]) / (phases[i + 1] - phases[i]);
+  }
+
+  /// Độ đậm (0–1) của dáng chờ vẽ đè lên đòn ở tiến độ [p]: đầu đòn tan
+  /// dần từ dáng chờ, cuối đòn hiện dần lại — vòng đứng chờ đang ở pha bất
+  /// kỳ nên chuyển thẳng sang khung đầu / khỏi khung cuối của đòn bị giật.
+  static double idleBlend(double p, {double fade = 0.1}) {
+    final w = p < fade
+        ? 1 - p / fade
+        : p > 1 - fade
+        ? (p - (1 - fade)) / fade
+        : 0.0;
+    final c = w.clamp(0.0, 1.0);
+    return c * c * (3 - 2 * c);
+  }
+
   static final _paint = Paint()..filterQuality = FilterQuality.medium;
 
   /// Vẽ chuỗi [anim] tại tiến độ [t] (0–1) quanh điểm neo (gốc canvas).
@@ -167,7 +200,12 @@ class SpriteAtlas {
     final frames = anims[anim];
     if (frames == null || frames.isEmpty) return;
     final n = frames.length;
-    final pos = loop ? (t % 1) * n : t.clamp(0.0, 1.0) * (n - 1);
+    final phases = loop ? null : phasesOf(anim);
+    final pos = loop
+        ? (t % 1) * n
+        : phases != null && phases.length == n
+        ? positionOf(phases, t.clamp(0.0, 1.0))
+        : t.clamp(0.0, 1.0) * (n - 1);
     if (snap) {
       _frame(canvas, frames[pos.round() % n], opacity, flash, tint);
       return;

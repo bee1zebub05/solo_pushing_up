@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera, shadow_catcher  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo_upright, islands, pin_to_bone, smooth_weights  # noqa: E402
 
@@ -186,6 +186,9 @@ RISE = Move(READY, [
 ], dict(LAG, head=0.03, spear=0.03))
 
 
+ATTACK_PHASES = dense_phases(0.035, 0.46, 0.70, 0.016)  # 39 khung, 15 quanh cú đánh
+
+
 def idle_channels(t):
     """Khom thở dồn như thú sắp vồ: vai nhấp, đầu giật nhẹ hai nhịp mỗi chu kỳ,
     mũi giáo đảo thấp, khiên chỉnh theo — vòng lặp liền (hàm của 2πt)."""
@@ -314,15 +317,15 @@ def main():
         save_blend("spartoi_tripo" + tag)
         return
     cam = camera(scene, -0.45 * K, 1.0 * K, 3.0 * K, 2.3 * K, 200)
-    attack = [lambda k=k: pose(rig, ATTACK.at(k / 19)) for k in range(20)]
+    attack = [lambda p=p: pose(rig, ATTACK.at(p)) for p in ATTACK_PHASES]
     anims = {
-        "idle": [lambda k=k: pose(rig, idle_channels(k / 8)) for k in range(8)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 40)) for k in range(40)],
         "attack": attack,
-        "rise": [lambda k=k: pose(rig, RISE.at(k / 11)) for k in range(12)],
+        "rise": [lambda k=k: pose(rig, RISE.at(k / 25)) for k in range(26)],
     }
     tips = spear_tips(scene, cam, rig, attack)
     export_sprites(scene, cam, "spartoi" + tag, anims, (0, 0, 0), UNITS_PER_M,
-                   extra={"idlePeriod": 2.4, "spearTip": tips})
+                   extra={"idlePeriod": 2.4, "spearTip": tips, "phases": {"attack": ATTACK_PHASES}})
     pose(rig, READY)
     save_blend("spartoi_tripo" + tag)
 

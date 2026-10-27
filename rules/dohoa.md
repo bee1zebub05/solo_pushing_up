@@ -533,3 +533,26 @@ cũng vẽ lại cùng chất. Toàn bộ tài liệu tạo ảnh ở `art_src/b
 - **Bóng đổ bị cắt thành mép chữ nhật** (Spartoi): bóng nắng xiên đậm có
   alpha ≥ 0,6 nên bị coi là thân, không được làm mờ ở mép khung cắt.
   `atlas_pack.crop` nay làm mờ MỌI điểm trong dải ≤ lề quanh thân.
+- **Độ mượt (01/11):** khung chia đều làm đoạn ra đòn chỉ ~3 khung (nhảy cóc), đứng
+  chờ 2–3 hình/giây (nhoè). Nay `choreo_kit.dense_phases` dồn khung dày quanh cú
+  đánh (0,46–0,70), ghi `phases` vào atlas; `SpriteAtlas.phasesOf/positionOf` đọc
+  tiến độ từng khung (cả track `spearTip`/`headTrack`/`headAttack`). Quanh cú
+  đánh vẫn `snap` (thân lao nhanh, hoà khung hiện bóng kép). Đứng chờ ~gấp đôi
+  khung. Soát độ mượt không cần app: `tool/render/compare_motion.py` (trước/sau,
+  phát đúng như game 30 hình/giây), `tool/render/game_anim.py` (ảnh động báo
+  cáo theo nhịp game). Hydra 3 bản đầu → giảm còn 8 + 15 khung để vừa 4 trang.
+- **Đợt 2 (26–27/10):** đòn quái chương 1 dài 1,6 s (`BossArt.attackSeconds`);
+  đứng chờ: lính đá/Spartoi/lợn rừng/sư tử 24 khung, chim/Harpy 16, Hydra 14
+  (Hydra 5 trang ở tỉ lệ 0,7; sư tử 4 trang ở 0,65; lợn rừng 3 trang ở 0,75).
+  Cánh chim + Harpy gập vào cuối nhịp đập xuống (`tuck`) — đợt 3 làm lại.
+- **Đợt 3 (27/10):** cánh vỗ theo số đo chim thật (`choreo_kit.wingbeat`,
+  bồ câu bay chậm PMC12068018): đập xuống cánh duỗi, mút cánh trễ ~0,1 nhịp;
+  nâng lên cổ tay dẫn trước, khuỷu gập (`flex`), mút cánh rủ xuống −80° và
+  quét ra sau, ~3/5 nhịp nâng mới duỗi. Xương cánh nằm dọc chiều sâu phải có
+  mốc xoắn riêng (`rig.up`, Rig.set) — không thì cánh vặn xoắn khi xoay.
+  Harpy (người có cánh sau lưng): nhịp nâng gập cánh VÀO TRONG — sải co
+  ~45%, bàn tay cánh gập xuống quặt về phía thân ~145° trong mặt phẳng cánh
+  (khuỷu–cổ tay liên động như chim); gập ra sau lưng thì cánh gần bị thân che.
+  Game hoà dáng chờ vào 10% đầu/cuối mỗi đòn (`SpriteAtlas.idleBlend`): vòng
+  đứng chờ ở pha bất kỳ nên chuyển thẳng sang đòn bị giật. Khung: đứng chờ
+  ~gấp đôi, đòn `dense_phases(0.035–0.05, 0.46, 0.70, 0.016–0.02)`.

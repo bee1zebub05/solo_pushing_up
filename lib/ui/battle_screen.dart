@@ -163,7 +163,7 @@ class _BattleScreenState extends State<BattleScreen>
           // cú chạm trùng lúc vồ tới.
           _pounceTimer?.cancel();
           _pounceTimer = Timer(
-            Duration(milliseconds: math.max(0, inMs - 660)),
+            Duration(milliseconds: math.max(0, inMs - stage.strikeLeadMs)),
             stage.triggerAttack,
           );
         default:

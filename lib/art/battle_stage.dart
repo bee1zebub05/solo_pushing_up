@@ -158,6 +158,9 @@ abstract class BossArt {
   /// `true` khi hình tự vẽ khói Trì Trệ rời xác lúc gục (sư tử).
   bool get ownsDefeatSmoke => false;
 
+  /// Thời lượng một đòn trên sân khấu (giây): lấy đà 0–0,5, chạm ~0,55.
+  double get attackSeconds => 1.2;
+
   /// Cảnh mở màn của hình (lính đá trồi từ dưới đất…), giây: đòn doạ đầu
   /// tiên chờ hết cảnh này.
   double get introSeconds => 0;
@@ -438,6 +441,10 @@ class BattleStageGame extends FlameGame {
   /// Cho boss ra đòn ngay (demo/quay video có kịch bản, test).
   void triggerAttack() => _boss.triggerAttack();
 
+  /// Từ lúc bắt đầu đòn tới lúc chạm (ms) — hẹn giờ đòn trùng cơ chế.
+  int get strikeLeadMs =>
+      (_BossComponent.strikePhase * boss.attackSeconds * 1000).round();
+
   void reset() {
     _raging = false;
     _hero.victorious = false;
@@ -637,8 +644,8 @@ class _BossComponent extends PositionComponent {
 
   /// Đếm ngược tới lần đe doạ tiếp theo; [_attackAge] là thời gian đã diễn.
   late double _nextAttack = 1.5 + art.introSeconds;
-  double _attackAge = _attackLength;
-  static const _attackLength = 1.2;
+  late double _attackAge = _attackLength;
+  double get _attackLength => art.attackSeconds;
   final _random = math.Random();
 
   void triggerAttack() {

@@ -73,3 +73,87 @@ class Move:
 
     def at(self, t):
         return {c: tr.at(max(0.0, t - self.lag.get(c, 0.0))) for c, tr in self.tracks.items()}
+
+
+def dense_phases(sparse_step, dense_from, dense_to, dense_step):
+    """Tiến độ khung đòn: thưa ở lấy đà/thu về, dày quanh cú ra đòn (khung
+    nhanh nhất) — cùng số khung mà cú đâm mượt hơn nhiều khung chia đều."""
+    out, t = [], 0.0
+    while t < dense_from - 1e-6:
+        out.append(round(t, 4))
+        t += sparse_step
+    t = dense_from
+    while t < dense_to - 1e-6:
+        out.append(round(t, 4))
+        t += dense_step
+    t = dense_to
+    while t < 1.0 - 1e-6:
+        out.append(round(t, 4))
+        t += sparse_step
+    out.append(1.0)
+    return out
+
+
+class Loop:
+    """Kênh lặp tuần hoàn qua các khoá (t ∈ [0, 1), giá trị): Catmull–Rom
+    vòng — khoá cuối nối mượt về khoá đầu (không gãy ở chỗ nối vòng lặp)."""
+
+    def __init__(self, keys):
+        keys = sorted(keys)
+        self.xs = [k[0] for k in keys]
+        self.ys = [k[1] for k in keys]
+
+    def at(self, t):
+        t %= 1.0
+        xs, ys, n = self.xs, self.ys, len(self.xs)
+        i = n - 1
+        while i > 0 and xs[i] > t:
+            i -= 1
+        if t < xs[0]:
+            i = n - 1
+
+        def x(k):
+            return xs[k % n] + (k // n)
+
+        x0 = x(i)
+        if x0 > t:
+            x0 -= 1
+        x1 = x0 + ((xs[(i + 1) % n] - xs[i]) % 1.0 or 1.0)
+        xp = x0 - ((xs[i] - xs[(i - 1) % n]) % 1.0 or 1.0)
+        xn = x1 + ((xs[(i + 2) % n] - xs[(i + 1) % n]) % 1.0 or 1.0)
+        yp, y0, y1, yn = ys[(i - 1) % n], ys[i], ys[(i + 1) % n], ys[(i + 2) % n]
+        m0 = (y1 - yp) / (x1 - xp) * (x1 - x0)
+        m1 = (yn - y0) / (xn - x0) * (x1 - x0)
+        u = (t - x0) / (x1 - x0)
+        return ((2 * u ** 3 - 3 * u ** 2 + 1) * y0 + (u ** 3 - 2 * u ** 2 + u) * m0
+                + (-2 * u ** 3 + 3 * u ** 2) * y1 + (u ** 3 - u ** 2) * m1)
+
+
+# Nhịp vỗ cánh theo số đo chim thật (bồ câu bay chậm, quay động học 3D —
+# PMC12068018; Tobalske & Dial): đập xuống và nâng lên gần bằng thời gian;
+# cánh DUỖI HẾT khi đập xuống, mút cánh trễ ~0,1 chu kỳ nên hơi cong lên;
+# nâng lên thì cổ tay dẫn lên trước, khuỷu + cổ tay gập (sải cánh co lại),
+# mút cánh RỦ XUỐNG và QUẶT RA SAU (~-80° so với cánh trong, quét ~25° về
+# sau), ~3/5 nhịp nâng mới bật lên duỗi ra ở đỉnh. Thân cao nhất cuối nhịp
+# đập (lực nâng dồn ở nhịp đập), thấp nhất cuối nhịp nâng.
+WING_DOWN = 0.52  # phần chu kỳ đập xuống
+_BEND = Loop([(0.0, 0.0), (0.2, 0.22), (0.42, 0.12), (0.56, -0.3), (0.68, -0.85), (0.76, -1.0),
+              (0.86, -0.62), (0.95, -0.12)])
+_SWEEP = Loop([(0.0, 0.0), (0.25, -0.3), (0.48, -0.2), (0.62, 0.45), (0.75, 1.0), (0.87, 0.65),
+               (0.96, 0.12)])
+_FLEX = Loop([(0.0, 0.0), (0.3, -0.02), (0.48, 0.02), (0.62, 0.55), (0.75, 1.0), (0.87, 0.55),
+              (0.96, 0.05)])
+
+
+def wingbeat(t):
+    """Một nhịp vỗ cánh tại [t] (0 = cánh ở đỉnh, lặp mỗi 1): arm 1 (đỉnh) …
+    -1 (đáy) — góc cánh trong; bend mút cánh so với cánh trong (+ = cong lên,
+    -1 = rủ hết); sweep quét về sau (-0,3 hơi với tới trước … 1); flex gập
+    khuỷu/cổ tay 0 … 1 (sải cánh co); lift thân -1 … 1 (+ = lên)."""
+    t %= 1.0
+    if t < WING_DOWN:
+        arm = math.cos(math.pi * t / WING_DOWN)
+    else:
+        arm = -math.cos(math.pi * (t - WING_DOWN) / (1 - WING_DOWN))
+    return dict(arm=arm, bend=_BEND.at(t), sweep=_SWEEP.at(t), flex=_FLEX.at(t),
+                lift=math.cos(2 * math.pi * (t - 0.55)))

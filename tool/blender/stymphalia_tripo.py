@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from human_kit import camera  # noqa: E402
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, Track, dense_phases, wingbeat  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, islands, smooth_weights, surface_regions  # noqa: E402
 
@@ -93,6 +93,10 @@ def import_bird():
 def build():
     mesh = import_bird()
     rig = Rig("BirdRig", BONES)
+    # Cánh nằm dọc chiều sâu, vỗ quanh trục dọc thân: lấy trục thân làm mốc
+    # xoắn (mốc mặc định gần song song với xương cánh → cánh vặn xoắn, lông
+    # phủ cánh lật dựng lên khi cánh xuống thấp).
+    rig.up = {n: Vector((1, 0, 0)) for n in BONES if n.startswith("wing_")}
 
     def near(p, q, r):
         return (p - P(*q)).length / S < r
@@ -138,30 +142,32 @@ def rot_xy(p, pivot, ang):
 
 
 # Biên đạo (choreo_kit), kênh quanh dáng chờ READY:
-#   flap   góc vỗ cánh (độ, + = cánh lên)    fold  gập cổ tay cánh (độ)
+#   flap   góc vỗ cánh (độ, + = cánh lên)
+#   fold   mút cánh so với cánh trong (độ, + = cong lên, âm = rủ xuống)
 #   sweep  quét cánh ra sau (độ, cụp cánh khi bổ nhào)
+#   flex   gập khuỷu + cổ tay, sải cánh co lại (0 … 1)
 #   x, y   dời thân (đơn vị vẽ: x âm = tới trước, y dương = xuống)
 #   pitch  chúc thân (độ, + = chúc mũi xuống)   neck, head  gập cổ, gật đầu (+ = xuống)
 #   tail   cong đuôi (độ, + = xuống)            legs  0 co … 1 duỗi móng
-READY = dict(flap=0, fold=0, sweep=0, x=0, y=0, pitch=0, neck=0, head=0, tail=0, legs=0)
-LAG = dict(pitch=0.01, fold=0.03, sweep=0.02, neck=0.02, head=0.035, tail=0.05, legs=0.03)
+READY = dict(flap=0, fold=0, sweep=0, flex=0, x=0, y=0, pitch=0, neck=0, head=0, tail=0, legs=0)
+LAG = dict(pitch=0.01, neck=0.02, head=0.035, tail=0.05, legs=0.03)
 
 # Bổ nhào mổ (tiến độ sân khấu, chạm ~0,55): vỗ mạnh bay ngược lên, ngửa cổ
 # kéo đầu ra sau như cánh cung → cụp cánh vuốt ra sau, chúc mũi lao xuống,
 # cổ phóng mỏ tới, móng duỗi → khựng → xoè cánh hãm, vỗ bay về chỗ cũ.
 ATTACK = Move(READY, [
-    (0.08, dict(flap=38, fold=-10, y=1, pitch=-6)),
-    (0.18, dict(flap=-34, fold=18, y=-3, pitch=-10, neck=-12, head=-6)),
-    (0.28, dict(flap=40, fold=-12, y=-5, x=3, pitch=-16, neck=-22, head=-10, tail=10)),
-    (0.38, dict(flap=-30, fold=16, y=-8, x=5, pitch=-20, neck=-30, head=-14, tail=14)),
-    (0.47, dict(flap=50, fold=-6, y=-10, x=6, pitch=-22, neck=-34, head=-16, tail=16)),
-    (0.50, dict(flap=50, fold=-6, y=-10, x=6, pitch=-22, neck=-34, head=-16, tail=16)),
-    (0.54, dict(flap=24, fold=-30, sweep=40, y=-2, x=-8, pitch=24, neck=8, head=6, tail=-6, legs=0.6)),
-    (0.58, dict(flap=18, fold=-36, sweep=50, y=8, x=-18, pitch=34, neck=22, head=12, tail=-10, legs=1)),
-    (0.64, dict(flap=18, fold=-36, sweep=50, y=9, x=-19, pitch=34, neck=22, head=12, tail=-10, legs=1)),
-    (0.72, dict(flap=55, fold=-10, sweep=10, y=4, x=-12, pitch=-6, neck=0, head=0, tail=8, legs=0.5)),
-    (0.82, dict(flap=-30, fold=16, sweep=0, y=0, x=-5, pitch=-4, legs=0.1)),
-    (0.92, dict(flap=30, fold=-8, y=-1, x=-1, pitch=0, legs=0)),
+    (0.08, dict(y=1, pitch=-6)),
+    (0.18, dict(y=-3, pitch=-10, neck=-12, head=-6)),
+    (0.28, dict(y=-5, x=3, pitch=-16, neck=-22, head=-10, tail=10)),
+    (0.38, dict(y=-8, x=5, pitch=-20, neck=-30, head=-14, tail=14)),
+    (0.47, dict(y=-10, x=6, pitch=-22, neck=-34, head=-16, tail=16)),
+    (0.50, dict(flap=55, fold=0, sweep=0, flex=0, y=-10, x=6, pitch=-22, neck=-34, head=-16, tail=16)),
+    (0.54, dict(flap=-10, fold=-24, sweep=50, flex=0.7, y=-2, x=-8, pitch=24, neck=8, head=6, tail=-6, legs=0.6)),
+    (0.58, dict(flap=-24, fold=-14, sweep=62, flex=0.9, y=8, x=-18, pitch=34, neck=22, head=12, tail=-10, legs=1)),
+    (0.64, dict(flap=-24, fold=-14, sweep=62, flex=0.9, y=9, x=-19, pitch=34, neck=22, head=12, tail=-10, legs=1)),
+    (0.72, dict(y=4, x=-12, pitch=-6, neck=0, head=0, tail=8, legs=0.5)),
+    (0.82, dict(y=0, x=-5, pitch=-4, legs=0.1)),
+    (0.92, dict(y=-1, x=-1, pitch=0, legs=0)),
 ], LAG)
 
 # Gục: bị đánh văng — cánh rũ quặp, đầu ngoẹo, đuôi xoè, thân lật chúc xuống
@@ -172,14 +178,46 @@ DEFEAT = Move(READY, [
 ], dict(LAG, head=0.1))
 
 
+# Cánh trong đòn: vỗ theo nhịp thật (wingbeat) — số nhịp đã qua theo tiến độ
+# đòn (0 = cánh ở đỉnh): 2 nhịp bay ngược lên, lơ lửng ở đỉnh, bổ nhào (cánh
+# cụp theo khoá ATTACK, trọng số DIVE), xoè cánh hãm rồi vỗ về chỗ cũ.
+BEATS = Track([(0.0, -0.3), (0.08, 0.0), (0.28, 1.0), (0.47, 2.0), (0.5, 2.0), (0.72, 3.0), (0.92, 4.0),
+               (1.0, 4.3)])
+DIVE = Track([(0.0, 0.0), (0.49, 0.0), (0.54, 1.0), (0.66, 1.0), (0.72, 0.0), (1.0, 0.0)])
+
+
+def beat_wings(b, flap=47, lift=2.2):
+    """Kênh cánh + nảy thân cho nhịp vỗ [b] (choreo_kit.wingbeat)."""
+    w = wingbeat(b)
+    return dict(flap=-12 + flap * w["arm"], fold=(80 if w["bend"] < 0 else 60) * w["bend"], sweep=30 * w["sweep"], flex=w["flex"],
+                lift=lift * w["lift"])
+
+
+def attack_channels(p):
+    v = ATTACK.at(p)
+    k = DIVE.at(p)
+    w = beat_wings(BEATS.at(p), flap=50, lift=1.6)
+    for c in ("flap", "fold", "sweep", "flex"):
+        v[c] = k * v[c] + (1 - k) * w[c]
+    v["y"] -= (1 - k) * w["lift"]
+    return v
+
+
+# Bổ nhào: ~35 khung, 15 dồn quanh cú mổ.
+ATTACK_PHASES = dense_phases(0.04, 0.46, 0.70, 0.016)
+
+
 def idle_channels(t):
-    """Vỗ cánh lơ lửng: đập xuống nhanh, nâng chậm; thân nảy lên mỗi nhịp đập,
-    cổ tay cánh gập lúc nâng, đuôi và đầu trễ theo — vòng lặp liền."""
-    ph = 2 * math.pi * t
-    arg = ph + 0.5 * math.sin(ph)
-    return dict(READY, flap=36 * math.cos(arg), fold=16 * math.sin(arg), y=-2.2 * math.sin(arg - 0.4),
-                pitch=3 * math.sin(arg - 0.6), neck=4 * math.sin(arg + 0.6), head=3 * math.sin(arg + 1.2),
-                tail=7 * math.sin(arg - 1.4))
+    """Vỗ cánh lơ lửng theo nhịp chim thật (choreo_kit.wingbeat): đập xuống
+    cánh duỗi hết, mút cánh trễ hơi cong lên; nâng lên cổ tay dẫn trước, sải
+    cánh co, mút cánh rủ xuống quặt ra sau, gần đỉnh mới bật duỗi. Thân cao
+    nhất cuối nhịp đập; đầu giữ yên trong không gian (cổ bù lại nhịp nảy của
+    thân, như chim thật); đuôi trễ theo — vòng lặp liền."""
+    w = beat_wings(t)
+    lag = wingbeat(t - 0.12)["lift"]
+    return dict(READY, flap=w["flap"], fold=w["fold"], sweep=w["sweep"], flex=w["flex"],
+                y=-w["lift"], pitch=1.5 * lag, neck=2.5 * w["lift"] / 2.2, head=-1.5 * w["lift"] / 2.2,
+                tail=-5 * lag)
 
 
 def pose(rig, v):
@@ -216,6 +254,11 @@ def pose(rig, v):
         wr = rot_yd(WRIST[s], sh, sign * flap)
         tp = rot_yd(TIP[s], sh, sign * flap)
         tp = rot_yd(tp, wr, sign * fold)
+        # Gập khuỷu: cổ tay kéo về phía vai và lùi ra sau, mút cánh đi theo.
+        k = 1 - 0.32 * v["flex"]
+        w2 = (wr[0] + 3 * v["flex"], sh[1] + (wr[1] - sh[1]) * k, sh[2] + (wr[2] - sh[2]) * k)
+        tp = (tp[0] + w2[0] - wr[0], tp[1] + w2[1] - wr[1], tp[2] + w2[2] - wr[2])
+        wr = w2
         # Quét ra sau: dời cổ tay, mút cánh về phía đuôi (x dương), sát thân hơn.
         wr = (wr[0] + 8 * math.sin(sweep), wr[1], sh[2] + (wr[2] - sh[2]) * math.cos(sweep))
         tp = (tp[0] + 22 * math.sin(sweep), tp[1], sh[2] + (tp[2] - sh[2]) * math.cos(sweep) ** 2)
@@ -242,9 +285,10 @@ def main():
         out = os.path.join(ROOT, "build", "blender", "stymphalia_tripo" + tag)
         os.makedirs(out, exist_ok=True)
         camera(scene, 0.05, 0.22, 2.1, 1.95, 300, yaw=-22, pitch=14)
-        for name, v in (("up", idle_channels(0)), ("down", idle_channels(0.35)), ("rise", ATTACK.at(0.38)),
-                        ("top", ATTACK.at(0.48)), ("dive", ATTACK.at(0.55)), ("strike", ATTACK.at(0.6)),
-                        ("recover", ATTACK.at(0.74)), ("defeat", DEFEAT.at(1))):
+        for name, v in (("up", idle_channels(0)), ("down", idle_channels(0.25)), ("bottom", idle_channels(0.52)),
+                        ("recover", idle_channels(0.7)), ("late", idle_channels(0.86)), ("rise", attack_channels(0.38)),
+                        ("top", attack_channels(0.48)), ("dive", attack_channels(0.55)), ("strike", attack_channels(0.6)),
+                        ("brake", attack_channels(0.74)), ("defeat", DEFEAT.at(1))):
             pose(rig, v)
             render_to(scene, os.path.join(out, f"bird_{name}.png"))
         pose(rig, READY)
@@ -252,12 +296,12 @@ def main():
         return
     cam = camera(scene, 0.05, 0.22, 2.1, 1.95, 130, yaw=-22, pitch=14)
     anims = {
-        "idle": [lambda k=k: pose(rig, idle_channels(k / 12)) for k in range(12)],
-        "attack": [lambda k=k: pose(rig, ATTACK.at(k / 15)) for k in range(16)],
-        "defeat": [lambda k=k: pose(rig, DEFEAT.at((k + 1) / 6)) for k in range(6)],
+        "idle": [lambda k=k: pose(rig, idle_channels(k / 24)) for k in range(24)],
+        "attack": [lambda p=p: pose(rig, attack_channels(p)) for p in ATTACK_PHASES],
+        "defeat": [lambda k=k: pose(rig, DEFEAT.at((k + 1) / 16)) for k in range(16)],
     }
     export_sprites(scene, cam, "stymphalian_bird" + tag, anims, (0, 0, 0), UNITS_PER_M,
-                   extra={"idlePeriod": 0.7})
+                   extra={"idlePeriod": 0.7, "phases": {"attack": ATTACK_PHASES}})
     pose(rig, READY)
     save_blend("stymphalian_bird_tripo" + tag)
 

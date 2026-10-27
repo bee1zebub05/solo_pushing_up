@@ -23,7 +23,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(__file__))
 from boss_kit import *  # noqa: E402,F401,F403
 from sprite_kit import export_sprites  # noqa: E402
-from choreo_kit import Move  # noqa: E402
+from choreo_kit import Move, dense_phases  # noqa: E402
 from toon_kit import TOON, toonify  # noqa: E402
 from tripo_kit import follow_nearest, import_tripo, islands, smooth_weights, surface_regions  # noqa: E402
 
@@ -146,6 +146,11 @@ ATTACK = Move(READY, [
 ], LAG)
 
 
+# Ba bản (1, 2, 3 đầu) nên khung ít hơn quái khác: 29 khung, 12 quanh cú mổ
+# (nhiều hơn thì 3 bản vượt 4 trang ảnh ở độ nét 0,7).
+ATTACK_PHASES = dense_phases(0.05, 0.46, 0.70, 0.02)
+
+
 def pose(rig, stumps, v=READY, t=0.0, alive=HEADS):
     """Cổ lắc lư theo sóng, lệch pha giữa các đầu; đầu sống thấp nhất (gần
     người chơi) ra đòn theo kênh [v]; đầu đã chém thu vào dưới gốc cụt."""
@@ -244,11 +249,11 @@ def main():
     for alive in (1, 2, 3):
         def run(v, t, alive=alive):
             pose(rig, stumps, v, t, alive)
-        anims[f"idle_h{alive}"] = [lambda k=k, run=run: run(READY, k / 6) for k in range(6)]
+        anims[f"idle_h{alive}"] = [lambda k=k, run=run: run(READY, k / 28) for k in range(28)]
         # Đòn 1,2 s trên chu kỳ lắc 2,8 s: các đầu khác vẫn lắc tiếp trong lúc mổ.
-        anims[f"attack_h{alive}"] = [lambda k=k, run=run: run(ATTACK.at(k / 11), 0.2 + k / 11 * 1.2 / 2.8)
-                                     for k in range(12)]
-    export_sprites(scene, cam, "young_hydra" + tag, anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.8})
+        anims[f"attack_h{alive}"] = [lambda p=p, run=run: run(ATTACK.at(p), 0.2 + p * 1.2 / 2.8)
+                                     for p in ATTACK_PHASES]
+    export_sprites(scene, cam, "young_hydra" + tag, anims, P(0, 0), 50 * STAGE_SCALE, extra={"idlePeriod": 2.8, "phases": {f"attack_h{a}": ATTACK_PHASES for a in (1, 2, 3)}})
     pose(rig, stumps)
     save_blend("young_hydra_tripo" + tag)
 

@@ -30,6 +30,10 @@ class NemeaBossArt extends BossArt {
   @override
   bool get ownsDefeatSmoke => true;
 
+  /// Đòn quái chương 1 chậm, rõ thế hơn (1,2 s trông vội trên sân khấu).
+  @override
+  double get attackSeconds => 1.6;
+
   @override
   final Vector2 target = Vector2(
     lionX - 72 * lionScale,

@@ -58,7 +58,9 @@ class LionPounce extends BattleMechanic {
         battle.strike(
           nowMs,
           wrestleDamage *
-              (battle.mode == PushupMode.knee ? battle.rules.kneeMultiplier : 1),
+              (battle.mode == PushupMode.knee
+                  ? battle.rules.kneeMultiplier
+                  : 1),
           (dealt) => Hit(
             nowMs,
             damage: dealt,
