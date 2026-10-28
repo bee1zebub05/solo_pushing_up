@@ -404,3 +404,157 @@ Người dùng phóng to ảnh duyệt và thấy lỗi mà ảnh toàn thân ch
   - `bmesh.from_mesh`/`from_object` trên thân MPFB đã tạo dáng (có shape key) làm Blender sập. Dựng BVH từ đỉnh/mặt (`BVHTree.FromPolygons`, xem `_surface_tree`).
   - Script `ONI_DEBUG` chạy bằng `exec` trong `main()`: generator/lambda không thấy biến cục bộ. Bọc code soát trong hàm và truyền `scene` vào.
 - **Sửa một chỗ trong kit dùng chung thì soát các nhân vật khác dùng chỗ đó.** Lửa Susanoo vẫn dùng `flame_material` cũ, nhiều khả năng cũng bị kem.
+
+## 12. Mô hình Tripo3D thay khối ghép (19/10/2026)
+
+Sư tử Nemea làm lại từ mô hình Tripo3D (`art_src/tripo/nemea_lion.glb`,
+ảnh → 3D, chọn Clean Topology, đã tô texture) thay khối ellipsoid + lông sợi
+của `lion_nemea.py`. Script: `tool/blender/lion_tripo.py`.
+
+- **Ảnh đầu vào cho Tripo**: nhìn ngang, quay trái, nền trơn, dáng trung
+  tính (4 chân tách rời, miệng ngậm). Miệng há trong ảnh bị đúc vào mô hình.
+- **Đặt vào cảnh**: giữ mũi đúng chỗ bản cũ và bờm cao bằng bản cũ (đo trên
+  ảnh `--still`), cùng máy quay/đèn/điểm neo → sân khấu không phải đổi.
+- **Xương**: đọc khớp trên ảnh nhìn ngang có lưới toạ độ (đơn vị vẽ), dùng
+  `Rig` (xương phẳng, trọng số theo khoảng cách), lọc chân gần/xa theo chiều
+  sâu. Bắt buộc làm mượt trọng số (`smooth_weights`): lọn bờm rời bị chia
+  cho xương chân và thân thì kéo thành sợi khi cử động.
+- **Bẫy GLB**: đỉnh bị tách ở mọi đường nối UV. Tìm mảnh rời / làm mượt phải
+  hàn đỉnh trùng vị trí trước, nếu không lưới bị xé thành mảnh.
+- Render nhanh hơn nhiều (~10 s/khung so với ~2 phút có lông sợi); 49 khung,
+  thu nhỏ 0,8 → 4 trang (trang cuối 2048×512).
+- Kiểm tra giấy phép gói Tripo trước khi phát hành; vẫn coi đầu ra là bản
+  thô cần chỉnh (rules: tránh art "rõ là AI").
+- Phần dùng chung (nạp, đặt tỉ lệ, làm mượt trọng số): `tool/blender/tripo_kit.py`.
+  Quái mới: chép `boar_tripo.py`, đọc khớp trên ảnh nhìn ngang có lưới, giữ
+  máy quay/điểm neo/tên atlas của script cũ để sân khấu không phải đổi.
+- Lợn rừng (`boar_tripo.py`): lông gáy cao hơn bản cũ → `GROW = 0.9` cho
+  đỉnh lông không chạm mép khung render.
+- **Dáng người** (lính đá, `stone_tripo.py`): Tripo dựng quay mặt về -Y →
+  `import_tripo_upright(..., rot_z=-90)`, chuẩn theo chiều cao, gốc giữa hai
+  bàn chân. Vũ khí/khiên là mảnh lưới riêng: gắn vào **xương riêng**
+  (`pin_to_bone`), đặt vào bàn tay mỗi khung — giáo dựng đứng lúc đứng, chĩa
+  ngang lúc đâm mà không phải bẻ cẳng tay. Mảnh nhỏ (khoá, quai) dùng
+  `follow_nearest` (chép trọng số đỉnh thân gần nhất) sau khi làm mượt, nếu
+  không sẽ tách khỏi thân khi cử động. Khuỷu tay IK chọn phía chĩa xuống/ra sau.
+- Dấu hiệu báo đòn vẽ trong bản vector (mũi tên lợn rừng, sao mũi giáo) phải
+  vẽ lại cho nhánh sprite: tính vị trí từ chính công thức pose() trong Blender.
+- **Biên đạo theo khoá (21/10, lính đá):** `pose()` nội suy thẳng giữa ba thế
+  (lấy đà/ra đòn/thu) trông cứng và "vung tay". Thay bằng `tool/blender/motion_kit.py`
+  (bản gọn của biên đạo nhánh chương Nhật): khoá thưa quanh dáng chờ, nội suy
+  cubic đơn điệu, `lag` từng kênh (hông → thân → khiên → tay → giáo → đầu),
+  khoá lặp lại = giữ thế (nén trước cú đâm, khựng ở đỉnh đòn); bước = nhấc
+  chân; 20 khung đòn chia đều + `SpriteAtlas.draw(snap:)` quanh pha ra đòn để
+  không hiện hai cây giáo chồng nhau. Vị trí mũi giáo từng khung ghi vào atlas
+  (`spearTip`) cho sao báo đòn, không chép số tay.
+  Cùng ngày làm lại theo cách này cả lợn rừng, Harpy, Hydra, sư tử (mỗi script
+  có `READY` + `Move` cho từng động tác + `idle_channels(t)` vòng lặp liền).
+  Track ghi vào atlas: `headTrack` (Harpy → túi vàng, sóng rít), `headAttack`
+  / `pawAttack` / `headPounce` (sư tử → sóng gầm, vệt vuốt, khiên). Giữ số
+  trang atlas như cũ bằng `repack_sprites.py --scale` (0,7–0,85).
+  Nhịp riêng: Harpy đập cánh xuống nhanh, nâng chậm (pha cong
+  `arg = ph + 0,5 sin ph`); Hydra cổ uốn theo sóng (pha trễ theo vị trí trên
+  cổ) + võng chữ S khi thu thế; lợn rừng lấy đà theo `charge` của cơ chế
+  (sân khấu tự diễn nốt pha thu về khi `charge` về 0, lao 120 đơn vị theo pha
+  — trước đây nhảy cóc). Soát dấu kênh bằng ảnh cực trị trước khi biên đạo:
+  đầu lợn rừng `rot2` dương là NGẨNG (chú thích cũ ghi ngược).
+- **Cảnh mở màn trồi từ dưới đất (lính đá 1.3, 1.7):** `rise` cũ chỉ diễn khi
+  lính đá canh hang ráp lại → vào trận thấy đứng sẵn. Nay `BossArt.introSeconds`
+  (sân khấu lùi đòn doạ đầu tiên) + `rise` 16 khung theo kiểu xác sống trồi
+  khỏi mộ: chìm sâu (`sink` 154) để mũi giáo ló trước, tay giơ thẳng, mũ, vai;
+  mặt hứng bóng che phần dưới đất. Đất nứt/hố/gò/đá văng/bụi vẽ ở sân khấu
+  (`_risingEarth`, hố trước sprite, gò + đá sau sprite). Đá vụn vẽ hình góc
+  cạnh xoay theo đà — hình tròn trông như chuỗi hạt.
+- **Bản 2.5D của quái Tripo = render hoạt hình từ chính mô hình 3D (23/10):**
+  bản vector cũ khác hẳn thiết kế Tripo và gần như không có động tác.
+  `tool/blender/toon_kit.py` + cờ `--toon` ở 5 script → atlas `<tên>_toon`
+  (cùng xương, biên đạo, track `spearTip`/`headTrack`…). Ở chế độ 2.5D,
+  `SpriteAtlas.load/get` tự đổi sang `_toon` cho các tên trong
+  `SpriteAtlas.toon`; tên khác trả null (vẽ vector, không nạp atlas vô ích).
+  Chân dung `assets/portraits/<id>_toon.webp` (`BossPortrait.bakedToon`,
+  art_bake_test chụp cả hai chế độ). Bài học tô hoạt hình trong Cycles:
+  Toon BSDF cắt mặt khuất về đen → tự tính N·L với hướng sáng cố định, chia
+  nấc bằng ColorRamp, tô bằng Emission; ảnh màu Tripo đầy vân lông → làm
+  phẳng ảnh (thu nhỏ, làm mờ, k-means 8–12 màu, nội suy Linear — Closest vỡ
+  ô vuông); gom màu phải trên thang gamma; viền = vỏ Solidify lật pháp tuyến,
+  mực ở mặt KHÔNG quay lưng. Hoa văn nhỏ (khiên lính đá) cần ô làm phẳng nhỏ.
+- **Khung chân dung (art_bake_test `framing`) phải đo lại mỗi khi đổi tỉ lệ /
+  vị trí quái** trên `build/portraits/_stage_<id>.png`: sau đợt phóng to,
+  chân dung sư tử chỉ còn ngực/chân, Hydra mất đầu. Chân dung vẽ ở
+  `0,4 + introSeconds` giây (sau cảnh mở màn).
+
+## 13. Phông vẽ riêng từng màn + bản đồ vẽ (ChatGPT, 23–24/10/2026)
+
+Trước đây cả 8 màn dùng chung một phông Blender (thung lũng + hang = cảnh
+màn 1.8). Nay mỗi màn một tranh vẽ đúng cảnh ở điểm màn trên bản đồ, bản đồ
+cũng vẽ lại cùng chất. Toàn bộ tài liệu tạo ảnh ở `art_src/backdrop_prompts/`
+(`PROMPTS.md`: tin nhắn luật chung + 8 prompt + prompt bản đồ).
+
+- **Cách giữ thống nhất:** một cuộc trò chuyện; ảnh mẫu phong cách + bản đồ +
+  **khung bố cục** (`3_khung_bo_cuc.png`: đường đất ở dòng 220/260, vùng
+  nhân vật trái, vùng quái phải để trống, dải trên/dưới sẽ cắt); làm màn 1.8
+  trước làm chuẩn. Vị trí mốc trong từng prompt TÍNH từ toạ độ bản đồ (hướng
+  và khoảng cách từ điểm màn tới đền, cầu, sông, hang).
+- **Soát mỗi ảnh:** chồng khung bố cục + GHÉP THỬ sprite quái vào chỗ đứng.
+  Lỗi hay gặp: quái cùng màu nền (lính đá trắng trước vách/đền cẩm thạch →
+  xin vách trong bóng râm), đường đất quá cao hoặc nhìn dọc (phải chạy ngang),
+  vật cản trong vùng nhân vật, không khí sai (đầm độc mà trời nắng đẹp; đừng
+  phủ sương XANH lên cảnh Hydra xanh).
+- **Bản đồ:** đưa khung có chữ thì ChatGPT chỉ coi là gợi ý (sông, đường mòn
+  sai hết). Đưa **bản phác màu thật không chữ** (`5_phac_ban_do.png`, tô đúng
+  đường mòn game vẽ) và bảo "vẽ lại chính ảnh này" thì giữ bố cục.
+- **Nhập:** `python -I tool/import_painted_backdrops.py` → cắt về 448×260
+  (1344×780) `assets/backdrops/nemea_stage_1_X.webp`, bản đồ 1200×900; DÒ lối
+  đất (màu) và dòng sông trong tranh thành đường gấp khúc (đường đi chi phí
+  nhỏ nhất, băng được chỗ đứt ở cầu/đá kê), in hằng số Dart cho
+  `nemea_map_art.dart` (`nemeaMapTrail`, `_nodeOnTrail` theo mốc, `_riverLine`).
+  Trên tranh game chỉ vẽ chấm đoạn đã đi + điểm màn (lối đất có sẵn).
+- **Game:** `NemeaStageBackdrop` (một ảnh/màn, nạp theo `backdropScene` của
+  BossArt, dùng ở CẢ 2.5D và 3D), trôi theo camera ×0,3 (không tách tầng:
+  vách/cây cao từ trời xuống đất bị xé), bụi Trì Trệ ×0,5. `sceneLight`:
+  phủ màu toàn cảnh + nhân màu sprite quái/chim theo ánh sáng tranh (bình
+  minh vàng, đầm xám tím, hoàng hôn cam). Phông Blender 5 tầng còn dùng cho
+  màn mở đầu (`nemea_intro_screen`) và khi thiếu ảnh màn.
+- Bẫy gặp lúc làm lính đá: Tripo dính **ống chân + bàn chân vào cùng mảnh
+  khiên** → ghim cả mảnh vào xương khiên thì chân không bước được (chỉ ghim
+  phần trên mặt khiên, ghim SAU `smooth_weights`); chân gần duỗi thẳng che
+  mất lỗi chiều gập gối — có khuỵu gối thì phải soát IK (gối chĩa tới trước).
+  In nhóm đỉnh trội theo xương (số đỉnh, khoảng toạ độ) trước khi tin rig.
+- **Khung trang chủ (26/10):** chụp lại từ cảnh trận 1.8 hiện tại (phông vẽ
+  cửa hang + sư tử lionScale 1,2) — ảnh chụp sẵn phải chụp lại mỗi khi đổi
+  phông/tỉ lệ boss (`ART_BAKE=1 flutter test test/art/art_bake_test.dart` rồi
+  `python -I tool/sprites_webp.py --banner`). Thêm bản 2.5D
+  `scene_*_toon.webp` (sư tử hoạt hình); nhân vật 2.5D vẽ vector đè lên.
+- **Chim Stymphalia + Spartoi Tripo3D (26/10):** chim nhập xoay -45° (Tripo
+  dựng chéo), gốc ở tâm thân như bản cũ; chia cánh/đuôi/đầu bằng
+  `surface_regions`. Soát dấu kênh bằng ảnh thử: cả `pitch`/`neck` lẫn `flap`
+  đều ngược với giả định ban đầu. Spartoi sinh từ khuôn lính đá
+  (`stone_tripo.py`), chỉ đổi khớp, lọc gần/xa, biên đạo.
+- **Bóng đổ bị cắt thành mép chữ nhật** (Spartoi): bóng nắng xiên đậm có
+  alpha ≥ 0,6 nên bị coi là thân, không được làm mờ ở mép khung cắt.
+  `atlas_pack.crop` nay làm mờ MỌI điểm trong dải ≤ lề quanh thân.
+- **Thư viện:** mọi luật dưới đây đã gom thành motion kit — hướng dẫn dùng cho
+  nhân vật / chương sau ở `rules/chuyendong.md`.
+- **Độ mượt (01/11):** khung chia đều làm đoạn ra đòn chỉ ~3 khung (nhảy cóc), đứng
+  chờ 2–3 hình/giây (nhoè). Nay `motion_kit.dense_phases` dồn khung dày quanh cú
+  đánh (0,46–0,70), ghi `phases` vào atlas; `SpriteAtlas.phasesOf/positionOf` đọc
+  tiến độ từng khung (cả track `spearTip`/`headTrack`/`headAttack`). Quanh cú
+  đánh vẫn `snap` (thân lao nhanh, hoà khung hiện bóng kép). Đứng chờ ~gấp đôi
+  khung. Soát độ mượt không cần app: `tool/render/compare_motion.py` (trước/sau,
+  phát đúng như game 30 hình/giây), `tool/render/game_anim.py` (ảnh động báo
+  cáo theo nhịp game). Hydra 3 bản đầu → giảm còn 8 + 15 khung để vừa 4 trang.
+- **Đợt 2 (26–27/10):** đòn quái chương 1 dài 1,6 s (`BossArt.attackSeconds`);
+  đứng chờ: lính đá/Spartoi/lợn rừng/sư tử 24 khung, chim/Harpy 16, Hydra 14
+  (Hydra 5 trang ở tỉ lệ 0,7; sư tử 4 trang ở 0,65; lợn rừng 3 trang ở 0,75).
+  Cánh chim + Harpy gập vào cuối nhịp đập xuống (`tuck`) — đợt 3 làm lại.
+- **Đợt 3 (27/10):** cánh vỗ theo số đo chim thật (`motion_kit.wingbeat`,
+  bồ câu bay chậm PMC12068018): đập xuống cánh duỗi, mút cánh trễ ~0,1 nhịp;
+  nâng lên cổ tay dẫn trước, khuỷu gập (`flex`), mút cánh rủ xuống −80° và
+  quét ra sau, ~3/5 nhịp nâng mới duỗi. Xương cánh nằm dọc chiều sâu phải có
+  mốc xoắn riêng (`rig.up`, Rig.set) — không thì cánh vặn xoắn khi xoay.
+  Harpy (người có cánh sau lưng): nhịp nâng gập cánh VÀO TRONG — sải co
+  ~45%, bàn tay cánh gập xuống quặt về phía thân ~145° trong mặt phẳng cánh
+  (khuỷu–cổ tay liên động như chim); gập ra sau lưng thì cánh gần bị thân che.
+  Game hoà dáng chờ vào 10% đầu/cuối mỗi đòn (`SpriteAtlas.idleBlend`): vòng
+  đứng chờ ở pha bất kỳ nên chuyển thẳng sang đòn bị giật. Khung: đứng chờ
+  ~gấp đôi, đòn `dense_phases(0.035–0.05, 0.46, 0.70, 0.016–0.02)`.

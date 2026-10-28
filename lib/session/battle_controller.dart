@@ -94,6 +94,10 @@ class BattleController extends ChangeNotifier {
     for (final wave in events.whereType<WaveStarted>()) {
       session.feedback.announce('Sóng mới. ${wave.wave.action.label}');
     }
+    // Người chơi nhìn sàn: báo đòn vồ bằng giọng (trụ cột 3).
+    if (events.any((e) => e is PounceWarning)) {
+      session.feedback.announce('Sư tử vồ. Giữ tay thẳng');
+    }
     onEvents?.call(events);
     if (!_reported && events.any((e) => e is Victory || e is Defeat)) {
       _reported = true;
@@ -106,6 +110,8 @@ class BattleController extends ChangeNotifier {
   static BattleEvent _pickHeadline(List<BattleEvent> events) =>
       events.whereType<ChargeWarning>().firstOrNull ??
       events.whereType<ChargeLanded>().firstOrNull ??
+      events.whereType<PounceWarning>().firstOrNull ??
+      events.whereType<PounceLanded>().firstOrNull ??
       events.whereType<Revived>().firstOrNull ??
       events.whereType<GoldStolen>().firstOrNull ??
       events.whereType<HeadSevered>().firstOrNull ??

@@ -12,8 +12,11 @@ import '../sprite_atlas.dart';
 import '../vector_style.dart' show RasterLayer, StageQuality;
 
 /// Vị trí và tỉ lệ Sư tử Nemea trên sân khấu 400×260.
-const lionX = 335.0;
-const lionScale = 0.72;
+const lionX = 350.0;
+
+/// Sư tử to hẳn so với nhân vật (boss chương 1): 0,72 → 1,2; dời phải
+/// (335 → 350) để mõm không chạm nhân vật lúc đứng chờ.
+const lionScale = 1.2;
 
 /// Kỳ công 1 — Sư tử Nemea ở thung lũng Nemea.
 class NemeaBossArt extends BossArt {
@@ -27,6 +30,10 @@ class NemeaBossArt extends BossArt {
   @override
   bool get ownsDefeatSmoke => true;
 
+  /// Đòn quái chương 1 chậm, rõ thế hơn (1,2 s trông vội trên sân khấu).
+  @override
+  double get attackSeconds => 1.6;
+
   @override
   final Vector2 target = Vector2(
     lionX - 72 * lionScale,
@@ -39,14 +46,49 @@ class NemeaBossArt extends BossArt {
       Vector2(lionX - 88 * lionScale, stageGroundY - 104 * lionScale);
 
   @override
-  double get portraitView => 104;
+  double get portraitView => 104 * lionScale / 0.72; // khung đo ở lionScale 0,72
 
   @override
   void paintBackdrop(Canvas canvas) => paintNemeaBackdrop(canvas);
 
   @override
-  void paintAmbient(Canvas canvas, double time) =>
-      paintNemeaAmbient(canvas, time: time, realistic: NemeaBackdrop.ready);
+  void paintAmbient(Canvas canvas, double time) => paintNemeaAmbient(
+    canvas,
+    time: time,
+    realistic: NemeaStageBackdrop.ready || NemeaBackdrop.ready,
+  );
+
+  /// Phông vẽ của màn (`assets/backdrops/nemea_stage_<màn>.webp`): đúng cảnh
+  /// ở điểm màn trên bản đồ. Boss 1.8 = cửa hang sư tử.
+  String get backdropScene => '1_8';
+
+  /// Phông vẽ trôi theo camera bằng một hệ số (tranh một lớp, không tách
+  /// tầng — tách thì vách đá, cây kéo dài từ trời xuống đất bị xé).
+  static const paintedParallax = 0.3;
+
+  /// Ánh sáng của phông vẽ từng màn: (phủ màu toàn cảnh, nhân màu sprite
+  /// quái) — bình minh vàng nhạt → trưa trắng → u ám xám tím (đầm) → chiều
+  /// vàng → hoàng hôn cam ở hang. Sprite quái render ánh sáng trung tính nên
+  /// phải nhân màu mới ăn tông với tranh.
+  static const sceneLight = <String, (Color, Color)>{
+    '1_1': (Color(0xFFFFE2B8), Color(0xFFFFF0DC)),
+    '1_2': (Color(0xFFE6EAF2), Color(0xFFEEEEF2)),
+    '1_3': (Color(0xFFFFF4E0), Color(0xFFFFFFFF)),
+    '1_4': (Color(0xFFFFEFCC), Color(0xFFFFF8E6)),
+    '1_5': (Color(0xFFEEF0F4), Color(0xFFF2F2F2)),
+    '1_6': (Color(0xFFC8C0DA), Color(0xFFD6D0DE)),
+    '1_7': (Color(0xFFFFD49A), Color(0xFFFFE4BE)),
+    '1_8': (Color(0xFFFFB27A), Color(0xFFFFCCA4)),
+  };
+
+  /// Nhân màu sprite quái theo ánh sáng phông vẽ (null = giữ nguyên).
+  Color? get spriteTint =>
+      NemeaStageBackdrop.ready ? sceneLight[backdropScene]?.$2 : null;
+
+  @override
+  Color get gradeLight => NemeaStageBackdrop.ready
+      ? sceneLight[backdropScene]!.$1
+      : const Color(0xFFFFE3C0);
 
   /// Bụi Trì Trệ: đậm nhất khi sư tử còn đầy máu, tan dần mỗi đòn trúng.
   static const maxDust = 0.85;
@@ -88,7 +130,9 @@ class NemeaBossArt extends BossArt {
     // Tiền cảnh trôi ngược chiều, mạnh hơn các lớp xa (gần máy quay hơn).
     canvas.save();
     canvas.translate(-_drift * 0.6, 0);
-    if (NemeaBackdrop.ready) {
+    if (NemeaStageBackdrop.ready) {
+      // Tranh vẽ đã có tiền cảnh của nó.
+    } else if (NemeaBackdrop.ready) {
       NemeaBackdrop.paintForeground(canvas, filter: _dustFilter);
     } else {
       _foreground.paint(canvas);
@@ -114,6 +158,22 @@ class NemeaBossArt extends BossArt {
     // Bụi: mỗi tầng vẽ ảnh sạch MỘT lần qua bộ lọc mất màu nội suy theo
     // lượng bụi, thêm sương/mạng nhện vẽ thẳng.
     final dust = StageQuality.dust && _dust > 0.01 ? _dust : 0.0;
+    if (NemeaStageBackdrop.ready) {
+      // Phông vẽ của màn: một lớp qua bộ lọc bụi + màn sương Trì Trệ. Tranh
+      // đã có không khí riêng (sương đầm, hoàng hôn): bụi nhẹ hơn phông cũ để
+      // không che mất cảnh lúc quái còn nhiều máu.
+      final paintedDust = dust * 0.5;
+      _dustFilter = paintedDust > 0 ? nemeaDustFilterAt(paintedDust) : null;
+      canvas.save();
+      canvas.translate(drift * paintedParallax, 0);
+      NemeaStageBackdrop.paint(canvas, filter: _dustFilter);
+      if (paintedDust > 0) paintNemeaDustMist(canvas, opacity: paintedDust);
+      canvas.restore();
+      paintNemeaAmbient(canvas, time: time, dust: _dust, realistic: true);
+      _paintCleansing(canvas, time);
+      _paintFlock(canvas, time, battle.bossHp);
+      return;
+    }
     if (NemeaBackdrop.ready) {
       // Phông Blender: ảnh từng tầng qua bộ lọc bụi; phần bụi vẽ thêm chỉ
       // còn màn sương (mạng nhện, đống bụi khớp hình bản vector).
@@ -221,10 +281,22 @@ class NemeaBossArt extends BossArt {
       if (fall > 0) canvas.rotate(fall * 7);
       canvas.scale(-math.sin(a) > 0 ? -s : s, s);
       if (fall > 0 && sprite.has('defeat')) {
-        sprite.draw(canvas, 'defeat', fall, opacity: 1 - fall);
+        sprite.draw(
+          canvas,
+          'defeat',
+          fall,
+          opacity: 1 - fall,
+          tint: spriteTint,
+        );
       } else {
         final period = sprite.metaDouble('idlePeriod', 0.7);
-        sprite.draw(canvas, 'idle', (time + i * 0.3) / period, loop: true);
+        sprite.draw(
+          canvas,
+          'idle',
+          (time + i * 0.3) / period,
+          loop: true,
+          tint: spriteTint,
+        );
       }
       canvas.restore();
       return;
@@ -243,7 +315,7 @@ class NemeaBossArt extends BossArt {
   /// vector), trả lại khi rời trận.
   @override
   Future<void> preload() async {
-    await NemeaBackdrop.load();
+    await NemeaStageBackdrop.load(backdropScene);
     await SpriteAtlas.load(lionSprite);
     await SpriteAtlas.load(birdSprite);
   }
@@ -252,6 +324,7 @@ class NemeaBossArt extends BossArt {
   void dispose() {
     SpriteAtlas.evict(lionSprite);
     SpriteAtlas.evict(birdSprite);
+    NemeaStageBackdrop.evict();
     NemeaBackdrop.evict();
     super.dispose();
   }
@@ -261,12 +334,26 @@ class NemeaBossArt extends BossArt {
   /// Đàn chim Stymphalia canh hang (cùng atlas quái màn 1.1).
   static const birdSprite = 'stymphalian_bird';
 
+  /// Lần vật được sư tử gần nhất (giây sân khấu) — diễn `wrestled` 1,2 s.
+  int _wrestles = 0;
+  double _wrestledAt = -10;
+  static const _wrestledLength = 1.2;
+
   @override
   void paintBoss(Canvas canvas, BossFrame f) {
+    final b = f.battle;
+    if (b.wrestles != _wrestles) {
+      if (b.wrestles > _wrestles) _wrestledAt = f.time;
+      _wrestles = b.wrestles;
+    }
+    final sinceWrestled = (f.time - _wrestledAt) / _wrestledLength;
     canvas.save();
     canvas.translate(lionX, stageGroundY);
     canvas.scale(lionScale);
     final state = LionState(
+      // Pha 2 (máu < 40%, LionPounce): đòn là cú nhảy vồ.
+      pounce: b.bossHp < 0.4,
+      wrestled: sinceWrestled >= 0 && sinceWrestled < 1 ? sinceWrestled : -1,
       time: f.time,
       attackPhase: f.attackPhase,
       // Không có đòn vồ (chân dung, xem trước): attack chỉ là há miệng gầm.
@@ -277,7 +364,7 @@ class NemeaBossArt extends BossArt {
     );
     final sprite = SpriteAtlas.get(lionSprite);
     if (sprite != null) {
-      paintLionSprite(canvas, state, sprite);
+      paintLionSprite(canvas, state, sprite, tint: spriteTint);
     } else {
       paintLion(canvas, state);
     }

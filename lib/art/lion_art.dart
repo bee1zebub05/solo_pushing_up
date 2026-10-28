@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'sprite_atlas.dart';
+import 'sprite_motion.dart';
 import 'vector_style.dart';
 
 /// Bảng màu Sư tử Nemea: da vàng ánh kim (không vũ khí nào xuyên thủng),
@@ -30,6 +31,8 @@ class LionState {
     this.hurt = 0,
     this.glint = -1,
     this.defeat = 0,
+    this.pounce = false,
+    this.wrestled = -1,
   });
 
   /// Giây trôi qua, cho các chuyển động lặp (thở, đuôi, chớp mắt).
@@ -49,6 +52,12 @@ class LionState {
 
   /// Gục ngã 0–1.
   final double defeat;
+
+  /// Pha 2: đòn là cú nhảy vồ ([attackPhase] dùng động tác `pounce`).
+  final bool pounce;
+
+  /// Bị người chơi vật 0–1 (chồm ngửa ra sau); âm = không.
+  final double wrestled;
 }
 
 Paint _fill(Color c) => Paint()..color = c;
@@ -234,7 +243,21 @@ void paintLion(Canvas canvas, LionState s) {
 /// và nhịp đòn với [paintLion]): thân, bờm, bóng đổ đã có trong ảnh; ở đây
 /// chỉ thêm phần đọc nhịp trận — bụi cào đất khi lấy đà, rung gầm gừ, vệt
 /// vuốt, sóng gầm, khiên da loé khi bị chặn, Trì Trệ rời xác khi gục.
-void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
+/// Điểm [key] (danh sách [x, y] từng khung trong meta atlas) tại tiến độ [p].
+Offset? _spriteTrack(SpriteAtlas sprite, String key, double p) =>
+    SpriteMotion.track(
+      sprite,
+      key,
+      p,
+      anim: key.contains('Pounce') ? 'pounce' : 'attack',
+    );
+
+void paintLionSprite(
+  Canvas canvas,
+  LionState s,
+  SpriteAtlas sprite, {
+  Color? tint,
+}) {
   final t = s.time;
   final fall = _smooth(s.defeat);
   var windup = 0.0, strike = 0.0;
@@ -261,24 +284,55 @@ void paintLionSprite(Canvas canvas, LionState s, SpriteAtlas sprite) {
   // Trúng đòn: co người lại quanh chân.
   canvas.scale(1 + 0.04 * s.hurt, 1 - 0.05 * s.hurt);
   if (s.defeat > 0 && sprite.has('defeat')) {
-    sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt);
-  } else if (p >= 0 && sprite.has('attack')) {
-    sprite.draw(canvas, 'attack', p, flash: s.hurt);
+    sprite.draw(canvas, 'defeat', s.defeat, flash: s.hurt, tint: tint);
+  } else if (s.wrestled >= 0 && sprite.has('wrestled')) {
+    sprite.draw(canvas, 'wrestled', s.wrestled, flash: s.hurt, tint: tint);
+  } else if (p >= 0 && sprite.has(s.pounce ? 'pounce' : 'attack')) {
+    // Quanh cú vồ không hoà hai khung kề nhau (chân thành bốn).
+    SpriteMotion.action(
+      canvas,
+      sprite,
+      s.pounce ? 'pounce' : 'attack',
+      p,
+      idleAnim: 'idle',
+      time: t,
+      flash: s.hurt,
+      tint: tint,
+      fallbackPeriod: 3,
+    );
   } else {
-    final period = sprite.metaDouble('idlePeriod', 3);
-    sprite.draw(canvas, 'idle', t / period, loop: true, flash: s.hurt);
+    SpriteMotion.idle(
+      canvas,
+      sprite,
+      'idle',
+      t,
+      flash: s.hurt,
+      tint: tint,
+      fallbackPeriod: 3,
+    );
   }
 
-  // Vị trí đầu và vuốt theo cùng công thức với pose() trong lion_nemea.py.
+  // Vị trí đầu và vuốt: track từng khung ghi trong atlas lúc render
+  // (tracks() của tool/blender/lion_tripo.py, độ dời so với dáng chờ); atlas
+  // cũ không có thì theo công thức của pose() trong lion_nemea.py.
   final shift = 10 * windup - 18 * strike + 10 * fall;
   final drop = 6 * windup + 34 * fall;
-  final head = Offset(-74 + shift - 16 * strike, -104 + drop + 26 * fall + 9);
+  final attacking = p >= 0 && fall == 0 && s.wrestled < 0;
+  final headMove = attacking
+      ? _spriteTrack(sprite, s.pounce ? 'headPounce' : 'headAttack', p)
+      : null;
+  final head = headMove != null
+      ? const Offset(-74, -95) + headMove
+      : Offset(-74 + shift - 16 * strike, -104 + drop + 26 * fall + 9);
   final swipe = strike * (1 - fall);
-  if (swipe > 0.25) {
+  if (swipe > 0.25 && !s.pounce) {
+    final pawMove = attacking ? _spriteTrack(sprite, 'pawAttack', p) : null;
     final ground = Offset(-62 + 10 * windup - 36 * fall, 0);
     _clawTrails(
       canvas,
-      Offset.lerp(ground, const Offset(-120, -56), swipe)!,
+      pawMove != null
+          ? const Offset(-62, 0) + pawMove
+          : Offset.lerp(ground, const Offset(-120, -56), swipe)!,
       swipe,
     );
   }

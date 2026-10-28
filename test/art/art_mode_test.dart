@@ -32,14 +32,14 @@ void main() {
     });
     bool anyBlender() =>
         NemeaBackdrop.ready ||
-        NemeaMapImage.image != null ||
         SpriteAtlas.get('nemea_lion') != null ||
         HomeBannerArt.ready(look, cloak: false, freed: false);
 
     expect(anyBlender(), isTrue);
     ArtModeSetting.notifier.value = ArtMode.vector;
     expect(NemeaBackdrop.ready, isFalse);
-    expect(NemeaMapImage.image, isNull);
+    // Bản đồ là tranh vẽ (không phải Blender): giữ ở cả hai chế độ.
+    expect(NemeaMapImage.image, isNotNull);
     expect(SpriteAtlas.get('nemea_lion'), isNull);
     expect(HomeBannerArt.ready(look, cloak: false, freed: false), isFalse);
     ArtModeSetting.notifier.value = ArtMode.blender;

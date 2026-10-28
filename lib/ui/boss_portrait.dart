@@ -24,21 +24,35 @@ class BossPortrait extends StatelessWidget {
   /// test/art/art_bake_test.dart kiểm tra tập này khớp assets/portraits.
   static final baked = {for (final s in nemea.allStages) s.enemy.id};
 
-  static String assetFor(String enemyId) => 'assets/portraits/$enemyId.webp';
+  /// Kẻ thù có chân dung 2.5D chụp từ atlas hoạt hình `_toon`
+  /// (SpriteAtlas.toon): `assets/portraits/<id>_toon.webp`.
+  static const bakedToon = {
+    'stymphalian_flock',
+    'spartoi',
+    'stone_soldier',
+    'stone_guard',
+    'erymanthian_boar',
+    'harpy',
+    'young_hydra',
+    'nemean_lion',
+  };
+
+  static String assetFor(String enemyId, {bool toon = false}) =>
+      'assets/portraits/$enemyId${toon ? '_toon' : ''}.webp';
 
   @override
   Widget build(BuildContext context) {
     final id = enemy.id;
-    // Chế độ 2.5D: kẻ thù nào cũng vẽ bản vector.
-    final art = baked.contains(id) && ArtModeSetting.blender
-        ? null
-        : bossArtFor(enemy);
+    // Chế độ 2.5D: ảnh chụp từ atlas hoạt hình nếu có, còn lại vẽ vector.
+    final toon = !ArtModeSetting.blender;
+    final hasImage = toon ? bakedToon.contains(id) : baked.contains(id);
+    final art = hasImage ? null : bossArtFor(enemy);
     return SizedBox.square(
       dimension: size,
       child: ClipOval(
         child: art == null
             ? Image.asset(
-                assetFor(id),
+                assetFor(id, toon: toon),
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.medium,
                 gaplessPlayback: true,
@@ -82,7 +96,8 @@ void paintBossPortrait(
   art.paintBoss(
     canvas,
     BossFrame(
-      time: 0.4,
+      // Sau cảnh mở màn (lính đá trồi từ dưới đất): chân dung lấy dáng đứng.
+      time: 0.4 + art.introSeconds,
       attack: 0.6,
       hurt: 0,
       glint: -1,

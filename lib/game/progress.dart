@@ -73,11 +73,18 @@ class PlayerProgress {
   /// XP cần để lên cấp tiếp theo từ [level].
   static int xpToNext(int level) => 100 + 50 * (level - 1);
 
+  /// Chỉ để người làm game thử: mở mọi kỳ công và màn mà không đánh dấu
+  /// là đã thắng (thắng vẫn nhận thưởng lần đầu). Không lưu; bản debug bật
+  /// sẵn trong main(), tắt/bật ở trang chủ.
+  static bool debugUnlockAll = false;
+
   /// Kỳ công đã mở: kỳ công 1 luôn mở, kỳ công sau mở khi thắng kỳ trước.
-  bool isUnlocked(Labor labor) => switch (previousLabor(labor)) {
-    null => true,
-    final prev => completedLabors.contains(prev.id),
-  };
+  bool isUnlocked(Labor labor) =>
+      debugUnlockAll ||
+      switch (previousLabor(labor)) {
+        null => true,
+        final prev => completedLabors.contains(prev.id),
+      };
 
   /// Màn đã thắng: màn boss tính cả khi kỳ công đã hoàn thành từ trước
   /// (người chơi cũ hạ boss trước khi có các màn).
@@ -88,7 +95,7 @@ class PlayerProgress {
   /// trước. Kỳ công đã hoàn thành thì mở hết.
   bool isStageUnlocked(Labor labor, Stage stage) {
     if (!isUnlocked(labor)) return false;
-    if (completedLabors.contains(labor.id)) return true;
+    if (debugUnlockAll || completedLabors.contains(labor.id)) return true;
     final stages = labor.allStages;
     final i = stages.indexWhere((s) => s.id == stage.id);
     return i <= 0 || isStageDone(stages[i - 1]);

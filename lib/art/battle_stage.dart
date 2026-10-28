@@ -47,6 +47,9 @@ class StageBattleState {
   /// Số túi vàng Harpy đã cướp.
   int goldStolen = 0;
 
+  /// Số lần người chơi vật được sư tử (pha 2 Nemea).
+  int wrestles = 0;
+
   /// Chép trạng thái trận vừa tính ([Battle.view]).
   void sync(BattleView view) {
     water = view.water ?? 0;
@@ -58,6 +61,7 @@ class StageBattleState {
     charge = view.charge;
     revives = view.revives;
     goldStolen = view.goldStolen;
+    wrestles = view.wrestles;
   }
 }
 
@@ -153,6 +157,13 @@ abstract class BossArt {
 
   /// `true` khi hình tự vẽ khói Trì Trệ rời xác lúc gục (sư tử).
   bool get ownsDefeatSmoke => false;
+
+  /// Thời lượng một đòn trên sân khấu (giây): lấy đà 0–0,5, chạm ~0,55.
+  double get attackSeconds => 1.2;
+
+  /// Cảnh mở màn của hình (lính đá trồi từ dưới đất…), giây: đòn doạ đầu
+  /// tiên chờ hết cảnh này.
+  double get introSeconds => 0;
 
   /// Sương Trì Trệ (shader GPU) sát mặt đất: màu (a = độ đậm tối đa) và hệ
   /// số mật độ. Sương tan theo máu boss — vùng đất được giải phóng dần.
@@ -430,6 +441,10 @@ class BattleStageGame extends FlameGame {
   /// Cho boss ra đòn ngay (demo/quay video có kịch bản, test).
   void triggerAttack() => _boss.triggerAttack();
 
+  /// Từ lúc bắt đầu đòn tới lúc chạm (ms) — hẹn giờ đòn trùng cơ chế.
+  int get strikeLeadMs =>
+      (_BossComponent.strikePhase * boss.attackSeconds * 1000).round();
+
   void reset() {
     _raging = false;
     _hero.victorious = false;
@@ -628,9 +643,9 @@ class _BossComponent extends PositionComponent {
   late final Offset _anchor = art.bodyAnchor;
 
   /// Đếm ngược tới lần đe doạ tiếp theo; [_attackAge] là thời gian đã diễn.
-  double _nextAttack = 1.5;
-  double _attackAge = _attackLength;
-  static const _attackLength = 1.2;
+  late double _nextAttack = 1.5 + art.introSeconds;
+  late double _attackAge = _attackLength;
+  double get _attackLength => art.attackSeconds;
   final _random = math.Random();
 
   void triggerAttack() {
@@ -898,6 +913,15 @@ class _TransitionComponent extends Component {
 
 enum _HeroMode { standing, plank, victory }
 
+/// Nhân vật nhỏ hơn quái (quái vật thần thoại phải to): vẽ thu nhỏ quanh
+/// điểm mũi chân trên mặt đất, các điểm phóng đòn (ngực) co theo.
+const heroStageScale = 0.8;
+const heroStagePivot = Offset(30, 220);
+
+/// Điểm trên tư thế nhân vật → điểm thật trên sân khấu (sau khi thu nhỏ).
+Offset heroOnStage(Offset p) =>
+    heroStagePivot + (p - heroStagePivot) * heroStageScale;
+
 class _HeroComponent extends Component {
   _HeroComponent({
     required this.cloak,
@@ -939,11 +963,9 @@ class _HeroComponent extends Component {
 
   /// Ngực nhân vật: điểm xuất phát của đòn đánh, điểm khoác áo.
   Vector2 get chest {
-    final p = Offset.lerp(
-      _shown[HeroJoint.shoulder],
-      _shown[HeroJoint.head],
-      0.4,
-    )!;
+    final p = heroOnStage(
+      Offset.lerp(_shown[HeroJoint.shoulder], _shown[HeroJoint.head], 0.4)!,
+    );
     return Vector2(p.dx, p.dy);
   }
 
@@ -1027,14 +1049,19 @@ class _HeroComponent extends Component {
     if (!StageQuality.hero) return;
     StageProfile.run('hero', () {
       // Biến đổi đặt lên ảnh chụp sẵn của nhân vật: không phá bộ đệm tư thế.
-      final r = _recoil.value;
-      if (r.abs() < 0.05) return _paint(canvas);
       canvas
         ..save()
-        ..translate(r, 0)
-        ..translate(90, 220)
-        ..rotate(r * 0.004)
-        ..translate(-90, -220);
+        ..translate(heroStagePivot.dx, heroStagePivot.dy)
+        ..scale(heroStageScale)
+        ..translate(-heroStagePivot.dx, -heroStagePivot.dy);
+      final r = _recoil.value;
+      if (r.abs() >= 0.05) {
+        canvas
+          ..translate(r, 0)
+          ..translate(90, 220)
+          ..rotate(r * 0.004)
+          ..translate(-90, -220);
+      }
       _paint(canvas);
       canvas.restore();
     });

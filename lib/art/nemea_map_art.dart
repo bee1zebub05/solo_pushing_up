@@ -4,32 +4,152 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart' show rootBundle;
 
-import 'art_mode.dart';
 import 'vector_style.dart';
 
 /// Kích thước bản đồ Thung lũng Nemea (đơn vị vẽ).
 const nemeaMapSize = Size(400, 300);
 
-/// Vị trí 10 điểm màn trên bản đồ: từ bìa rừng ô liu (dưới trái) men theo
-/// đường mòn lên đồi đền, qua cầu đá, tới hang sư tử (trên phải).
-const nemeaMapNodes = <Offset>[
-  Offset(48, 262),
-  Offset(104, 240),
-  Offset(84, 196),
-  Offset(140, 170),
-  Offset(204, 188),
-  Offset(250, 228),
-  Offset(304, 200),
-  Offset(276, 148),
-  Offset(318, 104),
-  Offset(352, 62),
+/// Lối đất trên bản đồ vẽ (assets/backdrops/nemea_map.webp): đường gấp khúc
+/// dày từ bìa rừng ô liu (dưới trái) qua ruộng, đá kê lội sông, chân đồi
+/// đền, cầu đá, đầm lầy tới hang sư tử (trên phải). Dò tự động từ màu đất
+/// trong tranh bằng tool/import_painted_backdrops.py — thay ảnh thì chạy lại
+/// và dán kết quả vào đây.
+const nemeaMapTrail = <Offset>[
+  Offset(52, 250),
+  Offset(56, 246),
+  Offset(61, 243),
+  Offset(66, 239),
+  Offset(71, 236),
+  Offset(77, 234),
+  Offset(82, 232),
+  Offset(88, 231),
+  Offset(94, 230),
+  Offset(99, 227),
+  Offset(97, 221),
+  Offset(94, 216),
+  Offset(91, 211),
+  Offset(88, 205),
+  Offset(87, 200),
+  Offset(86, 194),
+  Offset(88, 188),
+  Offset(92, 184),
+  Offset(97, 180),
+  Offset(102, 177),
+  Offset(107, 173),
+  Offset(112, 171),
+  Offset(117, 168),
+  Offset(123, 167),
+  Offset(129, 165),
+  Offset(135, 164),
+  Offset(141, 164),
+  Offset(147, 165),
+  Offset(153, 165),
+  Offset(159, 166),
+  Offset(164, 166),
+  Offset(170, 168),
+  Offset(175, 171),
+  Offset(181, 172),
+  Offset(187, 174),
+  Offset(192, 176),
+  Offset(197, 180),
+  Offset(203, 182),
+  Offset(209, 183),
+  Offset(214, 185),
+  Offset(220, 187),
+  Offset(225, 190),
+  Offset(230, 194),
+  Offset(235, 198),
+  Offset(240, 200),
+  Offset(244, 204),
+  Offset(247, 209),
+  Offset(253, 212),
+  Offset(259, 212),
+  Offset(263, 208),
+  Offset(269, 205),
+  Offset(274, 202),
+  Offset(279, 199),
+  Offset(285, 197),
+  Offset(290, 196),
+  Offset(295, 193),
+  Offset(298, 188),
+  Offset(296, 182),
+  Offset(292, 178),
+  Offset(289, 173),
+  Offset(286, 167),
+  Offset(284, 162),
+  Offset(283, 156),
+  Offset(282, 150),
+  Offset(283, 144),
+  Offset(285, 138),
+  Offset(288, 133),
+  Offset(291, 128),
+  Offset(295, 123),
+  Offset(298, 119),
+  Offset(303, 114),
+  Offset(308, 111),
+  Offset(313, 108),
+  Offset(318, 105),
+  Offset(320, 99),
+  Offset(322, 94),
+  Offset(324, 88),
+  Offset(326, 83),
+  Offset(329, 77),
+  Offset(332, 72),
+  Offset(337, 68),
+  Offset(341, 64),
+  Offset(346, 61),
+  Offset(349, 60),
 ];
+
+/// Chỉ số trên [nemeaMapTrail] của từng màn chương 1 (8 màn), đặt cạnh mốc
+/// của màn: ruộng (1.2), đồi đền (1.3), bụi rậm (1.4), cầu (1.5), đầm (1.6),
+/// vách đá (1.7), hang (1.8).
+const _nodeOnTrail = [0, 15, 30, 40, 47, 63, 75, 83];
+
+/// Tâm dòng sông trên bản đồ vẽ (nước lấp lánh trôi theo).
+const _riverLine = <Offset>[
+  Offset(1, 133),
+  Offset(14, 135),
+  Offset(28, 136),
+  Offset(42, 139),
+  Offset(55, 144),
+  Offset(67, 151),
+  Offset(79, 158),
+  Offset(91, 166),
+  Offset(104, 170),
+  Offset(117, 176),
+  Offset(128, 185),
+  Offset(140, 192),
+  Offset(153, 196),
+  Offset(166, 199),
+  Offset(180, 199),
+  Offset(193, 203),
+  Offset(207, 204),
+  Offset(220, 206),
+  Offset(233, 213),
+  Offset(246, 217),
+  Offset(256, 227),
+  Offset(266, 236),
+  Offset(278, 243),
+  Offset(288, 253),
+  Offset(299, 262),
+  Offset(309, 272),
+  Offset(321, 279),
+  Offset(332, 287),
+  Offset(338, 299),
+];
+
+/// Vị trí 8 điểm màn trên bản đồ.
+final nemeaMapNodes = [for (final i in _nodeOnTrail) nemeaMapTrail[i]];
+
+/// Màn tinh anh (1.4) và mini-boss (1.6): vòng điểm đỏ.
+const _eliteNodes = {3, 5};
 
 /// Trạng thái một điểm màn trên bản đồ.
 enum MapNodeState { locked, open, done }
 
 /// Vẽ bản đồ thung lũng kiểu nhìn chéo từ trên (Kingdom Rush): đồi, rừng
-/// ô liu, sông, đền, hang sư tử; đường mòn nối 10 điểm, đoạn đã đi sáng
+/// ô liu, sông, đền, hang sư tử; đường mòn qua 8 điểm màn, đoạn đã đi sáng
 /// màu, điểm kế tiếp nhấp nháy. [time] cho nước chảy và điểm nhấp nháy.
 void paintNemeaMap(
   Canvas canvas,
@@ -40,7 +160,7 @@ void paintNemeaMap(
   final h = nemeaMapSize.height;
   final image = NemeaMapImage.image;
   if (image != null) {
-    // Sa bàn dựng bằng Blender (sông, cầu, đền, hang đã có trong ảnh).
+    // Bản đồ vẽ (sông, cầu, đền, đầm, hang, lối đất đã có trong tranh).
     canvas.drawImageRect(
       image,
       Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
@@ -54,7 +174,7 @@ void paintNemeaMap(
     _river(canvas, time);
     _mapProps.paint(canvas);
   }
-  _path(canvas, states);
+  _path(canvas, states, painted: image != null);
   for (var i = 0; i < nemeaMapNodes.length; i++) {
     _node(
       canvas,
@@ -62,7 +182,7 @@ void paintNemeaMap(
       i + 1,
       states[i],
       boss: i == nemeaMapNodes.length - 1,
-      elite: i == 4 || i == 7,
+      elite: _eliteNodes.contains(i),
       time: time,
     );
   }
@@ -81,14 +201,15 @@ void paintNemeaMap(
 
 Path _poly(List<Offset> pts) => Path()..addPolygon(pts, true);
 
-/// Bản đồ Thung lũng Nemea dựng bằng Blender (tool/blender/nemea_map.py),
-/// nạp khi mở màn chọn màn; chưa có thì vẽ bản vector.
+/// Bản đồ Thung lũng Nemea vẽ tay (art_src/backdrop_prompts/ban_do.png →
+/// tool/import_painted_backdrops.py), nạp khi mở màn chọn màn; chưa có thì
+/// vẽ bản vector.
 abstract final class NemeaMapImage {
   static ui.Image? _image;
   static Future<void>? _loading;
 
-  /// Ảnh đã nạp; chế độ 2.5D ([ArtMode.vector]) luôn null.
-  static ui.Image? get image => ArtModeSetting.blender ? _image : null;
+  /// Ảnh đã nạp (tranh vẽ — dùng cho cả 2.5D lẫn 3D), hoặc null.
+  static ui.Image? get image => _image;
 
   static Future<void> load() => _loading ??= () async {
     try {
@@ -101,30 +222,17 @@ abstract final class NemeaMapImage {
   }();
 }
 
-/// Nước lấp lánh trôi trên sông của ảnh Blender.
+/// Nước lấp lánh trôi theo tâm dòng sông của bản đồ vẽ ([_riverLine]).
 void _riverGlints(Canvas canvas, double time) {
   final glint = Paint()
     ..color = const Color(0x66E8F4FF)
     ..strokeWidth = 0.9
     ..strokeCap = StrokeCap.round;
-  for (var i = 0; i < 12; i++) {
-    final u = (i / 12 + time * 0.02) % 1;
-    // Theo đường tâm sông (trung bình hai bờ của _river).
-    final p = u < 0.55
-        ? _cubic(
-            const Offset(0, 143),
-            const Offset(65, 134),
-            const Offset(123, 213),
-            const Offset(190, 209),
-            u / 0.55,
-          )
-        : _cubic(
-            const Offset(190, 209),
-            const Offset(260, 206),
-            const Offset(272, 255),
-            const Offset(313, 300),
-            (u - 0.55) / 0.45,
-          );
+  for (var i = 0; i < 16; i++) {
+    final u = (i / 16 + time * 0.02) % 1;
+    final pos = u * (_riverLine.length - 1);
+    final k = pos.floor();
+    final p = Offset.lerp(_riverLine[k], _riverLine[k + 1], pos - k)!;
     final a = math.sin(time * 2 + i * 1.7);
     if (a < 0.2) continue;
     canvas.drawLine(
@@ -133,14 +241,6 @@ void _riverGlints(Canvas canvas, double time) {
       glint,
     );
   }
-}
-
-Offset _cubic(Offset a, Offset b, Offset c, Offset d, double t) {
-  final u = 1 - t;
-  return a * (u * u * u) +
-      b * (3 * u * u * t) +
-      c * (3 * u * t * t) +
-      d * (t * t * t);
 }
 
 /// Nền đất, đồi, núi đá (dưới sông).
@@ -354,7 +454,7 @@ void _forest(Canvas canvas) {
 }
 
 bool _nearPath(Offset p, double r) {
-  for (final n in nemeaMapNodes) {
+  for (final n in nemeaMapTrail) {
     if ((n - p).distance < r) return true;
   }
   return false;
@@ -464,21 +564,24 @@ void _cave(Canvas canvas, Offset c) {
   }
 }
 
-void _path(Canvas canvas, List<MapNodeState> states) {
+/// Đường mòn: [painted] = bản đồ vẽ đã có lối đất, chỉ vẽ chấm vàng đoạn
+/// đã đi; bản vector vẽ cả dải đất.
+void _path(Canvas canvas, List<MapNodeState> states, {bool painted = false}) {
+  // Đoạn gấp khúc dày từ chỉ số [from] tới [to] trên [nemeaMapTrail].
   Path segment(int from, int to) {
-    final p = Path()..moveTo(nemeaMapNodes[from].dx, nemeaMapNodes[from].dy);
+    final p = Path()..moveTo(nemeaMapTrail[from].dx, nemeaMapTrail[from].dy);
     for (var i = from + 1; i <= to; i++) {
-      final a = nemeaMapNodes[i - 1];
-      final b = nemeaMapNodes[i];
-      final mid =
-          Offset.lerp(a, b, 0.5)! +
-          Offset((b.dy - a.dy) * 0.25, (a.dx - b.dx) * 0.25);
-      p.quadraticBezierTo(mid.dx, mid.dy, b.dx, b.dy);
+      p.lineTo(nemeaMapTrail[i].dx, nemeaMapTrail[i].dy);
     }
     return p;
   }
 
-  final all = segment(0, nemeaMapNodes.length - 1);
+  final all = segment(0, nemeaMapTrail.length - 1);
+  if (!painted) _trailBand(canvas, all);
+  _walkedDots(canvas, states, segment);
+}
+
+void _trailBand(Canvas canvas, Path all) {
   // Đường mòn đất: viền tối, thân sáng.
   canvas.drawPath(
     all,
@@ -498,10 +601,17 @@ void _path(Canvas canvas, List<MapNodeState> states) {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round,
   );
+}
+
+void _walkedDots(
+  Canvas canvas,
+  List<MapNodeState> states,
+  Path Function(int, int) segment,
+) {
   // Đoạn đã đi: chấm vàng dọc đường.
   final reached = states.lastIndexWhere((s) => s != MapNodeState.locked);
   if (reached > 0) {
-    final walked = segment(0, reached);
+    final walked = segment(0, _nodeOnTrail[reached]);
     for (final metric in walked.computeMetrics()) {
       for (var d = 0.0; d < metric.length; d += 7) {
         final t = metric.getTangentForOffset(d);

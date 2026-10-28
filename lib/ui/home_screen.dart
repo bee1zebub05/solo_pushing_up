@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../art/art_mode.dart';
@@ -100,6 +101,31 @@ class _HomeScreenState extends State<HomeScreen> {
     await widget.progressStore.save(progress);
     if (mounted) setState(() {});
     return reward;
+  }
+
+  /// Xoá XP, cấp, màn đã thắng, vật phẩm (giữ nhân vật) — chỉ bản debug.
+  Future<void> _resetProgress() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xoá tiến trình?'),
+        content: const Text('Mất XP, cấp, màn đã thắng và vật phẩm.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final fresh = PlayerProgress();
+    await widget.progressStore.save(fresh);
+    if (mounted) setState(() => _progress = fresh);
   }
 
   Future<void> _openBattle({
@@ -284,6 +310,21 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.bug_report_outlined),
               label: const Text('Chế độ đếm (debug, ghi dữ liệu test)'),
             ),
+            // Công cụ thử cho người làm game: chỉ có trong bản debug.
+            if (kDebugMode) ...[
+              SwitchListTile(
+                value: PlayerProgress.debugUnlockAll,
+                onChanged: (v) =>
+                    setState(() => PlayerProgress.debugUnlockAll = v),
+                title: const Text('Mở khoá mọi màn (debug)'),
+                subtitle: const Text('Không tính là đã thắng, không lưu'),
+              ),
+              TextButton.icon(
+                onPressed: _resetProgress,
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Xoá tiến trình (debug)'),
+              ),
+            ],
           ],
         ),
       ),
@@ -532,6 +573,7 @@ class _HomeBannerState extends State<_HomeBanner> {
       cloak: widget.cloak,
       freed: widget.valleyFreed,
     );
+    await HomeBannerArt.loadToonScene(freed: widget.valleyFreed);
     if (mounted) setState(() {});
   }
 
@@ -574,6 +616,7 @@ class _HomeBannerState extends State<_HomeBanner> {
                       cloak: cloak,
                       freed: valleyFreed,
                     ),
+                    toonScene: HomeBannerArt.toonSceneReady(freed: valleyFreed),
                   ),
                 ),
                 // Tựa ở góc trời trên–phải (trên đầu sư tử, không che nhân
@@ -622,6 +665,7 @@ class _BannerPainter extends CustomPainter {
     required this.cloak,
     required this.freed,
     required this.blender,
+    this.toonScene = false,
   });
 
   final HeroLook look;
@@ -633,6 +677,10 @@ class _BannerPainter extends CustomPainter {
   /// Có ảnh Blender chụp sẵn ([HomeBannerArt]); không thì vẽ vector.
   final bool blender;
 
+  /// Chế độ 2.5D có cảnh chụp sẵn (phông vẽ + sư tử hoạt hình): chỉ vẽ
+  /// nhân vật vector đè lên.
+  final bool toonScene;
+
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
@@ -643,19 +691,25 @@ class _BannerPainter extends CustomPainter {
       canvas.restore();
       return;
     }
-    paintNemeaSceneCached(canvas, time: 2, dust: freed ? 0 : 0.85);
+    if (toonScene) {
+      HomeBannerArt.paintToonScene(canvas, freed: freed);
+    } else {
+      paintNemeaSceneCached(canvas, time: 2, dust: freed ? 0 : 0.85);
+      canvas.save();
+      canvas.translate(lionX, stageGroundY);
+      canvas.scale(lionScale);
+      paintLion(canvas, const LionState(time: 1.2));
+      canvas.restore();
+    }
     canvas.save();
-    canvas.translate(lionX, stageGroundY);
-    canvas.scale(lionScale);
-    paintLion(canvas, const LionState(time: 1.2));
-    canvas.restore();
-    canvas.save();
-    canvas.translate(120, stageGroundY);
+    // Cùng chỗ đứng, cùng cỡ nhân vật như bản chụp sẵn (HomeBannerArt).
+    final at = toonScene ? HomeBannerArt.heroAt.dx : 120.0;
+    canvas.translate(at, stageGroundY);
     canvas.scale(0.82);
-    canvas.translate(-120, -stageGroundY);
+    canvas.translate(-at, -stageGroundY);
     paintHero(
       canvas,
-      HeroPose.standing(x: 120, breath: 0.4),
+      HeroPose.standing(x: at, breath: 0.4),
       look: look,
       cloak: cloak,
     );
@@ -668,7 +722,8 @@ class _BannerPainter extends CustomPainter {
       old.look != look ||
       old.cloak != cloak ||
       old.freed != freed ||
-      old.blender != blender;
+      old.blender != blender ||
+      old.toonScene != toonScene;
 }
 
 /// Xám hoá + tối ~45 % cho chân dung boss chưa mở.

@@ -8,7 +8,7 @@ import '../game/progress.dart';
 import 'boss_portrait.dart';
 import 'greek_ui.dart';
 
-/// Chọn màn trong một kỳ công (1.1 … 1.10): màn đã thắng có dấu tích, màn
+/// Chọn màn trong một kỳ công (chương 1: 1.1 … 1.8): màn đã thắng có dấu tích, màn
 /// kế tiếp sáng lên, màn chưa mở bị khoá. Màn cuối là boss.
 class StageSelectScreen extends StatelessWidget {
   const StageSelectScreen({

@@ -9,10 +9,10 @@ import 'battle_test.dart' show rep;
 void main() {
   final nemea = labors.firstWhere((l) => l.id == 'nemea');
 
-  group('10 màn Kỳ công 1', () {
-    test('đủ 10 màn 1.1 → 1.10, màn cuối là Sư tử Nemea', () {
+  group('8 màn Kỳ công 1', () {
+    test('đủ 8 màn 1.1 → 1.8, màn cuối là Sư tử Nemea', () {
       expect(nemea.stages.map((s) => s.code), [
-        for (var i = 1; i <= 10; i++) '1.$i',
+        for (var i = 1; i <= 8; i++) '1.$i',
       ]);
       expect(nemea.stages.last.enemy, nemeanLion);
       expect(nemea.stages.last.id, nemea.id);
@@ -38,9 +38,9 @@ void main() {
       expect(p.completedLabors, isEmpty);
     });
 
-    test('thắng màn boss 1.10 mới nhận áo choàng và mở Kỳ công 2', () {
+    test('thắng màn boss 1.8 mới nhận áo choàng và mở Kỳ công 2', () {
       final p = PlayerProgress(
-        completedStages: {for (final s in nemea.stages.take(9)) s.id},
+        completedStages: {for (final s in nemea.stages.take(7)) s.id},
       );
       expect(p.isStageUnlocked(nemea, nemea.stages.last), isTrue);
       final reward = p.recordBattle(
@@ -77,7 +77,7 @@ void main() {
         won: true,
         mode: PushupMode.standard,
         labor: nemea,
-        stage: nemea.stages[5],
+        stage: nemea.stages.firstWhere((s) => s.enemy == harpy),
         goldStolen: 2,
       );
       // 10 rep × 2 + thắng 25 + lần đầu 40 − 2 túi × 10.
@@ -134,6 +134,66 @@ void main() {
       expect(battle.view(1000).charge, 0);
       expect(battle.view(7900).charge, closeTo(0.56, 0.05));
       expect(battle.view(9000).charge, 1);
+    });
+  });
+
+  group('Sư tử Nemea pha 2: vồ', () {
+    /// Đánh sư tử tới dưới 40% máu bằng rep đều, trả mốc thời gian kế tiếp.
+    int toPhaseTwo(Battle battle) {
+      var t = 0;
+      while (battle.hpFraction > 0.4) {
+        battle.apply([rep(t)]);
+        t += 1000;
+      }
+      return t;
+    }
+
+    test('máu trên 40% thì không vồ', () {
+      final battle = Battle(enemy: nemeanLion);
+      battle.apply([rep(0)]);
+      final events = <BattleEvent>[];
+      for (var t = 0; t <= 30000; t += 100) {
+        events.addAll(battle.tick(t));
+      }
+      expect(events.whereType<PounceWarning>(), isEmpty);
+    });
+
+    test('dưới 40%: báo trước rồi vồ; không giữ thì sư tử hồi máu', () {
+      final battle = Battle(enemy: nemeanLion);
+      final start = toPhaseTwo(battle);
+      final hpBefore = battle.hp;
+      final events = <BattleEvent>[];
+      for (var t = start; t <= start + 4500; t += 100) {
+        events.addAll(battle.tick(t));
+      }
+      expect(events.whereType<PounceWarning>(), hasLength(1));
+      final landed = events.whereType<PounceLanded>().single;
+      expect(landed.wrestled, isFalse);
+      expect(battle.hp, hpBefore + landed.healed);
+      expect(battle.combo, 0);
+    });
+
+    test('giữ tay thẳng lúc bị vồ thì vật được, gây sát thương', () {
+      final battle = Battle(enemy: nemeanLion);
+      final start = toPhaseTwo(battle);
+      final hpBefore = battle.hp;
+      final events = <BattleEvent>[];
+      for (var t = start; t <= start + 4500; t += 100) {
+        final hold = t - (start + 2000);
+        events.addAll(battle.tick(t, plankHoldMs: hold > 0 ? hold : 0));
+      }
+      expect(events.whereType<PounceLanded>().single.wrestled, isTrue);
+      expect(events.whereType<Hit>().single.held, isTrue);
+      expect(battle.hp, lessThan(hpBefore));
+      // Sân khấu đếm số lần vật để diễn động tác `wrestled`.
+      expect(battle.view(start + 4500).wrestles, 1);
+    });
+
+    test('da vẫn chặn rep sai form ở pha 2', () {
+      final battle = Battle(enemy: nemeanLion);
+      final t = toPhaseTwo(battle);
+      final events = battle.apply([rep(t, formWarning: true)]);
+      expect(events.whereType<Blocked>(), hasLength(1));
     });
   });
 

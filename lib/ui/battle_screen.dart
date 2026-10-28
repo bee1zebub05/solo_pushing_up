@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flame/game.dart';
@@ -115,6 +116,7 @@ class _BattleScreenState extends State<BattleScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
+    _pounceTimer?.cancel();
     _shake.dispose();
     _controller.dispose();
     _session.dispose();
@@ -156,12 +158,24 @@ class _BattleScreenState extends State<BattleScreen>
           stage.blocked();
         case Victory():
           stage.victory();
+        case PounceWarning(:final inMs):
+          // Sư tử tự diễn đòn 1,2 s, chạm ở ~0,55: bắt đầu đòn sao cho
+          // cú chạm trùng lúc vồ tới.
+          _pounceTimer?.cancel();
+          _pounceTimer = Timer(
+            Duration(milliseconds: math.max(0, inMs - stage.strikeLeadMs)),
+            stage.triggerAttack,
+          );
         default:
       }
     }
   }
 
+  /// Hẹn giờ cho sư tử diễn cú vồ ([PounceWarning]).
+  Timer? _pounceTimer;
+
   void _restart() {
+    _pounceTimer?.cancel();
     _controller.restart();
     _stage?.reset();
   }
@@ -593,7 +607,7 @@ class _BattleScreenState extends State<BattleScreen>
       color: Colors.blue.shade800,
     ),
     Revived(:final hp) => Pill(
-      text: '💀 Spartoi đứng dậy! +$hp HP — đánh dứt điểm',
+      text: '💀 ${widget.enemy.name} đứng dậy! +$hp HP — đánh dứt điểm',
       color: Colors.brown.shade700,
     ),
     ChargeWarning() => Pill(
@@ -605,6 +619,14 @@ class _BattleScreenState extends State<BattleScreen>
           ? '🐗 Né được cú húc!'
           : '🐗 Bị húc! Lợn rừng hồi +$healed HP',
       color: dodged ? Colors.green.shade700 : Colors.red.shade800,
+    ),
+    PounceWarning() => Pill(
+      text: '🦁 Sư tử sắp vồ! GIỮ TAY THẲNG để vật nó',
+      color: Colors.red.shade800,
+    ),
+    PounceLanded(:final wrestled, :final healed) => Pill(
+      text: wrestled ? '🦁 Vật được sư tử!' : '🦁 Bị vồ! Sư tử hồi +$healed HP',
+      color: wrestled ? Colors.green.shade700 : Colors.red.shade800,
     ),
     GoldStolen(:final total) => Pill(
       text: '🪙 Harpy cướp vàng! (mất $total túi) — đừng nghỉ lâu',
@@ -626,8 +648,15 @@ class _BattleScreenState extends State<BattleScreen>
     };
     return Row(
       children: [
-        Pill(text: hint),
-        const Spacer(),
+        // Lời nhắc dài ("Vào tư thế chống đẩy để bắt đầu") xuống dòng khi
+        // màn hẹp (iPhone SE, nửa màn ngang) thay vì tràn ra ngoài.
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Pill(text: hint),
+          ),
+        ),
+        const SizedBox(width: 8),
         if (_view.combo >= 2)
           Pill(text: 'COMBO ×${_view.combo}', color: Colors.deepOrange),
         const SizedBox(width: 8),

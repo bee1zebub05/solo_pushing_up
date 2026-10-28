@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solo_pushing_up/art/art_mode.dart';
 import 'package:solo_pushing_up/art/battle_stage.dart';
 import 'package:solo_pushing_up/art/bosses/boss_registry.dart';
 import 'package:solo_pushing_up/art/bosses/nemea_boss.dart';
@@ -30,12 +31,12 @@ const framing = <String, (double, double, double)>{
   'stymphalian_swarm': (292, 108, 70),
   'spartoi': (310, 175, 70),
   'stone_soldier': (300, 110, 110),
-  'erymanthian_boar': (205, 178, 95),
+  'erymanthian_boar': (198, 132, 100),
   'harpy': (303, 95, 120),
   'spartoi_pack': (295, 172, 110),
-  'young_hydra': (285, 75, 130),
+  'young_hydra': (214, 78, 125),
   'stone_guard': (300, 90, 95),
-  'nemean_lion': (292, 178, 95),
+  'nemean_lion': (262, 128, 105),
 };
 
 /// Bụi Trì Trệ tan theo máu quái: chân dung lấy lúc bụi đã loãng (rõ hình,
@@ -60,11 +61,20 @@ void main() {
         if (f.path.endsWith('.webp'))
           f.uri.pathSegments.last.replaceAll('.webp', ''),
     };
-    expect(files, {for (final e in bakedEnemies) e.id});
+    expect(files, {
+      for (final e in bakedEnemies) e.id,
+      for (final id in BossPortrait.bakedToon) '${id}_toon',
+    });
   });
 
   testWidgets('chụp chân dung từ sprite Blender', (tester) async {
-    for (final enemy in bakedEnemies) {
+    for (final (enemy, toon) in [
+      for (final e in bakedEnemies) (e, false),
+      for (final e in bakedEnemies)
+        if (BossPortrait.bakedToon.contains(e.id)) (e, true),
+    ]) {
+      // Bản 2.5D: atlas `_toon` + phông vector như trận ở chế độ 2.5D.
+      ArtModeSetting.notifier.value = toon ? ArtMode.vector : ArtMode.blender;
       final art = bossArtFor(enemy)!;
       await tester.runAsync(art.preload);
       final battle = _settledBattle(art);
@@ -91,22 +101,30 @@ void main() {
         await tester.runAsync(() async {
           final image = await picture.toImage(portraitPx, portraitPx);
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          File('build/portraits/${enemy.id}.png')
+          File('build/portraits/${enemy.id}${toon ? '_toon' : ''}.png')
             ..createSync(recursive: true)
             ..writeAsBytesSync(bytes!.buffer.asUint8List());
         });
       }
       picture.dispose();
-      if (bake) await _stageWithGrid(tester, art, enemy.id, battle);
+      if (bake && !toon) await _stageWithGrid(tester, art, enemy.id, battle);
       art.dispose();
     }
+    ArtModeSetting.notifier.value = ArtMode.blender;
   }, skip: !bake);
 
   testWidgets('chụp khung trang chủ: cảnh có sư tử và các lớp nhân vật', (
     tester,
   ) async {
     const k = HomeBannerArt.pxPerUnit;
-    for (final freed in [false, true]) {
+    for (final (freed, toon) in [
+      (false, false),
+      (true, false),
+      (false, true),
+      (true, true),
+    ]) {
+      // Bản 2.5D: sư tử hoạt hình (atlas _toon), cùng phông vẽ.
+      ArtModeSetting.notifier.value = toon ? ArtMode.vector : ArtMode.blender;
       final art = NemeaBossArt();
       await tester.runAsync(art.preload);
       final battle = _settledBattle(art, bossHp: freed ? 0 : 1);
@@ -133,10 +151,11 @@ void main() {
         recorder.endRecording(),
         (stageSize.width * k).round(),
         (stageSize.height * k).round(),
-        'build/banner/scene_${freed ? 'clear' : 'dust'}.png',
+        'build/banner/scene_${freed ? 'clear' : 'dust'}${toon ? '_toon' : ''}.png',
       );
       art.dispose();
     }
+    ArtModeSetting.notifier.value = ArtMode.blender;
 
     final box = HomeBannerArt.heroBox;
     for (final sex in HeroSex.values) {
@@ -238,9 +257,8 @@ Future<void> _stageWithGrid(
       (stageSize.height * k).round(),
     );
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    File(
-      'build/portraits/_stage_$id.png',
-    ).writeAsBytesSync(bytes!.buffer.asUint8List());
+    File('build/portraits/_stage_$id.png')
+        .writeAsBytesSync(bytes!.buffer.asUint8List());
   });
   picture.dispose();
 }

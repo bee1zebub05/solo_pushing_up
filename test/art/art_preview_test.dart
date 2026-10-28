@@ -66,6 +66,16 @@ void scene(
   paintHero(canvas, hero, cloak: cloak, effort: effort);
 }
 
+/// Nhân vật trên sân khấu trận: thu nhỏ như _HeroComponent (heroStageScale).
+void paintStageHero(Canvas c, HeroPose pose, {double effort = 0}) {
+  c.save();
+  c.translate(heroStagePivot.dx, heroStagePivot.dy);
+  c.scale(heroStageScale);
+  c.translate(-heroStagePivot.dx, -heroStagePivot.dy);
+  paintHero(c, pose, effort: effort);
+  c.restore();
+}
+
 void main() {
   testWidgets('chống đẩy: tay thẳng, giữa chừng, xuống sâu', (tester) async {
     for (final angle in [180.0, 120.0, 70.0]) {
@@ -271,7 +281,7 @@ void main() {
         art.paintStageBackdrop(c);
         art.paintScene(c, 4, battle);
         art.paintBoss(c, frame);
-        paintHero(c, HeroPose.plank(110), effort: 0.6);
+        paintStageHero(c, HeroPose.plank(110), effort: 0.6);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
         c.restore();
@@ -301,7 +311,7 @@ void main() {
         ),
       );
     }
-    NemeaBackdrop.evict();
+    NemeaStageBackdrop.evict();
     HeroSprites.evict(look);
     SpriteAtlas.evict(herculesSprite);
   });
@@ -421,7 +431,7 @@ void main() {
       paintNemeaScene(c, time: 1);
       c.scale(2.2);
       c.translate(-40, -110);
-      paintHero(c, HeroPose.plank(110), effort: 0.6);
+      paintStageHero(c, HeroPose.plank(110), effort: 0.6);
     });
     await render(tester, 'hero_glow', (c) {
       paintNemeaScene(c, time: 1);
@@ -470,7 +480,7 @@ void main() {
         art.paintStageBackdrop(c);
         art.paintScene(c, 2.5, battle);
         art.paintBoss(c, frame);
-        paintHero(c, HeroPose.plank(120), effort: 0.5);
+        paintStageHero(c, HeroPose.plank(120), effort: 0.5);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
@@ -479,8 +489,6 @@ void main() {
 
   testWidgets('màn quái Kỳ công 1 bằng sprite Blender', (tester) async {
     await tester.runAsync(NemeaMonsterArt.preloadSprites);
-    await tester.runAsync(NemeaBackdrop.load);
-    expect(NemeaBackdrop.ready, isTrue, reason: 'phông Blender Nemea');
     // Thiếu/hỏng trang ảnh thì sân khấu lặng lẽ vẽ bản vector — bắt ở đây.
     for (final name in [
       'stymphalian_bird',
@@ -494,14 +502,29 @@ void main() {
     }
     for (final (i, kind) in NemeaMonster.values.indexed) {
       final art = NemeaMonsterArt(kind);
+      // Phông vẽ đúng màn (vị trí trên bản đồ).
+      await tester.runAsync(() => NemeaStageBackdrop.load(art.backdropScene));
+      expect(NemeaStageBackdrop.ready, isTrue, reason: art.backdropScene);
       final battle = StageBattleState()
         ..bossHp = 0.7
         ..totalHeads = 3
-        ..headsLeft = 3
-        ..charge = kind == NemeaMonster.boar ? 0.7 : 0;
-      for (final (tag, phase) in [('idle', -1.0), ('strike', 0.58)]) {
+        ..headsLeft = 3;
+      for (final (tag, phase) in [
+        ('idle', -1.0),
+        ('windup', 0.4),
+        ('strike', 0.58),
+      ]) {
+        // Lợn rừng: lấy đà và lao theo tiến độ báo húc thật (charge).
+        battle.charge = kind != NemeaMonster.boar
+            ? 0
+            : switch (tag) {
+                'windup' => 0.7,
+                'strike' => 0.97,
+                _ => 0,
+              };
+        // Sau cảnh mở màn (lính đá trồi từ dưới đất 2,6 s).
         final frame = BossFrame(
-          time: 2.5,
+          time: 3,
           attack: phase < 0 ? 0 : 0.9,
           hurt: 0,
           glint: -1,
@@ -513,7 +536,7 @@ void main() {
           art.paintStageBackdrop(c);
           art.paintScene(c, 2.5, battle);
           art.paintBoss(c, frame);
-          paintHero(c, HeroPose.plank(120), effort: 0.5);
+          paintStageHero(c, HeroPose.plank(120), effort: 0.5);
           art.paintForeground(c, frame);
           paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
         });
@@ -521,11 +544,37 @@ void main() {
     }
   });
 
+  testWidgets('lính đá trồi từ dưới đất lúc mở màn', (tester) async {
+    await tester.runAsync(NemeaMonsterArt.preloadSprites);
+    final art = NemeaMonsterArt(NemeaMonster.stone);
+    await tester.runAsync(() => NemeaStageBackdrop.load(art.backdropScene));
+    final battle = StageBattleState()..bossHp = 1;
+    for (final (k, time) in const [0.25, 0.6, 0.9, 1.25, 1.75, 2.2].indexed) {
+      final frame = BossFrame(
+        time: time,
+        attack: 0,
+        hurt: 0,
+        glint: -1,
+        defeat: 0,
+        battle: battle,
+        attackPhase: -1,
+      );
+      await render(tester, 'stone_rise_$k', (c) {
+        art.paintStageBackdrop(c);
+        art.paintScene(c, time, battle);
+        art.paintBoss(c, frame);
+        paintStageHero(c, HeroPose.plank(120), effort: 0.5);
+        art.paintForeground(c, frame);
+        paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+      });
+    }
+  });
+
   testWidgets('boss 1.10 Sư tử Nemea bằng sprite Blender', (tester) async {
     final art = NemeaBossArt();
     await tester.runAsync(art.preload);
     expect(SpriteAtlas.get(NemeaBossArt.lionSprite), isNotNull);
-    expect(NemeaBackdrop.ready, isTrue);
+    expect(NemeaStageBackdrop.ready, isTrue);
     final battle = StageBattleState()..bossHp = 0.6;
     for (final (tag, phase, defeat, glint) in [
       ('idle', -1.0, 0.0, -1.0),
@@ -547,11 +596,39 @@ void main() {
         art.paintStageBackdrop(c);
         art.paintScene(c, 2.5, battle);
         art.paintBoss(c, frame);
-        paintHero(c, HeroPose.plank(120), effort: 0.5);
+        paintStageHero(c, HeroPose.plank(120), effort: 0.5);
         art.paintForeground(c, frame);
         paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
       });
     }
+    // Pha 2 (máu < 40%): nhảy vồ; vật được thì chồm ngửa ra sau.
+    final rage = StageBattleState()..bossHp = 0.3;
+    BossFrame at(double time, {double phase = -1}) => BossFrame(
+      time: time,
+      attack: phase < 0 ? 0 : 0.9,
+      hurt: 0,
+      glint: -1,
+      defeat: 0,
+      battle: rage,
+      attackPhase: phase,
+    );
+    void scene(Canvas c, BossFrame frame) {
+      art.paintStageBackdrop(c);
+      art.paintScene(c, frame.time, rage);
+      art.paintBoss(c, frame);
+      paintStageHero(c, HeroPose.plank(178), effort: 0.8);
+      art.paintForeground(c, frame);
+      paintStageGrade(c, Offset.zero & stageSize, light: art.gradeLight);
+    }
+
+    await render(
+      tester,
+      'sprite_1_10_pounce',
+      (c) => scene(c, at(3, phase: 0.56)),
+    );
+    rage.wrestles = 1;
+    art.paintBoss(Canvas(ui.PictureRecorder()), at(3.5));
+    await render(tester, 'sprite_1_10_wrestled', (c) => scene(c, at(4)));
     art.dispose();
   });
 
@@ -667,11 +744,11 @@ void main() {
 
   testWidgets('bản đồ Thung lũng Nemea: 3 màn xong, màn 4 mở', (tester) async {
     await tester.runAsync(NemeaMapImage.load);
-    expect(NemeaMapImage.image, isNotNull, reason: 'bản đồ Blender');
+    expect(NemeaMapImage.image, isNotNull, reason: 'bản đồ vẽ');
     await render(tester, 'nemea_map', (c) {
       c.scale(400 / nemeaMapSize.width, 260 / nemeaMapSize.height);
       paintNemeaMap(c, [
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 8; i++)
           i < 3
               ? MapNodeState.done
               : i == 3
@@ -956,7 +1033,7 @@ void main() {
             battle: StageBattleState(),
           ),
         );
-        paintHero(c, HeroPose.plank(110), effort: 0.5);
+        paintStageHero(c, HeroPose.plank(110), effort: 0.5);
       });
     }
   });

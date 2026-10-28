@@ -8,7 +8,7 @@ void main() {
   final nemea = labors.firstWhere((l) => l.id == 'nemea');
 
   testWidgets(
-    'danh sách 10 màn: màn đầu mở, màn sau khoá; chạm màn mở thì chơi',
+    'danh sách 8 màn: màn đầu mở, màn sau khoá; chạm màn mở thì chơi',
     (tester) async {
       Stage? played;
       // Màn hình cao để thấy cả bản đồ lẫn danh sách màn.
@@ -25,8 +25,8 @@ void main() {
         ),
       );
       expect(find.textContaining('1.1  '), findsOneWidget);
-      expect(find.text('2/10 màn'), findsNothing);
-      expect(find.text('1/10 màn'), findsOneWidget);
+      expect(find.text('2/8 màn'), findsNothing);
+      expect(find.text('1/8 màn'), findsOneWidget);
 
       // 1.2 đã mở (thắng 1.1), 1.3 còn khoá.
       await tester.pump(const Duration(milliseconds: 16));

@@ -35,13 +35,41 @@ class SpriteAtlas {
   static final _cache = <String, SpriteAtlas?>{};
   static final _loading = <String, Future<SpriteAtlas?>>{};
 
+  /// Atlas có bản hoạt hình `<tên>_toon` (cùng mô hình, xương, biên đạo; tô
+  /// màu phẳng + viền — tool/blender/toon_kit.py): chế độ 2.5D vẽ bản này
+  /// thay hình vector cũ.
+  static const toon = {
+    'stymphalian_bird',
+    'spartoi',
+    'stone_soldier',
+    'erymanthian_boar',
+    'harpy',
+    'young_hydra',
+    'nemea_lion',
+  };
+
+  /// Tệp atlas thật cho [name] theo chế độ đồ hoạ; null = 2.5D vẽ vector.
+  static String? _file(String name) => ArtModeSetting.blender
+      ? name
+      : toon.contains(name)
+      ? '${name}_toon'
+      : null;
+
   /// Atlas đã nạp ([load]), hoặc null — không tự nạp: chỉ trận đấu nạp
   /// (BossArt.preload), chân dung ở các màn hình khác vẽ bản vector.
-  /// Chế độ 2.5D ([ArtMode.vector]) luôn trả null.
-  static SpriteAtlas? get(String name) =>
-      ArtModeSetting.blender ? _cache[name] : null;
+  /// Chế độ 2.5D ([ArtMode.vector]): bản `_toon` nếu có ([toon]), còn lại null.
+  static SpriteAtlas? get(String name) {
+    final file = _file(name);
+    return file == null ? null : _cache[file];
+  }
 
   static Future<SpriteAtlas?> load(String name) {
+    final file = _file(name);
+    if (file == null) return Future.value();
+    return _loadFile(file);
+  }
+
+  static Future<SpriteAtlas?> _loadFile(String name) {
     final pending = _loading[name];
     if (pending != null) return pending;
     late final Future<SpriteAtlas?> future;
@@ -65,10 +93,13 @@ class SpriteAtlas {
     return future;
   }
 
-  /// Trả bộ nhớ ảnh khi rời trận (mỗi trang 2048² giải nén ~16 MB).
+  /// Trả bộ nhớ ảnh khi rời trận (mỗi trang 2048² giải nén ~16 MB) — cả
+  /// bản 3D lẫn bản `_toon` (chế độ có thể đã đổi giữa lúc nạp và lúc trả).
   static void evict(String name) {
-    _loading.remove(name);
-    _cache.remove(name)?._dispose();
+    for (final file in [name, '${name}_toon']) {
+      _loading.remove(file);
+      _cache.remove(file)?._dispose();
+    }
   }
 
   void _dispose() {
@@ -114,13 +145,35 @@ class SpriteAtlas {
   double metaDouble(String key, double fallback) =>
       (meta[key] as num?)?.toDouble() ?? fallback;
 
+  /// Tiến độ (0–1) của từng khung chuỗi [anim] khi khung không chia đều
+  /// (`phases` trong json: dồn dày quanh cú đánh, thưa ở đoạn giữ thế —
+  /// tool/blender/stone_tripo.py), hoặc null = chia đều.
+  List<double>? phasesOf(String anim) {
+    final all = meta['phases'] as Map<String, dynamic>?;
+    final list = all?[anim] as List?;
+    return list == null ? null : [for (final v in list) (v as num).toDouble()];
+  }
+
+  /// Vị trí (chỉ số khung, có phần lẻ) của tiến độ [t] trên dãy [phases].
+  static double positionOf(List<double> phases, double t) {
+    if (t <= phases.first) return 0;
+    if (t >= phases.last) return phases.length - 1.0;
+    var i = 0;
+    while (phases[i + 1] < t) {
+      i++;
+    }
+    return i + (t - phases[i]) / (phases[i + 1] - phases[i]);
+  }
+
   static final _paint = Paint()..filterQuality = FilterQuality.medium;
 
   /// Vẽ chuỗi [anim] tại tiến độ [t] (0–1) quanh điểm neo (gốc canvas).
   /// [loop]: khung cuối nối về khung đầu. Hai khung kề nhau được hoà trộn
   /// theo phần lẻ để chuyển động mượt dù ít khung. [flash] 0–1: loé trắng
   /// khi trúng đòn. [tint]: nhân màu (lớp render trắng/xám trung tính, ví dụ
-  /// da và tóc nhân vật theo màu người chơi chọn).
+  /// da và tóc nhân vật theo màu người chơi chọn). [snap]: chỉ vẽ khung gần
+  /// nhất — quanh cú ra đòn nhanh hai khung kề nhau cách xa, hoà thì hiện
+  /// hai vũ khí chồng nhau.
   void draw(
     Canvas canvas,
     String anim,
@@ -129,11 +182,21 @@ class SpriteAtlas {
     double opacity = 1,
     double flash = 0,
     Color? tint,
+    bool snap = false,
   }) {
     final frames = anims[anim];
     if (frames == null || frames.isEmpty) return;
     final n = frames.length;
-    final pos = loop ? (t % 1) * n : t.clamp(0.0, 1.0) * (n - 1);
+    final phases = loop ? null : phasesOf(anim);
+    final pos = loop
+        ? (t % 1) * n
+        : phases != null && phases.length == n
+        ? positionOf(phases, t.clamp(0.0, 1.0))
+        : t.clamp(0.0, 1.0) * (n - 1);
+    if (snap) {
+      _frame(canvas, frames[pos.round() % n], opacity, flash, tint);
+      return;
+    }
     final i = pos.floor() % n;
     final j = loop ? (i + 1) % n : (i + 1).clamp(0, n - 1);
     final mix = pos - pos.floor();
