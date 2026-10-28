@@ -5,7 +5,19 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import '../rep/pushup_counter.dart';
 
-enum _Cue { rep, crit, partial, reject, ready }
+enum _Cue {
+  rep('rep'),
+  crit('crit'),
+  partial('partial'),
+  reject('reject'),
+  ready('ready'),
+  dodgeHold('dodge_hold'),
+  dodgeDuck('dodge_duck'),
+  countTick('count_tick');
+
+  const _Cue(this.file);
+  final String file;
+}
 
 /// Cách báo rep bằng âm thanh.
 enum SoundMode {
@@ -51,7 +63,7 @@ class RepFeedback {
     for (final cue in _Cue.values) {
       try {
         _pools[cue] = await AudioPool.createFromAsset(
-          path: 'sounds/${cue.name}.wav',
+          path: 'sounds/${cue.file}.wav',
           maxPlayers: 3,
           playerMode: PlayerMode.lowLatency,
         );
@@ -132,7 +144,9 @@ class RepFeedback {
 
   /// Nạp bộ âm của boss (`assets/sounds/boss_<key>_tell|hit.wav`).
   Future<void> loadBossSounds(String key) async {
-    for (final cue in ['tell', 'hit', 'defeat']) {
+    // `tell2`: âm báo đòn thứ hai (chỉ boss hai đòn có; thiếu thì playBoss
+    // dùng `tell`).
+    for (final cue in ['tell', 'tell2', 'hit', 'defeat']) {
       try {
         _bossPools['${key}_$cue'] = await AudioPool.createFromAsset(
           // Tiếng gục dùng chung mọi boss.
@@ -152,8 +166,30 @@ class RepFeedback {
   /// đòn trúng (nhỏ hơn, nằm dưới tiếng đếm rep).
   void playBoss(String key, String cue) {
     if (soundMode == SoundMode.off) return;
-    _bossPools['${key}_$cue']?.start(volume: cue == 'hit' ? 0.6 : 1.0);
+    final pool =
+        _bossPools['${key}_$cue'] ??
+        (cue == 'tell2' ? _bossPools['${key}_tell'] : null);
+    pool?.start(volume: cue == 'hit' ? 0.6 : 1.0);
   }
+
+  /// Báo đòn theo cách né, chung mọi quái: [hold] = đòn bổ (giữ tay thẳng),
+  /// ngược lại = đòn quét (rep sâu). Âm + kiểu rung khác nhau để phân biệt khi
+  /// đang nhìn sàn, kể cả khi tắt tiếng.
+  void dodgeCue({required bool hold}) {
+    _play(hold ? _Cue.dodgeHold : _Cue.dodgeDuck);
+    if (hold) {
+      _vibrate(HapticFeedback.heavyImpact);
+    } else {
+      _vibrate(HapticFeedback.lightImpact);
+      Future<void>.delayed(
+        const Duration(milliseconds: 120),
+        () => _vibrate(HapticFeedback.lightImpact),
+      );
+    }
+  }
+
+  /// Tiếng đếm ngược trước lúc đòn chạm.
+  void countdownTick() => _play(_Cue.countTick);
 
   /// Đọc một thông báo của trận (ví dụ đợt sóng mới); không có giọng thì rung.
   void announce(String text) {

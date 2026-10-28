@@ -29,7 +29,7 @@ class HeroSpriteFrame {
       : HeroSpriteFrame(anim, t, from: previous, blend: k);
 }
 
-/// Nhân vật người chơi dựng bằng Blender (tool/blender/hero.py), sprite TÁCH
+/// Nhân vật người chơi dựng bằng Blender (tool/blender/characters/hero.py), sprite TÁCH
 /// LỚP: da (nhân màu da đã chọn), trang phục (giữ màu, có bóng đổ), tóc theo
 /// kiểu (nhân màu tóc). Gốc toạ độ = mũi chân lúc chống đẩy, ở điểm
 /// ([anchorX], 220) của sân khấu; [HeroLook.height] phóng quanh điểm đó.

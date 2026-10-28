@@ -107,6 +107,7 @@ class _BattleScreenState extends State<BattleScreen>
       stage.onCue = (cue) => _session.feedback.playBoss(key, switch (cue) {
         StageCue.hit => 'hit',
         StageCue.defeat => 'defeat',
+        StageCue.tellAlt => 'tell2',
         StageCue.tell || StageCue.rage => 'tell',
       });
     }
@@ -561,12 +562,14 @@ class _BattleScreenState extends State<BattleScreen>
       :final frozen,
       :final matched,
       :final held,
+      :final countered,
     ) =>
       Text(
         [
           if (frozen) '❄',
           if (held) '⏸',
           '-$damage',
+          if (countered) 'PHẢN ĐÒN!',
           if (critical) 'CHÍ MẠNG!',
           if (frozen) 'ĐÓNG BĂNG',
           if (matched) 'ĐÚNG SÓNG!',
@@ -627,6 +630,44 @@ class _BattleScreenState extends State<BattleScreen>
     PounceLanded(:final wrestled, :final healed) => Pill(
       text: wrestled ? '🦁 Vật được sư tử!' : '🦁 Bị vồ! Sư tử hồi +$healed HP',
       color: wrestled ? Colors.green.shade700 : Colors.red.shade800,
+    ),
+    BossTell(:final dodge) => Pill(
+      text: dodge == DodgeBy.hold
+          ? '⏸ Đòn từ trên! GIỮ TAY THẲNG lúc chạm'
+          : '💥 Đòn quét ngang! XUỐNG SÂU lúc chạm',
+      color: Colors.red.shade800,
+    ),
+    BossStruck(:final dodged, :final cancelled) => Pill(
+      text: cancelled
+          ? 'Mất dấu — đòn bỏ qua'
+          : dodged
+          ? '✔ Né được! Rep sau PHẢN ĐÒN ×2'
+          : '✖ Trúng đòn — mất combo',
+      color: cancelled
+          ? Colors.blueGrey.shade700
+          : dodged
+          ? Colors.green.shade700
+          : Colors.red.shade800,
+    ),
+    SakeDrinking(:final reps) => Pill(
+      text: '🍶 Shuten uống rượu hồi máu! $reps rep liền để NGẮT',
+      color: Colors.orange.shade900,
+    ),
+    SakeInterrupted() => Pill(
+      text: '🍶 Vò vỡ! Shuten choáng — đánh mạnh ×1,5',
+      color: Colors.green.shade700,
+    ),
+    SakeFinished(:final healed) => Pill(
+      text: '🍶 Shuten uống xong +$healed HP',
+      color: Colors.red.shade800,
+    ),
+    CurseCast() => Pill(
+      text: '🩸 Ấn nguyền! Đòn yếu đi — XUỐNG CHẬM 3 giây để đốt ấn',
+      color: Colors.purple.shade800,
+    ),
+    CurseLifted(:final purged) => Pill(
+      text: purged ? '🔥 Đốt ấn nguyền! Rep chậm ×2' : 'Ấn nguyền tan',
+      color: purged ? Colors.green.shade700 : Colors.blueGrey.shade700,
     ),
     GoldStolen(:final total) => Pill(
       text: '🪙 Harpy cướp vàng! (mất $total túi) — đừng nghỉ lâu',
@@ -744,7 +785,7 @@ class _BattleScreenState extends State<BattleScreen>
                     if (reward.unlockedLabor case final next?)
                       _resultRow(
                         Icons.lock_open,
-                        'Kỳ công ${next.number}: ${next.title}',
+                        'Kỳ công ${next.label}: ${next.title}',
                         'đã mở khoá',
                         color: GreekUi.gold,
                       ),

@@ -10,7 +10,7 @@ import 'package:solo_pushing_up/art/hero_art.dart';
 import 'package:solo_pushing_up/art/hero_pose.dart';
 import 'package:solo_pushing_up/art/lion_art.dart';
 
-/// Lưới chặn hồi quy trên PC (rules/dohoa.md mục 6): thời gian *ghi lệnh vẽ*
+/// Lưới chặn hồi quy trên PC (rules/dohoa/vaogame.md): thời gian *ghi lệnh vẽ*
 /// một khung. Đây không phải ngân sách chính — ngân sách chính đo trên máy
 /// thật bằng `lib/dev/perf_bench_main.dart` (GPU tô ≤ 16 ms/khung). Test này
 /// chỉ bắt các lần chậm đi rõ rệt. Lấy lần nhanh nhất trong 5 lần đo cho đỡ

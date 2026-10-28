@@ -17,7 +17,7 @@ class SpriteFrame {
   final Size size;
 }
 
-/// Sprite dựng bằng Blender (tool/blender/sprite_kit.py): các trang WebP +
+/// Sprite dựng bằng Blender (tool/render/sprite_kit.py): các trang WebP +
 /// json mô tả khung theo chuỗi hoạt hình. Toạ độ đã tính sẵn theo đơn vị sân
 /// khấu quanh điểm neo (chân quái hoặc tâm thân quái bay) — chỉ việc vẽ.
 ///
@@ -31,6 +31,30 @@ class SpriteAtlas {
 
   /// Thông số thêm trong json (chu kỳ idle…).
   final Map<String, dynamic> meta;
+
+  /// Tiến độ (0–1) của từng khung theo chuỗi, khi khung KHÔNG chia đều
+  /// (`phases` trong json — tool/motion/sprite_plan.py dày khung quanh mốc chạm).
+  late final Map<String, List<double>> phases = {
+    for (final e in ((meta['phases'] as Map<String, dynamic>?) ?? const {}).entries)
+      e.key: [for (final v in e.value as List) (v as num).toDouble()],
+  };
+
+  /// Vị trí khung (chỉ số + phần lẻ) của tiến độ [t] trên danh sách tiến độ
+  /// tăng dần [ph] (gồm 0 và 1) — tra nhị phân rồi nội suy trong đoạn.
+  static double positionOf(List<double> ph, double t) {
+    final x = t.clamp(ph.first, ph.last);
+    var lo = 0, hi = ph.length - 1;
+    while (hi - lo > 1) {
+      final mid = (lo + hi) >> 1;
+      if (ph[mid] <= x) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    final span = ph[hi] - ph[lo];
+    return lo + (span > 0 ? (x - ph[lo]) / span : 0.0);
+  }
 
   static final _cache = <String, SpriteAtlas?>{};
   static final _loading = <String, Future<SpriteAtlas?>>{};
@@ -148,22 +172,7 @@ class SpriteAtlas {
   /// Tiến độ (0–1) của từng khung chuỗi [anim] khi khung không chia đều
   /// (`phases` trong json: dồn dày quanh cú đánh, thưa ở đoạn giữ thế —
   /// tool/blender/stone_tripo.py), hoặc null = chia đều.
-  List<double>? phasesOf(String anim) {
-    final all = meta['phases'] as Map<String, dynamic>?;
-    final list = all?[anim] as List?;
-    return list == null ? null : [for (final v in list) (v as num).toDouble()];
-  }
-
-  /// Vị trí (chỉ số khung, có phần lẻ) của tiến độ [t] trên dãy [phases].
-  static double positionOf(List<double> phases, double t) {
-    if (t <= phases.first) return 0;
-    if (t >= phases.last) return phases.length - 1.0;
-    var i = 0;
-    while (phases[i + 1] < t) {
-      i++;
-    }
-    return i + (t - phases[i]) / (phases[i + 1] - phases[i]);
-  }
+  List<double>? phasesOf(String anim) => phases[anim];
 
   static final _paint = Paint()..filterQuality = FilterQuality.medium;
 
@@ -187,11 +196,11 @@ class SpriteAtlas {
     final frames = anims[anim];
     if (frames == null || frames.isEmpty) return;
     final n = frames.length;
-    final phases = loop ? null : phasesOf(anim);
+    final ph = loop ? null : phases[anim];
     final pos = loop
         ? (t % 1) * n
-        : phases != null && phases.length == n
-        ? positionOf(phases, t.clamp(0.0, 1.0))
+        : ph != null && ph.length == n
+        ? positionOf(ph, t)
         : t.clamp(0.0, 1.0) * (n - 1);
     if (snap) {
       _frame(canvas, frames[pos.round() % n], opacity, flash, tint);

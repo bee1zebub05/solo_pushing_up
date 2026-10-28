@@ -1,0 +1,37 @@
+{
+  "name": "tengu",
+  "source": "tripo",
+  "created": "2026-10-16T18:28:23",
+  "updated": "2026-10-16T18:28:23",
+  "note": "Boss tengu — chương Nhật Bản",
+  "inbox": "20261016-182515_tengu_figure_3d_model.fbx",
+  "objects": [
+    "tengu figure 3d model.002"
+  ],
+  "triangles": 10291,
+  "bbox_m": {
+    "min": [
+      -0.3245,
+      -0.2292,
+      -0.0
+    ],
+    "max": [
+      0.3245,
+      0.2292,
+      0.9995
+    ],
+    "size": [
+      0.6489,
+      0.4585,
+      0.9995
+    ]
+  },
+  "armature": [],
+  "actions": [],
+  "images": {
+    "tripo_image_2320537e_0.001": [
+      4096,
+      4096
+    ]
+  }
+}

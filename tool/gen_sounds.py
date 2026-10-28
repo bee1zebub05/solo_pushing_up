@@ -51,6 +51,13 @@ SOUNDS = {
     "reject": tone(220, 220, 90) + silence(40) + tone(220, 220, 90),
     # Vào tư thế sẵn sàng: quét lên.
     "ready": tone(660, 990, 150, volume=0.5),
+    # Báo đòn theo CÁCH NÉ, chung mọi quái (người chơi nhìn sàn — rules/thietke/
+    # boss-nhat-shuten-sutoku.md, trụ 3). ⏸ giữ tay: hai tiếng trống trầm đứng yên.
+    "dodge_hold": tone(150, 110, 140, volume=0.9) + silence(70) + tone(150, 110, 200, volume=0.9),
+    # Rep sâu: tiếng vút trượt từ cao xuống thấp — "cúi xuống".
+    "dodge_duck": tone(1100, 240, 380, volume=0.7),
+    # Đếm ngược tới lúc chạm (1 s, 0,5 s trước): tích ngắn, khô.
+    "count_tick": tone(1600, 1600, 35, volume=0.5),
 }
 
 if __name__ == "__main__":

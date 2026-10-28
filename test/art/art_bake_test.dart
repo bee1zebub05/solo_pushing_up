@@ -46,7 +46,7 @@ const portraitBossHp = 0.25;
 /// Chụp chân dung tròn cho [bakedEnemies]:
 ///
 ///     ART_BAKE=1 flutter test test/art/art_bake_test.dart
-///     python tool/sprites_webp.py --portraits
+///     python tool/render/sprites_webp.py --portraits
 ///
 /// → `build/portraits/<id>.png` → `assets/portraits/<id>.webp`. Không đặt biến
 /// môi trường thì chỉ kiểm tra chân dung trong assets/ khớp kẻ thù.

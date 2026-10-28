@@ -1,0 +1,79 @@
+{
+ "_doc": "Đòn boss nào lấy lớp thân từ đòn mocap nào (rules/dohoa.md mục 16). clip/eff/at = clip nguồn, chi ra đòn, thời điểm chạm (~giây) — khoá bền khi dựng lại thư viện (tool/mocap/segment.py). events = mốc sân khấu, PHẢI trùng biên đạo tool/blender/choreo/<boss>.json để lớp tay vũ khí (biên đạo) chạm cùng lúc với thân (mocap). in/out = khoảng tiến độ mô hình tự điền đoạn nối dáng chờ ↔ đòn. mirror = lật trái/phải. Ghép: tool/.venv-ml/Scripts/python tool/mocap/compose.py turn = xoay thân mocap quanh trục đứng (độ, âm = quay thêm về phía đối thủ — thế tấn karate mở ngực ra máy quay). lean = hệ số cộng kênh lean (gập/ngả) của biên đạo lên thân mocap. twist = hệ số cộng kênh twist (vặn hông → ngực) của biên đạo lên thân mocap. yaw_keep = phần độ xoay quanh trục đứng của thân mocap được giữ (sân khấu ngang: 0,3). shift = hệ số cộng kênh shift/drop (dồn trọng tâm) của biên đạo lên hông mocap.",
+ "shuten_doji": {
+  "attack": {
+   "_why": "Nện đỉnh kèm dậm chân: thân oi-zuki (bước dồn chân phải + đấm tay phải, hông đẩy tới) — sức nặng đổ theo bước",
+   "clip": "135_09",
+   "eff": "wrist_r",
+   "at": 2.03,
+   "events": {
+    "impact": 0.62,
+    "hold_from": 0.38,
+    "hold_to": 0.48
+   },
+   "in": [
+    0.04,
+    0.28
+   ],
+   "out": [
+    0.7,
+    0.97
+   ],
+   "turn": -25,
+   "lean": 1.0,
+   "twist": 0.3,
+   "yaw_keep": 0.3,
+   "shift": 0.8
+  },
+  "attack2": {
+   "_why": "Quét chân ngựa: thân gyaku-zuki Kyokushin (đứng tấn, vặn hông bật vai phải ra trước) — lực quét đến từ hông",
+   "clip": "k0367S01E01T01",
+   "eff": "wrist_r",
+   "at": 0.0,
+   "events": {
+    "impact": 0.61,
+    "hold_from": 0.36,
+    "hold_to": 0.48
+   },
+   "in": [
+    0.04,
+    0.28
+   ],
+   "out": [
+    0.72,
+    0.97
+   ],
+   "turn": -20,
+   "lean": 1.0,
+   "twist": 1.0,
+   "yaw_keep": 0.3,
+   "shift": 1.0
+  }
+ },
+ "tengu_sutoku": {
+  "attack": {
+   "_why": "Phong kesa: thân oi-zuki bước dồn (nhanh, nhẹ hơn oni) — quạt chém ngang tầm vai theo biên đạo, xoay theo ngực",
+   "clip": "135_09",
+   "eff": "wrist_r",
+   "at": 5.83,
+   "events": {
+    "impact": 0.6,
+    "hold_from": 0.36,
+    "hold_to": 0.48
+   },
+   "in": [
+    0.04,
+    0.26
+   ],
+   "out": [
+    0.68,
+    0.97
+   ],
+   "turn": -32,
+   "lean": 0.8,
+   "twist": 0.3,
+   "yaw_keep": 0.15,
+   "shift": 0.6
+  }
+ }
+}

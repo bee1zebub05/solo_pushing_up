@@ -60,7 +60,7 @@ App thiết kế cho iPhone trước, Android theo sau. Mọi màn hình, hiệu
 
 ## 6. Hiệu năng
 
-- Ngân sách ở `rules/dohoa.md` mục 6: GPU tô ≤ 16 ms/khung trên iPhone 11.
+- Ngân sách ở `rules/dohoa/README.md` mục 6: GPU tô ≤ 16 ms/khung trên iPhone 11.
 - `CADisableMinimumFrameDurationOnPhone = true` cho phép 120 Hz trên iPhone
   ProMotion; game không bắt buộc 120 fps, nhưng không được giật dưới 60.
 - iOS dùng Impeller (Metal): tránh `saveLayer` toàn màn hình và chế độ trộn

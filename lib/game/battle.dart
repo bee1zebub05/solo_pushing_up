@@ -88,6 +88,7 @@ final class Hit extends BattleEvent {
     this.frozen = false,
     this.matched = false,
     this.held = false,
+    this.countered = false,
   });
 
   final int damage;
@@ -101,6 +102,9 @@ final class Hit extends BattleEvent {
 
   /// Đòn từ việc giữ tư thế cao, không phải từ một rep.
   final bool held;
+
+  /// Phản đòn sau khi né được đòn của boss ([TelegraphedBoss]).
+  final bool countered;
 
   /// Số rep liên tiếp tính tới đòn này.
   final int combo;
@@ -198,6 +202,63 @@ final class GoldStolen extends BattleEvent {
   final int total;
 }
 
+/// Cách né một đòn có báo trước của boss (rules/thietke/boss-nhat-shuten-sutoku.md):
+/// đòn từ trên → giữ tay thẳng; đòn ngang → một rep sâu đúng lúc.
+enum DodgeBy { hold, duck }
+
+/// Boss bắt đầu báo trước một đòn: còn [inMs] nữa thì chạm ([TelegraphedBoss]).
+final class BossTell extends BattleEvent {
+  const BossTell(super.timestampMs, {required this.move, required this.dodge, required this.inMs});
+
+  /// Khoá đòn trong biên đạo (`attack`, `attack2`).
+  final String move;
+  final DodgeBy dodge;
+  final int inMs;
+}
+
+/// Đòn của boss chạm: né được / trúng (mất combo) / huỷ (camera mất người).
+final class BossStruck extends BattleEvent {
+  const BossStruck(super.timestampMs, {required this.move, required this.dodged, this.cancelled = false});
+
+  final String move;
+  final bool dodged;
+  final bool cancelled;
+}
+
+/// Shuten-dōji bắt đầu uống rượu: [reps] rep trong [inMs] để ngắt.
+final class SakeDrinking extends BattleEvent {
+  const SakeDrinking(super.timestampMs, {required this.reps, required this.inMs});
+
+  final int reps;
+  final int inMs;
+}
+
+/// Ngắt được: vò vỡ, Shuten choáng [stunMs].
+final class SakeInterrupted extends BattleEvent {
+  const SakeInterrupted(super.timestampMs, {required this.stunMs});
+
+  final int stunMs;
+}
+
+/// Uống xong, hồi [healed] máu.
+final class SakeFinished extends BattleEvent {
+  const SakeFinished(super.timestampMs, {required this.healed});
+
+  final int healed;
+}
+
+/// Sutoku viết ấn nguyền: đòn yếu đi tới khi hoá giải bằng rep chậm.
+final class CurseCast extends BattleEvent {
+  const CurseCast(super.timestampMs);
+}
+
+/// Ấn nguyền cháy (hoá giải bằng rep chậm) hoặc tự tan.
+final class CurseLifted extends BattleEvent {
+  const CurseLifted(super.timestampMs, {required this.purged});
+
+  final bool purged;
+}
+
 enum DefeatReason { timeUp, flooded }
 
 final class Defeat extends BattleEvent {
@@ -269,6 +330,26 @@ class BattleView {
 
   /// Số lần người chơi vật được sư tử ([LionPounce]).
   int wrestles = 0;
+  /// Đòn có báo trước đang diễn ([TelegraphedBoss]): khoá đòn trong biên
+  /// đạo, null = không có. [bossTellMs] = còn bấy nhiêu ms tới lúc chạm
+  /// (âm = đã chạm bấy lâu), sân khấu canh tư thế theo mốc này.
+  String? bossMove;
+  int bossTellMs = 0;
+  int bossWarnMs = 0;
+  DodgeBy? bossDodge;
+
+  /// Shuten uống rượu: tiến độ 0–1 (0 = không uống), số rep đã đánh trong
+  /// lúc uống / số cần để ngắt; choáng còn bấy nhiêu ms.
+  double drinking = 0;
+  int drinkReps = 0;
+  int drinkRepsNeeded = 0;
+  int stunMs = 0;
+
+  /// Ấn nguyền Sutoku: thời gian sống còn lại 0–1 (0 = không có ấn).
+  double curse = 0;
+
+  /// Rep tính kế tiếp được phản đòn (vừa né xong).
+  bool counterReady = false;
 }
 
 /// Logic một trận: nhận [RepEvent] từ bộ đếm, trừ máu kẻ thù. Không phụ
@@ -295,6 +376,7 @@ class Battle {
   int _combo = 0;
   int _reps = 0;
   int _bestCombo = 0;
+  int? _lastSeenMs;
   DefeatReason? _defeatReason;
 
   int get hp => _hp;
@@ -388,8 +470,11 @@ class Battle {
   }
 
   /// Gọi mỗi khung hình: hết giờ và phần theo thời gian của các cơ chế.
-  /// [plankHoldMs] lấy từ [CounterSnapshot.plankHoldMs].
-  List<BattleEvent> tick(int nowMs, {int plankHoldMs = 0}) {
+  /// [plankHoldMs] lấy từ [CounterSnapshot.plankHoldMs]; [tracking] = camera
+  /// còn thấy người ở khung này (cơ chế huỷ đòn khi mất người — không phạt
+  /// người chơi vì lỗi máy).
+  List<BattleEvent> tick(int nowMs, {int plankHoldMs = 0, bool tracking = true}) {
+    if (tracking) _lastSeenMs = nowMs;
     if (_status == BattleStatus.ready &&
         plankHoldMs > 0 &&
         mechanics.any((m) => m.startsOnHold)) {
@@ -477,6 +562,7 @@ class Battle {
               combo: _combo,
               frozen: strike.frozen,
               matched: strike.matched,
+              countered: strike.countered,
             ),
           ),
         );
@@ -509,6 +595,8 @@ class _Host implements BattleHost {
   int? get startMs => _b._startMs;
   @override
   int? get lastHitMs => _b._lastHitMs;
+  @override
+  int? get lastSeenMs => _b._lastSeenMs;
 
   @override
   int heal(int amount) {

@@ -15,9 +15,15 @@ class Labor {
     required this.mechanic,
     required this.reward,
     this.stages = const [],
+    this.numberLabel,
   });
 
   final int number;
+
+  /// Số hiển thị khi khác [number] — kỳ công Heian chưa xếp vào danh sách 12
+  /// (rules/cottruyen.md, Kỳ công 5) nên hiện "5b".
+  final String? numberLabel;
+  String get label => numberLabel ?? '$number';
   final String id;
   final String title;
   final String region;
@@ -251,6 +257,303 @@ const orochi = EnemySpec(
   mechanics: [RegrowingHeads.new],
 );
 
+/// Chương Nhật — mini-boss Izumo (màn 5.6) và boss Heian (5b.8).
+/// Cơ chế: rules/thietke/boss-nhat-shuten-sutoku.md; máu chốt bằng mô phỏng
+/// test/game/chapter2_balance_test.dart (rules/thietke/chuong2-nhat.md).
+final shutenDoji = EnemySpec(
+  id: 'shuten_doji',
+  name: 'Shuten-dōji',
+  maxHp: 320,
+  mechanics: [ShutenMechanic.new],
+);
+
+final sutokuTengu = EnemySpec(
+  id: 'tengu_sutoku',
+  name: 'Thiên hoàng Sutoku',
+  maxHp: 360,
+  mechanics: [SutokuMechanic.new],
+);
+
+// Quái thường hai kỳ công Nhật (rules/thietke/chuong2-nhat.md). Chưa có hình:
+// trận hiện biểu tượng tạm. Đòn có báo trước dùng chung TelegraphedFoe:
+// ⏸ = đòn bổ từ trên (giữ tay thẳng), duck = đòn quét ngang (rep sâu).
+const _hold = BossAttack('attack', DodgeBy.hold);
+const _duck = BossAttack('attack2', DodgeBy.duck);
+
+final oniCub = EnemySpec(
+  id: 'oni_cub',
+  name: 'Oni con',
+  maxHp: 130,
+  mechanics: [() => TelegraphedFoe(attacks: const [_hold])],
+);
+final kappa = EnemySpec(
+  id: 'kappa',
+  name: 'Kappa',
+  maxHp: 130,
+  mechanics: [() => TelegraphedFoe(attacks: const [_duck])],
+);
+final oniKappa = EnemySpec(
+  id: 'oni_kappa',
+  name: 'Oni và kappa',
+  maxHp: 160,
+  mechanics: [() => TelegraphedFoe(attacks: const [_hold, _duck])],
+);
+final susanoo = EnemySpec(
+  id: 'susanoo',
+  name: 'Susanoo cuồng nộ',
+  maxHp: 250,
+  // Thần bão dồn dập hơn: báo 2,2 s, nghỉ 5–6,5 s (không dưới 2 s: kịp xuống rep sâu).
+  mechanics: [
+    () => TelegraphedFoe(
+      attacks: const [_hold, _duck],
+      warnMs: 2200,
+      gapMinMs: 5000,
+      gapMaxMs: 6500,
+    ),
+  ],
+);
+const riverYurei = EnemySpec(
+  id: 'river_yurei',
+  name: 'Yūrei bên sông',
+  maxHp: 110,
+  mechanics: [ReviveOnce.new],
+);
+const orochiTwin = EnemySpec(
+  id: 'orochi_twin',
+  name: 'Hai đầu Orochi',
+  maxHp: 160,
+  heads: 2,
+  mechanics: [RegrowingHeads.new],
+);
+
+final karasuTengu = EnemySpec(
+  id: 'karasu_tengu',
+  name: 'Tengu quạ',
+  maxHp: 130,
+  mechanics: [() => TelegraphedFoe(attacks: const [_duck])],
+);
+final karasuScribe = EnemySpec(
+  id: 'karasu_scribe',
+  name: 'Tengu quạ chép ấn',
+  maxHp: 120,
+  // Chỉ viết ấn, từ đầu trận: dạy rep chậm (kỹ năng Sutoku đòi) riêng lẻ.
+  mechanics: [
+    () => SutokuMechanic(
+      attacks: const [],
+      curseBelow: 1.01,
+      firstCurseDelayMs: 3000,
+    ),
+  ],
+);
+final rashomonOni = EnemySpec(
+  id: 'rashomon_oni',
+  name: 'Oni cổng Rashōmon',
+  maxHp: 160,
+  mechanics: [() => TelegraphedFoe(attacks: const [_hold, _duck])],
+);
+final tsuchigumo = EnemySpec(
+  id: 'tsuchigumo',
+  name: 'Tsuchigumo',
+  maxHp: 250,
+  mechanics: [
+    () => TelegraphedFoe(
+      attacks: const [_duck, _hold],
+      warnMs: 2200,
+      gapMinMs: 5000,
+      gapMaxMs: 6500,
+    ),
+  ],
+);
+const courtYurei = EnemySpec(
+  id: 'court_yurei',
+  name: 'Hồn ma cung nữ',
+  maxHp: 110,
+  mechanics: [ReviveOnce.new],
+);
+const tamamo = EnemySpec(
+  id: 'tamamo',
+  name: 'Tamamo-no-Mae',
+  maxHp: 225,
+  heads: 9, // chín đuôi: đứt nhịp thì đuôi đang chém mọc lại
+  mechanics: [RegrowingHeads.new],
+);
+final karasuFlock = EnemySpec(
+  id: 'karasu_flock',
+  name: 'Đàn tengu quạ',
+  maxHp: 170,
+  mechanics: [
+    () => SutokuMechanic(attacks: const [_duck], curseBelow: 0.7),
+  ],
+);
+
+/// Kỳ công 5 — Izumo, thời thần thoại: 8 màn (rules/thietke/chuong2-nhat.md).
+final izumoStages = <Stage>[
+  Stage(
+    id: 'orochi_5_1',
+    code: '5.1',
+    title: 'Oni con',
+    enemy: oniCub,
+    tip: 'Oni giơ chuỳ cao: giữ tay thẳng đỡ đòn, rep sau phản đòn ×2',
+    emoji: '👹',
+    lore:
+        'Rừng tuyết tùng xứ Izumo. Trì Trệ đánh thức lũ oni con, chuỳ sắt kéo lê trên tuyết.',
+  ),
+  Stage(
+    id: 'orochi_5_2',
+    code: '5.2',
+    title: 'Kappa',
+    enemy: kappa,
+    tip: 'Kappa lao tới thấp: xuống một rep thật sâu đúng lúc nó tới',
+    emoji: '💧',
+    lore:
+        'Dưới cổng torii ven sông Hi, kappa ngoi lên. Truyền rằng ai cúi chào, kappa cúi theo, nước trên đĩa đầu đổ hết, mất sức.',
+  ),
+  Stage(
+    id: 'orochi_5_3',
+    code: '5.3',
+    title: 'Oni và kappa',
+    enemy: oniKappa,
+    tip: 'Đọc thế: chuỳ giơ cao thì giữ tay, lao thấp thì rep sâu',
+    emoji: '👹',
+    lore:
+        'Oni và kappa cùng chặn bến đò: một đứa bổ từ trên, một đứa quét ngang.',
+  ),
+  Stage(
+    id: 'orochi_5_4',
+    code: '5.4',
+    title: 'Susanoo cuồng nộ (tinh anh)',
+    enemy: susanoo,
+    tip: 'Bão quật xuống thì giữ tay, kiếm quét ngang thì rep sâu',
+    emoji: '⛈️',
+    lore:
+        'Thần bão Susanoo bị đuổi khỏi Takamagahara, cơn giận chưa nguôi. Gió quật từ trên, kiếm Totsuka quét ngang.',
+  ),
+  Stage(
+    id: 'orochi_5_5',
+    code: '5.5',
+    title: 'Yūrei bên sông',
+    enemy: riverYurei,
+    tip: 'Hồn ma tan rồi tụ lại một lần: đánh dứt điểm',
+    emoji: '👻',
+    lore:
+        'Susanoo nguôi giận, dẫn đường. Bên bờ sông, hồn những người con gái bị Orochi nuốt hiện về.',
+  ),
+  Stage(
+    id: 'orochi_5_6',
+    code: '5.6',
+    title: 'Shuten-dōji (mini-boss)',
+    enemy: shutenDoji,
+    tip: 'Hắn nâng vò rượu: dồn 3 rep để đánh vỡ vò, hắn choáng',
+    emoji: '🍶',
+    lore:
+        'Vua oni núi Ōe say khướt bên vò rượu. Như Minamoto no Raikō năm xưa, chờ lúc hắn nâng vò.',
+  ),
+  Stage(
+    id: 'orochi_5_7',
+    code: '5.7',
+    title: 'Hai đầu Orochi',
+    enemy: orochiTwin,
+    tip: 'Ôn lại: chém mỗi đầu bằng một chuỗi rep liền',
+    emoji: '🐍',
+    lore:
+        'Tám vò rượu ủ tám lần đã bày sẵn. Hai cái đầu đầu tiên thò xuống uống.',
+  ),
+  Stage(
+    id: 'orochi',
+    code: '5.8',
+    title: 'Yamata no Orochi',
+    enemy: orochi,
+    tip: '8 cái đầu: mỗi đầu một chuỗi rep liền, đứt combo thì đầu đó mọc lại',
+    emoji: '🐍',
+    lore:
+        'Rắn tám đầu tám đuôi, say rượu ủ tám lần. Trong đuôi nó là thanh kiếm Kusanagi.',
+  ),
+];
+
+/// Kỳ công 5b — Kinh đô Heian, thời lịch sử: 8 màn.
+final heianStages = <Stage>[
+  Stage(
+    id: 'heian_1',
+    code: '5b.1',
+    title: 'Tengu quạ',
+    enemy: karasuTengu,
+    tip: 'Tengu quạ quạt gió chéo: rep sâu đúng lúc gió tới',
+    emoji: '🪶',
+    lore:
+        'Kinh đô Heian, hoàng hôn trên mái cung điện. Tengu quạ, tay sai của oan hồn Sutoku, quạt gió chéo xuống.',
+  ),
+  Stage(
+    id: 'heian_2',
+    code: '5b.2',
+    title: 'Tengu quạ chép ấn',
+    enemy: karasuScribe,
+    tip: 'Ấn nguyền làm đòn yếu đi: một rep thật chậm (xuống 3 giây) đốt ấn',
+    emoji: '🪶',
+    lore:
+        'Một con tengu quạ vạch ấn nguyền trong không trung. Ấn chỉ cháy trước nét chép chậm rãi, cẩn trọng.',
+  ),
+  Stage(
+    id: 'heian_3',
+    code: '5b.3',
+    title: 'Oni cổng Rashōmon',
+    enemy: rashomonOni,
+    tip: 'Ôn lại: giữ tay đỡ đòn bổ, rep sâu né đòn quét',
+    emoji: '👹',
+    lore:
+        'Cổng Rashōmon đổ nát, nơi Watanabe no Tsuna từng chém đứt tay một con oni. Nó quay lại đòi tay.',
+  ),
+  Stage(
+    id: 'heian_4',
+    code: '5b.4',
+    title: 'Tsuchigumo (tinh anh)',
+    enemy: tsuchigumo,
+    tip: 'Nhện đất ra đòn dồn dập hơn: đọc thế sớm',
+    emoji: '🕷️',
+    lore:
+        'Nhện đất khổng lồ, kẻ Minamoto no Raikō từng hạ, giăng tơ kín ngôi đền bỏ hoang.',
+  ),
+  Stage(
+    id: 'heian_5',
+    code: '5b.5',
+    title: 'Hồn ma cung nữ',
+    enemy: courtYurei,
+    tip: 'Hồn ma tan rồi hiện lại một lần: đánh dứt điểm',
+    emoji: '👻',
+    lore:
+        'Hành lang cung điện về đêm. Hồn ma cung nữ lướt qua, tan đi rồi lại hiện.',
+  ),
+  Stage(
+    id: 'heian_6',
+    code: '5b.6',
+    title: 'Tamamo-no-Mae (mini-boss)',
+    enemy: tamamo,
+    tip: 'Chín đuôi: chém mỗi đuôi bằng một chuỗi rep liền',
+    emoji: '🦊',
+    lore:
+        'Mỹ nhân được Thiên hoàng Toba sủng ái hoá ra hồ ly chín đuôi. Bị âm dương sư vạch mặt, nó chạy về đồng Nasu.',
+  ),
+  Stage(
+    id: 'heian_7',
+    code: '5b.7',
+    title: 'Đàn tengu quạ',
+    enemy: karasuFlock,
+    tip: 'Ôn trước boss: rep sâu né gió, rep chậm đốt ấn',
+    emoji: '🪶',
+    lore:
+        'Núi Shiramine, Sanuki. Đàn tengu quạ bao quanh lăng mộ, vừa quạt gió vừa viết ấn.',
+  ),
+  Stage(
+    id: 'heian',
+    code: '5b.8',
+    title: 'Thiên hoàng Sutoku',
+    enemy: sutokuTengu,
+    tip: 'Đọc thế: rep sâu né gió, giữ tay đỡ cú bổ, rep chậm đốt ấn',
+    emoji: '👺',
+    lore:
+        'Thiên hoàng Sutoku bị đày sang Sanuki. Kinh ông chép gửi về bị trả lại; ông cắn lưỡi viết lời nguyền bằng máu, hoá đại tengu.',
+  ),
+];
+
 /// Kỳ công 12 — Việt Nam, núi Tản Viên (chương cuối).
 const thuyTinh = EnemySpec(
   id: 'thuy_tinh',
@@ -261,7 +564,7 @@ const thuyTinh = EnemySpec(
 
 /// Các kỳ công đã chơi được, theo thứ tự mở khoá (không nhất thiết liên tiếp
 /// số: bản ra mắt dự kiến 1, 2, 5, 12 — rules/cottruyen.md mục 7). Số liệu tạm, cân bằng lại khi có dữ liệu thật.
-const labors = <Labor>[
+final labors = <Labor>[
   Labor(
     number: 1,
     id: 'nemea',
@@ -289,13 +592,27 @@ const labors = <Labor>[
     number: 5,
     id: 'orochi',
     title: 'Yamata no Orochi',
-    region: 'Nhật Bản · Sông Hi',
+    region: 'Nhật Bản · Izumo, sông Hi',
     emoji: '🐍',
     enemy: orochi,
     mechanic:
         '8 cái đầu: chém mỗi đầu bằng một chuỗi rep liền mạch, '
         'đứt combo thì đầu đó mọc lại',
     reward: kusanagi,
+    stages: izumoStages,
+  ),
+  Labor(
+    number: 5,
+    numberLabel: '5b',
+    id: 'heian',
+    title: 'Thiên hoàng Sutoku',
+    region: 'Nhật Bản · Kinh đô Heian',
+    emoji: '👺',
+    enemy: sutokuTengu,
+    mechanic:
+        'Đọc thế đòn: rep sâu né gió, giữ tay đỡ cú bổ; rep chậm đốt ấn nguyền',
+    reward: tenguFan,
+    stages: heianStages,
   ),
   Labor(
     number: 12,

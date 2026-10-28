@@ -199,7 +199,8 @@ Ký hiệu: 🔼 push-up · 🔽 squat · ⏸ plank
 - **Boss:** **Yamata no Orochi**, rắn 8 đầu 8 đuôi. Các boss khác của vùng
   (chốt 14/10/2026): Susanoo cuồng nộ, Thiên hoàng Sutoku, Tamamo-no-Mae,
   Shuten-dōji — xem mục 3b.5. Chia màn (chốt 14/10/2026): HAI kỳ công Nhật,
-  mỗi kỳ công 10 màn, tách theo thời đại:
+  tách theo thời đại. 21/10: mỗi kỳ công **8 màn** (như chương 1), bảng màn ở
+  [thietke/chuong2-nhat.md](thietke/chuong2-nhat.md):
   - *Izumo (thời thần thoại):* Susanoo cuồng nộ → Shuten-dōji → Orochi
     (boss cuối). Susanoo bại trận tỉnh lại, dẫn đường đi diệt Orochi.
   - *Kinh đô Heian (thời lịch sử):* Tamamo-no-Mae → Thiên hoàng Sutoku

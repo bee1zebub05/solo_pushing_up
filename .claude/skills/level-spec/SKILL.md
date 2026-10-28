@@ -19,7 +19,7 @@ Rút từ CCGS (`rules/thamkhao/ccgs/skills/team-level/`,
    chương (dạy → kiểm → biến tấu → kết; kishōtenketsu).
 4. **Quái, cơ chế, thưởng**: **mỗi màn tối đa một cơ chế mới**, giới thiệu
    riêng lẻ trước khi trộn; dấu hiệu báo đòn riêng, cố định (bảng trong
-   `rules/dohoa.md`); thưởng XP theo `balance-reps`.
+   `rules/dohoa/README.md`); thưởng XP theo `balance-reps`.
 5. **Nghiệm thu**: ít nhất 3 tiêu chí đo được (rep mục tiêu, thời lượng, cơ
    chế đọc được mà không cần chữ…).
 
